@@ -93,6 +93,8 @@ class DashboardScreen extends ConsumerWidget {
         color = AppColors.primaryLight; roleLabel = 'Organization Admin'; icon = Icons.admin_panel_settings_rounded;
       case 'election_officer':
         color = AppColors.accent; roleLabel = 'Election Officer'; icon = Icons.manage_accounts_rounded;
+      case 'observer':
+        color = AppColors.warning; roleLabel = 'Observer'; icon = Icons.visibility_rounded;
       default:
         color = AppColors.success; roleLabel = 'Voter'; icon = Icons.how_to_vote_rounded;
     }

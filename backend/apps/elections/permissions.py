@@ -48,11 +48,10 @@ class IsObserver(permissions.BasePermission):
         if not election:
             return False
             
-        if request.user.is_org_admin and election.organization_id == request.user.organization_id:
+        # Any authenticated user can view elections within their own organization
+        # (Read-only access is safe for all organization members)
+        if request.user.organization_id == election.organization_id:
             return True
             
-        return ElectionRoleAssignment.objects.filter(
-            user=request.user,
-            election=election,
-            role__in=['election_officer', 'observer']
-        ).exists()
+        return False
+

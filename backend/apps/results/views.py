@@ -57,14 +57,15 @@ class ElectionResultsViewSet(viewsets.ViewSet):
         writer = csv.writer(response)
         writer.writerow(['Position', 'Candidate', 'Vote Count', 'Is Winner'])
         
-        for pos in tally_data.get('positions', []):
-            for cand in pos.get('candidates', []):
-                writer.writerow([
-                    pos.get('title', ''),
-                    cand.get('name', ''),
-                    cand.get('vote_count', 0),
-                    'Yes' if cand.get('is_winner') else 'No'
-                ])
+        for pos in tally_data.get('results', []):
+            for cand in pos.get('breakdown', []):
+                row = [
+                    pos.get('title', 'Unknown'),
+                    cand.get('name', 'Unknown'),
+                    cand.get('score', 0),
+                    'Yes' if cand.get('candidate_id') in pos.get('winners', []) else 'No'
+                ]
+                writer.writerow(row)
                 
         # Also write turnout summary at the bottom
         writer.writerow([])

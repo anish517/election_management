@@ -160,8 +160,35 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
           const SizedBox(height: 8),
           Text(isLive ? 'Voting is in progress — results may change' : 'Election Results',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white60)),
+          const SizedBox(height: 16),
+          // Turnout Stats
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildTurnoutStat('Turnout', '${tally.turnoutPercentage}%'),
+                _buildTurnoutStat('Voted', '${tally.ballotsCast}'),
+                _buildTurnoutStat('Total', '${tally.totalVoters}'),
+              ],
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTurnoutStat(String label, String value) {
+    return Column(
+      children: [
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+      ],
     );
   }
 

@@ -21,6 +21,7 @@ import '../../features/candidates/nomination_screen.dart';
 import '../../features/candidates/nomination_list_screen.dart';
 import '../../features/admin/organization/org_settings_screen.dart';
 import '../../features/results/results_screen.dart';
+import '../../features/profile/user_profile_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -64,6 +65,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/org-settings',
         name: 'org-settings',
         builder: (context, state) => const OrgSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/profile',
+        name: 'profile',
+        builder: (context, state) => const UserProfileScreen(),
       ),
       GoRoute(
         path: '/members',

@@ -58,6 +58,16 @@ class DashboardScreen extends ConsumerWidget {
               ),
               PopupMenuItem(
                 child: const Row(children: [
+                  Icon(Icons.person_rounded, size: 18),
+                  SizedBox(width: 10),
+                  Text('My Profile'),
+                ]),
+                onTap: () {
+                  context.pushNamed('profile');
+                },
+              ),
+              PopupMenuItem(
+                child: const Row(children: [
                   Icon(Icons.logout_rounded, size: 18),
                   SizedBox(width: 10),
                   Text('Logout'),

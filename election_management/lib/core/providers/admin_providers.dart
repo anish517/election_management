@@ -73,6 +73,19 @@ class PublishElectionNotifier extends AsyncNotifier<void> {
       throw state.error!;
     }
   }
+
+  Future<void> deleteElection(String electionId) async {
+    if (state.isLoading) return;
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final dio = ref.read(apiClientProvider);
+      await dio.delete(ApiConstants.electionDetail(electionId));
+      ref.invalidate(electionsProvider);
+    });
+    if (state.hasError) {
+      throw state.error!;
+    }
+  }
 }
 
 final publishElectionProvider = AsyncNotifierProvider<PublishElectionNotifier, void>(
@@ -104,6 +117,40 @@ class AddCandidateNotifier extends AsyncNotifier<void> {
         'slate_name': slateName,
         'status': status,
       });
+      ref.invalidate(electionProvider(electionId));
+      state = const AsyncValue.data(null);
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+      rethrow;
+    }
+  }
+
+  Future<void> deletePosition({
+    required String electionId,
+    required String positionId,
+  }) async {
+    if (state.isLoading) return;
+    state = const AsyncValue.loading();
+    try {
+      final dio = ref.read(apiClientProvider);
+      await dio.delete('${ApiConstants.electionPositions(electionId)}$positionId/');
+      ref.invalidate(electionProvider(electionId));
+      state = const AsyncValue.data(null);
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+      rethrow;
+    }
+  }
+
+  Future<void> deleteCandidate({
+    required String electionId,
+    required String candidateId,
+  }) async {
+    if (state.isLoading) return;
+    state = const AsyncValue.loading();
+    try {
+      final dio = ref.read(apiClientProvider);
+      await dio.delete('${ApiConstants.electionCandidates(electionId)}$candidateId/');
       ref.invalidate(electionProvider(electionId));
       state = const AsyncValue.data(null);
     } catch (e) {
@@ -156,6 +203,20 @@ class AddMemberNotifier extends AsyncNotifier<void> {
           'membership_expiry_date': membershipExpiryDate,
         'voting_weight': votingWeight.toString(),
       });
+      ref.invalidate(membersProvider);
+      state = const AsyncValue.data(null);
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+      rethrow;
+    }
+  }
+
+  Future<void> deleteMember(String memberId) async {
+    if (state.isLoading) return;
+    state = const AsyncValue.loading();
+    try {
+      final dio = ref.read(apiClientProvider);
+      await dio.delete('${ApiConstants.members}$memberId/');
       ref.invalidate(membersProvider);
       state = const AsyncValue.data(null);
     } catch (e) {

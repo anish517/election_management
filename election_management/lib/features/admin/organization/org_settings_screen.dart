@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/org_providers.dart';
 import '../../../shared/models/models.dart';
@@ -330,7 +331,30 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
                               Expanded(
                                 child: TextFormField(
                                   controller: _logoController,
-                                  decoration: const InputDecoration(labelText: 'Logo URL', prefixIcon: Icon(Icons.image)),
+                                  decoration: InputDecoration(
+                                    labelText: 'Logo URL',
+                                    prefixIcon: const Icon(Icons.image),
+                                    suffixIcon: IconButton(
+                                      icon: const Icon(Icons.upload_file),
+                                      tooltip: 'Upload Logo',
+                                      onPressed: () async {
+                                        final result = await FilePicker.pickFiles(type: FileType.image, withData: true);
+                                        if (result != null && result.files.single.bytes != null) {
+                                          try {
+                                            final url = await ref.read(updateOrgSettingsProvider.notifier).uploadFile(result.files.single.bytes!.toList(), result.files.single.name);
+                                            setState(() => _logoController.text = url);
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Logo uploaded successfully')));
+                                            }
+                                          } catch (e) {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+                                            }
+                                          }
+                                        }
+                                      },
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],

@@ -65,6 +65,14 @@ class AdminDrawer extends ConsumerWidget {
             ),
           const Divider(),
           ListTile(
+            leading: const Icon(Icons.person_rounded),
+            title: const Text('My Profile'),
+            onTap: () {
+              context.pop();
+              context.goNamed('profile');
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.logout_rounded, color: AppColors.error),
             title: const Text('Logout', style: TextStyle(color: AppColors.error)),
             onTap: () {

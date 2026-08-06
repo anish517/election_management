@@ -1,3 +1,4 @@
+import 'package:election_management/features/admin/members/edit_member_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -29,12 +30,18 @@ class MemberListScreen extends ConsumerWidget {
             tooltip: 'Export CSV',
             onPressed: () async {
               final token = await JwtInterceptor.getAccessToken();
-              final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.members}export_csv/?token=$token');
+              final url = Uri.parse(
+                '${ApiConstants.baseUrl}${ApiConstants.members}export_csv/?token=$token',
+              );
               if (await canLaunchUrl(url)) {
                 await launchUrl(url, mode: LaunchMode.externalApplication);
               } else {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch export URL')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Could not launch export URL'),
+                    ),
+                  );
                 }
               }
             },
@@ -50,37 +57,47 @@ class MemberListScreen extends ConsumerWidget {
                   allowedExtensions: ['csv'],
                   withData: true,
                 );
-                
+
                 if (result != null && result.files.single.bytes != null) {
                   // Show loading
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Uploading CSV...'))
+                      const SnackBar(content: Text('Uploading CSV...')),
                     );
                   }
-                  
+
                   final fileBytes = result.files.single.bytes!;
                   final fileName = result.files.single.name;
                   final dio = ref.read(apiClientProvider);
-                  
+
                   final formData = FormData.fromMap({
-                    'file': MultipartFile.fromBytes(fileBytes, filename: fileName),
+                    'file': MultipartFile.fromBytes(
+                      fileBytes,
+                      filename: fileName,
+                    ),
                   });
-                  
-                  final resp = await dio.post(ApiConstants.members + 'import_csv/', data: formData);
-                  
+
+                  final resp = await dio.post(
+                    ApiConstants.members + 'import_csv/',
+                    data: formData,
+                  );
+
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(resp.data['message'] ?? 'Import successful!'))
+                      SnackBar(
+                        content: Text(
+                          resp.data['message'] ?? 'Import successful!',
+                        ),
+                      ),
                     );
                     ref.invalidate(membersProvider);
                   }
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Import failed: $e'))
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
                 }
               }
             },
@@ -97,7 +114,11 @@ class MemberListScreen extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 40),
+              const Icon(
+                Icons.error_outline_rounded,
+                color: AppColors.error,
+                size: 40,
+              ),
               const SizedBox(height: 12),
               Text('Failed to load members\n$e', textAlign: TextAlign.center),
               const SizedBox(height: 8),
@@ -122,25 +143,115 @@ class MemberListScreen extends ConsumerWidget {
                 final m = members[i];
                 return ListTile(
                   tileColor: AppColors.surface,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: AppColors.surfaceVariant)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: AppColors.surfaceVariant),
+                  ),
                   leading: CircleAvatar(
-                    backgroundColor: AppColors.primaryLight.withValues(alpha: 0.2),
-                    child: const Icon(Icons.person, color: AppColors.primaryLight),
+                    backgroundColor: AppColors.primaryLight.withValues(
+                      alpha: 0.2,
+                    ),
+                    child: const Icon(
+                      Icons.person,
+                      color: AppColors.primaryLight,
+                    ),
                   ),
                   title: Text(m.fullName),
                   subtitle: Text('${m.email} \n${m.membershipStatus}'),
                   isThreeLine: true,
-                  onTap: () => context.pushNamed('member-detail', pathParameters: {'memberId': m.id}),
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.accent.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      'Member',
-                      style: const TextStyle(color: AppColors.accent, fontSize: 10),
-                    ),
+                  onTap: () => context.pushNamed(
+                    'member-detail',
+                    pathParameters: {'memberId': m.id},
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.accent.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'Member',
+                          style: const TextStyle(
+                            color: AppColors.accent,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                      PopupMenuButton<String>(
+                        icon: const Icon(
+                          Icons.more_vert_rounded,
+                          color: AppColors.textMuted,
+                        ),
+                        onSelected: (val) async {
+                          if (val == 'edit') {
+                            showDialog(
+                              context: context,
+                              builder: (_) => EditMemberDialog(member: m),
+                            );
+                          } else if (val == 'delete') {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Delete Member?'),
+                                content: const Text(
+                                  'Are you sure you want to delete this member?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, false),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, true),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: AppColors.error,
+                                    ),
+                                    child: const Text('Delete'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirm == true && context.mounted) {
+                              try {
+                                await ref
+                                    .read(addMemberProvider.notifier)
+                                    .deleteMember(m.id);
+                                if (context.mounted)
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Member deleted'),
+                                    ),
+                                  );
+                              } catch (e) {
+                                if (context.mounted)
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(e.toString())),
+                                  );
+                              }
+                            }
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Text('Edit'),
+                          ),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Text(
+                              'Delete',
+                              style: TextStyle(color: AppColors.error),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 );
               },

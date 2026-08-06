@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/models/models.dart';
 import '../network/api_client.dart';
@@ -31,6 +32,22 @@ class UpdateOrgSettingsNotifier extends AutoDisposeAsyncNotifier<void> {
       await dio.patch(ApiConstants.organizationProfile, data: data);
       ref.invalidate(orgProfileProvider);
       state = const AsyncValue.data(null);
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+      rethrow;
+    }
+  }
+
+  Future<String> uploadFile(List<int> fileBytes, String fileName) async {
+    state = const AsyncValue.loading();
+    try {
+      final dio = ref.read(apiClientProvider);
+      final formData = FormData.fromMap({
+        'file': MultipartFile.fromBytes(fileBytes, filename: fileName),
+      });
+      final response = await dio.post('/upload/', data: formData);
+      state = const AsyncValue.data(null);
+      return response.data['url'] as String;
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
       rethrow;

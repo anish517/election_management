@@ -228,17 +228,26 @@ class MemberModel {
 class TallyResult {
   final String electionId;
   final String electionTitle;
+  final int totalVoters;
+  final int ballotsCast;
+  final double turnoutPercentage;
   final List<PositionResult> results;
 
   const TallyResult({
     required this.electionId,
     required this.electionTitle,
+    this.totalVoters = 0,
+    this.ballotsCast = 0,
+    this.turnoutPercentage = 0.0,
     required this.results,
   });
 
   factory TallyResult.fromJson(Map<String, dynamic> json) => TallyResult(
         electionId: json['election_id'] as String,
         electionTitle: json['election_title'] as String,
+        totalVoters: json['total_voters'] as int? ?? 0,
+        ballotsCast: json['ballots_cast'] as int? ?? 0,
+        turnoutPercentage: (json['turnout_percentage'] as num?)?.toDouble() ?? 0.0,
         results: (json['results'] as List<dynamic>)
             .map((r) => PositionResult.fromJson(r as Map<String, dynamic>))
             .toList(),

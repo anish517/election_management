@@ -7,6 +7,9 @@ import '../../core/theme/app_theme.dart';
 import '../../core/providers/admin_providers.dart';
 import '../admin/elections/add_position_dialog.dart';
 import '../admin/elections/add_candidate_dialog.dart';
+import '../admin/elections/edit_election_dialog.dart';
+import '../admin/elections/edit_position_dialog.dart';
+import '../admin/elections/edit_candidate_dialog.dart';
 import '../admin/elections/assign_officer_dialog.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/network/api_constants.dart';
@@ -29,6 +32,55 @@ class ElectionDetailScreen extends ConsumerWidget {
           icon: const Icon(Icons.arrow_back_ios_rounded),
           onPressed: () => context.pop(),
         ),
+        actions: [
+          if (user != null && user.canManageElections)
+            electionAsync.when(
+              data: (election) => PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert_rounded),
+                onSelected: (value) async {
+                  if (value == 'edit') {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => EditElectionDialog(election: election),
+                    );
+                  } else if (value == 'delete') {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Delete Election?'),
+                        content: const Text('Are you sure you want to delete this election? This action cannot be undone.'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                            child: const Text('Delete'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirm == true && context.mounted) {
+                      try {
+                        await ref.read(publishElectionProvider.notifier).deleteElection(election.id);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Election deleted.')));
+                          context.go('/dashboard');
+                        }
+                      } catch (e) {
+                        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                      }
+                    }
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(value: 'edit', child: Text('Edit Election')),
+                  const PopupMenuItem(value: 'delete', child: Text('Delete Election', style: TextStyle(color: AppColors.error))),
+                ],
+              ),
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
+        ],
       ),
       body: electionAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -52,7 +104,7 @@ class ElectionDetailScreen extends ConsumerWidget {
             _buildAdminControls(context, ref, election),
             const SizedBox(height: 20),
           ],
-          _buildPositionsSection(context, election),
+          _buildPositionsSection(context, election, user),
         ],
       ),
     );
@@ -108,7 +160,7 @@ class ElectionDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildPositionsSection(BuildContext context, ElectionModel election) {
+  Widget _buildPositionsSection(BuildContext context, ElectionModel election, UserModel? user) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -128,7 +180,7 @@ class ElectionDetailScreen extends ConsumerWidget {
             ),
           )
         else
-          ...election.positions.map((p) => _PositionCard(position: p)),
+          ...election.positions.map((p) => _PositionCard(electionId: election.id, position: p, isAdmin: user?.canManageElections ?? false)),
       ],
     );
   }
@@ -364,12 +416,14 @@ class ElectionDetailScreen extends ConsumerWidget {
   }
 }
 
-class _PositionCard extends StatelessWidget {
+class _PositionCard extends ConsumerWidget {
+  final String electionId;
   final PositionModel position;
-  const _PositionCard({required this.position});
+  final bool isAdmin;
+  const _PositionCard({required this.electionId, required this.position, required this.isAdmin});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -403,13 +457,46 @@ class _PositionCard extends StatelessWidget {
                   ],
                 ),
               ),
+              if (isAdmin)
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert_rounded, color: AppColors.textMuted),
+                  onSelected: (val) async {
+                    if (val == 'edit') {
+                      showDialog(context: context, builder: (_) => EditPositionDialog(electionId: electionId, position: position));
+                    } else if (val == 'delete') {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Delete Position?'),
+                          content: const Text('Are you sure you want to delete this position?'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                            TextButton(onPressed: () => Navigator.pop(ctx, true), style: TextButton.styleFrom(foregroundColor: AppColors.error), child: const Text('Delete')),
+                          ],
+                        ),
+                      );
+                      if (confirm == true && context.mounted) {
+                        try {
+                          await ref.read(addCandidateProvider.notifier).deletePosition(electionId: electionId, positionId: position.id);
+                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Position deleted')));
+                        } catch (e) {
+                          if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                        }
+                      }
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                    const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: AppColors.error))),
+                  ],
+                ),
             ],
           ),
           if (position.candidates.isNotEmpty) ...[
             const SizedBox(height: 16),
             const Divider(color: AppColors.surfaceVariant),
             const SizedBox(height: 8),
-            ...position.candidates.map((c) => _CandidateTile(candidate: c)),
+            ...position.candidates.map((c) => _CandidateTile(electionId: electionId, candidate: c, isAdmin: isAdmin)),
           ],
         ],
       ),
@@ -417,12 +504,14 @@ class _PositionCard extends StatelessWidget {
   }
 }
 
-class _CandidateTile extends StatelessWidget {
+class _CandidateTile extends ConsumerWidget {
+  final String electionId;
   final CandidateModel candidate;
-  const _CandidateTile({required this.candidate});
+  final bool isAdmin;
+  const _CandidateTile({required this.electionId, required this.candidate, required this.isAdmin});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -457,10 +546,50 @@ class _CandidateTile extends StatelessWidget {
                       style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
                     ),
                   ),
+                  if (candidate.status != null && candidate.status != 'approved')
+                    Container(
+                      margin: const EdgeInsets.only(top: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(color: AppColors.warning.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(4)),
+                      child: Text(candidate.status!.toUpperCase(), style: const TextStyle(color: AppColors.warning, fontSize: 10, fontWeight: FontWeight.bold)),
+                    ),
               ],
             ),
           ),
-          if (candidate.status != null)
+          if (isAdmin)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert_rounded, size: 20, color: AppColors.textMuted),
+              onSelected: (val) async {
+                if (val == 'edit') {
+                  showDialog(context: context, builder: (_) => EditCandidateDialog(electionId: electionId, candidate: candidate));
+                } else if (val == 'delete') {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Delete Candidate?'),
+                      content: const Text('Are you sure you want to delete this candidate?'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                        TextButton(onPressed: () => Navigator.pop(ctx, true), style: TextButton.styleFrom(foregroundColor: AppColors.error), child: const Text('Delete')),
+                      ],
+                    ),
+                  );
+                  if (confirm == true && context.mounted) {
+                    try {
+                      await ref.read(addCandidateProvider.notifier).deleteCandidate(electionId: electionId, candidateId: candidate.id);
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Candidate deleted')));
+                    } catch (e) {
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                    }
+                  }
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: AppColors.error))),
+              ],
+            ),
+          if (candidate.status != null && candidate.status == 'approved')
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(

@@ -16,6 +16,7 @@ from apps.candidates.views import CandidateViewSet
 from apps.voting.views import VotingViewSet, VotingHistoryView
 from apps.results.views import ElectionResultsViewSet
 from apps.organizations.views import OrganizationView, OrganizationStatsView
+from apps.core.views import FileUploadView
 
 # Build the main router
 router = routers.SimpleRouter()
@@ -48,6 +49,7 @@ urlpatterns = [
     path('v1/organization/stats/', OrganizationStatsView.as_view(), name='organization-stats'),
     
     # Core endpoints (REST)
+    path('v1/upload/', FileUploadView.as_view(), name='file-upload'),
     path('v1/', include(router.urls)),
     path('v1/', include(election_router.urls)),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

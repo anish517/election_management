@@ -47,7 +47,7 @@ class CastVoteSerializer(serializers.Serializer):
         election = self.context['election']
         
         # Ensure voting is active
-        if election.state != 'voting_active':
+        if election.state != 'voting_open':
             raise serializers.ValidationError("Voting is not currently active for this election.")
 
         positions = {str(p.id): p for p in election.positions.all()}

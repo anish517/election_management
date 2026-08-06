@@ -15,7 +15,7 @@ class ElectionViewSet(viewsets.ModelViewSet):
     serializer_class = ElectionSerializer
     
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy', 'publish']:
+        if self.action in ['create', 'update', 'partial_update', 'destroy', 'publish', 'advance_state']:
             return [IsOrgAdmin()]
         return [IsObserver()]
 
@@ -42,6 +42,25 @@ class ElectionViewSet(viewsets.ModelViewSet):
             election.transition_to(ElectionState.PUBLISHED, triggered_by=request.user)
             log_action('election.published', request.user.organization, request.user, {
                 'election_id': str(election.id)
+            })
+            return Response(self.get_serializer(election).data)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            
+    @action(detail=True, methods=['post'])
+    def advance_state(self, request, pk=None):
+        """Transition election to a specific state."""
+        election = self.get_object()
+        target_state = request.data.get('state')
+        
+        if not target_state:
+            return Response({'error': 'State is required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            election.transition_to(target_state, triggered_by=request.user)
+            log_action(f'election.state_changed', request.user.organization, request.user, {
+                'election_id': str(election.id),
+                'new_state': target_state
             })
             return Response(self.get_serializer(election).data)
         except ValueError as e:

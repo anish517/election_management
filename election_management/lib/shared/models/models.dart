@@ -92,7 +92,7 @@ class ElectionModel {
         createdAt: json['created_at'] as String,
       );
 
-  bool get isVotingActive => state == 'voting_active';
+  bool get isVotingActive => state == 'voting_open';
   bool get isDraft => state == 'draft';
   bool get isPublished => state == 'published';
   bool get hasResults =>
@@ -160,7 +160,7 @@ class CandidateModel {
 
   factory CandidateModel.fromJson(Map<String, dynamic> json) => CandidateModel(
         id: json['id'] as String,
-        name: json['name'] as String? ?? json['full_name'] as String? ?? '',
+        name: json['member_name'] as String? ?? json['name'] as String? ?? json['full_name'] as String? ?? '',
         photoUrl: json['photo_url'] as String?,
         manifesto: json['manifesto'] as String? ?? '',
         slateName: json['slate_name'] as String? ?? '',

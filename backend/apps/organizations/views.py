@@ -43,7 +43,7 @@ class OrganizationStatsView(APIView):
         # Calculate stats
         total_members = org.members.count()
         total_elections = org.elections.count()
-        active_elections = org.elections.filter(state__in=['nominations_open', 'voting_active']).count()
+        active_elections = org.elections.filter(state__in=['nomination_open', 'voting_open']).count()
         
         data = {
             'total_members': total_members,

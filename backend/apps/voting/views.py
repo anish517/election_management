@@ -22,7 +22,7 @@ class VotingViewSet(viewsets.ViewSet):
         # In full system, users are mapped to members explicitly. Let's do a simple lookup.
         try:
             member = request.user.organization.members.get(email=request.user.email)
-            roll = VoterRoll.objects.get(election=election, member=member)
+            roll, created = VoterRoll.objects.get_or_create(election=election, member=member)
             return roll
         except Exception:
             return None
@@ -45,7 +45,7 @@ class VotingViewSet(viewsets.ViewSet):
         if not roll:
             return Response({'error': 'You are not eligible to vote in this election.'}, status=403)
             
-        if roll.election.state != 'voting_active':
+        if roll.election.state != 'voting_open':
             return Response({'error': 'Voting is not active.'}, status=400)
             
         try:

@@ -62,6 +62,20 @@ class PublishElectionNotifier extends AutoDisposeAsyncNotifier<void> {
       rethrow;
     }
   }
+
+  Future<void> advanceElectionState(String electionId, String targetState) async {
+    state = const AsyncValue.loading();
+    try {
+      final dio = ref.read(apiClientProvider);
+      await dio.post(ApiConstants.electionAdvanceState(electionId), data: {'state': targetState});
+      ref.invalidate(electionProvider(electionId));
+      ref.invalidate(electionsProvider);
+      state = const AsyncValue.data(null);
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+      rethrow;
+    }
+  }
 }
 
 final publishElectionProvider = AutoDisposeAsyncNotifierProvider<PublishElectionNotifier, void>(

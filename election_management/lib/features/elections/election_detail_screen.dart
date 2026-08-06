@@ -46,13 +46,13 @@ class ElectionDetailScreen extends ConsumerWidget {
         children: [
           _buildHeroCard(context, election),
           const SizedBox(height: 20),
-          _buildPositionsSection(context, election),
+          _buildActionButtons(context, ref, election, user),
           const SizedBox(height: 20),
           if (user != null && user.canManageElections) ...[
             _buildAdminControls(context, ref, election),
             const SizedBox(height: 20),
           ],
-          _buildActionButtons(context, ref, election, user),
+          _buildPositionsSection(context, election),
         ],
       ),
     );
@@ -209,6 +209,74 @@ class ElectionDetailScreen extends ConsumerWidget {
                 icon: const Icon(Icons.campaign_rounded),
                 label: const Text('Publish Election'),
                 style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              ),
+            ),
+          if (election.state == 'published')
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  try {
+                    await ref.read(publishElectionProvider.notifier).advanceElectionState(election.id, 'nomination_open');
+                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nominations Opened!')));
+                  } catch (e) {
+                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                  }
+                },
+                icon: const Icon(Icons.play_arrow_rounded),
+                label: const Text('Open Nominations'),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateNominations),
+              ),
+            ),
+          if (election.state == 'nomination_open')
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  try {
+                    await ref.read(publishElectionProvider.notifier).advanceElectionState(election.id, 'nomination_closed');
+                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nominations Closed!')));
+                  } catch (e) {
+                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                  }
+                },
+                icon: const Icon(Icons.stop_rounded),
+                label: const Text('Close Nominations'),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateNominations),
+              ),
+            ),
+          if (election.state == 'nomination_closed')
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  try {
+                    await ref.read(publishElectionProvider.notifier).advanceElectionState(election.id, 'voting_open');
+                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Voting Started!')));
+                  } catch (e) {
+                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                  }
+                },
+                icon: const Icon(Icons.play_arrow_rounded),
+                label: const Text('Start Voting'),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateVoting),
+              ),
+            ),
+          if (election.state == 'voting_open')
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  try {
+                    await ref.read(publishElectionProvider.notifier).advanceElectionState(election.id, 'voting_closed');
+                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Voting Closed!')));
+                  } catch (e) {
+                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                  }
+                },
+                icon: const Icon(Icons.stop_rounded),
+                label: const Text('Close Voting'),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateClosed),
               ),
             ),
           const SizedBox(height: 8),

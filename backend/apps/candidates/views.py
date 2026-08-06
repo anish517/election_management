@@ -33,14 +33,16 @@ class CandidateViewSet(viewsets.ModelViewSet):
             organization=self.request.user.organization
         )
         
-        # If an officer creates it, auto-approve. Otherwise, set to SUBMITTED.
+        # If an officer creates it, they can specify the status, otherwise it auto-approves.
+        # If a standard user self-nominates, it's always SUBMITTED.
         if self.request.user.is_org_admin: # or check officer role
+            status_val = serializer.validated_data.get('status', NominationStatus.APPROVED)
             serializer.save(
                 election=election,
-                status=NominationStatus.APPROVED,
-                reviewed_by=self.request.user,
-                reviewed_at=timezone.now(),
-                review_notes="Auto-approved by admin creation"
+                status=status_val,
+                reviewed_by=self.request.user if status_val == NominationStatus.APPROVED else None,
+                reviewed_at=timezone.now() if status_val == NominationStatus.APPROVED else None,
+                review_notes="Admin created" if status_val == NominationStatus.APPROVED else ""
             )
         else:
             # Self-nomination by a voter: enforce their own member record

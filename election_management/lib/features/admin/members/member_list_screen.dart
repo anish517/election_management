@@ -113,6 +113,7 @@ class MemberListScreen extends ConsumerWidget {
                   title: Text(m.fullName),
                   subtitle: Text('${m.email} \n${m.membershipStatus}'),
                   isThreeLine: true,
+                  onTap: () => context.pushNamed('member-detail', pathParameters: {'memberId': m.id}),
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(

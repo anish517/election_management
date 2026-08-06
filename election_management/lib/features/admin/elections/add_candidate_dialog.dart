@@ -17,13 +17,16 @@ class AddCandidateDialog extends ConsumerStatefulWidget {
 class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
   final _formKey = GlobalKey<FormState>();
   final _manifestoController = TextEditingController();
+  final _slateController = TextEditingController();
   
   String? _selectedPositionId;
   String? _selectedMemberId;
+  String _selectedStatus = 'approved';
 
   @override
   void dispose() {
     _manifestoController.dispose();
+    _slateController.dispose();
     super.dispose();
   }
 
@@ -40,6 +43,8 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
         positionId: _selectedPositionId!,
         memberId: _selectedMemberId!,
         manifesto: _manifestoController.text.trim(),
+        slateName: _slateController.text.trim(),
+        status: _selectedStatus,
       );
       if (mounted) context.pop();
     } catch (e) {
@@ -99,6 +104,25 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
                 decoration: const InputDecoration(labelText: 'Manifesto / Bio'),
                 maxLines: 3,
                 validator: (v) => v!.isEmpty ? 'Required' : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _slateController,
+                decoration: const InputDecoration(labelText: 'Slate Name (Optional)'),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: _selectedStatus,
+                decoration: const InputDecoration(labelText: 'Status'),
+                items: const [
+                  DropdownMenuItem(value: 'draft', child: Text('Draft')),
+                  DropdownMenuItem(value: 'submitted', child: Text('Submitted')),
+                  DropdownMenuItem(value: 'under_review', child: Text('Under Review')),
+                  DropdownMenuItem(value: 'approved', child: Text('Approved')),
+                  DropdownMenuItem(value: 'rejected', child: Text('Rejected')),
+                  DropdownMenuItem(value: 'withdrawn', child: Text('Withdrawn')),
+                ],
+                onChanged: (v) => setState(() => _selectedStatus = v!),
               ),
             ],
           ),

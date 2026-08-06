@@ -79,6 +79,8 @@ class AddCandidateNotifier extends AutoDisposeAsyncNotifier<void> {
     required String positionId,
     required String memberId,
     required String manifesto,
+    required String slateName,
+    required String status,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -87,6 +89,8 @@ class AddCandidateNotifier extends AutoDisposeAsyncNotifier<void> {
         'position': positionId,
         'member': memberId,
         'manifesto': manifesto,
+        'slate_name': slateName,
+        'status': status,
       });
       ref.invalidate(electionProvider(electionId));
       state = const AsyncValue.data(null);
@@ -112,6 +116,14 @@ class AddMemberNotifier extends AutoDisposeAsyncNotifier<void> {
     required String email,
     required String memberCode,
     required String phone,
+    required String photoUrl,
+    required String gender,
+    required String department,
+    required String region,
+    required String positionTitle,
+    required String membershipStatus,
+    String? membershipExpiryDate,
+    required double votingWeight,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -121,7 +133,15 @@ class AddMemberNotifier extends AutoDisposeAsyncNotifier<void> {
         'email': email,
         'member_code': memberCode,
         'phone': phone,
-        'membership_status': 'active',
+        'photo_url': photoUrl,
+        'gender': gender,
+        'department': department,
+        'region': region,
+        'position_title': positionTitle,
+        'membership_status': membershipStatus,
+        if (membershipExpiryDate != null && membershipExpiryDate.isNotEmpty)
+          'membership_expiry_date': membershipExpiryDate,
+        'voting_weight': votingWeight.toString(),
       });
       ref.invalidate(membersProvider);
       state = const AsyncValue.data(null);

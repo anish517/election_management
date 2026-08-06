@@ -2,15 +2,32 @@ from rest_framework import serializers
 from apps.elections.models import Election, Position, ElectionStateTransition, ElectionRoleAssignment
 
 class PositionSerializer(serializers.ModelSerializer):
+    candidates = serializers.SerializerMethodField()
+
     class Meta:
         model = Position
         fields = [
             'id', 'title', 'seats_available', 'voting_method',
             'max_votes_per_voter', 'eligibility_rule', 'ballot_ordering',
             'super_majority_threshold', 'abstain_allowed', 'none_of_the_above',
-            'created_at', 'updated_at'
+            'candidates', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'candidates', 'created_at', 'updated_at']
+
+    def get_candidates(self, obj):
+        # We manually serialize this to avoid circular imports with apps.candidates
+        return [
+            {
+                'id': str(c.id),
+                'name': c.member.full_name,
+                'photo_url': c.member.photo_url,
+                'manifesto': c.manifesto,
+                'slate_name': c.slate_name,
+                'status': c.status,
+                'position': str(obj.id),
+                'member': str(c.member.id),
+            } for c in obj.candidates.all()
+        ]
 
 class ElectionSerializer(serializers.ModelSerializer):
     positions = PositionSerializer(many=True, read_only=True)

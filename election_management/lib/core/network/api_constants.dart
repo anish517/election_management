@@ -37,4 +37,8 @@ class ApiConstants {
 
   // Results
   static String results(String eid) => '/elections/$eid/results/results/';
+
+  // Organization
+  static const String organizationProfile = '/organization/';
+  static const String organizationStats = '/organization/stats/';
 }

@@ -144,6 +144,7 @@ class CandidateModel {
   final String? status;
   final String? positionId;
   final String? memberId;
+  final String reviewNotes;
 
   const CandidateModel({
     required this.id,
@@ -154,6 +155,7 @@ class CandidateModel {
     this.status,
     this.positionId,
     this.memberId,
+    this.reviewNotes = '',
   });
 
   factory CandidateModel.fromJson(Map<String, dynamic> json) => CandidateModel(
@@ -165,6 +167,7 @@ class CandidateModel {
         status: json['status'] as String?,
         positionId: json['position'] as String?,
         memberId: json['member'] as String?,
+        reviewNotes: json['review_notes'] as String? ?? '',
       );
 }
 
@@ -175,10 +178,15 @@ class MemberModel {
   final String email;
   final String phone;
   final String membershipStatus;
+  final String? membershipExpiryDate;
   final bool isEligibleToVote;
   final bool isEligibleToNominate;
   final String votingWeight;
   final String positionTitle;
+  final String gender;
+  final String department;
+  final String region;
+  final String photoUrl;
 
   const MemberModel({
     required this.id,
@@ -187,10 +195,15 @@ class MemberModel {
     required this.email,
     required this.phone,
     required this.membershipStatus,
+    this.membershipExpiryDate,
     required this.isEligibleToVote,
     required this.isEligibleToNominate,
     required this.votingWeight,
     required this.positionTitle,
+    required this.gender,
+    required this.department,
+    required this.region,
+    required this.photoUrl,
   });
 
   factory MemberModel.fromJson(Map<String, dynamic> json) => MemberModel(
@@ -200,10 +213,15 @@ class MemberModel {
         email: json['email'] as String? ?? '',
         phone: json['phone'] as String? ?? '',
         membershipStatus: json['membership_status'] as String? ?? 'active',
+        membershipExpiryDate: json['membership_expiry_date'] as String?,
         isEligibleToVote: json['is_eligible_to_vote'] as bool? ?? true,
         isEligibleToNominate: json['is_eligible_to_nominate'] as bool? ?? true,
         votingWeight: json['voting_weight']?.toString() ?? '1.0000',
         positionTitle: json['position_title'] as String? ?? '',
+        gender: json['gender'] as String? ?? '',
+        department: json['department'] as String? ?? '',
+        region: json['region'] as String? ?? '',
+        photoUrl: json['photo_url'] as String? ?? '',
       );
 }
 
@@ -272,5 +290,92 @@ class CandidateScore {
         candidateId: json['candidate_id'] as String,
         name: json['name'] as String,
         score: (json['score'] as num).toDouble(),
+      );
+}
+
+class OrganizationModel {
+  final String id;
+  final String name;
+  final String slug;
+  final String orgType;
+  final String address;
+  final String timezone;
+  final String defaultLanguage;
+  final String logoUrl;
+  final String brandColor;
+  final String status;
+  final String? trialEndsAt;
+  final int grievanceWindowDays;
+  final int voterRollFreezeOffsetDays;
+  final int defaultNominationWindowDays;
+  final int defaultVotingWindowDays;
+  final int defaultSilentPeriodHours;
+  final String defaultResultVisibility;
+  final bool electionOfficersCanPublish;
+  final int dataRetentionYears;
+  final bool legalHold;
+
+  const OrganizationModel({
+    required this.id,
+    required this.name,
+    required this.slug,
+    required this.orgType,
+    required this.address,
+    required this.timezone,
+    required this.defaultLanguage,
+    required this.logoUrl,
+    required this.brandColor,
+    required this.status,
+    this.trialEndsAt,
+    required this.grievanceWindowDays,
+    required this.voterRollFreezeOffsetDays,
+    required this.defaultNominationWindowDays,
+    required this.defaultVotingWindowDays,
+    required this.defaultSilentPeriodHours,
+    required this.defaultResultVisibility,
+    required this.electionOfficersCanPublish,
+    required this.dataRetentionYears,
+    required this.legalHold,
+  });
+
+  factory OrganizationModel.fromJson(Map<String, dynamic> json) => OrganizationModel(
+        id: json['id'] as String,
+        name: json['name'] as String? ?? '',
+        slug: json['slug'] as String? ?? '',
+        orgType: json['org_type'] as String? ?? '',
+        address: json['address'] as String? ?? '',
+        timezone: json['timezone'] as String? ?? '',
+        defaultLanguage: json['default_language'] as String? ?? '',
+        logoUrl: json['logo_url'] as String? ?? '',
+        brandColor: json['brand_color'] as String? ?? '',
+        status: json['status'] as String? ?? '',
+        trialEndsAt: json['trial_ends_at'] as String?,
+        grievanceWindowDays: json['grievance_window_days'] as int? ?? 3,
+        voterRollFreezeOffsetDays: json['voter_roll_freeze_offset_days'] as int? ?? 0,
+        defaultNominationWindowDays: json['default_nomination_window_days'] as int? ?? 7,
+        defaultVotingWindowDays: json['default_voting_window_days'] as int? ?? 1,
+        defaultSilentPeriodHours: json['default_silent_period_hours'] as int? ?? 24,
+        defaultResultVisibility: json['default_result_visibility'] as String? ?? 'admin_only',
+        electionOfficersCanPublish: json['election_officers_can_publish'] as bool? ?? false,
+        dataRetentionYears: json['data_retention_years'] as int? ?? 7,
+        legalHold: json['legal_hold'] as bool? ?? false,
+      );
+}
+
+class OrganizationStatsModel {
+  final int totalMembers;
+  final int totalElections;
+  final int activeElections;
+
+  const OrganizationStatsModel({
+    required this.totalMembers,
+    required this.totalElections,
+    required this.activeElections,
+  });
+
+  factory OrganizationStatsModel.fromJson(Map<String, dynamic> json) => OrganizationStatsModel(
+        totalMembers: json['total_members'] as int? ?? 0,
+        totalElections: json['total_elections'] as int? ?? 0,
+        activeElections: json['active_elections'] as int? ?? 0,
       );
 }

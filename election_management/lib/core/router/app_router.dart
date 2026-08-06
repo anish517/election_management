@@ -14,9 +14,11 @@ import '../../features/voting/receipt_screen.dart';
 import '../../features/admin/elections/create_election_screen.dart';
 import '../../features/admin/members/member_list_screen.dart';
 import '../../features/admin/members/add_member_screen.dart';
+import '../../features/admin/members/member_detail_screen.dart';
 import '../../features/results/results_screen.dart';
 import '../../features/candidates/nomination_screen.dart';
 import '../../features/candidates/nomination_list_screen.dart';
+import '../../features/admin/organization/org_settings_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -57,6 +59,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const DashboardScreen(),
       ),
       GoRoute(
+        path: '/org-settings',
+        name: 'org-settings',
+        builder: (context, state) => const OrgSettingsScreen(),
+      ),
+      GoRoute(
         path: '/members',
         name: 'members',
         builder: (context, state) => const MemberListScreen(),
@@ -65,6 +72,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'new',
             name: 'add-member',
             builder: (context, state) => const AddMemberScreen(),
+          ),
+          GoRoute(
+            path: ':memberId',
+            name: 'member-detail',
+            builder: (context, state) => MemberDetailScreen(
+              memberId: state.pathParameters['memberId']!,
+            ),
           ),
         ],
       ),

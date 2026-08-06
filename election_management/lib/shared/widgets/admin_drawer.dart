@@ -54,6 +54,15 @@ class AdminDrawer extends ConsumerWidget {
                 context.goNamed('members');
               },
             ),
+          if (user.role == 'org_admin')
+            ListTile(
+              leading: const Icon(Icons.settings_applications_rounded),
+              title: const Text('Organization Settings'),
+              onTap: () {
+                context.pop();
+                context.goNamed('org-settings');
+              },
+            ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.logout_rounded, color: AppColors.error),

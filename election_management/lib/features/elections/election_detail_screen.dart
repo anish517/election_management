@@ -288,32 +288,115 @@ class _PositionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.surfaceVariant),
       ),
-      child: Row(
+      child: Column(
         children: [
-          Container(
-            width: 40, height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.primaryLight.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.star_border_rounded, color: AppColors.primaryLight, size: 20),
+          Row(
+            children: [
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.star_border_rounded, color: AppColors.primaryLight, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(position.title,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 15)),
+                    const SizedBox(height: 2),
+                    Text('${position.seatsAvailable} seat(s) · ${position.votingMethod.toUpperCase()}',
+                        style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
+          if (position.candidates.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            const Divider(color: AppColors.surfaceVariant),
+            const SizedBox(height: 8),
+            ...position.candidates.map((c) => _CandidateTile(candidate: c)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CandidateTile extends StatelessWidget {
+  final CandidateModel candidate;
+  const _CandidateTile({required this.candidate});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 28, // Increased from 16 to 28
+            backgroundColor: AppColors.primaryDark,
+            backgroundImage: candidate.photoUrl != null && candidate.photoUrl!.isNotEmpty
+                ? NetworkImage(candidate.photoUrl!)
+                : null,
+            child: (candidate.photoUrl == null || candidate.photoUrl!.isEmpty)
+                ? const Icon(Icons.person, size: 28, color: Colors.white)
+                : null,
+          ),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(position.title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 15)),
-                const SizedBox(height: 2),
-                Text('${position.seatsAvailable} seat(s) · ${position.votingMethod.toUpperCase()}',
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                Text(candidate.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                if (candidate.slateName.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(candidate.slateName, style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600)),
+                  ),
+                if (candidate.manifesto.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      candidate.manifesto,
+                      style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+                    ),
+                  ),
               ],
             ),
           ),
+          if (candidate.status != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: _getStatusColor(candidate.status!).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _getStatusColor(candidate.status!).withOpacity(0.3)),
+              ),
+              child: Text(
+                candidate.status!.toUpperCase(),
+                style: TextStyle(color: _getStatusColor(candidate.status!), fontSize: 9, fontWeight: FontWeight.bold),
+              ),
+            ),
         ],
       ),
     );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'approved': return Colors.green;
+      case 'rejected': return Colors.red;
+      case 'submitted': return Colors.blue;
+      case 'under_review': return Colors.orange;
+      case 'withdrawn': return Colors.grey;
+      default: return AppColors.textMuted;
+    }
   }
 }
 

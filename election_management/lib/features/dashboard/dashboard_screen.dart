@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/providers/app_providers.dart';
+import '../../core/providers/org_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/admin_drawer.dart';
@@ -69,6 +70,10 @@ class DashboardScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildRoleBanner(context, user),
+              if (user != null && user.role == 'org_admin') ...[
+                const SizedBox(height: 24),
+                _buildOverviewSection(context, ref),
+              ],
               const SizedBox(height: 24),
               _buildSectionHeader(context, 'Your Elections', Icons.how_to_vote_rounded,
                   onTap: () => context.pushNamed('elections')),
@@ -84,7 +89,7 @@ class DashboardScreen extends ConsumerWidget {
       ),
       floatingActionButton: (user != null && user.isOrgAdmin)
           ? FloatingActionButton.extended(
-              onPressed: () => context.push('/create-election'),
+              onPressed: () => context.push('/elections/new'),
               icon: const Icon(Icons.add),
               label: const Text('New Election'),
               backgroundColor: AppColors.primary,
@@ -132,6 +137,51 @@ class DashboardScreen extends ConsumerWidget {
               Text(user.organizationName, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOverviewSection(BuildContext context, WidgetRef ref) {
+    final statsAsync = ref.watch(orgStatsProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(context, 'Organization Overview', Icons.insights_rounded),
+        const SizedBox(height: 12),
+        statsAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Text('Error loading stats: $e'),
+          data: (stats) => Row(
+            children: [
+              Expanded(child: _buildStatCard(context, 'Members', stats.totalMembers.toString(), Icons.people_alt_rounded, AppColors.primary)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildStatCard(context, 'Active Elections', stats.activeElections.toString(), Icons.how_to_vote_rounded, AppColors.stateVoting)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildStatCard(context, 'Total Elections', stats.totalElections.toString(), Icons.inventory_2_rounded, AppColors.textSecondary)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(BuildContext context, String title, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(height: 12),
+          Text(value, style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: color, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(title, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
         ],
       ),
     );

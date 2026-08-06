@@ -17,4 +17,4 @@ class CandidateSerializer(serializers.ModelSerializer):
             'status', 'slate_name', 'documents', 'reviewed_by',
             'review_notes', 'reviewed_at', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'election', 'status', 'reviewed_by', 'review_notes', 'reviewed_at', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'election', 'reviewed_by', 'review_notes', 'reviewed_at', 'created_at', 'updated_at']

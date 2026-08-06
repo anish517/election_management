@@ -15,6 +15,7 @@ from apps.members.views import MemberViewSet
 from apps.candidates.views import CandidateViewSet
 from apps.voting.views import VotingViewSet
 from apps.results.views import ElectionResultsViewSet
+from apps.organizations.views import OrganizationView, OrganizationStatsView
 
 # Build the main router
 router = routers.SimpleRouter()
@@ -40,6 +41,10 @@ urlpatterns = [
     path('v1/auth/me/', MeView.as_view(), name='user-profile'),
     path('v1/auth/otp/request/', OTPRequestView.as_view(), name='otp-request'),
     path('v1/auth/otp/verify/', OTPVerifyView.as_view(), name='otp-verify'),
+    
+    # Organization Settings
+    path('v1/organization/', OrganizationView.as_view(), name='organization-profile'),
+    path('v1/organization/stats/', OrganizationStatsView.as_view(), name='organization-stats'),
     
     # Core endpoints (REST)
     path('v1/', include(router.urls)),

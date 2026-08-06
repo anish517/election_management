@@ -8,6 +8,9 @@ import '../../core/providers/admin_providers.dart';
 import '../admin/elections/add_position_dialog.dart';
 import '../admin/elections/add_candidate_dialog.dart';
 import '../admin/elections/assign_officer_dialog.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../core/network/api_constants.dart';
+import '../../core/network/api_client.dart';
 import '../../shared/models/models.dart';
 
 class ElectionDetailScreen extends ConsumerWidget {
@@ -242,6 +245,25 @@ class ElectionDetailScreen extends ConsumerWidget {
                   pathParameters: {'electionId': election.id}),
               icon: const Icon(Icons.fact_check_outlined, size: 18),
               label: const Text('Review Nominations'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                final token = await JwtInterceptor.getAccessToken();
+                final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.elections}${election.id}/export_voter_roll/?token=$token');
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch export URL')));
+                  }
+                }
+              },
+              icon: const Icon(Icons.download_rounded, size: 18),
+              label: const Text('Export Voter Roll (CSV)'),
             ),
           ),
           const SizedBox(height: 12),

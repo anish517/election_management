@@ -55,6 +55,29 @@ class ElectionViewSet(viewsets.ModelViewSet):
         serializer = ElectionStateTransitionSerializer(transitions, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['get'])
+    def export_voter_roll(self, request, pk=None):
+        """Export the voter roll for this election."""
+        import csv
+        from django.http import HttpResponse
+        from apps.members.models import Member
+
+        election = self.get_object()
+        # For MVP, the voter roll is all active members in the org.
+        # In a more advanced version, this would check election-specific eligibility rules.
+        voters = Member.objects.filter(organization=election.organization, membership_status='active')
+        
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="voter_roll_{election.id}.csv"'
+        
+        writer = csv.writer(response)
+        writer.writerow(['Member Code', 'Full Name', 'Email', 'Voting Weight'])
+        
+        for v in voters:
+            writer.writerow([v.member_code, v.full_name, v.email, v.voting_weight])
+            
+        return response
+
     @action(detail=True, methods=['post'], permission_classes=[IsOrgAdmin])
     def assign_role(self, request, pk=None):
         """Assign an election officer role to a user via email."""

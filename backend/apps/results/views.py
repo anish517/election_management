@@ -29,3 +29,39 @@ class ElectionResultsViewSet(viewsets.ViewSet):
             
         tally_data = TallyService.tally_election(election)
         return Response(tally_data)
+
+    @action(detail=False, methods=['get'])
+    def export_csv(self, request, election_pk=None):
+        try:
+            election = Election.objects.get(id=election_pk, organization=request.user.organization)
+        except Election.DoesNotExist:
+            from django.http import HttpResponseNotFound
+            return HttpResponseNotFound('Election not found')
+            
+        import csv
+        from django.http import HttpResponse
+        
+        tally_data = TallyService.tally_election(election)
+        
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="results_{election.id}.csv"'
+        
+        writer = csv.writer(response)
+        writer.writerow(['Position', 'Candidate', 'Vote Count', 'Is Winner'])
+        
+        for pos in tally_data.get('positions', []):
+            for cand in pos.get('candidates', []):
+                writer.writerow([
+                    pos.get('title', ''),
+                    cand.get('name', ''),
+                    cand.get('vote_count', 0),
+                    'Yes' if cand.get('is_winner') else 'No'
+                ])
+                
+        # Also write turnout summary at the bottom
+        writer.writerow([])
+        writer.writerow(['Total Voters', tally_data.get('total_voters', 0)])
+        writer.writerow(['Ballots Cast', tally_data.get('ballots_cast', 0)])
+        writer.writerow(['Turnout %', f"{tally_data.get('turnout_percentage', 0)}%"])
+        
+        return response

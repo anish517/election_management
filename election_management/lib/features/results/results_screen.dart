@@ -1,17 +1,43 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../core/network/api_constants.dart';
+import '../../core/network/api_client.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/models.dart';
 
-class ResultsScreen extends ConsumerWidget {
+class ResultsScreen extends ConsumerStatefulWidget {
   final String electionId;
   const ResultsScreen({super.key, required this.electionId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final resultsAsync = ref.watch(resultsProvider(electionId));
+  ConsumerState<ResultsScreen> createState() => _ResultsScreenState();
+}
+
+class _ResultsScreenState extends ConsumerState<ResultsScreen> {
+  Timer? _pollingTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Smart Polling: Refresh results every 5 seconds for near real-time dashboard
+    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      ref.invalidate(resultsProvider(widget.electionId));
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final resultsAsync = ref.watch(resultsProvider(widget.electionId));
 
     return Scaffold(
       appBar: AppBar(
@@ -22,8 +48,23 @@ class ResultsScreen extends ConsumerWidget {
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.download_rounded),
+            tooltip: 'Download CSV Report',
+            onPressed: () async {
+              final token = await JwtInterceptor.getAccessToken();
+              final url = Uri.parse('${ApiConstants.baseUrl}/elections/${widget.electionId}/results/export_csv/?token=$token');
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url, mode: LaunchMode.externalApplication);
+              } else {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch export URL')));
+                }
+              }
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            onPressed: () => ref.invalidate(resultsProvider(electionId)),
+            onPressed: () => ref.invalidate(resultsProvider(widget.electionId)),
           ),
         ],
       ),

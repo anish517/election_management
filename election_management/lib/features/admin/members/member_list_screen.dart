@@ -8,7 +8,9 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:dio/dio.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../shared/widgets/admin_drawer.dart';
+import '../../../core/network/api_client.dart';
 
 class MemberListScreen extends ConsumerWidget {
   const MemberListScreen({super.key});
@@ -22,6 +24,21 @@ class MemberListScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Members'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.download_rounded),
+            tooltip: 'Export CSV',
+            onPressed: () async {
+              final token = await JwtInterceptor.getAccessToken();
+              final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.members}export_csv/?token=$token');
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url, mode: LaunchMode.externalApplication);
+              } else {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch export URL')));
+                }
+              }
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.upload_file_rounded),
             tooltip: 'Import CSV',

@@ -5,6 +5,7 @@ import '../../core/providers/auth_provider.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/models.dart';
+import '../../shared/widgets/admin_drawer.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -15,7 +16,16 @@ class DashboardScreen extends ConsumerWidget {
     final electionsAsync = ref.watch(electionsProvider);
 
     return Scaffold(
+      drawer: (user != null && user.canManageElections) ? const AdminDrawer() : null,
       appBar: AppBar(
+        leading: (user != null && user.canManageElections) 
+          ? Builder(
+              builder: (context) => IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () => Scaffold.of(context).openDrawer(),
+              ),
+            )
+          : null,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -72,9 +82,9 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton: user != null && user.canManageElections
+      floatingActionButton: (user != null && user.isOrgAdmin)
           ? FloatingActionButton.extended(
-              onPressed: () => context.pushNamed('elections'),
+              onPressed: () => context.push('/create-election'),
               icon: const Icon(Icons.add),
               label: const Text('New Election'),
               backgroundColor: AppColors.primary,

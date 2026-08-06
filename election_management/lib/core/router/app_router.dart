@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import '../../features/auth/login_screen.dart';
+import '../../features/auth/register_screen.dart';
 import '../../features/auth/otp_verify_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/elections/election_list_screen.dart';
@@ -10,7 +11,12 @@ import '../../features/elections/election_detail_screen.dart';
 import '../../features/voting/ballot_screen.dart';
 import '../../features/voting/vote_confirmation_screen.dart';
 import '../../features/voting/receipt_screen.dart';
+import '../../features/admin/elections/create_election_screen.dart';
+import '../../features/admin/members/member_list_screen.dart';
+import '../../features/admin/members/add_member_screen.dart';
 import '../../features/results/results_screen.dart';
+import '../../features/candidates/nomination_screen.dart';
+import '../../features/candidates/nomination_list_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -20,7 +26,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isLoggedIn = authState.isAuthenticated;
       final isOnAuth = state.matchedLocation.startsWith('/login') ||
-          state.matchedLocation.startsWith('/otp');
+          state.matchedLocation.startsWith('/otp') ||
+          state.matchedLocation.startsWith('/register');
 
       if (!isLoggedIn && !isOnAuth) return '/login';
       if (isLoggedIn && isOnAuth) return '/dashboard';
@@ -31,6 +38,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/login',
         name: 'login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/register',
+        name: 'register',
+        builder: (context, state) => const RegisterScreen(),
       ),
       GoRoute(
         path: '/otp/:identifier',
@@ -45,10 +57,27 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const DashboardScreen(),
       ),
       GoRoute(
+        path: '/members',
+        name: 'members',
+        builder: (context, state) => const MemberListScreen(),
+        routes: [
+          GoRoute(
+            path: 'new',
+            name: 'add-member',
+            builder: (context, state) => const AddMemberScreen(),
+          ),
+        ],
+      ),
+      GoRoute(
         path: '/elections',
         name: 'elections',
         builder: (context, state) => const ElectionListScreen(),
         routes: [
+          GoRoute(
+            path: 'new',
+            name: 'create-election',
+            builder: (context, state) => const CreateElectionScreen(),
+          ),
           GoRoute(
             path: ':electionId',
             name: 'election-detail',
@@ -82,6 +111,20 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: ':electionId/results',
             name: 'results',
             builder: (context, state) => ResultsScreen(
+              electionId: state.pathParameters['electionId']!,
+            ),
+          ),
+          GoRoute(
+            path: ':electionId/nominate',
+            name: 'nominate',
+            builder: (context, state) => NominationScreen(
+              electionId: state.pathParameters['electionId']!,
+            ),
+          ),
+          GoRoute(
+            path: ':electionId/nominations',
+            name: 'review_nominations',
+            builder: (context, state) => NominationListScreen(
               electionId: state.pathParameters['electionId']!,
             ),
           ),

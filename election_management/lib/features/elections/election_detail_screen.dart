@@ -4,6 +4,10 @@ import 'package:go_router/go_router.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/providers/admin_providers.dart';
+import '../admin/elections/add_position_dialog.dart';
+import '../admin/elections/add_candidate_dialog.dart';
+import '../admin/elections/assign_officer_dialog.dart';
 import '../../shared/models/models.dart';
 
 class ElectionDetailScreen extends ConsumerWidget {
@@ -41,6 +45,10 @@ class ElectionDetailScreen extends ConsumerWidget {
           const SizedBox(height: 20),
           _buildPositionsSection(context, election),
           const SizedBox(height: 20),
+          if (user != null && user.canManageElections) ...[
+            _buildAdminControls(context, ref, election),
+            const SizedBox(height: 20),
+          ],
           _buildActionButtons(context, ref, election, user),
         ],
       ),
@@ -125,6 +133,18 @@ class ElectionDetailScreen extends ConsumerWidget {
   Widget _buildActionButtons(BuildContext context, WidgetRef ref, ElectionModel election, UserModel? user) {
     return Column(
       children: [
+        if (election.state == 'nomination_open') ...[
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => context.pushNamed('nominate',
+                  pathParameters: {'electionId': electionId}),
+              icon: const Icon(Icons.person_add_alt_1_rounded),
+              label: const Text('Nominate Myself'),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
         if (election.isVotingActive)
           SizedBox(
             width: double.infinity,
@@ -136,7 +156,7 @@ class ElectionDetailScreen extends ConsumerWidget {
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateVoting),
             ),
           ),
-        if (election.hasResults) ...[
+        if (election.hasResults || election.state == 'voting_closed') ...[
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
@@ -149,6 +169,95 @@ class ElectionDetailScreen extends ConsumerWidget {
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildAdminControls(BuildContext context, WidgetRef ref, ElectionModel election) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primaryLight.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primaryLight.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.admin_panel_settings_rounded, color: AppColors.primaryLight),
+              const SizedBox(width: 8),
+              Text('Admin Controls', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.primaryLight)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (election.state == 'draft')
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  try {
+                    await ref.read(publishElectionProvider.notifier).publishElection(election.id);
+                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Election Published!')));
+                  } catch (e) {
+                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                  }
+                },
+                icon: const Icon(Icons.campaign_rounded),
+                label: const Text('Publish Election'),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              ),
+            ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => showDialog(
+                    context: context,
+                    builder: (_) => AddPositionDialog(electionId: election.id),
+                  ),
+                  icon: const Icon(Icons.add_box_outlined, size: 18),
+                  label: const Text('Add Position'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => showDialog(
+                    context: context,
+                    builder: (_) => AddCandidateDialog(election: election),
+                  ),
+                  icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+                  label: const Text('Add Candidate'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => context.pushNamed('review_nominations',
+                  pathParameters: {'electionId': election.id}),
+              icon: const Icon(Icons.fact_check_outlined, size: 18),
+              label: const Text('Review Nominations'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => showDialog(
+                context: context,
+                builder: (_) => AssignOfficerDialog(electionId: election.id),
+              ),
+              icon: const Icon(Icons.admin_panel_settings_outlined, size: 18),
+              label: const Text('Assign Roles'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

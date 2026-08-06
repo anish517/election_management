@@ -14,9 +14,11 @@ class CandidateViewSet(viewsets.ModelViewSet):
     serializer_class = CandidateSerializer
     
     def get_permissions(self):
-        # In a full implementation, voters should be able to submit their own nominations,
-        # but for this iteration, let's keep it simple: Election Officers manage candidates.
-        return [IsElectionOfficer()]
+        from rest_framework.permissions import IsAuthenticated
+        if self.action in ['approve', 'reject']:
+            return [IsElectionOfficer()]
+        # Anyone can view candidates or submit a nomination (if election state allows)
+        return [IsAuthenticated()]
 
     def get_queryset(self):
         return Candidate.objects.filter(
@@ -25,7 +27,29 @@ class CandidateViewSet(viewsets.ModelViewSet):
         )
 
     def perform_create(self, serializer):
-        serializer.save()
+        from apps.elections.models import Election
+        election = Election.objects.get(
+            id=self.kwargs['election_pk'],
+            organization=self.request.user.organization
+        )
+        
+        # If an officer creates it, auto-approve. Otherwise, set to SUBMITTED.
+        if self.request.user.is_org_admin: # or check officer role
+            serializer.save(
+                election=election,
+                status=NominationStatus.APPROVED,
+                reviewed_by=self.request.user,
+                reviewed_at=timezone.now(),
+                review_notes="Auto-approved by admin creation"
+            )
+        else:
+            # Self-nomination by a voter: enforce their own member record
+            member = self.request.user.organization.members.get(email=self.request.user.email)
+            serializer.save(
+                election=election,
+                status=NominationStatus.SUBMITTED,
+                member=member
+            )
 
     @action(detail=True, methods=['post'])
     def approve(self, request, election_pk=None, pk=None):

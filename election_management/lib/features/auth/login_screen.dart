@@ -83,6 +83,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               const SizedBox(height: 28),
               if (_errorMessage != null) _buildError(),
               _buildTabContent(),
+              const SizedBox(height: 24),
+              Center(
+                child: TextButton.icon(
+                  onPressed: () => context.pushNamed('register'),
+                  icon: const Icon(Icons.business_rounded),
+                  label: const Text('Create an Organization'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
             ],
           ),
         ),

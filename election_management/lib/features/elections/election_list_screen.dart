@@ -5,6 +5,7 @@ import '../../core/providers/app_providers.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/models.dart';
+import '../../shared/widgets/admin_drawer.dart';
 
 class ElectionListScreen extends ConsumerWidget {
   const ElectionListScreen({super.key});
@@ -15,6 +16,7 @@ class ElectionListScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
 
     return Scaffold(
+      drawer: (user != null && user.canManageElections) ? const AdminDrawer() : null,
       appBar: AppBar(
         title: const Text('Elections'),
         leading: IconButton(

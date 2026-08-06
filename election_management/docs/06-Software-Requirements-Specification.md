@@ -40,7 +40,7 @@ Out of scope: see `01-Introduction.md` §1.7.
 - **Preconditions**: Organization exists
 - **Main flow**: Admin uploads CSV → system validates rows (required fields, duplicate detection) → system reports row-level errors → admin confirms → members created in `Invited` status
 - **Alternate flow**: Row has missing/invalid data → excluded from import, listed in error report, rest proceed
-- **Postconditions**: Valid rows become Member records; invited members receive activation notification
+- **Postconditions**: Valid rows become Member records;
 
 ### UC-03: Create Election
 - **Actor**: Org Admin or Election Officer (if pre-delegated)

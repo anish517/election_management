@@ -76,6 +76,43 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<String?> register({
+    required String email,
+    required String password,
+    required String orgName,
+    required String orgType,
+    String? phone,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final resp = await _dio.post(ApiConstants.register, data: {
+        'email': email,
+        'password': password,
+        'org_name': orgName,
+        'org_type': orgType,
+        if (phone != null && phone.isNotEmpty) 'phone': phone,
+      });
+      final data = resp.data as Map<String, dynamic>;
+      await JwtInterceptor.saveTokens(
+        access: data['access'] as String,
+        refresh: data['refresh'] as String,
+      );
+      UserModel user;
+      if (data.containsKey('user') && data['user'] != null) {
+        user = UserModel.fromJson(data['user'] as Map<String, dynamic>);
+      } else {
+        final meResp = await _dio.get(ApiConstants.me);
+        user = UserModel.fromJson(meResp.data as Map<String, dynamic>);
+      }
+      state = AuthState(user: user);
+      return null;
+    } on DioException catch (e) {
+      final msg = _extractError(e);
+      state = AuthState(error: msg);
+      return msg;
+    }
+  }
+
   Future<String?> loginWithOtp({required String phoneOrEmail, required String otp}) async {
     state = state.copyWith(isLoading: true, error: null);
     try {

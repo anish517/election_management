@@ -178,6 +178,7 @@ class MemberModel {
   final bool isEligibleToVote;
   final bool isEligibleToNominate;
   final String votingWeight;
+  final String positionTitle;
 
   const MemberModel({
     required this.id,
@@ -189,6 +190,7 @@ class MemberModel {
     required this.isEligibleToVote,
     required this.isEligibleToNominate,
     required this.votingWeight,
+    required this.positionTitle,
   });
 
   factory MemberModel.fromJson(Map<String, dynamic> json) => MemberModel(
@@ -200,7 +202,8 @@ class MemberModel {
         membershipStatus: json['membership_status'] as String? ?? 'active',
         isEligibleToVote: json['is_eligible_to_vote'] as bool? ?? true,
         isEligibleToNominate: json['is_eligible_to_nominate'] as bool? ?? true,
-        votingWeight: json['voting_weight'] as String? ?? '1.0000',
+        votingWeight: json['voting_weight']?.toString() ?? '1.0000',
+        positionTitle: json['position_title'] as String? ?? '',
       );
 }
 

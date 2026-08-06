@@ -55,13 +55,44 @@ class ElectionViewSet(viewsets.ModelViewSet):
         serializer = ElectionStateTransitionSerializer(transitions, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['post'], permission_classes=[IsOrgAdmin])
+    def assign_role(self, request, pk=None):
+        """Assign an election officer role to a user via email."""
+        from django.contrib.auth import get_user_model
+        from apps.elections.models import ElectionRoleAssignment
+
+        election = self.get_object()
+        email = request.data.get('email')
+        role = request.data.get('role', 'election_officer')
+
+        if not email:
+            return Response({'error': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        User = get_user_model()
+        try:
+            user_to_assign = User.objects.get(email=email, organization=request.user.organization)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found in this organization.'}, status=status.HTTP_404_NOT_FOUND)
+
+        assignment, created = ElectionRoleAssignment.objects.get_or_create(
+            user=user_to_assign,
+            election=election,
+            role=role,
+            defaults={'assigned_by': request.user}
+        )
+
+        return Response({
+            'message': f'Role {role} assigned to {email}',
+            'created': created
+        }, status=status.HTTP_200_OK if not created else status.HTTP_201_CREATED)
+
 
 class PositionViewSet(viewsets.ModelViewSet):
     serializer_class = PositionSerializer
     
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsOrgAdmin()]
+            return [IsElectionOfficer()]
         return [IsObserver()]
 
     def get_queryset(self):
@@ -76,4 +107,5 @@ class PositionViewSet(viewsets.ModelViewSet):
             id=self.kwargs['election_pk'],
             organization=self.request.user.organization
         )
+        self.check_object_permissions(self.request, election)
         serializer.save(election=election)

@@ -48,6 +48,16 @@ class DashboardScreen extends ConsumerWidget {
             itemBuilder: (_) => [
               PopupMenuItem(
                 child: const Row(children: [
+                  Icon(Icons.history_rounded, size: 18),
+                  SizedBox(width: 10),
+                  Text('My Voting History'),
+                ]),
+                onTap: () {
+                  context.pushNamed('voting-history');
+                },
+              ),
+              PopupMenuItem(
+                child: const Row(children: [
                   Icon(Icons.logout_rounded, size: 18),
                   SizedBox(width: 10),
                   Text('Logout'),

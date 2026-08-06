@@ -15,10 +15,12 @@ import '../../features/admin/elections/create_election_screen.dart';
 import '../../features/admin/members/member_list_screen.dart';
 import '../../features/admin/members/add_member_screen.dart';
 import '../../features/admin/members/member_detail_screen.dart';
-import '../../features/results/results_screen.dart';
+import '../../features/voting/voting_history_screen.dart';
+
 import '../../features/candidates/nomination_screen.dart';
 import '../../features/candidates/nomination_list_screen.dart';
 import '../../features/admin/organization/org_settings_screen.dart';
+import '../../features/results/results_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -81,6 +83,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
           ),
         ],
+      ),
+      GoRoute(
+        path: '/voting-history',
+        name: 'voting-history',
+        builder: (context, state) => const VotingHistoryScreen(),
       ),
       GoRoute(
         path: '/elections',

@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 
-class ReceiptScreen extends StatelessWidget {
+class ReceiptScreen extends StatefulWidget {
   final String electionId;
   final String receiptHash;
 
@@ -12,6 +12,22 @@ class ReceiptScreen extends StatelessWidget {
     required this.electionId,
     required this.receiptHash,
   });
+
+  @override
+  State<ReceiptScreen> createState() => _ReceiptScreenState();
+}
+
+class _ReceiptScreenState extends State<ReceiptScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Automatically redirect to Live Results after 3 seconds for MVP
+    Future.delayed(const Duration(seconds: 4), () {
+      if (mounted) {
+        context.pushNamed('results', pathParameters: {'electionId': widget.electionId});
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -97,7 +113,7 @@ class ReceiptScreen extends StatelessWidget {
               const Spacer(),
               IconButton(
                 onPressed: () {
-                  Clipboard.setData(ClipboardData(text: receiptHash));
+                  Clipboard.setData(ClipboardData(text: widget.receiptHash));
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Receipt hash copied to clipboard!')),
                   );
@@ -116,7 +132,7 @@ class ReceiptScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: SelectableText(
-              receiptHash,
+              widget.receiptHash,
               style: const TextStyle(
                 fontFamily: 'monospace',
                 fontSize: 11,
@@ -184,7 +200,7 @@ class ReceiptScreen extends StatelessWidget {
           width: double.infinity,
           child: OutlinedButton.icon(
             onPressed: () => context.pushNamed('results',
-                pathParameters: {'electionId': electionId}),
+                pathParameters: {'electionId': widget.electionId}),
             icon: const Icon(Icons.bar_chart_rounded),
             label: const Text('View Live Tally'),
           ),

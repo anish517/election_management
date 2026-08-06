@@ -159,7 +159,7 @@ class ElectionDetailScreen extends ConsumerWidget {
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateVoting),
             ),
           ),
-        if (election.hasResults || election.state == 'voting_closed') ...[
+        if (election.hasResults || election.state == 'voting_closed' || (election.state == 'voting_open' && user?.canManageElections == true)) ...[
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,

@@ -25,7 +25,15 @@ class ElectionResultsViewSet(viewsets.ViewSet):
         if election.state not in ['voting_closed', 'results_provisional', 'results_final'] and not election.live_turnout_enabled:
             # Let org admins bypass this rule for testing
             if not request.user.is_org_admin:
-                return Response({'error': 'Results are not available yet.'}, status=403)
+                # Also let members who have already voted see the live results!
+                member = request.user.organization.members.filter(email=request.user.email).first()
+                if not member or not getattr(member, 'election_rolls', None):
+                    pass # fallback below
+                
+                from apps.voting.models import VoterRoll
+                has_voted = VoterRoll.objects.filter(election=election, member=member, has_voted=True).exists()
+                if not has_voted:
+                    return Response({'error': 'Results are not available yet.'}, status=403)
             
         tally_data = TallyService.tally_election(election)
         return Response(tally_data)

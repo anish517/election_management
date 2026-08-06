@@ -5,20 +5,46 @@ import '../../core/providers/app_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/models.dart';
 
-class BallotScreen extends ConsumerWidget {
+class BallotScreen extends ConsumerStatefulWidget {
   final String electionId;
   const BallotScreen({super.key, required this.electionId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final ballotAsync = ref.watch(ballotProvider(electionId));
+  ConsumerState<BallotScreen> createState() => _BallotScreenState();
+}
+
+class _BallotScreenState extends ConsumerState<BallotScreen> {
+  final PageController _pageController = PageController();
+  int _currentIndex = 0;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _nextPage(int totalPages) {
+    if (_currentIndex < totalPages - 1) {
+      _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+    }
+  }
+
+  void _prevPage() {
+    if (_currentIndex > 0) {
+      _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ballotAsync = ref.watch(ballotProvider(widget.electionId));
     final selections = ref.watch(ballotSelectionsProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Your Ballot'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded),
+          icon: const Icon(Icons.close_rounded),
           onPressed: () => context.pop(),
         ),
       ),
@@ -43,21 +69,43 @@ class BallotScreen extends ConsumerWidget {
               child: Text('No positions available on this ballot.'),
             );
           }
+          
           return Column(
             children: [
-              _buildBallotHeader(context),
+              // Progress Bar
+              LinearProgressIndicator(
+                value: (_currentIndex + 1) / positions.length,
+                backgroundColor: AppColors.surfaceVariant,
+                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: Text('Step ${_currentIndex + 1} of ${positions.length}', 
+                  style: const TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.bold)),
+              ),
               Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(16),
+                child: PageView.builder(
+                  controller: _pageController,
+                  physics: const NeverScrollableScrollPhysics(), // Force using buttons
+                  onPageChanged: (idx) => setState(() => _currentIndex = idx),
                   itemCount: positions.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 20),
-                  itemBuilder: (context, i) => _BallotPositionCard(
-                    position: positions[i],
-                    electionId: electionId,
-                  ),
+                  itemBuilder: (context, i) {
+                    return SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          if (i == 0) _buildBallotHeader(context),
+                          _BallotPositionCard(
+                            position: positions[i],
+                            electionId: widget.electionId,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
-              _buildSubmitButton(context, ref, selections, positions),
+              _buildWizardControls(context, ref, selections, positions),
             ],
           );
         },
@@ -67,7 +115,7 @@ class BallotScreen extends ConsumerWidget {
 
   Widget _buildBallotHeader(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.primaryDark.withValues(alpha: 0.3),
@@ -80,7 +128,7 @@ class BallotScreen extends ConsumerWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Your selections are saved locally and only submitted when you tap "Review & Submit".',
+              'Your selections are saved locally and only submitted when you tap "Review & Submit" at the end.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12),
             ),
           ),
@@ -89,9 +137,11 @@ class BallotScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSubmitButton(BuildContext context, WidgetRef ref,
+  Widget _buildWizardControls(BuildContext context, WidgetRef ref,
       Map<String, List<String>> selections, List<PositionModel> positions) {
     final hasSelections = selections.values.any((l) => l.isNotEmpty);
+    final isLastStep = _currentIndex == positions.length - 1;
+    
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
@@ -100,17 +150,34 @@ class BallotScreen extends ConsumerWidget {
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: ElevatedButton.icon(
-            onPressed: hasSelections
-                ? () => context.pushNamed('vote-confirm',
-                    pathParameters: {'electionId': electionId})
-                : null,
-            icon: const Icon(Icons.check_circle_outline_rounded),
-            label: const Text('Review & Submit'),
-          ),
+        child: Row(
+          children: [
+            if (_currentIndex > 0)
+              Expanded(
+                flex: 1,
+                child: OutlinedButton(
+                  onPressed: _prevPage,
+                  child: const Text('Back'),
+                ),
+              )
+            else
+              const Spacer(flex: 1),
+            
+            const SizedBox(width: 16),
+            
+            Expanded(
+              flex: 2,
+              child: ElevatedButton(
+                onPressed: isLastStep
+                    ? (hasSelections
+                        ? () => context.pushNamed('vote-confirm',
+                            pathParameters: {'electionId': widget.electionId})
+                        : null)
+                    : () => _nextPage(positions.length),
+                child: Text(isLastStep ? 'Review & Submit' : 'Next Position'),
+              ),
+            ),
+          ],
         ),
       ),
     );

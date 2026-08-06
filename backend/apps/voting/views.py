@@ -85,3 +85,27 @@ class VotingViewSet(viewsets.ViewSet):
             return Response({'success': True, 'receipt_hash': receipt})
         except ValueError as e:
             return Response({'error': str(e)}, status=400)
+
+
+class VotingHistoryView(viewsets.ViewSet):
+    """
+    GET /v1/voting/history/
+    Returns all elections the current member has successfully voted in.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def list(self, request):
+        member = request.user.organization.members.filter(email=request.user.email).first()
+        if not member:
+            return Response([])
+            
+        rolls = VoterRoll.objects.filter(member=member, has_voted=True).select_related('election')
+        history = []
+        for r in rolls:
+            history.append({
+                'election_id': str(r.election.id),
+                'title': r.election.title,
+                'voted_at': r.voted_at,
+                'receipt': 'Hidden for MVP' # You can add receipt_hash if we store it on VoterRoll, but we don't.
+            })
+        return Response(history)

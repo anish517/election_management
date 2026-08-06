@@ -13,7 +13,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from apps.elections.views import ElectionViewSet, PositionViewSet
 from apps.members.views import MemberViewSet
 from apps.candidates.views import CandidateViewSet
-from apps.voting.views import VotingViewSet
+from apps.voting.views import VotingViewSet, VotingHistoryView
 from apps.results.views import ElectionResultsViewSet
 from apps.organizations.views import OrganizationView, OrganizationStatsView
 
@@ -21,6 +21,7 @@ from apps.organizations.views import OrganizationView, OrganizationStatsView
 router = routers.SimpleRouter()
 router.register(r'members', MemberViewSet, basename='member')
 router.register(r'elections', ElectionViewSet, basename='election')
+router.register(r'voting/history', VotingHistoryView, basename='voting-history')
 
 # Build the nested router for elections
 election_router = routers.NestedSimpleRouter(router, r'elections', lookup='election')

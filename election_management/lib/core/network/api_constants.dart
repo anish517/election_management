@@ -32,6 +32,7 @@ class ApiConstants {
   static String memberDetail(String id) => '/members/$id/';
 
   // Voting
+  static const String votingHistory = '/voting/history/';
   static String ballot(String eid) => '/elections/$eid/voting/ballot/';
   static String votingSession(String eid) => '/elections/$eid/voting/session/';
   static String castVote(String eid) => '/elections/$eid/voting/cast/';

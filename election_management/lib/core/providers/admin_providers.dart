@@ -8,24 +8,21 @@ import 'app_providers.dart';
 
 // ─── Election Management ──────────────────────────────────────────────────
 
-class CreateElectionNotifier extends AutoDisposeAsyncNotifier<void> {
+class CreateElectionNotifier extends AsyncNotifier<void> {
   @override
   FutureOr<void> build() {}
 
   Future<void> createElection({
     required String title,
     required String description,
-    required DateTime votingStartAt,
-    required DateTime votingEndAt,
   }) async {
+    if (state.isLoading) return;
     state = const AsyncValue.loading();
     try {
       final dio = ref.read(apiClientProvider);
       final data = {
         'title': title,
         'description': description,
-        'voting_start_at': votingStartAt.toIso8601String(),
-        'voting_end_at': votingEndAt.toIso8601String(),
         'state': 'draft',
       };
       await dio.post(ApiConstants.elections, data: data);
@@ -41,50 +38,50 @@ class CreateElectionNotifier extends AutoDisposeAsyncNotifier<void> {
   }
 }
 
-final createElectionProvider = AutoDisposeAsyncNotifierProvider<CreateElectionNotifier, void>(
+final createElectionProvider = AsyncNotifierProvider<CreateElectionNotifier, void>(
   () => CreateElectionNotifier(),
 );
 
-class PublishElectionNotifier extends AutoDisposeAsyncNotifier<void> {
+class PublishElectionNotifier extends AsyncNotifier<void> {
   @override
   FutureOr<void> build() {}
 
   Future<void> publishElection(String electionId) async {
+    if (state.isLoading) return;
     state = const AsyncValue.loading();
-    try {
+    state = await AsyncValue.guard(() async {
       final dio = ref.read(apiClientProvider);
       await dio.post(ApiConstants.electionPublish(electionId));
       ref.invalidate(electionProvider(electionId));
       ref.invalidate(electionsProvider);
-      state = const AsyncValue.data(null);
-    } catch (e) {
-      state = AsyncValue.error(e, StackTrace.current);
-      rethrow;
+    });
+    if (state.hasError) {
+      throw state.error!;
     }
   }
 
   Future<void> advanceElectionState(String electionId, String targetState) async {
+    if (state.isLoading) return;
     state = const AsyncValue.loading();
-    try {
+    state = await AsyncValue.guard(() async {
       final dio = ref.read(apiClientProvider);
       await dio.post(ApiConstants.electionAdvanceState(electionId), data: {'state': targetState});
       ref.invalidate(electionProvider(electionId));
       ref.invalidate(electionsProvider);
-      state = const AsyncValue.data(null);
-    } catch (e) {
-      state = AsyncValue.error(e, StackTrace.current);
-      rethrow;
+    });
+    if (state.hasError) {
+      throw state.error!;
     }
   }
 }
 
-final publishElectionProvider = AutoDisposeAsyncNotifierProvider<PublishElectionNotifier, void>(
+final publishElectionProvider = AsyncNotifierProvider<PublishElectionNotifier, void>(
   () => PublishElectionNotifier(),
 );
 
 // ─── Candidates Management ────────────────────────────────────────────────
 
-class AddCandidateNotifier extends AutoDisposeAsyncNotifier<void> {
+class AddCandidateNotifier extends AsyncNotifier<void> {
   @override
   FutureOr<void> build() {}
 
@@ -96,6 +93,7 @@ class AddCandidateNotifier extends AutoDisposeAsyncNotifier<void> {
     required String slateName,
     required String status,
   }) async {
+    if (state.isLoading) return;
     state = const AsyncValue.loading();
     try {
       final dio = ref.read(apiClientProvider);
@@ -115,13 +113,13 @@ class AddCandidateNotifier extends AutoDisposeAsyncNotifier<void> {
   }
 }
 
-final addCandidateProvider = AutoDisposeAsyncNotifierProvider<AddCandidateNotifier, void>(
+final addCandidateProvider = AsyncNotifierProvider<AddCandidateNotifier, void>(
   () => AddCandidateNotifier(),
 );
 
 // ─── Members Management ───────────────────────────────────────────────────
 
-class AddMemberNotifier extends AutoDisposeAsyncNotifier<void> {
+class AddMemberNotifier extends AsyncNotifier<void> {
   @override
   FutureOr<void> build() {}
 
@@ -139,6 +137,7 @@ class AddMemberNotifier extends AutoDisposeAsyncNotifier<void> {
     String? membershipExpiryDate,
     required double votingWeight,
   }) async {
+    if (state.isLoading) return;
     state = const AsyncValue.loading();
     try {
       final dio = ref.read(apiClientProvider);
@@ -166,7 +165,7 @@ class AddMemberNotifier extends AutoDisposeAsyncNotifier<void> {
   }
 }
 
-final addMemberProvider = AutoDisposeAsyncNotifierProvider<AddMemberNotifier, void>(
+final addMemberProvider = AsyncNotifierProvider<AddMemberNotifier, void>(
   () => AddMemberNotifier(),
 );
 

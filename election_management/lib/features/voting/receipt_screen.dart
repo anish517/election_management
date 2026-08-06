@@ -21,10 +21,13 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
   @override
   void initState() {
     super.initState();
-    // Automatically redirect to Live Results after 3 seconds for MVP
+    // Automatically redirect to Live Results after 4 seconds
     Future.delayed(const Duration(seconds: 4), () {
-      if (mounted) {
-        context.pushNamed('results', pathParameters: {'electionId': widget.electionId});
+      if (!mounted) return;
+      try {
+        context.go('/elections/${widget.electionId}/results');
+      } catch (_) {
+        // Navigation may have already happened; ignore
       }
     });
   }

@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/network/api_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../core/providers/app_providers.dart';
+import '../../core/providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/models.dart';
 
@@ -38,30 +39,36 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
   @override
   Widget build(BuildContext context) {
     final resultsAsync = ref.watch(resultsProvider(widget.electionId));
+    final electionAsync = ref.watch(electionProvider(widget.electionId));
+    final user = ref.watch(currentUserProvider);
+
+    // isLive = voting is open and user is NOT an admin
+    final isLive = electionAsync.whenData((e) => e.state == 'voting_open' && !(user?.canManageElections ?? false)).value ?? false;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Election Results'),
+        title: Text(isLive ? 'Live Tally 🔴' : 'Election Results'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_rounded),
           onPressed: () => context.pop(),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.download_rounded),
-            tooltip: 'Download CSV Report',
-            onPressed: () async {
-              final token = await JwtInterceptor.getAccessToken();
-              final url = Uri.parse('${ApiConstants.baseUrl}/elections/${widget.electionId}/results/export_csv/?token=$token');
-              if (await canLaunchUrl(url)) {
-                await launchUrl(url, mode: LaunchMode.externalApplication);
-              } else {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch export URL')));
+          if (!isLive)
+            IconButton(
+              icon: const Icon(Icons.download_rounded),
+              tooltip: 'Download CSV Report',
+              onPressed: () async {
+                final token = await JwtInterceptor.getAccessToken();
+                final url = Uri.parse('${ApiConstants.baseUrl}/elections/${widget.electionId}/results/export_csv/?token=\$token');
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch export URL')));
+                  }
                 }
-              }
-            },
-          ),
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: () => ref.invalidate(resultsProvider(widget.electionId)),
@@ -89,51 +96,76 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
             ],
           ),
         ),
-        data: (tally) => _buildResults(context, tally),
+        data: (tally) => _buildResults(context, tally, isLive),
       ),
     );
   }
 
-  Widget _buildResults(BuildContext context, TallyResult tally) {
+  Widget _buildResults(BuildContext context, TallyResult tally, bool isLive) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildResultsHeader(context, tally),
+          _buildResultsHeader(context, tally, isLive),
           const SizedBox(height: 24),
-          ...tally.results.map((posResult) => _buildPositionResult(context, posResult)),
+          ...tally.results.map((posResult) => _buildPositionResult(context, posResult, isLive)),
         ],
       ),
     );
   }
 
-  Widget _buildResultsHeader(BuildContext context, TallyResult tally) {
+  Widget _buildResultsHeader(BuildContext context, TallyResult tally, bool isLive) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0F2B6F), Color(0xFF1E3A8A)],
+        gradient: LinearGradient(
+          colors: isLive
+              ? [const Color(0xFF1A1A2E), const Color(0xFF16213E)]
+              : [const Color(0xFF0F2B6F), const Color(0xFF1E3A8A)],
         ),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.emoji_events_rounded, color: AppColors.accent, size: 32),
+          if (isLive)
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.error.withValues(alpha: 0.5)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(width: 8, height: 8,
+                        decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle)),
+                      const SizedBox(width: 6),
+                      const Text('LIVE', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w800, fontSize: 12)),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          else
+            const Icon(Icons.emoji_events_rounded, color: AppColors.accent, size: 32),
           const SizedBox(height: 12),
           Text(tally.electionTitle,
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: Colors.white)),
           const SizedBox(height: 8),
-          Text('Election Results',
+          Text(isLive ? 'Voting is in progress — results may change' : 'Election Results',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white60)),
         ],
       ),
     );
   }
 
-  Widget _buildPositionResult(BuildContext context, PositionResult posResult) {
+  Widget _buildPositionResult(BuildContext context, PositionResult posResult, bool isLive) {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
@@ -156,7 +188,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(posResult.title, style: Theme.of(context).textTheme.titleMedium),
-                      Text('${posResult.totalValidBallots} valid ballot(s)',
+                      Text('${posResult.totalValidBallots} vote(s) cast',
                           style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
                     ],
                   ),
@@ -169,14 +201,16 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
           ...posResult.breakdown.asMap().entries.map((entry) {
             final i = entry.key;
             final score = entry.value;
-            final isWinner = posResult.winners.contains(score.candidateId);
+            final isTopCandidate = posResult.winners.contains(score.candidateId);
             final totalVotes = posResult.totalValidBallots;
             final pct = totalVotes > 0 ? score.score / totalVotes : 0.0;
 
             return _CandidateResultTile(
               rank: i + 1,
               score: score,
-              isWinner: isWinner,
+              // During live voting, no one is the "winner" yet
+              isWinner: !isLive && isTopCandidate,
+              isLeading: isLive && isTopCandidate,
               percentage: pct,
               totalVotes: totalVotes,
             );
@@ -192,6 +226,7 @@ class _CandidateResultTile extends StatelessWidget {
   final int rank;
   final CandidateScore score;
   final bool isWinner;
+  final bool isLeading;
   final double percentage;
   final int totalVotes;
 
@@ -199,13 +234,15 @@ class _CandidateResultTile extends StatelessWidget {
     required this.rank,
     required this.score,
     required this.isWinner,
+    required this.isLeading,
     required this.percentage,
     required this.totalVotes,
   });
 
   @override
   Widget build(BuildContext context) {
-    final barColor = isWinner ? AppColors.success : AppColors.primaryLight;
+    final isHighlighted = isWinner || isLeading;
+    final barColor = isWinner ? AppColors.success : (isLeading ? AppColors.accent : AppColors.primaryLight);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -217,14 +254,14 @@ class _CandidateResultTile extends StatelessWidget {
               Container(
                 width: 32, height: 32,
                 decoration: BoxDecoration(
-                  color: isWinner ? AppColors.accent.withValues(alpha: 0.2) : AppColors.surfaceVariant,
+                  color: isHighlighted ? AppColors.accent.withValues(alpha: 0.2) : AppColors.surfaceVariant,
                   shape: BoxShape.circle,
                 ),
                 child: isWinner
                     ? const Icon(Icons.emoji_events_rounded, color: AppColors.accent, size: 18)
                     : Center(
                         child: Text('#$rank',
-                            style: const TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.bold))),
+                            style: TextStyle(color: isLeading ? AppColors.accent : AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.bold))),
               ),
               const SizedBox(width: 12),
               // Name
@@ -235,8 +272,8 @@ class _CandidateResultTile extends StatelessWidget {
                     Row(
                       children: [
                         Text(score.name, style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: isWinner ? AppColors.textPrimary : AppColors.textSecondary,
-                              fontWeight: isWinner ? FontWeight.w700 : FontWeight.w400)),
+                              color: isHighlighted ? AppColors.textPrimary : AppColors.textSecondary,
+                              fontWeight: isHighlighted ? FontWeight.w700 : FontWeight.w400)),
                         if (isWinner) ...[
                           const SizedBox(width: 8),
                           Container(
@@ -247,6 +284,18 @@ class _CandidateResultTile extends StatelessWidget {
                             ),
                             child: const Text('Winner',
                                 style: TextStyle(color: AppColors.success, fontSize: 10, fontWeight: FontWeight.w700)),
+                          ),
+                        ],
+                        if (isLeading) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.accent.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text('Leading',
+                                style: TextStyle(color: AppColors.accent, fontSize: 10, fontWeight: FontWeight.w700)),
                           ),
                         ],
                       ],

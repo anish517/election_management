@@ -74,13 +74,17 @@ class _AddPositionDialogState extends ConsumerState<AddPositionDialog> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _seatsController,
-                decoration: const InputDecoration(labelText: 'Seats Available'),
+                decoration: const InputDecoration(
+                  labelText: 'Number of Winners (Seats Available)',
+                  helperText: 'E.g., 1 for President. This is how many people can win, NOT the number of candidates.',
+                  helperMaxLines: 2,
+                ),
                 keyboardType: TextInputType.number,
-                validator: (v) => int.tryParse(v ?? '') == null ? 'Invalid' : null,
+                validator: (v) => int.tryParse(v ?? '') == null ? 'Invalid number' : null,
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                initialValue: _votingMethod,
+                value: _votingMethod,
                 decoration: const InputDecoration(labelText: 'Voting Method'),
                 items: const [
                   DropdownMenuItem(value: 'fptp', child: Text('First Past The Post')),

@@ -250,18 +250,33 @@ class _BallotPositionCard extends ConsumerWidget {
               ),
             )
           else
-            ...position.candidates.map((candidate) {
-              final isSelected = positionSelections.contains(candidate.id);
-              return _CandidateTile(
-                candidate: candidate,
-                isSelected: isSelected,
-                onTap: () => ref.read(ballotSelectionsProvider.notifier).toggleCandidate(
-                  positionId: position.id,
-                  candidateId: candidate.id,
-                  maxSeats: position.seatsAvailable,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: Wrap(
+                  spacing: 20,
+                  runSpacing: 20,
+                  alignment: WrapAlignment.center,
+                  children: position.candidates.map((candidate) {
+                    final isSelected = positionSelections.contains(candidate.id);
+                    return SizedBox(
+                      width: 280,
+                      height: 340,
+                      child: _CandidateTile(
+                        candidate: candidate,
+                        isSelected: isSelected,
+                        onTap: () => ref.read(ballotSelectionsProvider.notifier).toggleCandidate(
+                          positionId: position.id,
+                          candidateId: candidate.id,
+                          maxSeats: position.seatsAvailable,
+                        ),
+                      ),
+                    );
+                  }).toList(),
                 ),
-              );
-            }),
+              ),
+            ),
         ],
       ),
     );
@@ -283,10 +298,9 @@ class _CandidateTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primaryLight.withValues(alpha: 0.1) : AppColors.surfaceVariant.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(12),
@@ -295,56 +309,68 @@ class _CandidateTile extends StatelessWidget {
             width: isSelected ? 2 : 1,
           ),
         ),
-        child: Row(
+        child: Stack(
           children: [
-            // Avatar / photo
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: AppColors.primary,
-              backgroundImage: candidate.photoUrl != null && candidate.photoUrl!.isNotEmpty
-                  ? NetworkImage(candidate.photoUrl!)
-                  : null,
-              child: (candidate.photoUrl == null || candidate.photoUrl!.isEmpty)
-                  ? Text(
-                      candidate.name.isNotEmpty ? candidate.name[0].toUpperCase() : '?',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-                    )
-                  : null,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                    child: candidate.photoUrl != null && candidate.photoUrl!.isNotEmpty
+                        ? Image.network(candidate.photoUrl!, fit: BoxFit.cover)
+                        : Container(
+                            color: AppColors.primary,
+                            child: Center(
+                              child: Text(
+                                candidate.name.isNotEmpty ? candidate.name[0].toUpperCase() : '?',
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 36),
+                              ),
+                            ),
+                          ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        candidate.name,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: isSelected ? AppColors.primaryLight : AppColors.textPrimary,
+                              fontSize: 14,
+                            ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (candidate.slateName.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          candidate.slateName,
+                          style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(candidate.name,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: isSelected ? AppColors.primaryLight : AppColors.textPrimary,
-                          )),
-                  if (candidate.slateName.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Text(candidate.slateName,
-                        style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600),
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 24, height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isSelected ? AppColors.primaryLight : Colors.transparent,
-                border: Border.all(
-                  color: isSelected ? AppColors.primaryLight : AppColors.textMuted,
-                  width: 2,
+            if (isSelected)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: AppColors.primaryLight,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.check_rounded, color: Colors.white, size: 16),
                 ),
               ),
-              child: isSelected
-                  ? const Icon(Icons.check_rounded, color: Colors.white, size: 16)
-                  : null,
-            ),
           ],
         ),
       ),

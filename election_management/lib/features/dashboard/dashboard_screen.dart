@@ -50,7 +50,7 @@ class DashboardScreen extends ConsumerWidget {
               child: user?.photoUrl.isNotEmpty == true 
                   ? null 
                   : Text(
-                      (user?.fullName.isNotEmpty == true ? user!.fullName : (user?.email ?? '?')).substring(0, 1).toUpperCase(),
+                      ((user?.fullName.isNotEmpty == true) ? user!.fullName : ((user?.email.isNotEmpty == true) ? user!.email : '?')).substring(0, 1).toUpperCase(),
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                     ),
             ),

@@ -10,44 +10,79 @@ class TallyService:
         Pure deterministic tally function.
         (doc: 15-Voting-Engine.md §15.10)
         """
-        # Fetch all anonymized votes for the parent election
         votes = Vote.objects.filter(election=position.election)
-        
-        # We only care about the choice_data for THIS position
         pos_id = str(position.id)
-        
-        candidate_scores = defaultdict(float)
         total_valid_ballots = 0
         
-        for vote in votes:
-            ballot_data = vote.ballot_data
-            if pos_id in ballot_data:
-                total_valid_ballots += 1
-                choices = ballot_data[pos_id]
-                weight = float(vote.weight)
-                
-                # Depending on voting method, we apply weight to choices
-                if position.voting_method in ['fptp', 'block_voting', 'approval']:
+        candidates_map = {str(c.id): c.member.full_name for c in Candidate.objects.filter(position=position)}
+        seats = position.seats_available
+        winners = []
+        breakdown = []
+        
+        # STANDARD METHODS (Simple Summation)
+        standard_methods = ['fptp', 'multi_choice', 'approval', 'weighted', 'proxy', 'yes_no']
+        if position.voting_method in standard_methods:
+            candidate_scores = {cand_id: 0.0 for cand_id in candidates_map}
+            for vote in votes:
+                if pos_id in vote.ballot_data:
+                    total_valid_ballots += 1
+                    choices = vote.ballot_data[pos_id]
+                    weight = float(vote.weight)
                     for cand_id in choices:
                         candidate_scores[cand_id] += weight
                         
-                # Additional methods like 'stv' would branch here
-        
-        # Sort candidates by score descending
-        sorted_scores = sorted(candidate_scores.items(), key=lambda x: x[1], reverse=True)
-        
-        # Determine winners based on seats available
-        seats = position.seats_available
-        winners = []
-        if sorted_scores:
-            # Basic tie-handling (if nth place ties with n+1th place)
-            # MVP: just take the top `seats` strictly by array index
+            sorted_scores = sorted(candidate_scores.items(), key=lambda x: x[1], reverse=True)
+            if sorted_scores:
+                winners = [item[0] for item in sorted_scores[:seats]]
+                
+        # RANKED CHOICE (Instant Runoff Voting)
+        elif position.voting_method == 'ranked_choice':
+            ballots = []
+            for vote in votes:
+                if pos_id in vote.ballot_data:
+                    total_valid_ballots += 1
+                    ballots.append({'choices': vote.ballot_data[pos_id], 'weight': float(vote.weight)})
+                    
+            active_candidates = set(candidates_map.keys())
+            
+            while len(active_candidates) > seats:
+                candidate_scores = {cand_id: 0.0 for cand_id in active_candidates}
+                total_weight = 0.0
+                
+                for b in ballots:
+                    for choice in b['choices']:
+                        if choice in active_candidates:
+                            candidate_scores[choice] += b['weight']
+                            total_weight += b['weight']
+                            break
+                            
+                if total_weight == 0:
+                    break
+                    
+                sorted_scores = sorted(candidate_scores.items(), key=lambda x: x[1], reverse=True)
+                top_cand, top_score = sorted_scores[0]
+                
+                if seats == 1 and top_score > (total_weight / 2):
+                    break # Winner found
+                    
+                # Eliminate lowest candidate
+                lowest_cand = sorted_scores[-1][0]
+                active_candidates.remove(lowest_cand)
+                
+            # Final tally for remaining active candidates
+            final_scores = {cand_id: 0.0 for cand_id in active_candidates}
+            for b in ballots:
+                for choice in b['choices']:
+                    if choice in active_candidates:
+                        final_scores[choice] += b['weight']
+                        break
+            
+            sorted_scores = sorted(final_scores.items(), key=lambda x: x[1], reverse=True)
             winners = [item[0] for item in sorted_scores[:seats]]
             
-        # Get Candidate objects for the breakdown
-        candidates_map = {str(c.id): c.member.full_name for c in Candidate.objects.filter(position=position)}
-        
-        breakdown = []
+        else:
+            sorted_scores = []
+            
         for cand_id, score in sorted_scores:
             breakdown.append({
                 'candidate_id': cand_id,

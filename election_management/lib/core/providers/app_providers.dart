@@ -95,6 +95,8 @@ class BallotSelectionsNotifier extends StateNotifier<Map<String, List<String>>> 
     required String positionId,
     required String candidateId,
     required int maxSeats,
+    bool isApproval = false,
+    bool isRankedChoice = false,
   }) {
     final current = Map<String, List<String>>.from(state);
     final positionSelections = List<String>.from(current[positionId] ?? []);
@@ -102,11 +104,11 @@ class BallotSelectionsNotifier extends StateNotifier<Map<String, List<String>>> 
     if (positionSelections.contains(candidateId)) {
       positionSelections.remove(candidateId);
     } else {
-      if (positionSelections.length < maxSeats) {
+      if (isApproval || isRankedChoice || positionSelections.length < maxSeats) {
         positionSelections.add(candidateId);
       }
-      // If maxSeats == 1 (FPTP), replace selection
-      if (maxSeats == 1) {
+      // If maxSeats == 1 (FPTP) and it's not approval/ranked, replace selection
+      if (!isApproval && !isRankedChoice && maxSeats == 1) {
         positionSelections
           ..clear()
           ..add(candidateId);
@@ -118,6 +120,14 @@ class BallotSelectionsNotifier extends StateNotifier<Map<String, List<String>>> 
 
   bool isSelected(String positionId, String candidateId) {
     return state[positionId]?.contains(candidateId) ?? false;
+  }
+  
+  int? getRank(String positionId, String candidateId) {
+    final list = state[positionId];
+    if (list == null) return null;
+    final index = list.indexOf(candidateId);
+    if (index == -1) return null;
+    return index + 1;
   }
 
   void clear() => state = {};

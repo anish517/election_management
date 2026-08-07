@@ -220,23 +220,32 @@ class _BallotPositionCard extends ConsumerWidget {
                     children: [
                       Text(position.title, style: Theme.of(context).textTheme.titleMedium),
                       Text(
-                        isFPTP ? 'Select 1 candidate' : 'Select up to ${position.seatsAvailable} candidates',
+                        position.isRankedChoice 
+                            ? 'Rank your choices in order of preference' 
+                            : position.isApproval 
+                                ? 'Select all candidates you approve of' 
+                                : position.isYesNo
+                                    ? 'Select Yes or No'
+                                    : isFPTP 
+                                        ? 'Select 1 candidate' 
+                                        : 'Select up to ${position.seatsAvailable} candidates',
                         style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                       ),
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryLight.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
+                if (!position.isRankedChoice && !position.isApproval && !position.isYesNo)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryLight.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '${positionSelections.length}/${position.seatsAvailable}',
+                      style: const TextStyle(color: AppColors.primaryLight, fontWeight: FontWeight.w700, fontSize: 12),
+                    ),
                   ),
-                  child: Text(
-                    '${positionSelections.length}/${position.seatsAvailable}',
-                    style: const TextStyle(color: AppColors.primaryLight, fontWeight: FontWeight.w700, fontSize: 12),
-                  ),
-                ),
               ],
             ),
           ),
@@ -260,16 +269,23 @@ class _BallotPositionCard extends ConsumerWidget {
                   alignment: WrapAlignment.center,
                   children: position.candidates.map((candidate) {
                     final isSelected = positionSelections.contains(candidate.id);
+                    final rank = position.isRankedChoice 
+                        ? ref.read(ballotSelectionsProvider.notifier).getRank(position.id, candidate.id) 
+                        : null;
+                        
                     return SizedBox(
                       width: 280,
                       height: 340,
                       child: _CandidateTile(
                         candidate: candidate,
                         isSelected: isSelected,
+                        rank: rank,
                         onTap: () => ref.read(ballotSelectionsProvider.notifier).toggleCandidate(
                           positionId: position.id,
                           candidateId: candidate.id,
                           maxSeats: position.seatsAvailable,
+                          isApproval: position.isApproval,
+                          isRankedChoice: position.isRankedChoice,
                         ),
                       ),
                     );
@@ -286,11 +302,13 @@ class _BallotPositionCard extends ConsumerWidget {
 class _CandidateTile extends StatelessWidget {
   final CandidateModel candidate;
   final bool isSelected;
+  final int? rank;
   final VoidCallback onTap;
 
   const _CandidateTile({
     required this.candidate,
     required this.isSelected,
+    this.rank,
     required this.onTap,
   });
 
@@ -368,7 +386,18 @@ class _CandidateTile extends StatelessWidget {
                     color: AppColors.primaryLight,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.check_rounded, color: Colors.white, size: 16),
+                  child: rank != null 
+                    ? SizedBox(
+                        width: 16, 
+                        height: 16, 
+                        child: Center(
+                          child: Text(
+                            '$rank', 
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)
+                          )
+                        )
+                      )
+                    : const Icon(Icons.check_rounded, color: Colors.white, size: 16),
                 ),
               ),
           ],

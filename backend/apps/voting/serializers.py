@@ -62,8 +62,10 @@ class CastVoteSerializer(serializers.Serializer):
             if not isinstance(cand_ids, list):
                 raise serializers.ValidationError(f"Payload for position {pos_id} must be a list of candidate IDs.")
             
-            if len(cand_ids) > position.seats_available:
-                raise serializers.ValidationError(f"Too many candidates selected for position {position.title}.")
+            # Validate number of choices based on voting method
+            if position.voting_method not in ['approval', 'ranked_choice']:
+                if len(cand_ids) > position.seats_available:
+                    raise serializers.ValidationError(f"Too many candidates selected for position {position.title}.")
             
             # Check candidate validity
             for cand_id in cand_ids:

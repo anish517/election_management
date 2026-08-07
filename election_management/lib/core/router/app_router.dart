@@ -12,6 +12,7 @@ import '../../features/voting/ballot_screen.dart';
 import '../../features/voting/vote_confirmation_screen.dart';
 import '../../features/voting/receipt_screen.dart';
 import '../../features/admin/elections/create_election_screen.dart';
+import '../../features/admin/elections/voter_turnout_screen.dart';
 import '../../features/admin/members/member_list_screen.dart';
 import '../../features/admin/members/add_member_screen.dart';
 import '../../features/admin/members/member_detail_screen.dart';
@@ -109,6 +110,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: ':electionId',
             name: 'election-detail',
             builder: (context, state) => ElectionDetailScreen(
+              electionId: state.pathParameters['electionId']!,
+            ),
+          ),
+          GoRoute(
+            path: ':electionId/turnout',
+            name: 'election-turnout',
+            builder: (context, state) => VoterTurnoutScreen(
               electionId: state.pathParameters['electionId']!,
             ),
           ),

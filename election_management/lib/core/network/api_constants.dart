@@ -23,6 +23,7 @@ class ApiConstants {
   static String electionPublish(String id) => '/elections/$id/publish/';
   static String electionAdvanceState(String id) => '/elections/$id/advance_state/';
   static String electionHistory(String id) => '/elections/$id/history/';
+  static String electionTurnout(String id) => '/elections/$id/turnout/';
   static String electionPositions(String id) => '/elections/$id/positions/';
   static String electionCandidates(String id) => '/elections/$id/candidates/';
   static String approveCandidate(String eid, String cid) =>

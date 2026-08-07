@@ -332,7 +332,7 @@ class _CandidateResultTile extends StatelessWidget {
                 ),
               ),
               // Score
-              Text('${score.score.toStringAsFixed(0)} votes',
+              Text('${score.score == score.score.toInt() ? score.score.toInt() : score.score.toStringAsFixed(2)} votes',
                   style: TextStyle(
                       color: isWinner ? AppColors.success : AppColors.textMuted,
                       fontWeight: FontWeight.w700, fontSize: 14)),

@@ -187,7 +187,7 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                             ? NetworkImage(c.photoUrl!)
                             : null,
                         child: (c.photoUrl == null || c.photoUrl!.isEmpty)
-                            ? Text(c.name[0].toUpperCase(),
+                            ? Text(c.name.isNotEmpty ? c.name[0].toUpperCase() : '?',
                                 style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))
                             : null,
                       ),

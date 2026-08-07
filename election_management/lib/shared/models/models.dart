@@ -139,6 +139,14 @@ class PositionModel {
                 .toList() ??
             [],
       );
+      
+  bool get isFptp => votingMethod == 'fptp';
+  bool get isMultiChoice => votingMethod == 'multi_choice';
+  bool get isRankedChoice => votingMethod == 'ranked_choice';
+  bool get isApproval => votingMethod == 'approval';
+  bool get isWeighted => votingMethod == 'weighted';
+  bool get isProxy => votingMethod == 'proxy';
+  bool get isYesNo => votingMethod == 'yes_no';
 }
 
 class CandidateModel {

@@ -92,7 +92,12 @@ class _EditPositionDialogState extends ConsumerState<EditPositionDialog> {
                 decoration: const InputDecoration(labelText: 'Voting Method'),
                 items: const [
                   DropdownMenuItem(value: 'fptp', child: Text('First Past The Post')),
+                  DropdownMenuItem(value: 'multi_choice', child: Text('Multiple Choice (Block)')),
+                  DropdownMenuItem(value: 'ranked_choice', child: Text('Ranked Choice (STV)')),
                   DropdownMenuItem(value: 'approval', child: Text('Approval Voting')),
+                  DropdownMenuItem(value: 'weighted', child: Text('Weighted Voting')),
+                  DropdownMenuItem(value: 'proxy', child: Text('Proxy Voting')),
+                  DropdownMenuItem(value: 'yes_no', child: Text('Yes/No (Referendum)')),
                 ],
                 onChanged: (v) => setState(() => _votingMethod = v!),
               ),

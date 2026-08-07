@@ -149,7 +149,9 @@ class CandidateModel {
   final String slateName;
   final String? status;
   final String? positionId;
+  final String? positionTitle;
   final String? memberId;
+  final String? memberEmail;
   final String reviewNotes;
 
   const CandidateModel({
@@ -160,7 +162,9 @@ class CandidateModel {
     required this.slateName,
     this.status,
     this.positionId,
+    this.positionTitle,
     this.memberId,
+    this.memberEmail,
     this.reviewNotes = '',
   });
 
@@ -172,7 +176,9 @@ class CandidateModel {
         slateName: json['slate_name'] as String? ?? '',
         status: json['status'] as String?,
         positionId: json['position'] as String?,
+        positionTitle: json['position_title'] as String?,
         memberId: json['member'] as String?,
+        memberEmail: json['member_email'] as String?,
         reviewNotes: json['review_notes'] as String? ?? '',
       );
 }

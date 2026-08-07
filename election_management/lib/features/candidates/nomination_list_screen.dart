@@ -86,6 +86,9 @@ class NominationListScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (c.positionTitle != null)
+                        Text('Position: ${c.positionTitle}', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
                       Text(c.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
                       Text('Manifesto: ${c.manifesto}', style: const TextStyle(color: Colors.white70)),

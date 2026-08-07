@@ -504,10 +504,21 @@ class _PositionCard extends ConsumerWidget {
             ],
           ),
           if (position.candidates.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            const Divider(color: AppColors.surfaceVariant),
-            const SizedBox(height: 8),
-            ...position.candidates.map((c) => _CandidateTile(electionId: electionId, candidate: c, isAdmin: isAdmin)),
+            Builder(
+              builder: (context) {
+                final visibleCandidates = position.candidates.where((c) => isAdmin || c.status == 'approved').toList();
+                if (visibleCandidates.isEmpty) return const SizedBox.shrink();
+                
+                return Column(
+                  children: [
+                    const SizedBox(height: 16),
+                    const Divider(color: AppColors.surfaceVariant),
+                    const SizedBox(height: 8),
+                    ...visibleCandidates.map((c) => _CandidateTile(electionId: electionId, candidate: c, isAdmin: isAdmin)),
+                  ],
+                );
+              },
+            ),
           ],
         ],
       ),

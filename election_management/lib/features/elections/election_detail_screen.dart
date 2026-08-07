@@ -362,6 +362,16 @@ class ElectionDetailScreen extends ConsumerWidget {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
+              onPressed: () => context.pushNamed('election-turnout',
+                  pathParameters: {'electionId': election.id}),
+              icon: const Icon(Icons.people_alt_outlined, size: 18),
+              label: const Text('View Voter Turnout'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
               onPressed: () => context.pushNamed('review_nominations',
                   pathParameters: {'electionId': election.id}),
               icon: const Icon(Icons.fact_check_outlined, size: 18),

@@ -58,6 +58,14 @@ final resultsProvider = FutureProvider.autoDispose.family<TallyResult, String>((
   return TallyResult.fromJson(resp.data as Map<String, dynamic>);
 });
 
+// ─── Turnout Provider ────────────────────────────────────────────────────────
+
+final electionTurnoutProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String>((ref, electionId) async {
+  final dio = ref.watch(apiClientProvider);
+  final resp = await dio.get(ApiConstants.electionTurnout(electionId));
+  return resp.data as Map<String, dynamic>;
+});
+
 // ─── Members Provider ────────────────────────────────────────────────────────
 
 final membersProvider = FutureProvider.autoDispose<List<MemberModel>>((ref) async {

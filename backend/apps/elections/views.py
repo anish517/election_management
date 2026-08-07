@@ -97,6 +97,54 @@ class ElectionViewSet(viewsets.ModelViewSet):
             
         return response
 
+    @action(detail=True, methods=['get'])
+    def turnout(self, request, pk=None):
+        """Get the voter turnout list for this election."""
+        from apps.members.models import Member
+        from apps.voting.models import VoterRoll
+
+        election = self.get_object()
+        
+        # Get all active members for this organization
+        active_members = Member.objects.filter(
+            organization=election.organization, 
+            membership_status='active'
+        ).values('id', 'member_code', 'full_name', 'email')
+
+        # Get all voter rolls for this election
+        rolls = VoterRoll.objects.filter(election=election).values('member_id', 'has_voted', 'voted_at')
+        
+        # Create a lookup dictionary by member_id
+        roll_map = {str(r['member_id']): r for r in rolls}
+        
+        turnout_list = []
+        total_voted = 0
+        
+        for m in active_members:
+            member_id = str(m['id'])
+            roll = roll_map.get(member_id)
+            
+            has_voted = roll['has_voted'] if roll else False
+            voted_at = roll['voted_at'] if roll else None
+            
+            if has_voted:
+                total_voted += 1
+                
+            turnout_list.append({
+                'id': member_id,
+                'member_code': m['member_code'],
+                'full_name': m['full_name'],
+                'email': m['email'],
+                'has_voted': has_voted,
+                'voted_at': voted_at,
+            })
+            
+        return Response({
+            'total_eligible': len(active_members),
+            'total_voted': total_voted,
+            'turnout_list': turnout_list
+        })
+
     @action(detail=True, methods=['post'], permission_classes=[IsOrgAdmin])
     def assign_role(self, request, pk=None):
         """Assign an election officer role to a user via email."""

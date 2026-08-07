@@ -176,5 +176,19 @@ class MeView(APIView):
             if member:
                 member.photo_url = photo_url
                 member.save(update_fields=['photo_url'])
+            elif request.user.organization:
+                # Create a Member record for Org Admins who don't have one
+                from apps.members.models import Member, MembershipStatus
+                full_name = request.user.email.split('@')[0].replace('.', ' ').title()
+                Member.objects.create(
+                    user=request.user,
+                    organization=request.user.organization,
+                    email=request.user.email,
+                    phone=request.user.phone,
+                    full_name=full_name,
+                    member_code=f"ADM-{str(request.user.id)[:6].upper()}",
+                    membership_status=MembershipStatus.ACTIVE,
+                    photo_url=photo_url,
+                )
         
         return Response(UserProfileSerializer(request.user).data)

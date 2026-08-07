@@ -8,6 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/admin_drawer.dart';
 import '../../shared/widgets/shimmer_loaders.dart';
+import 'dashboard_quick_actions.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -33,7 +34,8 @@ class DashboardScreen extends ConsumerWidget {
           children: [
             Text('Welcome, ${user?.organizationName ?? ''}',
                 style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-            Text(user?.email ?? '', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            Text(user?.fullName.isNotEmpty == true ? user!.fullName : (user?.email ?? ''), 
+                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           ],
         ),
         actions: [
@@ -42,9 +44,15 @@ class DashboardScreen extends ConsumerWidget {
             onPressed: () => ref.invalidate(electionsProvider),
           ),
           PopupMenuButton(
-            icon: const CircleAvatar(
+            icon: CircleAvatar(
               backgroundColor: AppColors.primaryLight,
-              child: Icon(Icons.person, color: Colors.white, size: 18),
+              backgroundImage: user?.photoUrl.isNotEmpty == true ? NetworkImage(user!.photoUrl) : null,
+              child: user?.photoUrl.isNotEmpty == true 
+                  ? null 
+                  : Text(
+                      (user?.fullName.isNotEmpty == true ? user!.fullName : (user?.email ?? '?')).substring(0, 1).toUpperCase(),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
             ),
             itemBuilder: (_) => [
               PopupMenuItem(
@@ -91,6 +99,8 @@ class DashboardScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildRoleBanner(context, user),
+              const SizedBox(height: 24),
+              if (user != null) DashboardQuickActions(user: user),
               if (user != null && user.role == 'org_admin') ...[
                 const SizedBox(height: 24),
                 _buildOverviewSection(context, ref),
@@ -145,11 +155,17 @@ class DashboardScreen extends ConsumerWidget {
       ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.2), shape: BoxShape.circle),
-            child: Icon(icon, color: color, size: 22),
-          ),
+          if (user.photoUrl.isNotEmpty)
+            CircleAvatar(
+              radius: 21,
+              backgroundImage: NetworkImage(user.photoUrl),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.2), shape: BoxShape.circle),
+              child: Icon(icon, color: color, size: 22),
+            ),
           const SizedBox(width: 14),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,9 +207,9 @@ class DashboardScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -350,6 +366,22 @@ class _ElectionCard extends StatelessWidget {
                 ],
               ),
             ),
+            if (election.state == 'voting_active')
+              Container(
+                margin: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.stateVoting,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.how_to_vote, size: 14, color: Colors.white),
+                    SizedBox(width: 4),
+                    Text('VOTE NOW', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
             const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
           ],
         ),

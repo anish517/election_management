@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:dio/dio.dart';
-import '../../core/providers/admin_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/models.dart';
 import '../../core/network/api_client.dart';

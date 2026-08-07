@@ -14,6 +14,9 @@ class ApiConstants {
   static const String otpRequest = '/auth/otp/request/';
   static const String otpVerify = '/auth/otp/verify/';
 
+  // Core endpoints
+  static const String fileUpload = '/upload/';
+
   // Elections
   static const String elections = '/elections/';
   static String electionDetail(String id) => '/elections/$id/';

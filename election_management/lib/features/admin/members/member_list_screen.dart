@@ -153,15 +153,19 @@ class MemberListScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide(color: AppColors.surfaceVariant),
                   ),
-                  leading: CircleAvatar(
-                    backgroundColor: AppColors.primaryLight.withValues(
-                      alpha: 0.2,
-                    ),
-                    child: const Icon(
-                      Icons.person,
-                      color: AppColors.primaryLight,
-                    ),
-                  ),
+                  leading: m.photoUrl.isNotEmpty
+                      ? CircleAvatar(
+                          backgroundImage: NetworkImage(m.photoUrl),
+                        )
+                      : CircleAvatar(
+                          backgroundColor: AppColors.primaryLight.withValues(
+                            alpha: 0.2,
+                          ),
+                          child: const Icon(
+                            Icons.person,
+                            color: AppColors.primaryLight,
+                          ),
+                        ),
                   title: Text(m.fullName),
                   subtitle: Text('${m.email} \n${m.membershipStatus}'),
                   isThreeLine: true,

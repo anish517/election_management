@@ -4,6 +4,8 @@ class UserModel {
   final String id;
   final String email;
   final String phone;
+  final String fullName;
+  final String photoUrl;
   final String role;
   final String roleDisplay;
   final String organization;
@@ -15,6 +17,8 @@ class UserModel {
     required this.id,
     required this.email,
     required this.phone,
+    required this.fullName,
+    required this.photoUrl,
     required this.role,
     required this.roleDisplay,
     required this.organization,
@@ -27,6 +31,8 @@ class UserModel {
         id: json['id'] as String,
         email: json['email'] as String? ?? '',
         phone: json['phone'] as String? ?? '',
+        fullName: json['full_name'] as String? ?? '',
+        photoUrl: json['photo_url'] as String? ?? '',
         role: json['role'] as String,
         roleDisplay: json['role_display'] as String? ?? '',
         organization: json['organization'] as String,

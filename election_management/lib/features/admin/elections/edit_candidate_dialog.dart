@@ -6,6 +6,7 @@ import '../../../core/network/api_constants.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/widgets/loading_button.dart';
+import '../../../shared/widgets/image_upload_widget.dart';
 import '../../../core/theme/app_theme.dart';
 
 class EditCandidateDialog extends ConsumerStatefulWidget {
@@ -22,6 +23,7 @@ class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
   late TextEditingController _manifestoController;
   late TextEditingController _slateNameController;
   late String _status;
+  String _photoUrl = '';
   bool _isLoading = false;
 
   @override
@@ -30,6 +32,7 @@ class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
     _manifestoController = TextEditingController(text: widget.candidate.manifesto);
     _slateNameController = TextEditingController(text: widget.candidate.slateName);
     _status = widget.candidate.status ?? 'draft';
+    _photoUrl = widget.candidate.photoUrl ?? '';
   }
 
   @override
@@ -48,6 +51,7 @@ class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
         'manifesto': _manifestoController.text.trim(),
         'slate_name': _slateNameController.text.trim(),
         'status': _status,
+        'photo_url': _photoUrl,
       });
       ref.invalidate(electionProvider(widget.electionId));
       if (mounted) context.pop();
@@ -68,6 +72,16 @@ class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const SizedBox(height: 16),
+              ImageUploadWidget(
+                initialImageUrl: _photoUrl,
+                placeholderText: widget.candidate.name.isNotEmpty 
+                    ? widget.candidate.name.substring(0, 1).toUpperCase() 
+                    : 'C',
+                radius: 40,
+                onImageUploaded: (url) => setState(() => _photoUrl = url),
+              ),
+              const SizedBox(height: 24),
               TextFormField(
                 initialValue: widget.candidate.name,
                 enabled: false,

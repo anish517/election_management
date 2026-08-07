@@ -235,12 +235,15 @@ class UserProfileSerializer(serializers.ModelSerializer):
     """Read-only user profile — never exposes sensitive fields."""
     organization_name = serializers.SerializerMethodField()
     role_display = serializers.SerializerMethodField()
+    full_name = serializers.SerializerMethodField()
+    photo_url = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             'id', 'email', 'phone', 'role', 'role_display',
             'organization', 'organization_name',
+            'full_name', 'photo_url',
             'is_2fa_enabled', 'last_login_at', 'created_at',
         ]
         read_only_fields = fields
@@ -250,3 +253,11 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def get_role_display(self, obj):
         return obj.get_role_display()
+
+    def get_full_name(self, obj):
+        member = obj.memberships.filter(deleted_at__isnull=True).first()
+        return member.full_name if member else ''
+
+    def get_photo_url(self, obj):
+        member = obj.memberships.filter(deleted_at__isnull=True).first()
+        return member.photo_url if member else ''

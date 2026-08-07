@@ -6,6 +6,7 @@ import '../../../core/network/api_constants.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/widgets/loading_button.dart';
+import '../../../shared/widgets/image_upload_widget.dart';
 import '../../../core/theme/app_theme.dart';
 
 class EditMemberDialog extends ConsumerStatefulWidget {
@@ -27,6 +28,7 @@ class _EditMemberDialogState extends ConsumerState<EditMemberDialog> {
   late TextEditingController _positionTitleController;
   late TextEditingController _votingWeightController;
   late String _membershipStatus;
+  String _photoUrl = '';
   bool _isLoading = false;
 
   @override
@@ -41,6 +43,7 @@ class _EditMemberDialogState extends ConsumerState<EditMemberDialog> {
     _positionTitleController = TextEditingController(text: widget.member.positionTitle);
     _votingWeightController = TextEditingController(text: widget.member.votingWeight.toString());
     _membershipStatus = widget.member.membershipStatus;
+    _photoUrl = widget.member.photoUrl;
   }
 
   @override
@@ -68,8 +71,9 @@ class _EditMemberDialogState extends ConsumerState<EditMemberDialog> {
         'department': _departmentController.text.trim(),
         'region': _regionController.text.trim(),
         'position_title': _positionTitleController.text.trim(),
-        'voting_weight': double.parse(_votingWeightController.text),
+        'voting_weight': _votingWeightController.text.trim(),
         'membership_status': _membershipStatus,
+        'photo_url': _photoUrl,
         if (_emailController.text.trim().isNotEmpty) 'email': _emailController.text.trim(),
       });
       ref.invalidate(membersProvider);
@@ -91,6 +95,16 @@ class _EditMemberDialogState extends ConsumerState<EditMemberDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const SizedBox(height: 16),
+              ImageUploadWidget(
+                initialImageUrl: _photoUrl,
+                placeholderText: widget.member.fullName.isNotEmpty 
+                    ? widget.member.fullName.substring(0, 1).toUpperCase() 
+                    : 'M',
+                radius: 40,
+                onImageUploaded: (url) => setState(() => _photoUrl = url),
+              ),
+              const SizedBox(height: 24),
               TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(labelText: 'Full Name'),

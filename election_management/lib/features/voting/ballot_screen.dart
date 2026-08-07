@@ -301,10 +301,15 @@ class _CandidateTile extends StatelessWidget {
             CircleAvatar(
               radius: 22,
               backgroundColor: AppColors.primary,
-              child: Text(
-                candidate.name.isNotEmpty ? candidate.name[0].toUpperCase() : '?',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-              ),
+              backgroundImage: candidate.photoUrl != null && candidate.photoUrl!.isNotEmpty
+                  ? NetworkImage(candidate.photoUrl!)
+                  : null,
+              child: (candidate.photoUrl == null || candidate.photoUrl!.isEmpty)
+                  ? Text(
+                      candidate.name.isNotEmpty ? candidate.name[0].toUpperCase() : '?',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                    )
+                  : null,
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -315,11 +320,11 @@ class _CandidateTile extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             color: isSelected ? AppColors.primaryLight : AppColors.textPrimary,
                           )),
-                  if (candidate.manifesto.isNotEmpty) ...[
+                  if (candidate.slateName.isNotEmpty) ...[
                     const SizedBox(height: 3),
-                    Text(candidate.manifesto,
-                        style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                        maxLines: 2, overflow: TextOverflow.ellipsis),
+                    Text(candidate.slateName,
+                        style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
                   ],
                 ],
               ),

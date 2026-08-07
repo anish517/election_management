@@ -183,8 +183,13 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                       CircleAvatar(
                         radius: 14,
                         backgroundColor: AppColors.primaryLight,
-                        child: Text(c.name[0].toUpperCase(),
-                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                        backgroundImage: c.photoUrl != null && c.photoUrl!.isNotEmpty
+                            ? NetworkImage(c.photoUrl!)
+                            : null,
+                        child: (c.photoUrl == null || c.photoUrl!.isEmpty)
+                            ? Text(c.name[0].toUpperCase(),
+                                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))
+                            : null,
                       ),
                       const SizedBox(width: 10),
                       Text(c.name, style: Theme.of(context).textTheme.bodyLarge),

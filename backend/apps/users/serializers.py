@@ -186,16 +186,38 @@ class OTPVerifySerializer(serializers.Serializer):
         record.is_used = True
         record.save(update_fields=['is_used'])
 
-        # Find or indicate user needs registration
+        # Find user — first in User table, then fall back to Member roster
         user = None
         if '@' in identifier:
             user = User.objects.filter(email=identifier.lower()).first()
+            if not user:
+                # Check if this email belongs to a member — auto-create a voter account
+                try:
+                    from apps.members.models import Member
+                    member = Member.objects.filter(
+                        email__iexact=identifier.strip(),
+                        deleted_at__isnull=True,
+                    ).select_related('organization').first()
+                    if member and member.organization:
+                        user = User.objects.create_user(
+                            email=identifier.lower(),
+                            role=UserRole.VOTER,
+                            organization=member.organization,
+                            phone=member.phone or '',
+                        )
+                        # Link the member record to the new user account
+                        member.user = user
+                        member.membership_status = 'active'
+                        member.save(update_fields=['user', 'membership_status'])
+                except Exception:
+                    pass
         else:
             user = User.objects.filter(phone=identifier).first()
 
         if not user:
             raise serializers.ValidationError(
-                {'phone_or_email': 'No account found with this identifier.'}
+                {'phone_or_email': 'No account found with this identifier. '
+                                   'Make sure you are a registered member of an organization.'}
             )
 
         attrs['user'] = user

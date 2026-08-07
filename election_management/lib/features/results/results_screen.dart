@@ -9,6 +9,7 @@ import '../../core/providers/app_providers.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/models.dart';
+import '../../shared/widgets/shimmer_loaders.dart';
 
 class ResultsScreen extends ConsumerStatefulWidget {
   final String electionId;
@@ -59,7 +60,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
               tooltip: 'Download CSV Report',
               onPressed: () async {
                 final token = await JwtInterceptor.getAccessToken();
-                final url = Uri.parse('${ApiConstants.baseUrl}/elections/${widget.electionId}/results/export_csv/?token=\$token');
+                final url = Uri.parse('${ApiConstants.baseUrl}/elections/${widget.electionId}/results/export_csv/?token=$token');
                 if (await canLaunchUrl(url)) {
                   await launchUrl(url, mode: LaunchMode.externalApplication);
                 } else {
@@ -76,7 +77,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
         ],
       ),
       body: resultsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const ListSkeleton(count: 4),
         error: (e, _) => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,

@@ -7,6 +7,7 @@ import '../../core/providers/org_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/admin_drawer.dart';
+import '../../shared/widgets/shimmer_loaders.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -170,7 +171,7 @@ class DashboardScreen extends ConsumerWidget {
         _buildSectionHeader(context, 'Organization Overview', Icons.insights_rounded),
         const SizedBox(height: 12),
         statsAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const DashboardSkeleton(),
           error: (e, _) => Text('Error loading stats: $e'),
           data: (stats) => Row(
             children: [

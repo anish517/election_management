@@ -7,6 +7,7 @@ import '../../../core/providers/org_providers.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/admin_drawer.dart';
+import '../../../shared/widgets/shimmer_loaders.dart';
 
 class OrgSettingsScreen extends ConsumerStatefulWidget {
   const OrgSettingsScreen({super.key});
@@ -267,14 +268,17 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
         elevation: 0,
       ),
       body: orgAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const ListSkeleton(count: 4),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (org) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             setState(() => _populateForm(org));
           });
 
-          if (!_initialized) return const Center(child: CircularProgressIndicator());
+          if (!_initialized) return const Padding(
+            padding: EdgeInsets.all(24),
+            child: ListSkeleton(count: 6),
+          );
 
           return SingleChildScrollView(
             physics: const BouncingScrollPhysics(),

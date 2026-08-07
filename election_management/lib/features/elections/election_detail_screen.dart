@@ -15,6 +15,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/network/api_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../shared/models/models.dart';
+import '../../shared/widgets/shimmer_loaders.dart';
 
 class ElectionDetailScreen extends ConsumerWidget {
   final String electionId;
@@ -83,7 +84,7 @@ class ElectionDetailScreen extends ConsumerWidget {
         ],
       ),
       body: electionAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const CardListSkeleton(count: 3),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (election) => _buildBody(context, ref, election, user),
       ),

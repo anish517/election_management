@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import '../../core/providers/admin_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/models.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_constants.dart';
+import '../../shared/widgets/shimmer_loaders.dart';
+import '../../shared/widgets/empty_state.dart';
 
 final candidatesProvider = FutureProvider.autoDispose.family<List<CandidateModel>, String>((ref, electionId) async {
   final dio = ref.watch(apiClientProvider);
@@ -57,13 +58,17 @@ class NominationListScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Review Nominations')),
       body: candidatesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const ListSkeleton(count: 5),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (candidates) {
           final pending = candidates.where((c) => c.status == 'submitted').toList();
           
           if (pending.isEmpty) {
-            return const Center(child: Text('No pending nominations.'));
+            return const EmptyStateWidget(
+              icon: Icons.how_to_vote_outlined,
+              title: 'No Pending Nominations',
+              subtitle: 'All nominations have been reviewed or none have been submitted yet.',
+            );
           }
 
           return ListView.separated(

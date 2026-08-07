@@ -11,6 +11,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../shared/widgets/admin_drawer.dart';
+import '../../../shared/widgets/shimmer_loaders.dart';
+import '../../../shared/widgets/empty_state.dart';
 import '../../../core/network/api_client.dart';
 
 class MemberListScreen extends ConsumerWidget {
@@ -109,7 +111,7 @@ class MemberListScreen extends ConsumerWidget {
         ],
       ),
       body: membersAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const ListSkeleton(count: 7),
         error: (e, _) => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -131,7 +133,11 @@ class MemberListScreen extends ConsumerWidget {
         ),
         data: (members) {
           if (members.isEmpty) {
-            return const Center(child: Text('No members found.'));
+            return const EmptyStateWidget(
+              icon: Icons.people_alt_outlined,
+              title: 'No Members Yet',
+              subtitle: 'Import a CSV or add members to get started.',
+            );
           }
           return RefreshIndicator(
             onRefresh: () async => ref.invalidate(membersProvider),

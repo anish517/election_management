@@ -5,6 +5,8 @@ import '../../core/network/api_client.dart';
 import '../../core/network/api_constants.dart';
 import '../../core/theme/app_theme.dart';
 import 'package:intl/intl.dart';
+import '../../shared/widgets/shimmer_loaders.dart';
+import '../../shared/widgets/empty_state.dart';
 
 final votingHistoryProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final dio = ref.watch(apiClientProvider);
@@ -25,15 +27,14 @@ class VotingHistoryScreen extends ConsumerWidget {
         title: const Text('My Voting History'),
       ),
       body: historyAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const ListSkeleton(count: 5),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (history) {
           if (history.isEmpty) {
-            return const Center(
-              child: Text(
-                'You have not voted in any elections yet.',
-                style: TextStyle(color: AppColors.textMuted),
-              ),
+            return const EmptyStateWidget(
+              icon: Icons.history_edu_rounded,
+              title: 'No Votes Cast Yet',
+              subtitle: 'Your voting history will appear here once you participate in an election.',
             );
           }
 

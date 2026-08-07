@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/admin_drawer.dart'; // Just for consistency
+import '../../shared/widgets/shimmer_loaders.dart';
 
 class UserProfileScreen extends ConsumerWidget {
   const UserProfileScreen({super.key});
@@ -28,7 +29,10 @@ class UserProfileScreen extends ConsumerWidget {
       ),
       drawer: user?.isOrgAdmin == true ? const AdminDrawer() : null,
       body: user == null 
-          ? const Center(child: CircularProgressIndicator())
+          ? const Padding(
+              padding: EdgeInsets.all(24),
+              child: ProfileSkeleton(),
+            )
           : Center(
               child: Container(
                 constraints: const BoxConstraints(maxWidth: 600),

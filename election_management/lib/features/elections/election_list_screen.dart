@@ -6,6 +6,8 @@ import '../../core/providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/admin_drawer.dart';
+import '../../shared/widgets/shimmer_loaders.dart';
+import '../../shared/widgets/empty_state.dart';
 
 class ElectionListScreen extends ConsumerWidget {
   const ElectionListScreen({super.key});
@@ -31,7 +33,7 @@ class ElectionListScreen extends ConsumerWidget {
         ],
       ),
       body: electionsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const CardListSkeleton(count: 5),
         error: (e, _) => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -49,15 +51,10 @@ class ElectionListScreen extends ConsumerWidget {
         ),
         data: (elections) {
           if (elections.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.ballot_outlined, size: 64, color: AppColors.textMuted),
-                  SizedBox(height: 16),
-                  Text('No elections found', style: TextStyle(color: AppColors.textSecondary, fontSize: 16)),
-                ],
-              ),
+            return EmptyStateWidget(
+              icon: Icons.ballot_outlined,
+              title: 'No Elections Yet',
+              subtitle: 'Elections created by your admin will appear here.',
             );
           }
           return RefreshIndicator(

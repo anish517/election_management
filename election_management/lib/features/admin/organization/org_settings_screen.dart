@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:file_picker/file_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/org_providers.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/admin_drawer.dart';
 import '../../../shared/widgets/shimmer_loaders.dart';
+import '../../../shared/widgets/image_upload_widget.dart';
 
 class OrgSettingsScreen extends ConsumerStatefulWidget {
   const OrgSettingsScreen({super.key});
@@ -171,7 +170,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: _previewColor.withOpacity(0.3),
+            color: _previewColor.withValues(alpha: 0.3),
             blurRadius: 15,
             offset: const Offset(0, 8),
           )
@@ -180,20 +179,16 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-              border: Border.all(color: Colors.white, width: 4),
-              image: _previewLogo.isNotEmpty 
-                ? DecorationImage(image: NetworkImage(_previewLogo), fit: BoxFit.cover, onError: (e, s) => null)
-                : null,
-            ),
-            child: _previewLogo.isEmpty 
-              ? Icon(Icons.business, size: 40, color: _previewColor)
-              : null,
+          ImageUploadWidget(
+            initialImageUrl: _previewLogo,
+            placeholderText: 'LOGO',
+            radius: 50,
+            onImageUploaded: (url) {
+              setState(() {
+                _logoController.text = url;
+                _previewLogo = url;
+              });
+            },
           ),
           const SizedBox(height: 16),
           Text(
@@ -208,7 +203,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -227,7 +222,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
       margin: const EdgeInsets.only(bottom: 24),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+        side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -239,7 +234,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(icon, color: AppColors.primary),
@@ -335,29 +330,9 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
                               Expanded(
                                 child: TextFormField(
                                   controller: _logoController,
-                                  decoration: InputDecoration(
+                                  decoration: const InputDecoration(
                                     labelText: 'Logo URL',
-                                    prefixIcon: const Icon(Icons.image),
-                                    suffixIcon: IconButton(
-                                      icon: const Icon(Icons.upload_file),
-                                      tooltip: 'Upload Logo',
-                                      onPressed: () async {
-                                        final result = await FilePicker.pickFiles(type: FileType.image, withData: true);
-                                        if (result != null && result.files.single.bytes != null) {
-                                          try {
-                                            final url = await ref.read(updateOrgSettingsProvider.notifier).uploadFile(result.files.single.bytes!.toList(), result.files.single.name);
-                                            setState(() => _logoController.text = url);
-                                            if (context.mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Logo uploaded successfully')));
-                                            }
-                                          } catch (e) {
-                                            if (context.mounted) {
-                                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
-                                            }
-                                          }
-                                        }
-                                      },
-                                    ),
+                                    prefixIcon: Icon(Icons.image),
                                   ),
                                 ),
                               ),
@@ -437,7 +412,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
                           Container(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                              border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
                             ),
                             child: SwitchListTile(
                               title: const Text('Election Officers Can Publish'),
@@ -457,9 +432,9 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: Colors.orange.withOpacity(0.1),
+                              color: Colors.orange.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                              border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
                             ),
                             child: const Row(
                               children: [

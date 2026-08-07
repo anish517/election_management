@@ -160,10 +160,21 @@ class LogoutView(APIView):
 
 class MeView(APIView):
     """
-    GET /v1/auth/me/
-    Current user profile.
+    GET /v1/auth/me/ - Current user profile.
+    PATCH /v1/auth/me/ - Update profile fields (like photo_url on linked member).
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        return Response(UserProfileSerializer(request.user).data)
+
+    def patch(self, request):
+        # Allow updating photo_url on the linked member record
+        photo_url = request.data.get('photo_url')
+        if photo_url is not None:
+            member = request.user.memberships.filter(deleted_at__isnull=True).first()
+            if member:
+                member.photo_url = photo_url
+                member.save(update_fields=['photo_url'])
+        
         return Response(UserProfileSerializer(request.user).data)

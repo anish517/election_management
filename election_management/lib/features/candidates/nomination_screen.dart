@@ -6,6 +6,7 @@ import '../../core/providers/app_providers.dart';
 import '../../core/network/api_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../shared/widgets/loading_button.dart';
+import '../../shared/widgets/image_upload_widget.dart';
 import '../../shared/models/models.dart';
 
 class NominationScreen extends ConsumerStatefulWidget {
@@ -21,6 +22,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
   final _manifestoController = TextEditingController();
   final _slateController = TextEditingController();
   String? _selectedPositionId;
+  String _photoUrl = '';
   bool _isSubmitting = false;
 
   @override
@@ -45,6 +47,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
         'position': _selectedPositionId,
         'manifesto': _manifestoController.text.trim(),
         'slate_name': _slateController.text.trim(),
+        'photo_url': _photoUrl,
         'election': widget.electionId,
       });
 
@@ -92,6 +95,16 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                   const Text('Fill out the form below to submit your nomination for this election.'),
                   const SizedBox(height: 24),
                   
+                  Center(
+                    child: ImageUploadWidget(
+                      initialImageUrl: _photoUrl,
+                      placeholderText: 'PHOTO',
+                      radius: 40,
+                      onImageUploaded: (url) => setState(() => _photoUrl = url),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
                   DropdownButtonFormField<String>(
                     decoration: const InputDecoration(labelText: 'Position'),
                     value: _selectedPositionId,

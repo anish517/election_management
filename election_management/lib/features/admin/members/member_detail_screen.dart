@@ -91,10 +91,10 @@ class MemberDetailScreen extends ConsumerWidget {
                             CircleAvatar(
                               radius: 40,
                               backgroundColor: AppColors.primaryLight,
-                              backgroundImage: member.photoUrl != null && member.photoUrl!.isNotEmpty
-                                  ? NetworkImage(member.photoUrl!)
+                              backgroundImage: member.photoUrl.isNotEmpty
+                                  ? NetworkImage(member.photoUrl)
                                   : null,
-                              child: (member.photoUrl == null || member.photoUrl!.isEmpty)
+                              child: member.photoUrl.isEmpty
                                   ? const Icon(Icons.person, size: 40, color: Colors.white)
                                   : null,
                             ),
@@ -116,7 +116,7 @@ class MemberDetailScreen extends ConsumerWidget {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                     decoration: BoxDecoration(
-                                      color: member.membershipStatus.toLowerCase() == 'active' ? Colors.green.withOpacity(0.2) : Colors.orange.withOpacity(0.2),
+                                      color: member.membershipStatus.toLowerCase() == 'active' ? Colors.green.withValues(alpha: 0.2) : Colors.orange.withValues(alpha: 0.2),
                                       borderRadius: BorderRadius.circular(16),
                                       border: Border.all(color: member.membershipStatus.toLowerCase() == 'active' ? Colors.green : Colors.orange),
                                     ),
@@ -148,9 +148,9 @@ class MemberDetailScreen extends ConsumerWidget {
                             icon: Icons.work_outline_rounded,
                             children: [
                               _buildField('Member ID', member.memberCode),
-                              _buildField('Position Title', member.positionTitle ?? ''),
-                              _buildField('Department', member.department ?? ''),
-                              _buildField('Region', member.region ?? ''),
+                              _buildField('Position Title', member.positionTitle),
+                              _buildField('Department', member.department),
+                              _buildField('Region', member.region),
                             ],
                           ),
                         ),
@@ -164,7 +164,7 @@ class MemberDetailScreen extends ConsumerWidget {
                                 icon: Icons.contact_mail_outlined,
                                 children: [
                                   _buildField('Phone Number', member.phone),
-                                  _buildField('Gender', member.gender ?? ''),
+                                  _buildField('Gender', member.gender),
                                 ],
                               ),
                               _buildSectionCard(

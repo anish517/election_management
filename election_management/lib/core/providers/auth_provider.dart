@@ -33,6 +33,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
     _checkStoredAuth();
   }
 
+  Future<void> refreshUser() async {
+    final token = await JwtInterceptor.getAccessToken();
+    if (token == null) return;
+    try {
+      final resp = await _dio.get(ApiConstants.me);
+      final user = UserModel.fromJson(resp.data as Map<String, dynamic>);
+      state = AuthState(user: user);
+    } catch (_) {
+      // Don't log out if refresh fails, just keep existing state
+    }
+  }
+
   Future<void> _checkStoredAuth() async {
     final token = await JwtInterceptor.getAccessToken();
     if (token == null) return;

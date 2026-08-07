@@ -8,6 +8,9 @@ import '../../core/network/api_client.dart';
 import '../../shared/widgets/loading_button.dart';
 import '../../shared/widgets/image_upload_widget.dart';
 import '../../shared/models/models.dart';
+import '../candidates/nomination_list_screen.dart';
+import '../../core/providers/auth_provider.dart';
+import '../../core/theme/app_theme.dart';
 
 class NominationScreen extends ConsumerStatefulWidget {
   final String electionId;
@@ -82,9 +85,54 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
             return const Center(child: Text('No positions available to nominate for.'));
           }
 
+          final user = ref.watch(authProvider).user;
+          final candidatesAsync = ref.watch(candidatesProvider(widget.electionId));
+
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24),
-            child: Form(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                candidatesAsync.when(
+                  data: (candidates) {
+                    final myNominations = candidates.where((c) => c.memberEmail == user?.email).toList();
+                    if (myNominations.isEmpty) return const SizedBox.shrink();
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('My Nominations', style: Theme.of(context).textTheme.headlineSmall),
+                        const SizedBox(height: 12),
+                        ...myNominations.map((c) => Card(
+                              elevation: 0,
+                              margin: const EdgeInsets.only(bottom: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+                              ),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                title: Text(c.positionTitle ?? 'Position'),
+                                subtitle: Text('Status: ${c.status?.toUpperCase() ?? 'PENDING'}\nManifesto: ${c.manifesto}'),
+                                isThreeLine: true,
+                                trailing: Icon(
+                                  c.status == 'approved' ? Icons.check_circle_rounded :
+                                  c.status == 'rejected' ? Icons.cancel_rounded : Icons.pending_rounded,
+                                  color: c.status == 'approved' ? Colors.green :
+                                         c.status == 'rejected' ? Colors.red : Colors.orange,
+                                ),
+                              ),
+                            )),
+                        const SizedBox(height: 32),
+                        const Divider(),
+                        const SizedBox(height: 32),
+                      ],
+                    );
+                  },
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (_, __) => const SizedBox.shrink(),
+                ),
+                Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,6 +192,8 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                 ],
               ),
             ),
+            ],
+          ),
           );
         },
       ),

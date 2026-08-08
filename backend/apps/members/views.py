@@ -19,61 +19,202 @@ class MemberViewSet(viewsets.ModelViewSet):
         serializer.save(organization=self.request.user.organization)
 
     @action(detail=False, methods=['post'])
-    def import_csv(self, request):
+    def preview_csv(self, request):
         """
-        Process CSV upload synchronously for MVP.
-        Expects a file upload with columns: full_name, email, member_code, phone
+        Step 1 of the Import Wizard: Parse CSV + apply column mapping,
+        return a preview of valid/error rows WITHOUT writing to the database.
+        
+        Payload: multipart/form-data
+          - file: the CSV file
+          - mapping: JSON string like {"Name": "full_name", "Email": "email", ...}
         """
         import csv
         import io
+        import json
 
         if 'file' not in request.FILES:
             return Response({'error': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
-            
+
+        mapping_raw = request.data.get('mapping', '{}')
+        try:
+            mapping = json.loads(mapping_raw)  # { csv_col -> db_field }
+        except (json.JSONDecodeError, TypeError):
+            mapping = {}
+
         file = request.FILES['file']
         try:
-            decoded_file = file.read().decode('utf-8')
+            decoded_file = file.read().decode('utf-8-sig')  # utf-8-sig handles BOM from Excel
             io_string = io.StringIO(decoded_file)
             reader = csv.DictReader(io_string)
-            
+            columns = reader.fieldnames or []
+
+            valid_rows = []
+            error_rows = []
+
+            existing_emails = set(
+                Member.objects.filter(organization=request.user.organization)
+                .values_list('email', flat=True)
+            )
+
+            for i, row in enumerate(reader, start=2):  # start=2 because row 1 is header
+                # Apply column mapping
+                mapped = {}
+                for csv_col, db_field in mapping.items():
+                    mapped[db_field] = row.get(csv_col, '').strip()
+
+                # Also try direct field names in case they match exactly
+                for field in ['full_name', 'email', 'member_code', 'phone', 'department', 'region', 'position_title', 'voting_weight']:
+                    if field not in mapped and field in row:
+                        mapped[field] = row.get(field, '').strip()
+
+                email = mapped.get('email', '')
+                full_name = mapped.get('full_name', '')
+
+                # Validate
+                error = None
+                if not email:
+                    error = 'Email is missing'
+                elif '@' not in email:
+                    error = f'"{email}" is not a valid email address'
+                elif email in existing_emails:
+                    error = f'Member with email "{email}" already exists'
+
+                if error:
+                    error_rows.append({
+                        'row': i,
+                        'data': dict(row),
+                        'mapped': mapped,
+                        'error': error,
+                    })
+                else:
+                    existing_emails.add(email)  # track within-file duplicates
+                    valid_rows.append({
+                        'row': i,
+                        'full_name': full_name,
+                        'email': email,
+                        'member_code': mapped.get('member_code', ''),
+                        'phone': mapped.get('phone', ''),
+                        'department': mapped.get('department', ''),
+                        'region': mapped.get('region', ''),
+                        'position_title': mapped.get('position_title', ''),
+                        'voting_weight': mapped.get('voting_weight', '1.0'),
+                    })
+
+            return Response({
+                'columns': columns,
+                'valid_count': len(valid_rows),
+                'error_count': len(error_rows),
+                'valid_rows': valid_rows,
+                'error_rows': error_rows,
+            })
+
+        except Exception as e:
+            return Response({'error': f'Failed to parse CSV: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['post'])
+    def import_csv(self, request):
+        """
+        Step 2 of the Import Wizard: Commit valid rows to the database.
+        
+        Payload: multipart/form-data
+          - file: the CSV file
+          - mapping: JSON string like {"Name": "full_name", "Email": "email", ...}
+        """
+        import csv
+        import io
+        import json
+
+        if 'file' not in request.FILES:
+            return Response({'error': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
+
+        mapping_raw = request.data.get('mapping', '{}')
+        try:
+            mapping = json.loads(mapping_raw)
+        except (json.JSONDecodeError, TypeError):
+            mapping = {}
+
+        file = request.FILES['file']
+        try:
+            decoded_file = file.read().decode('utf-8-sig')
+            io_string = io.StringIO(decoded_file)
+            reader = csv.DictReader(io_string)
+
             from django.contrib.auth import get_user_model
             User = get_user_model()
-            
-            created_count = 0
-            for row in reader:
-                email = row.get('email', '').strip()
-                if not email:
+
+            existing_emails = set(
+                Member.objects.filter(organization=request.user.organization)
+                .values_list('email', flat=True)
+            )
+
+            imported_count = 0
+            skipped_count = 0
+            errors = []
+
+            for i, row in enumerate(reader, start=2):
+                # Apply column mapping
+                mapped = {}
+                for csv_col, db_field in mapping.items():
+                    mapped[db_field] = row.get(csv_col, '').strip()
+
+                # Direct field fallback
+                for field in ['full_name', 'email', 'member_code', 'phone', 'department', 'region', 'position_title', 'voting_weight']:
+                    if field not in mapped and field in row:
+                        mapped[field] = row.get(field, '').strip()
+
+                email = mapped.get('email', '')
+                if not email or '@' not in email or email in existing_emails:
+                    skipped_count += 1
                     continue
-                    
+
+                try:
+                    voting_weight = float(mapped.get('voting_weight', '1.0') or '1.0')
+                except (ValueError, TypeError):
+                    voting_weight = 1.0
+
                 member, created = Member.objects.get_or_create(
                     organization=request.user.organization,
                     email=email,
                     defaults={
-                        'full_name': row.get('full_name', '').strip(),
-                        'member_code': row.get('member_code', '').strip(),
-                        'phone': row.get('phone', '').strip(),
-                        'membership_status': 'active'
+                        'full_name': mapped.get('full_name', ''),
+                        'member_code': mapped.get('member_code', ''),
+                        'phone': mapped.get('phone', ''),
+                        'department': mapped.get('department', ''),
+                        'region': mapped.get('region', ''),
+                        'position_title': mapped.get('position_title', ''),
+                        'voting_weight': voting_weight,
+                        'membership_status': 'active',
                     }
                 )
-                
-                # Automatically create the User account so they can log in
-                user, user_created = User.objects.get_or_create(
-                    email=email,
-                    defaults={
-                        'role': 'member',
-                        'organization': request.user.organization,
-                    }
-                )
-                # Ensure the user has the correct organization and role
-                if not user_created:
-                    user.organization = request.user.organization
-                    user.save()
-                    
-                created_count += 1
-                
-            return Response({'message': f'Successfully processed {created_count} members.'}, status=status.HTTP_200_OK)
+
+                if created:
+                    # Create login account so member can log in
+                    user, user_created = User.objects.get_or_create(
+                        email=email,
+                        defaults={
+                            'role': 'member',
+                            'organization': request.user.organization,
+                        }
+                    )
+                    if not user_created:
+                        user.organization = request.user.organization
+                        user.save()
+                    member.user = user
+                    member.save(update_fields=['user'])
+
+                existing_emails.add(email)
+                imported_count += 1
+
+            return Response({
+                'message': f'Import complete. {imported_count} members added, {skipped_count} rows skipped.',
+                'imported': imported_count,
+                'skipped': skipped_count,
+                'errors': errors,
+            })
+
         except Exception as e:
-            return Response({'error': f'Failed to process CSV: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': f'Failed to import CSV: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+
 
     @action(detail=False, methods=['get'])
     def export_csv(self, request):

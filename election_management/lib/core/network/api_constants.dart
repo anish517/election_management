@@ -34,6 +34,9 @@ class ApiConstants {
   // Members
   static const String members = '/members/';
   static String memberDetail(String id) => '/members/$id/';
+  static const String previewCsv = '/members/preview_csv/';
+  static const String importCsv = '/members/import_csv/';
+
 
   // Voting
   static const String votingHistory = '/voting/history/';

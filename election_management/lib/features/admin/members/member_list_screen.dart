@@ -7,13 +7,11 @@ import '../../../core/providers/admin_providers.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../shared/widgets/admin_drawer.dart';
 import '../../../shared/widgets/shimmer_loaders.dart';
 import '../../../shared/widgets/empty_state.dart';
-import '../../../core/network/api_client.dart';
+import 'csv_import_wizard_screen.dart';
 
 class MemberListScreen extends ConsumerWidget {
   const MemberListScreen({super.key});
@@ -50,58 +48,12 @@ class MemberListScreen extends ConsumerWidget {
           ),
           IconButton(
             icon: const Icon(Icons.upload_file_rounded),
-            tooltip: 'Import CSV',
+            tooltip: 'Import CSV Wizard',
             onPressed: () async {
-              try {
-                // We'll use file_picker to get the file
-                final result = await FilePicker.pickFiles(
-                  type: FileType.custom,
-                  allowedExtensions: ['csv'],
-                  withData: true,
-                );
-
-                if (result != null && result.files.single.bytes != null) {
-                  // Show loading
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Uploading CSV...')),
-                    );
-                  }
-
-                  final fileBytes = result.files.single.bytes!;
-                  final fileName = result.files.single.name;
-                  final dio = ref.read(apiClientProvider);
-
-                  final formData = FormData.fromMap({
-                    'file': MultipartFile.fromBytes(
-                      fileBytes,
-                      filename: fileName,
-                    ),
-                  });
-
-                  final resp = await dio.post(
-                    ApiConstants.members + 'import_csv/',
-                    data: formData,
-                  );
-
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          resp.data['message'] ?? 'Import successful!',
-                        ),
-                      ),
-                    );
-                    ref.invalidate(membersProvider);
-                  }
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
-                }
-              }
+              await Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CsvImportWizardScreen()),
+              );
+              ref.invalidate(membersProvider);
             },
           ),
           IconButton(

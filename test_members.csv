@@ -1,0 +1,11 @@
+First Name,Last Name,Email Address,Employee ID,Phone Number,Dept,Location,Job Title,Weight
+Niaj,Miller,niaj.miller0@example.com,EMP1000,555-130-9297,Finance,London,Coordinator,2.9
+Bob,Smith,bob.smith1@example.com,EMP1001,555-263-7343,Finance,Berlin,Manager,3.7
+Mallory,Martinez,mallory.martinez2@example.com,EMP1002,555-429-7682,HR,Tokyo,Coordinator,3.3
+Frank,Smith,frank.smith3@example.com,EMP1003,555-529-9251,Sales,Remote,Analyst,3.6
+Judy,Brown,judy.brown4@example.com,EMP1004,555-975-3552,Finance,Remote,Coordinator,1.8
+Eve,Johnson,eve.johnson5@example.com,EMP1005,555-461-8455,Legal,Berlin,Manager,4.6
+Grace,Jones,grace.jones6@example.com,EMP1006,555-407-8819,Sales,London,Coordinator,3.8
+Alice,Smith,alice.smith7@example.com,EMP1007,555-555-5408,Engineering,Berlin,Analyst,3.7
+Bad,User,not-an-email,ERR1,,,,,1.0
+Missing,Email,,ERR2,,,,,1.0

@@ -9,6 +9,29 @@ from apps.elections.models import Election, ElectionState
 from apps.audit.models import log_action
 
 
+@shared_task(bind=True, max_retries=3)
+def calculate_results(self, election_id):
+    """
+    Asynchronously runs the tally engine on a closed election and caches
+    the result so the Results Screen loads instantly.
+    Triggered automatically when voting_end_at is reached.
+    """
+    try:
+        from apps.results.services import TallyService
+        election = Election.objects.get(id=election_id)
+        tally = TallyService.tally_election(election)
+        log_action('election.results_calculated', election.organization, None, {
+            'election_id': election_id,
+            'ballots_cast': tally.get('ballots_cast', 0),
+        })
+        return {'status': 'ok', 'election_id': election_id}
+    except Election.DoesNotExist:
+        return {'status': 'error', 'message': f'Election {election_id} not found'}
+    except Exception as exc:
+        # Retry up to 3 times with exponential backoff
+        raise self.retry(exc=exc, countdown=60 * (self.request.retries + 1))
+
+
 @shared_task
 def transition_election_states():
     """
@@ -58,10 +81,6 @@ def transition_election_states():
         ).select_for_update()
         
         for election in elections:
-            # We assume voter roll was generated when nomination closed,
-            # or it's generated here. (doc: 12-Member-Management.md §12.3)
-            # The ballot snapshot should be hashed here.
-            
             election.transition_to(ElectionState.VOTING_OPEN)
             log_action('election.state_changed', election.organization, None, {
                 'election_id': str(election.id),
@@ -86,5 +105,5 @@ def transition_election_states():
                 'reason': 'Scheduled time reached'
             })
             
-            # Trigger result calculation async
-            # calculate_results.delay(election.id)
+            # Automatically trigger tally calculation once voting closes
+            calculate_results.delay(str(election.id))

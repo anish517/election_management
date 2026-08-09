@@ -172,6 +172,7 @@ class _EditMemberDialogState extends ConsumerState<EditMemberDialog> {
                         value: _membershipStatus,
                         decoration: const InputDecoration(labelText: 'Status'),
                         items: const [
+                          DropdownMenuItem(value: 'invited', child: Text('Invited')),
                           DropdownMenuItem(value: 'active', child: Text('Active')),
                           DropdownMenuItem(value: 'suspended', child: Text('Suspended')),
                           DropdownMenuItem(value: 'expired', child: Text('Expired')),

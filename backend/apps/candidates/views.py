@@ -46,12 +46,25 @@ class CandidateViewSet(viewsets.ModelViewSet):
             )
         else:
             # Self-nomination by a voter: enforce their own member record
-            member = self.request.user.organization.members.get(email=self.request.user.email)
-            serializer.save(
-                election=election,
-                status=NominationStatus.SUBMITTED,
-                member=member
-            )
+            try:
+                member = self.request.user.organization.members.get(email=self.request.user.email)
+            except getattr(self.request.user.organization.members.model, 'DoesNotExist'):
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError({'error': 'You do not have a linked member profile in this organization to run as a candidate.'})
+            except getattr(self.request.user.organization.members.model, 'MultipleObjectsReturned'):
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError({'error': 'Multiple member profiles found for your email. Please contact an admin.'})
+
+            from django.db import IntegrityError
+            try:
+                serializer.save(
+                    election=election,
+                    status=NominationStatus.SUBMITTED,
+                    member=member
+                )
+            except IntegrityError:
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError({'error': 'You have already submitted a nomination for this position.'})
 
     @action(detail=True, methods=['post'])
     def approve(self, request, election_pk=None, pk=None):

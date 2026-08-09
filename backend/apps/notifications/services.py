@@ -137,7 +137,7 @@ class NotificationService:
         frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
         election_url = f"{frontend_url}/elections/{election.id}"
 
-        nom_close = election.nomination_close_at.strftime('%B %d, %Y at %H:%M') if election.nomination_close_at else 'TBD'
+        nom_close = (election.nomination_close_at.strftime('%B %d, %Y at %H:%M') + ' UTC') if election.nomination_close_at else 'TBD'
 
         body = f'''
         <p style="color:#94A3B8;font-size:15px;margin:0 0 20px;line-height:1.6;">
@@ -173,7 +173,7 @@ class NotificationService:
         frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
         election_url = f"{frontend_url}/elections/{election.id}"
 
-        voting_end = election.voting_end_at.strftime('%B %d, %Y at %H:%M') if election.voting_end_at else 'TBD'
+        voting_end = (election.voting_end_at.strftime('%B %d, %Y at %H:%M') + ' UTC') if election.voting_end_at else 'TBD'
 
         body = f'''
         <p style="color:#94A3B8;font-size:15px;margin:0 0 20px;line-height:1.6;">

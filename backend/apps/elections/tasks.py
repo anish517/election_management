@@ -20,6 +20,10 @@ def calculate_results(self, election_id):
         from apps.results.services import TallyService
         election = Election.objects.get(id=election_id)
         tally = TallyService.tally_election(election)
+        
+        # Transition state to make results visible to auditors/admins
+        election.transition_to(ElectionState.RESULTS_PROVISIONAL)
+        
         log_action('election.results_calculated', election.organization, None, {
             'election_id': election_id,
             'ballots_cast': tally.get('ballots_cast', 0),

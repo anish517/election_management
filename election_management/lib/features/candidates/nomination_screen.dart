@@ -60,9 +60,17 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
             const SnackBar(content: Text('Nomination submitted successfully!')));
       }
     } on DioException catch (e) {
-      final msg = (e.response?.data is Map)
-          ? e.response?.data['error'] ?? 'Submission failed'
-          : 'Submission failed';
+      String msg = 'Submission failed';
+      if (e.response?.data is Map) {
+        final data = e.response!.data as Map;
+        if (data.containsKey('error')) {
+          msg = data['error'].toString();
+        } else if (data.containsKey('non_field_errors')) {
+          msg = (data['non_field_errors'] as List).join(', ');
+        } else if (data.values.isNotEmpty) {
+          msg = data.values.first.toString();
+        }
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       }

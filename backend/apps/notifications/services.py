@@ -6,8 +6,9 @@ In development (no EMAIL_HOST_USER set): emails print to the Django console.
 In production: emails are sent via Gmail/SMTP configured in settings.
 """
 import logging
-from django.core.mail import EmailMultiAlternatives
+import zoneinfo
 from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +138,8 @@ class NotificationService:
         frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
         election_url = f"{frontend_url}/elections/{election.id}"
 
-        nom_close = (election.nomination_close_at.strftime('%B %d, %Y at %H:%M') + ' UTC') if election.nomination_close_at else 'TBD'
+        tz = zoneinfo.ZoneInfo(election.organization.timezone)
+        nom_close = (election.nomination_close_at.astimezone(tz).strftime('%B %d, %Y at %I:%M %p') + f' {election.organization.timezone}') if election.nomination_close_at else 'TBD'
 
         body = f'''
         <p style="color:#94A3B8;font-size:15px;margin:0 0 20px;line-height:1.6;">
@@ -173,7 +175,8 @@ class NotificationService:
         frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
         election_url = f"{frontend_url}/elections/{election.id}"
 
-        voting_end = (election.voting_end_at.strftime('%B %d, %Y at %H:%M') + ' UTC') if election.voting_end_at else 'TBD'
+        tz = zoneinfo.ZoneInfo(election.organization.timezone)
+        voting_end = (election.voting_end_at.astimezone(tz).strftime('%B %d, %Y at %I:%M %p') + f' {election.organization.timezone}') if election.voting_end_at else 'TBD'
 
         body = f'''
         <p style="color:#94A3B8;font-size:15px;margin:0 0 20px;line-height:1.6;">

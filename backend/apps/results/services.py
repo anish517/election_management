@@ -14,7 +14,8 @@ class TallyService:
         pos_id = str(position.id)
         total_valid_ballots = 0
         
-        candidates_map = {str(c.id): c.member.full_name for c in Candidate.objects.filter(position=position)}
+        from apps.candidates.models import NominationStatus
+        candidates_map = {str(c.id): c.member.full_name for c in Candidate.objects.filter(position=position, status=NominationStatus.APPROVED)}
         seats = position.seats_available
         winners = []
         breakdown = []

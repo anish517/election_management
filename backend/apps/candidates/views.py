@@ -57,22 +57,27 @@ class CandidateViewSet(viewsets.ModelViewSet):
     def approve(self, request, election_pk=None, pk=None):
         candidate = self.get_object()
         notes = request.data.get('notes', '')
-        
+
         if candidate.status not in [NominationStatus.SUBMITTED, NominationStatus.UNDER_REVIEW]:
             return Response({'error': 'Can only approve submitted nominations.'}, status=400)
-            
+
         candidate.status = NominationStatus.APPROVED
         candidate.reviewed_by = request.user
         candidate.review_notes = notes
         candidate.reviewed_at = timezone.now()
         candidate.save()
-        
+
         log_action('candidate.approved', request.user.organization, request.user, {
             'candidate_id': str(candidate.id),
             'election_id': str(election_pk)
         })
-        
+
+        # 📧 Notify the candidate their nomination was approved
+        from apps.notifications.tasks import send_candidate_approved_notification
+        send_candidate_approved_notification.delay(str(election_pk), str(candidate.id))
+
         return Response(self.get_serializer(candidate).data)
+
 
     @action(detail=True, methods=['post'])
     def reject(self, request, election_pk=None, pk=None):

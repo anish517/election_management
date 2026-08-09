@@ -39,15 +39,21 @@ def transition_election_states():
     based on their scheduled dates.
     (doc: 07-System-Architecture.md §7.5, doc: 03-Nepal-Election-Workflow.md)
     """
+    from apps.notifications.tasks import (
+        send_nomination_open_notification,
+        send_voting_open_notification,
+        send_voting_closed_notification,
+    )
+
     now = timezone.now()
-    
+
     # 1. PUBLISHED -> NOMINATION_OPEN
     with transaction.atomic():
         elections = Election.objects.filter(
             state=ElectionState.PUBLISHED,
             nomination_open_at__lte=now
         ).select_for_update()
-        
+
         for election in elections:
             election.transition_to(ElectionState.NOMINATION_OPEN)
             log_action('election.state_changed', election.organization, None, {
@@ -56,6 +62,8 @@ def transition_election_states():
                 'to_state': ElectionState.NOMINATION_OPEN,
                 'reason': 'Scheduled time reached'
             })
+            # 📧 Notify all members that nominations are open
+            send_nomination_open_notification.delay(str(election.id))
 
     # 2. NOMINATION_OPEN -> NOMINATION_CLOSED
     with transaction.atomic():
@@ -63,7 +71,7 @@ def transition_election_states():
             state=ElectionState.NOMINATION_OPEN,
             nomination_close_at__lte=now
         ).select_for_update()
-        
+
         for election in elections:
             election.transition_to(ElectionState.NOMINATION_CLOSED)
             log_action('election.state_changed', election.organization, None, {
@@ -72,6 +80,7 @@ def transition_election_states():
                 'to_state': ElectionState.NOMINATION_CLOSED,
                 'reason': 'Scheduled time reached'
             })
+            # No notification here — next email is when voting opens
 
     # 3. NOMINATION_CLOSED -> VOTING_OPEN
     with transaction.atomic():
@@ -79,7 +88,7 @@ def transition_election_states():
             state=ElectionState.NOMINATION_CLOSED,
             voting_start_at__lte=now
         ).select_for_update()
-        
+
         for election in elections:
             election.transition_to(ElectionState.VOTING_OPEN)
             log_action('election.state_changed', election.organization, None, {
@@ -88,6 +97,8 @@ def transition_election_states():
                 'to_state': ElectionState.VOTING_OPEN,
                 'reason': 'Scheduled time reached'
             })
+            # 📧 Notify all members to go vote!
+            send_voting_open_notification.delay(str(election.id))
 
     # 4. VOTING_OPEN -> VOTING_CLOSED
     with transaction.atomic():
@@ -95,7 +106,7 @@ def transition_election_states():
             state=ElectionState.VOTING_OPEN,
             voting_end_at__lte=now
         ).select_for_update()
-        
+
         for election in elections:
             election.transition_to(ElectionState.VOTING_CLOSED)
             log_action('election.state_changed', election.organization, None, {
@@ -104,6 +115,8 @@ def transition_election_states():
                 'to_state': ElectionState.VOTING_CLOSED,
                 'reason': 'Scheduled time reached'
             })
-            
-            # Automatically trigger tally calculation once voting closes
+            # 📧 Notify members voting has closed & results coming soon
+            send_voting_closed_notification.delay(str(election.id))
+            # ⚙️ Automatically trigger tally calculation
             calculate_results.delay(str(election.id))
+

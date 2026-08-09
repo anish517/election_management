@@ -55,6 +55,11 @@ class MemberViewSet(viewsets.ModelViewSet):
                 Member.objects.filter(organization=request.user.organization)
                 .values_list('email', flat=True)
             )
+            existing_codes = set(
+                Member.objects.filter(organization=request.user.organization)
+                .exclude(member_code='')
+                .values_list('member_code', flat=True)
+            )
 
             for i, row in enumerate(reader, start=2):  # start=2 because row 1 is header
                 # Apply column mapping
@@ -69,6 +74,7 @@ class MemberViewSet(viewsets.ModelViewSet):
 
                 email = mapped.get('email', '')
                 full_name = mapped.get('full_name', '')
+                member_code = mapped.get('member_code', '')
 
                 # Validate
                 error = None
@@ -78,6 +84,8 @@ class MemberViewSet(viewsets.ModelViewSet):
                     error = f'"{email}" is not a valid email address'
                 elif email in existing_emails:
                     error = f'Member with email "{email}" already exists'
+                elif member_code and member_code in existing_codes:
+                    error = f'Member Code "{member_code}" already exists'
 
                 if error:
                     error_rows.append({
@@ -88,6 +96,8 @@ class MemberViewSet(viewsets.ModelViewSet):
                     })
                 else:
                     existing_emails.add(email)  # track within-file duplicates
+                    if member_code:
+                        existing_codes.add(member_code)
                     valid_rows.append({
                         'row': i,
                         'full_name': full_name,
@@ -146,6 +156,11 @@ class MemberViewSet(viewsets.ModelViewSet):
                 Member.objects.filter(organization=request.user.organization)
                 .values_list('email', flat=True)
             )
+            existing_codes = set(
+                Member.objects.filter(organization=request.user.organization)
+                .exclude(member_code='')
+                .values_list('member_code', flat=True)
+            )
 
             imported_count = 0
             skipped_count = 0
@@ -163,7 +178,8 @@ class MemberViewSet(viewsets.ModelViewSet):
                         mapped[field] = row.get(field, '').strip()
 
                 email = mapped.get('email', '')
-                if not email or '@' not in email or email in existing_emails:
+                member_code = mapped.get('member_code', '')
+                if not email or '@' not in email or email in existing_emails or (member_code and member_code in existing_codes):
                     skipped_count += 1
                     continue
 
@@ -214,6 +230,8 @@ class MemberViewSet(viewsets.ModelViewSet):
                     member.save(update_fields=['user'])
 
                 existing_emails.add(email)
+                if member_code:
+                    existing_codes.add(member_code)
                 imported_count += 1
 
             return Response({

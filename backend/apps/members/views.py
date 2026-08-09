@@ -183,7 +183,7 @@ class MemberViewSet(viewsets.ModelViewSet):
                         'region': mapped.get('region', ''),
                         'position_title': mapped.get('position_title', ''),
                         'voting_weight': voting_weight,
-                        'membership_status': mapped.get('membership_status', 'active') or 'active',
+                        'membership_status': (mapped.get('membership_status') or 'active').lower(),
                         'photo_url': mapped.get('photo_url', ''),
                         'gender': mapped.get('gender', ''),
                     }

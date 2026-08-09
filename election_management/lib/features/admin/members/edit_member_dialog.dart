@@ -89,97 +89,101 @@ class _EditMemberDialogState extends ConsumerState<EditMemberDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Edit Member'),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 16),
-              ImageUploadWidget(
-                initialImageUrl: _photoUrl,
-                placeholderText: widget.member.fullName.isNotEmpty 
-                    ? widget.member.fullName.substring(0, 1).toUpperCase() 
-                    : 'M',
-                radius: 40,
-                onImageUploaded: (url) => setState(() => _photoUrl = url),
-              ),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Full Name'),
-                validator: (v) => v!.isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(labelText: 'Email Address (Optional)'),
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _memberCodeController,
-                      decoration: const InputDecoration(labelText: 'Member Code'),
-                      validator: (v) => v!.isEmpty ? 'Required' : null,
+      content: SizedBox(
+        width: 500,
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 16),
+                ImageUploadWidget(
+                  initialImageUrl: _photoUrl,
+                  placeholderText: widget.member.fullName.isNotEmpty 
+                      ? widget.member.fullName.substring(0, 1).toUpperCase() 
+                      : 'M',
+                  radius: 40,
+                  onImageUploaded: (url) => setState(() => _photoUrl = url),
+                ),
+                const SizedBox(height: 24),
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(labelText: 'Full Name'),
+                  validator: (v) => v!.isEmpty ? 'Required' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _emailController,
+                  decoration: const InputDecoration(labelText: 'Email Address (Optional)'),
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _memberCodeController,
+                        decoration: const InputDecoration(labelText: 'Member Code'),
+                        validator: (v) => v!.isEmpty ? 'Required' : null,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _phoneController,
-                      decoration: const InputDecoration(labelText: 'Phone'),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _phoneController,
+                        decoration: const InputDecoration(labelText: 'Phone'),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _departmentController,
-                      decoration: const InputDecoration(labelText: 'Department'),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _departmentController,
+                        decoration: const InputDecoration(labelText: 'Department'),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _regionController,
-                      decoration: const InputDecoration(labelText: 'Region'),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _regionController,
+                        decoration: const InputDecoration(labelText: 'Region'),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _votingWeightController,
-                      decoration: const InputDecoration(labelText: 'Voting Weight'),
-                      keyboardType: TextInputType.number,
-                      validator: (v) => double.tryParse(v ?? '') == null ? 'Invalid' : null,
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _votingWeightController,
+                        decoration: const InputDecoration(labelText: 'Voting Weight'),
+                        keyboardType: TextInputType.number,
+                        validator: (v) => double.tryParse(v ?? '') == null ? 'Invalid' : null,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: _membershipStatus,
-                      decoration: const InputDecoration(labelText: 'Status'),
-                      items: const [
-                        DropdownMenuItem(value: 'active', child: Text('Active')),
-                        DropdownMenuItem(value: 'suspended', child: Text('Suspended')),
-                        DropdownMenuItem(value: 'expired', child: Text('Expired')),
-                      ],
-                      onChanged: (v) => setState(() => _membershipStatus = v!),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: _membershipStatus,
+                        decoration: const InputDecoration(labelText: 'Status'),
+                        items: const [
+                          DropdownMenuItem(value: 'active', child: Text('Active')),
+                          DropdownMenuItem(value: 'suspended', child: Text('Suspended')),
+                          DropdownMenuItem(value: 'expired', child: Text('Expired')),
+                        ],
+                        onChanged: (v) => setState(() => _membershipStatus = v!),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
           ),
         ),
       ),

@@ -10,6 +10,7 @@ import '../../core/providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/shimmer_loaders.dart';
+import '../../shared/widgets/responsive_layout.dart';
 
 class ResultsScreen extends ConsumerStatefulWidget {
   final String electionId;
@@ -97,7 +98,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
             ],
           ),
         ),
-        data: (tally) => _buildResults(context, tally, isLive),
+        data: (tally) => ResponsivePageWrapper(child: _buildResults(context, tally, isLive)),
       ),
     );
   }
@@ -194,12 +195,21 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
   }
 
   Widget _buildPositionResult(BuildContext context, PositionResult posResult, bool isLive) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? AppColors.surface : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.surfaceVariant),
+        border: Border.all(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05)),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -224,7 +234,8 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
               ],
             ),
           ),
-          const Divider(color: AppColors.surfaceVariant, height: 1),
+          const SizedBox(height: 12),
+          Divider(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05), height: 1),
           // Candidates
           ...posResult.breakdown.asMap().entries.map((entry) {
             final i = entry.key;
@@ -282,7 +293,7 @@ class _CandidateResultTile extends StatelessWidget {
               Container(
                 width: 32, height: 32,
                 decoration: BoxDecoration(
-                  color: isHighlighted ? AppColors.accent.withValues(alpha: 0.2) : AppColors.surfaceVariant,
+                  color: isHighlighted ? AppColors.accent.withValues(alpha: 0.2) : (Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05)),
                   shape: BoxShape.circle,
                 ),
                 child: isWinner
@@ -300,7 +311,9 @@ class _CandidateResultTile extends StatelessWidget {
                     Row(
                       children: [
                         Text(score.name, style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: isHighlighted ? AppColors.textPrimary : AppColors.textSecondary,
+                              color: isHighlighted 
+                                ? (Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : AppColors.textPrimaryLightMode)
+                                : (Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondary : AppColors.textSecondaryLightMode),
                               fontWeight: isHighlighted ? FontWeight.w700 : FontWeight.w400)),
                         if (isWinner) ...[
                           const SizedBox(width: 8),
@@ -344,7 +357,7 @@ class _CandidateResultTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: percentage.clamp(0.0, 1.0),
-              backgroundColor: AppColors.surfaceVariant,
+              backgroundColor: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05),
               valueColor: AlwaysStoppedAnimation<Color>(barColor),
               minHeight: 6,
             ),

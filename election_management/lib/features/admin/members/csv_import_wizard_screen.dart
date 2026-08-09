@@ -57,6 +57,10 @@ class _CsvImportWizardScreenState extends ConsumerState<CsvImportWizardScreen> {
     'region',
     'position_title',
     'voting_weight',
+    'photo_url',
+    'gender',
+    'membership_status',
+    'membership_expiry_date',
     '(ignore)',
   ];
 
@@ -69,6 +73,10 @@ class _CsvImportWizardScreenState extends ConsumerState<CsvImportWizardScreen> {
     'region': 'Region',
     'position_title': 'Position Title',
     'voting_weight': 'Voting Weight',
+    'photo_url': 'Photo URL',
+    'gender': 'Gender',
+    'membership_status': 'Membership Status',
+    'membership_expiry_date': 'Membership Expiry Date',
     '(ignore)': '— Ignore this column —',
   };
 
@@ -83,6 +91,10 @@ class _CsvImportWizardScreenState extends ConsumerState<CsvImportWizardScreen> {
     if (c.contains('region')) return 'region';
     if (c.contains('position') || c.contains('title') || c.contains('role')) return 'position_title';
     if (c.contains('weight') || c.contains('voting')) return 'voting_weight';
+    if (c.contains('photo') || c.contains('image') || c.contains('avatar') || c.contains('pic')) return 'photo_url';
+    if (c.contains('gender') || c.contains('sex')) return 'gender';
+    if (c.contains('status')) return 'membership_status';
+    if (c.contains('expire') || c.contains('expiry')) return 'membership_expiry_date';
     return '(ignore)';
   }
 
@@ -202,7 +214,7 @@ class _CsvImportWizardScreenState extends ConsumerState<CsvImportWizardScreen> {
     final steps = ['Upload', 'Map Columns', 'Preview', 'Done'];
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      color: AppColors.surface,
+      color: Theme.of(context).brightness == Brightness.dark ? AppColors.surface : Colors.white,
       child: Row(
         children: steps.asMap().entries.map((entry) {
           final idx = entry.key;
@@ -226,7 +238,7 @@ class _CsvImportWizardScreenState extends ConsumerState<CsvImportWizardScreen> {
                             ? AppColors.success
                             : isActive
                                 ? AppColors.primaryLight
-                                : AppColors.surfaceVariant,
+                                : (Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.1)),
                       ),
                       child: Center(
                         child: isDone
@@ -257,7 +269,7 @@ class _CsvImportWizardScreenState extends ConsumerState<CsvImportWizardScreen> {
                     child: Container(
                       height: 2,
                       margin: const EdgeInsets.only(bottom: 18),
-                      color: idx < _step ? AppColors.success : AppColors.surfaceVariant,
+                      color: idx < _step ? AppColors.success : (Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.2)),
                     ),
                   ),
               ],
@@ -303,7 +315,7 @@ class _CsvImportWizardScreenState extends ConsumerState<CsvImportWizardScreen> {
               width: double.infinity,
               height: 200,
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: Theme.of(context).brightness == Brightness.dark ? AppColors.surface : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: AppColors.primaryLight.withValues(alpha: 0.5),
@@ -395,9 +407,9 @@ class _CsvImportWizardScreenState extends ConsumerState<CsvImportWizardScreen> {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Theme.of(context).brightness == Brightness.dark ? AppColors.surface : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.surfaceVariant),
+        border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
@@ -421,10 +433,10 @@ class _CsvImportWizardScreenState extends ConsumerState<CsvImportWizardScreen> {
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(color: AppColors.surfaceVariant),
+                  borderSide: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.2)),
                 ),
                 filled: true,
-                fillColor: AppColors.surfaceVariant.withValues(alpha: 0.5),
+                fillColor: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceVariant.withValues(alpha: 0.5) : Colors.black.withValues(alpha: 0.05),
               ),
               items: _dbFields.map((f) => DropdownMenuItem(
                 value: f,
@@ -605,9 +617,9 @@ class _CsvImportWizardScreenState extends ConsumerState<CsvImportWizardScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.surfaceVariant),
+        color: Theme.of(context).brightness == Brightness.dark ? AppColors.surface : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
@@ -627,7 +639,7 @@ class _CsvImportWizardScreenState extends ConsumerState<CsvImportWizardScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: AppColors.surfaceVariant,
+                color: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(r['member_code'], style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
@@ -707,8 +719,8 @@ class _CsvImportWizardScreenState extends ConsumerState<CsvImportWizardScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.surfaceVariant)),
+        color: Theme.of(context).brightness == Brightness.dark ? AppColors.surface : Colors.white,
+        border: Border(top: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.1))),
       ),
       child: SizedBox(
         width: double.infinity,

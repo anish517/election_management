@@ -20,6 +20,10 @@ class EmptyStateWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = isDark ? AppColors.textMuted : AppColors.textMutedLightMode;
+    final titleColor = isDark ? AppColors.textSecondary : AppColors.textSecondaryLightMode;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -37,14 +41,14 @@ class EmptyStateWidget extends StatelessWidget {
                   width: 1.5,
                 ),
               ),
-              child: Icon(icon, size: 44, color: AppColors.textMuted),
+              child: Icon(icon, size: 44, color: iconColor),
             ),
             const SizedBox(height: 24),
             Text(
               title,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppColors.textSecondary,
+                color: titleColor,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -54,7 +58,7 @@ class EmptyStateWidget extends StatelessWidget {
                 subtitle!,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppColors.textMuted,
+                  color: iconColor,
                   height: 1.5,
                 ),
               ),

@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../shared/widgets/admin_drawer.dart';
 import '../../../shared/widgets/shimmer_loaders.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/responsive_layout.dart';
 import 'csv_import_wizard_screen.dart';
 
 class MemberListScreen extends ConsumerWidget {
@@ -91,21 +92,44 @@ class MemberListScreen extends ConsumerWidget {
               subtitle: 'Import a CSV or add members to get started.',
             );
           }
-          return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(membersProvider),
-            child: ListView.separated(
+          return ResponsivePageWrapper(
+            child: RefreshIndicator(
+              onRefresh: () async => ref.invalidate(membersProvider),
+              child: GridView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: members.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 450,
+                mainAxisExtent: 110,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+              ),
               itemBuilder: (context, i) {
                 final m = members[i];
-                return ListTile(
-                  tileColor: AppColors.surface,
-                  shape: RoundedRectangleBorder(
+                final isDark = Theme.of(context).brightness == Brightness.dark;
+                
+                return Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.surface : Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: AppColors.surfaceVariant),
+                    border: Border.all(
+                      color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05),
+                    ),
+                    boxShadow: [
+                      if (!isDark)
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                    ],
                   ),
-                  leading: m.photoUrl.isNotEmpty
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                    clipBehavior: Clip.antiAlias,
+                    child: ListTile(
+                      leading: m.photoUrl.isNotEmpty
                       ? CircleAvatar(
                           backgroundImage: NetworkImage(m.photoUrl),
                         )
@@ -215,8 +239,11 @@ class MemberListScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
-                );
+                ),
+              ),
+            );
               },
+            ),
             ),
           );
         },

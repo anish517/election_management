@@ -153,13 +153,22 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
   Widget _buildPositionSummary(BuildContext context, PositionModel position, List<String> selectedIds) {
     final selectedCandidates = position.candidates.where((c) => selectedIds.contains(c.id)).toList();
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? AppColors.surface : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.surfaceVariant),
+        border: Border.all(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05)),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -204,11 +213,12 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
   }
 
   Widget _buildBottomBar(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.surfaceVariant)),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surface : Colors.white,
+        border: Border(top: BorderSide(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05))),
       ),
       child: SafeArea(
         top: false,

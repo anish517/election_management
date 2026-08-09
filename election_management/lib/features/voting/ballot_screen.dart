@@ -142,11 +142,12 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
     final hasSelections = selections.values.any((l) => l.isNotEmpty);
     final isLastStep = _currentIndex == positions.length - 1;
     
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.surfaceVariant)),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surface : Colors.white,
+        border: Border(top: BorderSide(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05))),
       ),
       child: SafeArea(
         top: false,
@@ -195,11 +196,20 @@ class _BallotPositionCard extends ConsumerWidget {
     final positionSelections = selections[position.id] ?? [];
     final isFPTP = position.seatsAvailable == 1;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? AppColors.surface : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.surfaceVariant),
+        border: Border.all(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05)),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -207,8 +217,8 @@ class _BallotPositionCard extends ConsumerWidget {
           // Position header
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppColors.surfaceVariant)),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05))),
             ),
             child: Row(
               children: [

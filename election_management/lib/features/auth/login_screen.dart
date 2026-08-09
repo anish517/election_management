@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/loading_button.dart';
+import '../../shared/widgets/responsive_layout.dart';
+import '../../shared/widgets/glass_card.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -71,31 +73,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 60),
-              _buildHeader(),
-              const SizedBox(height: 40),
-              _buildTabBar(),
-              const SizedBox(height: 28),
-              if (_errorMessage != null) _buildError(),
-              _buildTabContent(),
-              const SizedBox(height: 24),
-              Center(
-                child: TextButton.icon(
-                  onPressed: () => context.pushNamed('register'),
-                  icon: const Icon(Icons.business_rounded),
-                  label: const Text('Create an Organization'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                  ),
+        child: Center(
+          child: ResponsiveFormWrapper(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+              child: GlassCard(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(),
+                    const SizedBox(height: 40),
+                    _buildTabBar(),
+                    const SizedBox(height: 28),
+                    if (_errorMessage != null) _buildError(),
+                    _buildTabContent(),
+                    const SizedBox(height: 24),
+                    Center(
+                      child: TextButton.icon(
+                        onPressed: () => context.pushNamed('register'),
+                        icon: const Icon(Icons.business_rounded),
+                        label: const Text('Create an Organization'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
         ),
       ),
@@ -131,9 +138,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   Widget _buildTabBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
+        color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
       ),
       child: TabBar(
@@ -145,7 +154,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
         labelColor: Colors.white,
-        unselectedLabelColor: AppColors.textMuted,
+        unselectedLabelColor: isDark ? AppColors.textMuted : AppColors.textSecondaryLightMode,
         tabs: const [
           Tab(text: 'Password'),
           Tab(text: 'OTP / Phone'),

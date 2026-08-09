@@ -73,16 +73,16 @@ class OTPService:
         subject_label = purpose_labels.get(purpose, 'Verification')
 
         html_body = f"""
-        <div style="font-family: 'Segoe UI', Arial, sans-serif; background: #0F172A; padding: 40px; min-height: 100vh;">
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; background: #0F172A; padding: 20px 12px; min-height: 100vh;">
           <div style="max-width: 480px; margin: 0 auto; background: #1E293B; border-radius: 16px; overflow: hidden; border: 1px solid #334155;">
-            <div style="background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%); padding: 32px; text-align: center;">
-              <h1 style="color: white; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">🗳️ Election Management System</h1>
+            <div style="background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 100%); padding: 24px 20px; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">🗳️ Election Management System</h1>
               <p style="color: rgba(255,255,255,0.75); margin: 8px 0 0; font-size: 14px;">{subject_label}</p>
             </div>
-            <div style="padding: 32px; text-align: center;">
-              <p style="color: #94A3B8; font-size: 15px; margin: 0 0 24px;">Your One-Time Password is:</p>
-              <div style="background: #0F172A; border: 2px dashed #3B82F6; border-radius: 12px; padding: 20px 32px; display: inline-block; margin-bottom: 24px;">
-                <span style="font-size: 40px; font-weight: 800; letter-spacing: 12px; color: #60A5FA; font-family: monospace;">{otp}</span>
+            <div style="padding: 24px 16px; text-align: center;">
+              <p style="color: #94A3B8; font-size: 15px; margin: 0 0 20px;">Your One-Time Password is:</p>
+              <div style="background: #0F172A; border: 2px dashed #3B82F6; border-radius: 12px; padding: 16px 20px; display: inline-block; margin-bottom: 24px;">
+                <span style="font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #60A5FA; font-family: monospace;">{otp}</span>
               </div>
               <p style="color: #64748B; font-size: 13px; margin: 0;">⏱ This code expires in <strong style="color: #94A3B8;">5 minutes</strong>.</p>
               <p style="color: #64748B; font-size: 13px; margin: 8px 0 0;">🔒 Do not share this code with anyone.</p>

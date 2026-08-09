@@ -7,6 +7,7 @@ import '../../core/theme/app_theme.dart';
 import 'package:intl/intl.dart';
 import '../../shared/widgets/shimmer_loaders.dart';
 import '../../shared/widgets/empty_state.dart';
+import '../../shared/widgets/responsive_layout.dart';
 
 final votingHistoryProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final dio = ref.watch(apiClientProvider);
@@ -26,7 +27,8 @@ class VotingHistoryScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('My Voting History'),
       ),
-      body: historyAsync.when(
+      body: ResponsivePageWrapper(
+        child: historyAsync.when(
         loading: () => const ListSkeleton(count: 5),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (history) {
@@ -46,14 +48,26 @@ class VotingHistoryScreen extends ConsumerWidget {
               final item = history[i];
               final votedAt = DateTime.parse(item['voted_at']).toLocal();
               
-              return Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surface : Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  side: const BorderSide(color: AppColors.surfaceVariant),
+                  border: Border.all(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05)),
+                  boxShadow: [
+                    if (!isDark)
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                  ],
                 ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(16),
+                child: Material(
+                  color: Colors.transparent,
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.all(16),
                   leading: const CircleAvatar(
                     backgroundColor: AppColors.stateVoting,
                     child: Icon(Icons.how_to_vote_rounded, color: Colors.white),
@@ -81,11 +95,13 @@ class VotingHistoryScreen extends ConsumerWidget {
                   onTap: () {
                     context.pushNamed('election-detail', pathParameters: {'electionId': item['election_id']});
                   },
+                  ),
                 ),
               );
             },
           );
         },
+        ),
       ),
     );
   }

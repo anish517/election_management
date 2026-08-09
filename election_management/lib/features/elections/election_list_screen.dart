@@ -8,6 +8,8 @@ import '../../shared/models/models.dart';
 import '../../shared/widgets/admin_drawer.dart';
 import '../../shared/widgets/shimmer_loaders.dart';
 import '../../shared/widgets/empty_state.dart';
+import '../../shared/widgets/responsive_layout.dart';
+import '../../shared/widgets/glass_card.dart';
 
 class ElectionListScreen extends ConsumerWidget {
   const ElectionListScreen({super.key});
@@ -23,7 +25,13 @@ class ElectionListScreen extends ConsumerWidget {
         title: const Text('Elections'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_rounded),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/dashboard');
+            }
+          },
         ),
         actions: [
           IconButton(
@@ -32,41 +40,43 @@ class ElectionListScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: electionsAsync.when(
-        loading: () => const CardListSkeleton(count: 5),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 40),
-              const SizedBox(height: 12),
-              Text('Failed to load elections', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              ElevatedButton(
-                onPressed: () => ref.invalidate(electionsProvider),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
-        ),
-        data: (elections) {
-          if (elections.isEmpty) {
-            return EmptyStateWidget(
-              icon: Icons.ballot_outlined,
-              title: 'No Elections Yet',
-              subtitle: 'Elections created by your admin will appear here.',
-            );
-          }
-          return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(electionsProvider),
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: elections.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (context, i) => _ElectionListTile(election: elections[i], user: user),
+      body: ResponsivePageWrapper(
+        child: electionsAsync.when(
+          loading: () => const CardListSkeleton(count: 5),
+          error: (e, _) => Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 40),
+                const SizedBox(height: 12),
+                Text('Failed to load elections', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                ElevatedButton(
+                  onPressed: () => ref.invalidate(electionsProvider),
+                  child: const Text('Retry'),
+                ),
+              ],
             ),
-          );
-        },
+          ),
+          data: (elections) {
+            if (elections.isEmpty) {
+              return EmptyStateWidget(
+                icon: Icons.ballot_outlined,
+                title: 'No Elections Yet',
+                subtitle: 'Elections created by your admin will appear here.',
+              );
+            }
+            return RefreshIndicator(
+              onRefresh: () async => ref.invalidate(electionsProvider),
+              child: ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: elections.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                itemBuilder: (context, i) => _ElectionListTile(election: elections[i], user: user),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -79,19 +89,15 @@ class _ElectionListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final stateColor = _stateColor(election.state);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final stateColor = _stateColor(election.state, isDark);
 
-    return InkWell(
+    return GlassCard(
+      padding: EdgeInsets.zero,
       onTap: () => context.pushNamed('election-detail',
           pathParameters: {'electionId': election.id}),
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
+      child: Padding(
         padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.surfaceVariant),
-        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -125,27 +131,21 @@ class _ElectionListTile extends StatelessWidget {
             // Voting active — show CTA
             if (election.isVotingActive) ...[
               const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => context.pushNamed('ballot',
-                      pathParameters: {'electionId': election.id}),
-                  icon: const Icon(Icons.how_to_vote_rounded, size: 18),
-                  label: const Text('Vote Now'),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateVoting),
-                ),
+              ElevatedButton.icon(
+                onPressed: () => context.pushNamed('ballot',
+                    pathParameters: {'electionId': election.id}),
+                icon: const Icon(Icons.how_to_vote_rounded, size: 18),
+                label: const Text('Vote Now'),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateVoting),
               ),
             ],
             if (election.hasResults) ...[
               const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => context.pushNamed('results',
-                      pathParameters: {'electionId': election.id}),
-                  icon: const Icon(Icons.emoji_events_outlined, size: 18),
-                  label: const Text('View Results'),
-                ),
+              OutlinedButton.icon(
+                onPressed: () => context.pushNamed('results',
+                    pathParameters: {'electionId': election.id}),
+                icon: const Icon(Icons.emoji_events_outlined, size: 18),
+                label: const Text('View Results'),
               ),
             ],
           ],
@@ -154,15 +154,15 @@ class _ElectionListTile extends StatelessWidget {
     );
   }
 
-  Color _stateColor(String state) {
+  Color _stateColor(String state, bool isDark) {
     switch (state) {
-      case 'draft': return AppColors.stateDraft;
+      case 'draft': return isDark ? AppColors.stateDraft : AppColors.textMutedLightMode;
       case 'published': return AppColors.statePublished;
       case 'nominations_open': case 'nominations_closed': return AppColors.stateNominations;
-      case 'voting_active': return AppColors.stateVoting;
+      case 'voting_open': return AppColors.stateVoting;
       case 'voting_closed': return AppColors.stateClosed;
       case 'results_provisional': case 'results_final': return AppColors.stateResults;
-      default: return AppColors.textMuted;
+      default: return isDark ? AppColors.textMuted : AppColors.textMutedLightMode;
     }
   }
 }
@@ -196,18 +196,22 @@ class _InfoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? AppColors.surfaceVariant : AppColors.surfaceVariantLight;
+    final textColor = isDark ? AppColors.textMuted : AppColors.textSecondaryLightMode;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
+        color: bgColor,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 13, color: AppColors.textMuted),
+          Icon(icon, size: 13, color: textColor),
           const SizedBox(width: 4),
-          Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          Text(label, style: TextStyle(color: textColor, fontSize: 12)),
         ],
       ),
     );

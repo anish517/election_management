@@ -75,11 +75,20 @@ class NominationListScreen extends ConsumerWidget {
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, i) {
               final c = pending[i];
-              return Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+              return Container(
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surface : Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  side: const BorderSide(color: AppColors.surfaceVariant),
+                  border: Border.all(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05)),
+                  boxShadow: [
+                    if (!isDark)
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                  ],
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -91,7 +100,7 @@ class NominationListScreen extends ConsumerWidget {
                       const SizedBox(height: 4),
                       Text(c.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
-                      Text('Manifesto: ${c.manifesto}', style: const TextStyle(color: Colors.white70)),
+                      Text('Manifesto: ${c.manifesto}', style: TextStyle(color: isDark ? Colors.white70 : AppColors.textSecondaryLightMode)),
                       const SizedBox(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,

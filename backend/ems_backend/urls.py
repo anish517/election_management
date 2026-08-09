@@ -17,6 +17,7 @@ from apps.voting.views import VotingViewSet, VotingHistoryView
 from apps.results.views import ElectionResultsViewSet
 from apps.organizations.views import OrganizationView, OrganizationStatsView
 from apps.core.views import FileUploadView
+from apps.audit.views import AuditExportView, AuditVerifyHashView, AuditReceiptLookupView
 
 # Build the main router
 router = routers.SimpleRouter()
@@ -52,4 +53,9 @@ urlpatterns = [
     path('v1/upload/', FileUploadView.as_view(), name='file-upload'),
     path('v1/', include(router.urls)),
     path('v1/', include(election_router.urls)),
+
+    # Auditor Verification Portal (doc: 19-Audit-Compliance.md)
+    path('v1/elections/<uuid:election_id>/audit/export/', AuditExportView.as_view(), name='audit-export'),
+    path('v1/elections/<uuid:election_id>/audit/verify-hash/', AuditVerifyHashView.as_view(), name='audit-verify-hash'),
+    path('v1/elections/<uuid:election_id>/audit/receipt/<str:receipt_hash>/', AuditReceiptLookupView.as_view(), name='audit-receipt-lookup'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -47,6 +47,12 @@ class ApiConstants {
   // Results
   static String results(String eid) => '/elections/$eid/results/results/';
 
+  // Auditor Verification Portal
+  static String auditExport(String eid) => '/elections/$eid/audit/export/';
+  static String auditVerifyHash(String eid) => '/elections/$eid/audit/verify-hash/';
+  static String auditReceiptLookup(String eid, String hash) => '/elections/$eid/audit/receipt/$hash/';
+
+
   // Organization
   static const String organizationProfile = '/organization/';
   static const String organizationStats = '/organization/stats/';

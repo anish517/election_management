@@ -11,6 +11,7 @@ import '../admin/elections/edit_election_dialog.dart';
 import '../admin/elections/edit_position_dialog.dart';
 import '../admin/elections/edit_candidate_dialog.dart';
 import '../admin/elections/assign_officer_dialog.dart';
+import '../admin/elections/audit_portal_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/network/api_constants.dart';
 import '../../core/network/api_client.dart';
@@ -221,6 +222,28 @@ class ElectionDetailScreen extends ConsumerWidget {
                   pathParameters: {'electionId': electionId}),
               icon: const Icon(Icons.emoji_events_outlined),
               label: const Text('View Results'),
+            ),
+          ),
+        ],
+        if (election.hasResults) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => AuditPortalScreen(
+                    electionId: election.id,
+                    electionTitle: election.title,
+                  ),
+                ),
+              ),
+              icon: const Icon(Icons.verified_user_rounded),
+              label: const Text('Auditor Verification Portal'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.textMuted,
+                side: BorderSide(color: AppColors.surfaceVariant),
+              ),
             ),
           ),
         ],

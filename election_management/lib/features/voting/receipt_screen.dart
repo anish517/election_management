@@ -97,13 +97,22 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
   }
 
   Widget _buildReceiptCard(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? AppColors.surface : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.surfaceVariant),
+        border: Border.all(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05)),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,7 +140,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.background,
+              color: isDark ? AppColors.background : Colors.black.withValues(alpha: 0.03),
               borderRadius: BorderRadius.circular(8),
             ),
             child: SelectableText(

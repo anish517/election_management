@@ -158,7 +158,7 @@ class MemberViewSet(viewsets.ModelViewSet):
                     mapped[db_field] = row.get(csv_col, '').strip()
 
                 # Direct field fallback
-                for field in ['full_name', 'email', 'member_code', 'phone', 'department', 'region', 'position_title', 'voting_weight']:
+                for field in ['full_name', 'email', 'member_code', 'phone', 'department', 'region', 'position_title', 'voting_weight', 'photo_url', 'gender', 'membership_status', 'membership_expiry_date']:
                     if field not in mapped and field in row:
                         mapped[field] = row.get(field, '').strip()
 
@@ -183,11 +183,22 @@ class MemberViewSet(viewsets.ModelViewSet):
                         'region': mapped.get('region', ''),
                         'position_title': mapped.get('position_title', ''),
                         'voting_weight': voting_weight,
-                        'membership_status': 'active',
+                        'membership_status': mapped.get('membership_status', 'active') or 'active',
+                        'photo_url': mapped.get('photo_url', ''),
+                        'gender': mapped.get('gender', ''),
                     }
                 )
 
                 if created:
+                    # Handle date parsing for membership_expiry_date safely
+                    expiry_raw = mapped.get('membership_expiry_date', '')
+                    if expiry_raw:
+                        try:
+                            from dateutil import parser
+                            member.membership_expiry_date = parser.parse(expiry_raw).date()
+                            member.save(update_fields=['membership_expiry_date'])
+                        except Exception:
+                            pass
                     # Create login account so member can log in
                     user, user_created = User.objects.get_or_create(
                         email=email,

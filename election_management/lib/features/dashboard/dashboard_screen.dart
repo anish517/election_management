@@ -7,7 +7,10 @@ import '../../core/providers/org_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/admin_drawer.dart';
+import '../../shared/widgets/glass_card.dart';
 import '../../shared/widgets/shimmer_loaders.dart';
+import '../../shared/widgets/responsive_layout.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'dashboard_quick_actions.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -90,31 +93,34 @@ class DashboardScreen extends ConsumerWidget {
           const SizedBox(width: 8),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(electionsProvider),
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildRoleBanner(context, user),
-              const SizedBox(height: 24),
-              if (user != null) DashboardQuickActions(user: user),
-              if (user != null && user.role == 'org_admin') ...[
+      body: ResponsivePageWrapper(
+        child: RefreshIndicator(
+          onRefresh: () async => ref.invalidate(electionsProvider),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+
+                _buildRoleBanner(context, user),
                 const SizedBox(height: 24),
-                _buildOverviewSection(context, ref),
+                if (user != null) DashboardQuickActions(user: user),
+                if (user != null && user.role == 'org_admin') ...[
+                  const SizedBox(height: 24),
+                  _buildOverviewSection(context, ref),
+                ],
+                const SizedBox(height: 24),
+                _buildSectionHeader(context, 'Your Elections', Icons.how_to_vote_rounded,
+                    onTap: () => context.pushNamed('elections')),
+                const SizedBox(height: 12),
+                electionsAsync.when(
+                  loading: () => _buildShimmerList(),
+                  error: (e, _) => _buildError(e.toString(), () => ref.invalidate(electionsProvider)),
+                  data: (elections) => _buildElectionList(context, elections, user),
+                ),
               ],
-              const SizedBox(height: 24),
-              _buildSectionHeader(context, 'Your Elections', Icons.how_to_vote_rounded,
-                  onTap: () => context.pushNamed('elections')),
-              const SizedBox(height: 12),
-              electionsAsync.when(
-                loading: () => _buildShimmerList(),
-                error: (e, _) => _buildError(e.toString(), () => ref.invalidate(electionsProvider)),
-                data: (elections) => _buildElectionList(context, elections, user),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -137,22 +143,20 @@ class DashboardScreen extends ConsumerWidget {
     switch (user.role) {
       case 'org_admin':
         color = AppColors.primaryLight; roleLabel = 'Organization Admin'; icon = Icons.admin_panel_settings_rounded;
+        break;
       case 'election_officer':
         color = AppColors.accent; roleLabel = 'Election Officer'; icon = Icons.manage_accounts_rounded;
+        break;
       case 'observer':
         color = AppColors.warning; roleLabel = 'Observer'; icon = Icons.visibility_rounded;
+        break;
       default:
         color = AppColors.success; roleLabel = 'Voter'; icon = Icons.how_to_vote_rounded;
+        break;
     }
-    return Container(
+    return GlassCard(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [color.withValues(alpha: 0.15), color.withValues(alpha: 0.05)],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
+      color: color.withValues(alpha: 0.15),
       child: Row(
         children: [
           if (user.photoUrl.isNotEmpty)
@@ -176,7 +180,7 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
+    ).animate().fade(duration: 400.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuad);
   }
 
   Widget _buildOverviewSection(BuildContext context, WidgetRef ref) {
@@ -191,26 +195,22 @@ class DashboardScreen extends ConsumerWidget {
           error: (e, _) => Text('Error loading stats: $e'),
           data: (stats) => Row(
             children: [
-              Expanded(child: _buildStatCard(context, 'Members', stats.totalMembers.toString(), Icons.people_alt_rounded, AppColors.primary)),
+              Expanded(child: _buildStatCard(context, 'Members', stats.totalMembers.toString(), Icons.people_alt_rounded, AppColors.primaryLight)),
               const SizedBox(width: 12),
-              Expanded(child: _buildStatCard(context, 'Active Elections', stats.activeElections.toString(), Icons.how_to_vote_rounded, AppColors.stateVoting)),
+              Expanded(child: _buildStatCard(context, 'Active', stats.activeElections.toString(), Icons.how_to_vote_rounded, AppColors.success)),
               const SizedBox(width: 12),
-              Expanded(child: _buildStatCard(context, 'Total Elections', stats.totalElections.toString(), Icons.inventory_2_rounded, AppColors.textSecondary)),
+              Expanded(child: _buildStatCard(context, 'Total', stats.totalElections.toString(), Icons.inventory_2_rounded, AppColors.accent)),
             ],
-          ),
+          ).animate().fade(duration: 400.ms, delay: 100.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuad),
         ),
       ],
     );
   }
 
   Widget _buildStatCard(BuildContext context, String title, String value, IconData icon, Color color) {
-    return Container(
+    return GlassCard(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
+      color: color.withValues(alpha: 0.1),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -240,12 +240,8 @@ class DashboardScreen extends ConsumerWidget {
 
   Widget _buildElectionList(BuildContext context, List<ElectionModel> elections, UserModel? user) {
     if (elections.isEmpty) {
-      return Container(
+      return GlassCard(
         padding: const EdgeInsets.all(32),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-        ),
         child: Column(
           children: [
             const Icon(Icons.ballot_outlined, size: 48, color: AppColors.textMuted),
@@ -261,14 +257,17 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ],
         ),
-      );
+      ).animate().fade().scale(curve: Curves.easeOutBack);
     }
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: elections.length > 5 ? 5 : elections.length,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (context, i) => _ElectionCard(election: elections[i]),
+      itemBuilder: (context, i) => _ElectionCard(election: elections[i])
+          .animate()
+          .fade(delay: Duration(milliseconds: 50 * i))
+          .slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuad),
     );
   }
 
@@ -278,12 +277,9 @@ class DashboardScreen extends ConsumerWidget {
       physics: const NeverScrollableScrollPhysics(),
       itemCount: 3,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (_, __) => Container(
-        height: 90,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-        ),
+      itemBuilder: (_, __) => const GlassCard(
+        padding: EdgeInsets.all(16),
+        child: SizedBox(height: 90),
       ),
     );
   }
@@ -315,17 +311,12 @@ class _ElectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final stateColor = _stateColor(election.state);
-    return InkWell(
+    return GlassCard(
+      padding: EdgeInsets.zero,
       onTap: () => context.pushNamed('election-detail',
           pathParameters: {'electionId': election.id}),
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
+      child: Padding(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.surfaceVariant),
-        ),
         child: Row(
           children: [
             Container(
@@ -366,12 +357,12 @@ class _ElectionCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (election.state == 'voting_active')
+            if (election.state == 'voting_open')
               Container(
                 margin: const EdgeInsets.only(right: 12),
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.stateVoting,
+                  gradient: AppColors.primaryGradient,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Row(
@@ -381,7 +372,7 @@ class _ElectionCard extends StatelessWidget {
                     Text('VOTE NOW', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                   ],
                 ),
-              ),
+              ).animate(onPlay: (controller) => controller.repeat(reverse: true)).fade(begin: 0.8, end: 1.0).scaleXY(begin: 0.98, end: 1.02),
             const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
           ],
         ),
@@ -394,7 +385,7 @@ class _ElectionCard extends StatelessWidget {
       case 'draft': return AppColors.stateDraft;
       case 'published': return AppColors.statePublished;
       case 'nominations_open': case 'nominations_closed': return AppColors.stateNominations;
-      case 'voting_active': return AppColors.stateVoting;
+      case 'voting_open': return AppColors.stateVoting;
       case 'voting_closed': return AppColors.stateClosed;
       case 'results_provisional': case 'results_final': return AppColors.stateResults;
       default: return AppColors.textMuted;
@@ -406,7 +397,7 @@ class _ElectionCard extends StatelessWidget {
       case 'draft': return Icons.edit_outlined;
       case 'published': return Icons.public_rounded;
       case 'nominations_open': case 'nominations_closed': return Icons.person_add_alt_1_outlined;
-      case 'voting_active': return Icons.how_to_vote_rounded;
+      case 'voting_open': return Icons.how_to_vote_rounded;
       case 'voting_closed': return Icons.lock_outline_rounded;
       case 'results_provisional': case 'results_final': return Icons.emoji_events_outlined;
       default: return Icons.circle_outlined;

@@ -119,32 +119,37 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
 
   Widget _buildOtpFields() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(6, (i) {
-        return SizedBox(
-          width: 48,
-          height: 56,
-          child: TextField(
-            controller: _controllers[i],
-            focusNode: _focusNodes[i],
-            keyboardType: TextInputType.number,
-            textAlign: TextAlign.center,
-            maxLength: 1,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            decoration: InputDecoration(
-              counterText: '',
-              filled: true,
-              fillColor: AppColors.surfaceVariant,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.primaryLight, width: 2),
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(right: i < 5 ? 8.0 : 0),
+            child: SizedBox(
+              height: 56,
+              child: TextField(
+                controller: _controllers[i],
+                focusNode: _focusNodes[i],
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                maxLength: 1,
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                decoration: InputDecoration(
+                  contentPadding: EdgeInsets.zero,
+                  counterText: '',
+                  filled: true,
+                  fillColor: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.primaryLight, width: 2),
+                  ),
+                ),
+                onChanged: (v) => _onDigitInput(i, v),
               ),
             ),
-            onChanged: (v) => _onDigitInput(i, v),
           ),
         );
       }),

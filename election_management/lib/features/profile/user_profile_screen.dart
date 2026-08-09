@@ -101,13 +101,25 @@ class UserProfileScreen extends ConsumerWidget {
   }
 
   Widget _buildInfoTile(BuildContext context, IconData icon, String title, String value) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isDark ? AppColors.surface : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.surfaceVariant),
+        border: Border.all(
+          color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05),
+        ),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+        ],
       ),
       child: Row(
         children: [
@@ -124,7 +136,13 @@ class UserProfileScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                Text(
+                  title, 
+                  style: TextStyle(
+                    color: isDark ? AppColors.textMuted : AppColors.textSecondaryLightMode, 
+                    fontSize: 12,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Text(value, style: Theme.of(context).textTheme.titleMedium),
               ],

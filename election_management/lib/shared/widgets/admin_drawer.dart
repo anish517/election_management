@@ -14,8 +14,10 @@ class AdminDrawer extends ConsumerWidget {
       return const SizedBox.shrink(); // Shouldn't be rendered for non-admins anyway
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Drawer(
-      backgroundColor: AppColors.surface,
+      backgroundColor: isDark ? AppColors.surface : Colors.white,
       child: Column(
         children: [
           UserAccountsDrawerHeader(

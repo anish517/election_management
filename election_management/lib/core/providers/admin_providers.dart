@@ -15,6 +15,10 @@ class CreateElectionNotifier extends AsyncNotifier<void> {
   Future<void> createElection({
     required String title,
     required String description,
+    DateTime? nominationOpenAt,
+    DateTime? nominationCloseAt,
+    DateTime? votingStartAt,
+    DateTime? votingEndAt,
   }) async {
     if (state.isLoading) return;
     state = const AsyncValue.loading();
@@ -24,6 +28,10 @@ class CreateElectionNotifier extends AsyncNotifier<void> {
         'title': title,
         'description': description,
         'state': 'draft',
+        if (nominationOpenAt != null) 'nomination_open_at': nominationOpenAt.toUtc().toIso8601String(),
+        if (nominationCloseAt != null) 'nomination_close_at': nominationCloseAt.toUtc().toIso8601String(),
+        if (votingStartAt != null) 'voting_start_at': votingStartAt.toUtc().toIso8601String(),
+        if (votingEndAt != null) 'voting_end_at': votingEndAt.toUtc().toIso8601String(),
       };
       await dio.post(ApiConstants.elections, data: data);
       

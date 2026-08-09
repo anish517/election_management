@@ -1,0 +1,5 @@
+Full Name,Email,Member Code,Phone,Department,Region,Position Title,Voting Weight,Photo URL,Gender,Membership Status,Membership Expiry Date
+John Doe,john.doe@example.com,EMP-001,+1-555-0101,Engineering,North America,Software Engineer,1.0,https://example.com/photos/john.jpg,Male,Active,2028-12-31
+Jane Smith,jane.smith@example.com,EMP-002,+1-555-0102,Marketing,Europe,Marketing Manager,1.0,https://example.com/photos/jane.jpg,Female,Active,2028-12-31
+Alex Johnson,alex.j@example.com,EMP-003,+1-555-0103,Human Resources,Asia Pacific,HR Director,1.5,,Other,Active,2025-06-30
+Sam Williams,sam.w@example.com,EMP-004,,,Sales,Europe,Sales Lead,2.0,,,Invited,

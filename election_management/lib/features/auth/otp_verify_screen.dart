@@ -56,10 +56,13 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
         ),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
               const Icon(Icons.verified_user_outlined, size: 48, color: AppColors.primaryLight),
@@ -100,9 +103,10 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
               Center(
                 child: TextButton(
                   onPressed: () async {
+                    final messenger = ScaffoldMessenger.of(context);
                     await ref.read(authProvider.notifier).requestOtp(widget.identifier);
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      messenger.showSnackBar(
                         const SnackBar(content: Text('New OTP sent!')),
                       );
                     }
@@ -110,23 +114,25 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                   child: const Text('Resend Code'),
                 ),
               ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildOtpFields() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(6, (i) {
-        return Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(right: i < 5 ? 8.0 : 0),
-            child: SizedBox(
-              height: 56,
-              child: TextField(
+        return Padding(
+          padding: EdgeInsets.only(right: i < 5 ? 8.0 : 0),
+          child: SizedBox(
+            width: 48,
+            height: 56,
+            child: TextField(
                 controller: _controllers[i],
                 focusNode: _focusNodes[i],
                 keyboardType: TextInputType.number,
@@ -150,8 +156,7 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                 onChanged: (v) => _onDigitInput(i, v),
               ),
             ),
-          ),
-        );
+          );
       }),
     );
   }

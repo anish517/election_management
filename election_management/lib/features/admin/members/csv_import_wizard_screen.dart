@@ -518,20 +518,12 @@ class _CsvImportWizardScreenState extends ConsumerState<CsvImportWizardScreen> {
                     children: [
                       const Icon(Icons.check_circle_outline_rounded, color: AppColors.success, size: 16),
                       const SizedBox(width: 6),
-                      Text('Valid Rows (preview of first 5)',
+                      Text('Valid Rows',
                           style: TextStyle(color: AppColors.success, fontWeight: FontWeight.bold, fontSize: 13)),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  ...p.validRows.take(5).map((r) => _buildValidRowCard(r)),
-                  if (p.validRows.length > 5)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        '+ ${p.validRows.length - 5} more valid rows...',
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-                      ),
-                    ),
+                  ...p.validRows.map((r) => _buildValidRowCard(r)),
                 ],
               ],
             ),

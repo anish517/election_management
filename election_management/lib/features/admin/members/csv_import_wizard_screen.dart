@@ -167,7 +167,12 @@ class _CsvImportWizardScreenState extends ConsumerState<CsvImportWizardScreen> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import failed: $e')));
+        String msg = e.toString();
+        if (e is DioException && e.response?.data != null) {
+          final data = e.response!.data;
+          msg = data['error'] ?? data['message'] ?? msg;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import failed: $msg')));
       }
     } finally {
       setState(() => _isImporting = false);

@@ -280,96 +280,129 @@ class _CandidateResultTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isHighlighted = isWinner || isLeading;
     final barColor = isWinner ? AppColors.success : (isLeading ? AppColors.accent : AppColors.primaryLight);
+    
+    // Convert alpha instead of opacity to avoid deprecated warnings if using newer flutter
+    final borderColor = isHighlighted ? barColor.withValues(alpha: 0.5) : (isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05));
+    final bgColor = isHighlighted ? barColor.withValues(alpha: 0.05) : Colors.transparent;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Column(
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            children: [
-              // Rank badge
-              Container(
-                width: 32, height: 32,
-                decoration: BoxDecoration(
-                  color: isHighlighted ? AppColors.accent.withValues(alpha: 0.2) : (Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05)),
-                  shape: BoxShape.circle,
+          // Large Premium Image
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surfaceVariant : Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
                 ),
-                child: isWinner
-                    ? const Icon(Icons.emoji_events_rounded, color: AppColors.accent, size: 18)
-                    : Center(
-                        child: Text('#$rank',
-                            style: TextStyle(color: isLeading ? AppColors.accent : AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.bold))),
-              ),
-              const SizedBox(width: 12),
-              // Name
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: score.photoUrl.isNotEmpty
+                  ? Image.network(
+                      score.photoUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => _buildPlaceholder(isDark),
+                    )
+                  : _buildPlaceholder(isDark),
+            ),
+          ),
+          const SizedBox(width: 16),
+          // Info Column
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Name & Rank Badge
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Text(score.name, style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: isHighlighted 
-                                ? (Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : AppColors.textPrimaryLightMode)
-                                : (Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondary : AppColors.textSecondaryLightMode),
-                              fontWeight: isHighlighted ? FontWeight.w700 : FontWeight.w400)),
-                        if (isWinner) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.success.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text('Winner',
-                                style: TextStyle(color: AppColors.success, fontSize: 10, fontWeight: FontWeight.w700)),
-                          ),
-                        ],
-                        if (isLeading) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.accent.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text('Leading',
-                                style: TextStyle(color: AppColors.accent, fontSize: 10, fontWeight: FontWeight.w700)),
-                          ),
-                        ],
-                      ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isWinner ? AppColors.success : (isLeading ? AppColors.accent : (isDark ? AppColors.surfaceVariant : Colors.grey.shade200)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        isWinner ? 'WINNER' : (isLeading ? 'LEADING' : '#$rank'),
+                        style: TextStyle(
+                          color: isHighlighted ? Colors.white : (isDark ? Colors.white70 : Colors.black54),
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        score.name,
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),
-              ),
-              // Score
-              Text('${score.score == score.score.toInt() ? score.score.toInt() : score.score.toStringAsFixed(2)} votes',
-                  style: TextStyle(
-                      color: isWinner ? AppColors.success : AppColors.textMuted,
-                      fontWeight: FontWeight.w700, fontSize: 14)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          // Progress bar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: percentage.clamp(0.0, 1.0),
-              backgroundColor: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05),
-              valueColor: AlwaysStoppedAnimation<Color>(barColor),
-              minHeight: 6,
+                const SizedBox(height: 12),
+                // Stats Row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${score.score == score.score.toInt() ? score.score.toInt() : score.score.toStringAsFixed(2)} votes',
+                      style: TextStyle(color: barColor, fontSize: 14, fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      '${(percentage * 100).toStringAsFixed(1)}%',
+                      style: const TextStyle(color: AppColors.textMuted, fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                // Progress Bar
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: percentage.clamp(0.0, 1.0),
+                    backgroundColor: isDark ? AppColors.surfaceVariant : Colors.grey.shade200,
+                    valueColor: AlwaysStoppedAnimation<Color>(barColor),
+                    minHeight: 8,
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 4),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text('${(percentage * 100).toStringAsFixed(1)}%',
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildPlaceholder(bool isDark) {
+    return Center(
+      child: Icon(Icons.person_rounded, color: isDark ? Colors.white24 : Colors.grey.shade400, size: 36),
+    );
+  }
 }
+

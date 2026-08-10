@@ -307,18 +307,21 @@ class PositionResult {
 class CandidateScore {
   final String candidateId;
   final String name;
+  final String photoUrl;
   final double score;
 
   const CandidateScore({
     required this.candidateId,
     required this.name,
+    required this.photoUrl,
     required this.score,
   });
 
   factory CandidateScore.fromJson(Map<String, dynamic> json) => CandidateScore(
         candidateId: json['candidate_id'] as String,
         name: json['name'] as String,
-        score: (json['score'] as num).toDouble(),
+        photoUrl: json['photo_url'] as String? ?? '',
+        score: (json['score'] as num?)?.toDouble() ?? 0.0,
       );
 }
 

@@ -44,8 +44,8 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
     final electionAsync = ref.watch(electionProvider(widget.electionId));
     final user = ref.watch(currentUserProvider);
 
-    // isLive = voting is open and user is NOT an admin
-    final isLive = electionAsync.whenData((e) => e.state == 'voting_open' && !(user?.canManageElections ?? false)).value ?? false;
+    // isLive = voting is open
+    final isLive = electionAsync.whenData((e) => e.state == 'voting_open').value ?? false;
 
     return Scaffold(
       appBar: AppBar(
@@ -247,9 +247,9 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
             return _CandidateResultTile(
               rank: i + 1,
               score: score,
-              // During live voting, no one is the "winner" yet
-              isWinner: !isLive && isTopCandidate,
-              isLeading: isLive && isTopCandidate,
+              // During live voting, no one is the "winner" yet. Also requires at least 1 vote.
+              isWinner: !isLive && isTopCandidate && score.score > 0,
+              isLeading: isLive && isTopCandidate && score.score > 0,
               percentage: pct,
               totalVotes: totalVotes,
             );

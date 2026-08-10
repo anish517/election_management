@@ -36,7 +36,7 @@ class _ImageUploadWidgetState extends ConsumerState<ImageUploadWidget> {
 
   Future<void> _pickAndUpload() async {
     try {
-      final result = await FilePicker.pickFiles(
+      final result = await FilePicker.platform.pickFiles(
         type: FileType.image,
         withData: true,
       );

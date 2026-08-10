@@ -10,6 +10,7 @@ class UserModel {
   final String roleDisplay;
   final String organization;
   final String organizationName;
+  final String organizationLogoUrl;
   final bool is2faEnabled;
   final String? lastLoginAt;
 
@@ -23,6 +24,7 @@ class UserModel {
     required this.roleDisplay,
     required this.organization,
     required this.organizationName,
+    required this.organizationLogoUrl,
     required this.is2faEnabled,
     this.lastLoginAt,
   });
@@ -37,6 +39,7 @@ class UserModel {
         roleDisplay: json['role_display'] as String? ?? '',
         organization: json['organization'] as String,
         organizationName: json['organization_name'] as String? ?? '',
+        organizationLogoUrl: json['organization_logo_url'] as String? ?? '',
         is2faEnabled: json['is_2fa_enabled'] as bool? ?? false,
         lastLoginAt: json['last_login_at'] as String?,
       );

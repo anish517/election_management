@@ -6,6 +6,7 @@ class LoadingButton extends StatelessWidget {
   final String label;
   final IconData? icon;
   final Color? backgroundColor;
+  final bool fullWidth;
 
   const LoadingButton({
     super.key,
@@ -14,12 +15,13 @@ class LoadingButton extends StatelessWidget {
     required this.label,
     this.icon,
     this.backgroundColor,
+    this.fullWidth = true,
   });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: double.infinity,
+      width: fullWidth ? double.infinity : null,
       height: 52,
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,

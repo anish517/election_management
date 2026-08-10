@@ -234,6 +234,7 @@ class OTPVerifySerializer(serializers.Serializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     """Read-only user profile — never exposes sensitive fields."""
     organization_name = serializers.SerializerMethodField()
+    organization_logo_url = serializers.SerializerMethodField()
     role_display = serializers.SerializerMethodField()
     full_name = serializers.SerializerMethodField()
     photo_url = serializers.SerializerMethodField()
@@ -242,7 +243,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'email', 'phone', 'role', 'role_display',
-            'organization', 'organization_name',
+            'organization', 'organization_name', 'organization_logo_url',
             'full_name', 'photo_url',
             'is_2fa_enabled', 'last_login_at', 'created_at',
         ]
@@ -250,6 +251,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def get_organization_name(self, obj):
         return obj.organization.name if obj.organization else None
+
+    def get_organization_logo_url(self, obj):
+        return obj.organization.logo_url if obj.organization else None
 
     def get_role_display(self, obj):
         return obj.get_role_display()

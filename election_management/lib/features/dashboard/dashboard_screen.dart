@@ -159,16 +159,17 @@ class DashboardScreen extends ConsumerWidget {
       color: color.withValues(alpha: 0.15),
       child: Row(
         children: [
-          if (user.photoUrl.isNotEmpty)
+          if (user.organizationLogoUrl.isNotEmpty)
             CircleAvatar(
-              radius: 21,
-              backgroundImage: NetworkImage(user.photoUrl),
+              radius: 24,
+              backgroundColor: Colors.white,
+              backgroundImage: NetworkImage(user.organizationLogoUrl),
             )
           else
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(color: color.withValues(alpha: 0.2), shape: BoxShape.circle),
-              child: Icon(icon, color: color, size: 22),
+              child: Icon(icon, color: color, size: 24),
             ),
           const SizedBox(width: 14),
           Column(

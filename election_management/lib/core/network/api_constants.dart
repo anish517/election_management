@@ -4,13 +4,13 @@ class ApiConstants {
   // Uncomment the ONE you want to use, and comment out the rest:
 
   // 1. For Web / Desktop testing
-  static const String baseUrl = 'http://127.0.0.1:8000/v1';
+  //static const String baseUrl = 'http://127.0.0.1:8000/v1';
 
   // 2. For Android Emulator testing
   // static const String baseUrl = 'http://10.0.2.2:8000/v1';
 
   // 3. For Physical Phone testing (make sure backend runs with 0.0.0.0:8000)
-  // static const String baseUrl = 'http://192.168.1.9:8000/v1';
+  static const String baseUrl = 'http://192.168.1.9:8000/v1';
   static const Duration connectTimeout = Duration(seconds: 10);
   static const Duration receiveTimeout = Duration(seconds: 30);
 

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/models.dart';
+import '../candidates/candidate_profile_sheet.dart';
 
 class BallotScreen extends ConsumerStatefulWidget {
   final String electionId;
@@ -359,7 +360,7 @@ class _CandidateTile extends StatelessWidget {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -381,6 +382,37 @@ class _CandidateTile extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
+                      // Manifesto snippet
+                      if (candidate.manifesto.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          candidate.manifesto,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 10.5, color: AppColors.textMuted, height: 1.35),
+                        ),
+                      ],
+                      const SizedBox(height: 6),
+                      // "Read more" info button
+                      GestureDetector(
+                        onTap: () => showCandidateProfile(context, candidate),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.info_outline_rounded, size: 12,
+                                color: isSelected ? AppColors.primaryLight : AppColors.textMuted),
+                            const SizedBox(width: 3),
+                            Text(
+                              'View full manifesto',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: isSelected ? AppColors.primaryLight : AppColors.textMuted,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),

@@ -18,6 +18,7 @@ import '../../core/network/api_client.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/shimmer_loaders.dart';
 import '../../shared/widgets/responsive_layout.dart';
+import '../candidates/candidate_profile_sheet.dart';
 
 class ElectionDetailScreen extends ConsumerWidget {
   final String electionId;
@@ -572,102 +573,194 @@ class _CandidateTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final hasPhoto = candidate.photoUrl != null && candidate.photoUrl!.isNotEmpty;
+    final statusColor = _getStatusColor(candidate.status ?? '');
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            radius: 28, // Increased from 16 to 28
-            backgroundColor: AppColors.primaryDark,
-            backgroundImage: candidate.photoUrl != null && candidate.photoUrl!.isNotEmpty
-                ? NetworkImage(candidate.photoUrl!)
-                : null,
-            child: (candidate.photoUrl == null || candidate.photoUrl!.isEmpty)
-                ? const Icon(Icons.person, size: 28, color: Colors.white)
-                : null,
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(candidate.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                if (candidate.slateName.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Text(candidate.slateName, style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600)),
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => showCandidateProfile(context, candidate),
+          borderRadius: BorderRadius.circular(16),
+          splashColor: AppColors.primaryLight.withValues(alpha: 0.08),
+          highlightColor: AppColors.primaryLight.withValues(alpha: 0.04),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.background : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark
+                    ? AppColors.surfaceVariant
+                    : Colors.black.withValues(alpha: 0.06),
+              ),
+              boxShadow: [
+                if (!isDark)
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
                   ),
-                if (candidate.manifesto.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      candidate.manifesto,
-                      style: TextStyle(
-                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : AppColors.textSecondaryLightMode, 
-                        fontSize: 13, height: 1.4
+              ],
+            ),
+            child: Row(
+              children: [
+                // ── Avatar with gradient ring ──
+                Hero(
+                  tag: 'candidate_avatar_${candidate.id}',
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.primaryLight.withValues(alpha: 0.8),
+                          AppColors.primary.withValues(alpha: 0.3),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
                     ),
-                  ),
-                  if (candidate.status != null && candidate.status != 'approved')
-                    Container(
-                      margin: const EdgeInsets.only(top: 6),
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(color: AppColors.warning.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(4)),
-                      child: Text(candidate.status!.toUpperCase(), style: const TextStyle(color: AppColors.warning, fontSize: 10, fontWeight: FontWeight.bold)),
+                    padding: const EdgeInsets.all(2.5),
+                    child: CircleAvatar(
+                      radius: 26,
+                      backgroundColor: isDark ? AppColors.surface : const Color(0xFFF0F3F8),
+                      backgroundImage: hasPhoto ? NetworkImage(candidate.photoUrl!) : null,
+                      child: !hasPhoto
+                          ? Text(
+                              _initials(candidate.name),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primaryLight,
+                              ),
+                            )
+                          : null,
                     ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+
+                // ── Name + position + manifesto snippet ──
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              candidate.name,
+                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          // Status badge
+                          if (candidate.status != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: statusColor.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                              ),
+                              child: Text(
+                                candidate.status!.replaceAll('_', ' ').toUpperCase(),
+                                style: TextStyle(
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w800,
+                                    color: statusColor),
+                              ),
+                            ),
+                        ],
+                      ),
+                      if (candidate.slateName.isNotEmpty) ...[const SizedBox(height: 2),
+                        Row(children: [
+                          const Icon(Icons.groups_rounded, size: 11, color: AppColors.primaryLight),
+                          const SizedBox(width: 3),
+                          Text(
+                            candidate.slateName,
+                            style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.primaryLight,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ]),
+                      ],
+                      if (candidate.manifesto.isNotEmpty) ...[const SizedBox(height: 4),
+                        Text(
+                          candidate.manifesto,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? AppColors.textMuted : AppColors.textSecondaryLightMode,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+
+                // ── Tap indicator + admin menu ──
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (isAdmin)
+                      PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_vert_rounded, size: 20, color: AppColors.textMuted),
+                        onSelected: (val) async {
+                          if (val == 'edit') {
+                            showDialog(context: context, builder: (_) => EditCandidateDialog(electionId: electionId, candidate: candidate));
+                          } else if (val == 'delete') {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Delete Candidate?'),
+                                content: const Text('Are you sure you want to delete this candidate?'),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                                  TextButton(onPressed: () => Navigator.pop(ctx, true), style: TextButton.styleFrom(foregroundColor: AppColors.error), child: const Text('Delete')),
+                                ],
+                              ),
+                            );
+                            if (confirm == true && context.mounted) {
+                              try {
+                                await ref.read(addCandidateProvider.notifier).deleteCandidate(electionId: electionId, candidateId: candidate.id);
+                                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Candidate deleted')));
+                              } catch (e) {
+                                if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                              }
+                            }
+                          } else if (val == 'view_profile') {
+                            showCandidateProfile(context, candidate);
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(value: 'view_profile', child: Row(children: [Icon(Icons.person_rounded, size: 16), SizedBox(width: 8), Text('View Profile')])),
+                          const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                          const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: AppColors.error))),
+                        ],
+                      )
+                    else
+                      const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
+                  ],
+                ),
               ],
             ),
           ),
-          if (isAdmin)
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert_rounded, size: 20, color: AppColors.textMuted),
-              onSelected: (val) async {
-                if (val == 'edit') {
-                  showDialog(context: context, builder: (_) => EditCandidateDialog(electionId: electionId, candidate: candidate));
-                } else if (val == 'delete') {
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Delete Candidate?'),
-                      content: const Text('Are you sure you want to delete this candidate?'),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                        TextButton(onPressed: () => Navigator.pop(ctx, true), style: TextButton.styleFrom(foregroundColor: AppColors.error), child: const Text('Delete')),
-                      ],
-                    ),
-                  );
-                  if (confirm == true && context.mounted) {
-                    try {
-                      await ref.read(addCandidateProvider.notifier).deleteCandidate(electionId: electionId, candidateId: candidate.id);
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Candidate deleted')));
-                    } catch (e) {
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-                    }
-                  }
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: AppColors.error))),
-              ],
-            ),
-          if (candidate.status != null && candidate.status == 'approved')
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: _getStatusColor(candidate.status!).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _getStatusColor(candidate.status!).withOpacity(0.3)),
-              ),
-              child: Text(
-                candidate.status!.toUpperCase(),
-                style: TextStyle(color: _getStatusColor(candidate.status!), fontSize: 9, fontWeight: FontWeight.bold),
-              ),
-            ),
-        ],
+        ),
       ),
     );
+  }
+
+  String _initials(String name) {
+    final parts = name.trim().split(' ');
+    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    return name.isNotEmpty ? name[0].toUpperCase() : '?';
   }
 
   Color _getStatusColor(String status) {

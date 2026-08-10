@@ -55,6 +55,13 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
           onPressed: () => context.pop(),
         ),
         actions: [
+          if (user != null && user.canManageElections)
+            IconButton(
+              icon: const Icon(Icons.bar_chart_rounded),
+              tooltip: 'Live Analytics',
+              onPressed: () => context.pushNamed('analytics',
+                  pathParameters: {'electionId': widget.electionId}),
+            ),
           if (!isLive)
             IconButton(
               icon: const Icon(Icons.download_rounded),

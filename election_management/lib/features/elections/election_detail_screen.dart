@@ -424,6 +424,20 @@ class ElectionDetailScreen extends ConsumerWidget {
               label: const Text('Assign Roles'),
             ),
           ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => context.pushNamed('analytics',
+                  pathParameters: {'electionId': election.id}),
+              icon: const Icon(Icons.bar_chart_rounded, size: 18),
+              label: const Text('Live Analytics Dashboard'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primaryLight,
+                side: BorderSide(color: AppColors.primaryLight.withValues(alpha: 0.5)),
+              ),
+            ),
+          ),
         ],
       ),
     );

@@ -15,7 +15,7 @@ class ElectionViewSet(viewsets.ModelViewSet):
     serializer_class = ElectionSerializer
     
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy', 'publish', 'advance_state']:
+        if self.action in ['create', 'update', 'partial_update', 'destroy', 'publish', 'advance_state', 'assign_role']:
             return [IsOrgAdmin()]
         return [IsObserver()]
 

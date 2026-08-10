@@ -19,6 +19,7 @@ class _AssignOfficerDialogState extends ConsumerState<AssignOfficerDialog> {
   final _emailController = TextEditingController();
   String _selectedRole = 'election_officer';
   bool _isSubmitting = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -43,13 +44,21 @@ class _AssignOfficerDialogState extends ConsumerState<AssignOfficerDialog> {
           const SnackBar(content: Text('Role assigned successfully!')),
         );
       }
-    } on DioException catch (e) {
-      final msg = (e.response?.data is Map)
-          ? e.response?.data['error'] ?? 'Assignment failed'
-          : 'Assignment failed';
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    } catch (e) {
+      String msg = 'Assignment failed';
+      if (e is DioException && e.response?.data is Map) {
+        final errData = e.response?.data['error'];
+        if (errData is String) {
+          msg = errData;
+        } else if (errData is Map && errData['message'] != null) {
+          msg = errData['message'].toString();
+        } else if (e.response?.data['detail'] != null) {
+          msg = e.response?.data['detail']?.toString() ?? 'Assignment failed';
+        }
+      } else {
+        msg = e.toString();
       }
+      if (mounted) setState(() => _errorMessage = msg);
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -64,6 +73,23 @@ class _AssignOfficerDialogState extends ConsumerState<AssignOfficerDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (_errorMessage != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(_errorMessage!, style: const TextStyle(color: Colors.red))),
+                  ],
+                ),
+              ),
             TextFormField(
               controller: _emailController,
               decoration: const InputDecoration(labelText: 'User Email'),

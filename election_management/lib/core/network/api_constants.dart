@@ -1,7 +1,16 @@
 // API constants and environment configuration
 class ApiConstants {
-  // Use 10.0.2.2 for Android emulator, 127.0.0.1 for web/desktop
+  // --- Environment Switcher ---
+  // Uncomment the ONE you want to use, and comment out the rest:
+
+  // 1. For Web / Desktop testing
   static const String baseUrl = 'http://127.0.0.1:8000/v1';
+
+  // 2. For Android Emulator testing
+  // static const String baseUrl = 'http://10.0.2.2:8000/v1';
+
+  // 3. For Physical Phone testing (make sure backend runs with 0.0.0.0:8000)
+  // static const String baseUrl = 'http://192.168.1.9:8000/v1';
   static const Duration connectTimeout = Duration(seconds: 10);
   static const Duration receiveTimeout = Duration(seconds: 30);
 
@@ -21,7 +30,8 @@ class ApiConstants {
   static const String elections = '/elections/';
   static String electionDetail(String id) => '/elections/$id/';
   static String electionPublish(String id) => '/elections/$id/publish/';
-  static String electionAdvanceState(String id) => '/elections/$id/advance_state/';
+  static String electionAdvanceState(String id) =>
+      '/elections/$id/advance_state/';
   static String electionHistory(String id) => '/elections/$id/history/';
   static String electionTurnout(String id) => '/elections/$id/turnout/';
   static String electionPositions(String id) => '/elections/$id/positions/';
@@ -37,7 +47,6 @@ class ApiConstants {
   static const String previewCsv = '/members/preview_csv/';
   static const String importCsv = '/members/import_csv/';
 
-
   // Voting
   static const String votingHistory = '/voting/history/';
   static String ballot(String eid) => '/elections/$eid/voting/ballot/';
@@ -49,9 +58,10 @@ class ApiConstants {
 
   // Auditor Verification Portal
   static String auditExport(String eid) => '/elections/$eid/audit/export/';
-  static String auditVerifyHash(String eid) => '/elections/$eid/audit/verify-hash/';
-  static String auditReceiptLookup(String eid, String hash) => '/elections/$eid/audit/receipt/$hash/';
-
+  static String auditVerifyHash(String eid) =>
+      '/elections/$eid/audit/verify-hash/';
+  static String auditReceiptLookup(String eid, String hash) =>
+      '/elections/$eid/audit/receipt/$hash/';
 
   // Organization
   static const String organizationProfile = '/organization/';

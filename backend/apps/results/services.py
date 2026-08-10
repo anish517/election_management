@@ -15,7 +15,7 @@ class TallyService:
         total_valid_ballots = 0
         
         from apps.candidates.models import NominationStatus
-        candidates_map = {str(c.id): c.member.full_name for c in Candidate.objects.filter(position=position, status=NominationStatus.APPROVED)}
+        candidates_map = {str(c.id): {'name': c.member.full_name, 'photo_url': c.member.photo_url} for c in Candidate.objects.filter(position=position, status=NominationStatus.APPROVED)}
         seats = position.seats_available
         winners = []
         breakdown = []
@@ -85,9 +85,11 @@ class TallyService:
             sorted_scores = []
             
         for cand_id, score in sorted_scores:
+            c_info = candidates_map.get(cand_id, {'name': 'Unknown', 'photo_url': ''})
             breakdown.append({
                 'candidate_id': cand_id,
-                'name': candidates_map.get(cand_id, 'Unknown'),
+                'name': c_info['name'],
+                'photo_url': c_info['photo_url'],
                 'score': score
             })
             

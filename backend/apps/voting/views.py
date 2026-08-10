@@ -21,7 +21,9 @@ class VotingViewSet(viewsets.ViewSet):
         # Find the member record for this user (assumes 1:1 user->member matching by email for MVP)
         # In full system, users are mapped to members explicitly. Let's do a simple lookup.
         try:
-            member = request.user.organization.members.get(email=request.user.email)
+            member = request.user.organization.members.filter(email=request.user.email).first()
+            if not member:
+                return None
             roll, created = VoterRoll.objects.get_or_create(election=election, member=member)
             return roll
         except Exception:

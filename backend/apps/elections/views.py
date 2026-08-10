@@ -145,6 +145,38 @@ class ElectionViewSet(viewsets.ModelViewSet):
             'turnout_list': turnout_list
         })
 
+    @action(detail=True, methods=['get'], permission_classes=[IsOrgAdmin])
+    def voting_activity(self, request, pk=None):
+        """
+        Returns hourly voting activity for the analytics bar chart.
+        Aggregates VoterRoll.voted_at into hour buckets.
+        Admin-only endpoint.
+        """
+        from apps.voting.models import VoterRoll
+        from django.db.models.functions import TruncHour
+        from django.db.models import Count
+
+        election = self.get_object()
+
+        hourly_data = (
+            VoterRoll.objects
+            .filter(election=election, has_voted=True, voted_at__isnull=False)
+            .annotate(hour=TruncHour('voted_at'))
+            .values('hour')
+            .annotate(count=Count('id'))
+            .order_by('hour')
+        )
+
+        activity = [
+            {
+                'hour': entry['hour'].strftime('%H:00') if entry['hour'] else '??:00',
+                'count': entry['count'],
+            }
+            for entry in hourly_data
+        ]
+
+        return Response({'activity_by_hour': activity})
+
     @action(detail=True, methods=['post'], permission_classes=[IsOrgAdmin])
     def assign_role(self, request, pk=None):
         """Assign an election officer role to a user via email."""

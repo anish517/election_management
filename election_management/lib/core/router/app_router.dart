@@ -23,6 +23,7 @@ import '../../features/candidates/nomination_list_screen.dart';
 import '../../features/admin/organization/org_settings_screen.dart';
 import '../../features/results/results_screen.dart';
 import '../../features/profile/user_profile_screen.dart';
+import '../../features/analytics/analytics_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -160,6 +161,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: ':electionId/nominations',
             name: 'review_nominations',
             builder: (context, state) => NominationListScreen(
+              electionId: state.pathParameters['electionId']!,
+            ),
+          ),
+          GoRoute(
+            path: ':electionId/analytics',
+            name: 'analytics',
+            builder: (context, state) => AnalyticsScreen(
               electionId: state.pathParameters['electionId']!,
             ),
           ),

@@ -7,6 +7,7 @@ import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/admin_drawer.dart';
 import '../../../shared/widgets/shimmer_loaders.dart';
 import '../../../shared/widgets/image_upload_widget.dart';
+import '../../../shared/widgets/glass_card.dart';
 
 class OrgSettingsScreen extends ConsumerStatefulWidget {
   const OrgSettingsScreen({super.key});
@@ -21,13 +22,8 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
   // Identity
   late TextEditingController _nameController;
   late TextEditingController _addressController;
-  late TextEditingController _colorController;
   late TextEditingController _logoController;
   String _selectedOrgType = 'other';
-
-  // Localization
-  String _selectedLanguage = 'en';
-  String _selectedTimezone = 'UTC';
 
   // Election Defaults
   late TextEditingController _grievanceWindowController;
@@ -39,25 +35,13 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
   bool _officersCanPublish = false;
 
   bool _initialized = false;
-  
-  // Real-time preview values
-  String _previewName = 'Organization Name';
-  Color _previewColor = AppColors.primary;
-  String _previewLogo = '';
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController()..addListener(() {
-      setState(() => _previewName = _nameController.text);
-    });
+    _nameController = TextEditingController();
     _addressController = TextEditingController();
-    _colorController = TextEditingController()..addListener(() {
-      setState(() => _previewColor = _parseColor(_colorController.text));
-    });
-    _logoController = TextEditingController()..addListener(() {
-      setState(() => _previewLogo = _logoController.text);
-    });
+    _logoController = TextEditingController();
 
     _grievanceWindowController = TextEditingController();
     _voterRollOffsetController = TextEditingController();
@@ -70,7 +54,6 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
   void dispose() {
     _nameController.dispose();
     _addressController.dispose();
-    _colorController.dispose();
     _logoController.dispose();
     _grievanceWindowController.dispose();
     _voterRollOffsetController.dispose();
@@ -79,43 +62,24 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
     _defaultSilentController.dispose();
     super.dispose();
   }
-  
-  Color _parseColor(String hex) {
-    if (hex.isEmpty) return AppColors.primary;
-    hex = hex.replaceAll('#', '');
-    if (hex.length == 6) {
-      hex = 'FF$hex';
-    }
-    try {
-      return Color(int.parse(hex, radix: 16));
-    } catch (e) {
-      return AppColors.primary;
-    }
-  }
 
   void _populateForm(OrganizationModel org) {
     if (_initialized) return;
     _nameController.text = org.name;
     _addressController.text = org.address;
-    _colorController.text = org.brandColor;
     _logoController.text = org.logoUrl;
 
     _selectedOrgType = org.orgType.isNotEmpty ? org.orgType : 'other';
-    _selectedLanguage = org.defaultLanguage.isNotEmpty ? org.defaultLanguage : 'en';
-    _selectedTimezone = org.timezone.isNotEmpty ? org.timezone : 'UTC';
 
     _grievanceWindowController.text = org.grievanceWindowDays.toString();
     _voterRollOffsetController.text = org.voterRollFreezeOffsetDays.toString();
-    _defaultNominationController.text = org.defaultNominationWindowDays.toString();
+    _defaultNominationController.text = org.defaultNominationWindowDays
+        .toString();
     _defaultVotingController.text = org.defaultVotingWindowDays.toString();
     _defaultSilentController.text = org.defaultSilentPeriodHours.toString();
 
     _selectedVisibility = org.defaultResultVisibility;
     _officersCanPublish = org.electionOfficersCanPublish;
-
-    _previewName = org.name;
-    _previewColor = _parseColor(org.brandColor);
-    _previewLogo = org.logoUrl;
 
     _initialized = true;
   }
@@ -127,24 +91,39 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
         'name': _nameController.text.trim(),
         'org_type': _selectedOrgType,
         'address': _addressController.text.trim(),
-        'brand_color': _colorController.text.trim(),
         'logo_url': _logoController.text.trim(),
-        'default_language': _selectedLanguage,
-        'timezone': _selectedTimezone,
-        'grievance_window_days': int.parse(_grievanceWindowController.text.trim()),
-        'voter_roll_freeze_offset_days': int.parse(_voterRollOffsetController.text.trim()),
-        'default_nomination_window_days': int.parse(_defaultNominationController.text.trim()),
-        'default_voting_window_days': int.parse(_defaultVotingController.text.trim()),
-        'default_silent_period_hours': int.parse(_defaultSilentController.text.trim()),
+        'grievance_window_days':
+            int.tryParse(_grievanceWindowController.text.trim()) ?? 0,
+        'voter_roll_freeze_offset_days':
+            int.tryParse(_voterRollOffsetController.text.trim()) ?? 0,
+        'default_nomination_window_days':
+            int.tryParse(_defaultNominationController.text.trim()) ?? 0,
+        'default_voting_window_days':
+            int.tryParse(_defaultVotingController.text.trim()) ?? 0,
+        'default_silent_period_hours':
+            int.tryParse(_defaultSilentController.text.trim()) ?? 0,
         'default_result_visibility': _selectedVisibility,
         'election_officers_can_publish': _officersCanPublish,
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Organization settings updated successfully!'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Text(
+                  'Organization settings saved!',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green.shade600,
             behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: const EdgeInsets.all(24),
           ),
         );
       }
@@ -152,101 +131,197 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error updating settings: $e'),
-            backgroundColor: Colors.redAccent,
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(child: Text('Error: $e')),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
             behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: const EdgeInsets.all(24),
           ),
         );
       }
     }
   }
-  
+
   Widget _buildPreviewHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
-      decoration: BoxDecoration(
-        color: _previewColor,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: _previewColor.withValues(alpha: 0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          )
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ImageUploadWidget(
-            initialImageUrl: _previewLogo,
-            placeholderText: 'LOGO',
-            radius: 50,
-            onImageUploaded: (url) {
-              setState(() {
-                _logoController.text = url;
-                _previewLogo = url;
-              });
-            },
+    return AnimatedBuilder(
+      animation: Listenable.merge([_nameController, _logoController]),
+      builder: (context, _) {
+        final previewName = _nameController.text;
+        final previewLogo = _logoController.text;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.primary, AppColors.primaryDark],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            _previewName.isEmpty ? 'Your Organization' : _previewName,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.2),
+                ),
+                child: SizedBox(
+                  width: 100,
+                  height: 100,
+                  child: ImageUploadWidget(
+                    initialImageUrl: previewLogo,
+                    placeholderText: 'LOGO',
+                    radius: 50,
+                    onImageUploaded: (url) {
+                      _logoController.text = url;
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                previewName.isEmpty ? 'Your Organization' : previewName,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.remove_red_eye,
+                      color: Colors.white,
+                      size: 14,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'LIVE PREVIEW',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              'LIVE PREVIEW',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1),
-            ),
-          )
-        ],
-      ),
+        );
+      },
     );
   }
-  
-  Widget _buildSectionCard({required String title, required IconData icon, required List<Widget> children}) {
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 24),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+
+  Widget _buildSection({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primary.withValues(alpha: 0.15),
+                      AppColors.primary.withValues(alpha: 0.05),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  child: Icon(icon, color: AppColors.primary),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.2),
+                  ),
                 ),
-                const SizedBox(width: 12),
-                Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-              ],
+                child: Icon(icon, color: AppColors.primary, size: 22),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Card(
+            elevation: 0,
+            margin: EdgeInsets.zero,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.surfaceVariant.withValues(alpha: 0.5)
+                : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white.withValues(alpha: 0.1)
+                    : Colors.black.withValues(alpha: 0.05),
+              ),
             ),
-            const SizedBox(height: 24),
-            ...children,
-          ],
-        ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: children,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -259,21 +334,27 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
     return Scaffold(
       drawer: const AdminDrawer(),
       appBar: AppBar(
-        title: const Text('Organization Settings'),
+        title: const Text('Organization Profile'),
         elevation: 0,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0, top: 8, bottom: 8),
+            child: LoadingButton(
+              onPressed: _submit,
+              isLoading: isSaving,
+              label: 'Save Changes',
+              icon: Icons.save_rounded,
+              fullWidth: false,
+            ),
+          ),
+        ],
       ),
       body: orgAsync.when(
         loading: () => const ListSkeleton(count: 4),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (org) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            setState(() => _populateForm(org));
-          });
-
-          if (!_initialized) return const Padding(
-            padding: EdgeInsets.all(24),
-            child: ListSkeleton(count: 6),
-          );
+          _populateForm(org);
 
           return SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
@@ -284,201 +365,222 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
                 child: Form(
                   key: _formKey,
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _buildPreviewHeader(),
-                      const SizedBox(height: 32),
-                      
-                      _buildSectionCard(
-                        title: 'Profile & Branding',
-                        icon: Icons.palette_rounded,
+                      const SizedBox(height: 40),
+
+                      _buildSection(
+                        title: 'Basic Information',
+                        subtitle: 'Your organization identity and type.',
+                        icon: Icons.business_rounded,
                         children: [
                           TextFormField(
                             controller: _nameController,
-                            decoration: const InputDecoration(labelText: 'Organization Name', prefixIcon: Icon(Icons.business)),
-                            validator: (val) => val == null || val.isEmpty ? 'Required' : null,
+                            decoration: const InputDecoration(
+                              labelText: 'Organization Name',
+                              prefixIcon: Icon(Icons.badge_outlined),
+                            ),
+                            validator: (val) =>
+                                val == null || val.isEmpty ? 'Required' : null,
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 20),
                           DropdownButtonFormField<String>(
                             value: _selectedOrgType,
-                            decoration: const InputDecoration(labelText: 'Organization Type', prefixIcon: Icon(Icons.category)),
+                            decoration: const InputDecoration(
+                              labelText: 'Organization Type',
+                              prefixIcon: Icon(Icons.category_outlined),
+                            ),
                             items: const [
-                              DropdownMenuItem(value: 'cooperative', child: Text('Cooperative / SACCO')),
-                              DropdownMenuItem(value: 'college', child: Text('College / University')),
-                              DropdownMenuItem(value: 'association', child: Text('Professional Association')),
-                              DropdownMenuItem(value: 'corporate', child: Text('Corporate')),
-                              DropdownMenuItem(value: 'other', child: Text('Other')),
+                              DropdownMenuItem(
+                                value: 'cooperative',
+                                child: Text('Cooperative / SACCO'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'college',
+                                child: Text('College / University'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'association',
+                                child: Text('Professional Association'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'corporate',
+                                child: Text('Corporate'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'other',
+                                child: Text('Other'),
+                              ),
                             ],
-                            onChanged: (val) => setState(() => _selectedOrgType = val!),
+                            onChanged: (val) =>
+                                setState(() => _selectedOrgType = val!),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 20),
                           TextFormField(
                             controller: _addressController,
-                            decoration: const InputDecoration(labelText: 'Address', prefixIcon: Icon(Icons.location_on)),
+                            decoration: const InputDecoration(
+                              labelText: 'Address',
+                              prefixIcon: Icon(Icons.location_on_outlined),
+                            ),
                             maxLines: 2,
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 20),
+                          TextFormField(
+                            controller: _logoController,
+                            decoration: const InputDecoration(
+                              labelText: 'Logo URL',
+                              prefixIcon: Icon(Icons.image_outlined),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      _buildSection(
+                        title: 'Election Rules',
+                        subtitle: 'Default timeframes for all your elections.',
+                        icon: Icons.gavel_rounded,
+                        children: [
                           Row(
                             children: [
                               Expanded(
                                 child: TextFormField(
-                                  controller: _colorController,
-                                  decoration: const InputDecoration(labelText: 'Brand Color (Hex)', prefixIcon: Icon(Icons.color_lens)),
+                                  controller: _defaultNominationController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Nomination Phase (Days)',
+                                    prefixIcon: Icon(
+                                      Icons.assignment_ind_outlined,
+                                    ),
+                                  ),
+                                  keyboardType: TextInputType.number,
                                 ),
                               ),
                               const SizedBox(width: 16),
                               Expanded(
                                 child: TextFormField(
-                                  controller: _logoController,
+                                  controller: _defaultVotingController,
                                   decoration: const InputDecoration(
-                                    labelText: 'Logo URL',
-                                    prefixIcon: Icon(Icons.image),
+                                    labelText: 'Voting Phase (Days)',
+                                    prefixIcon: Icon(
+                                      Icons.how_to_vote_outlined,
+                                    ),
+                                  ),
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _voterRollOffsetController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Roll Freeze Offset (Days)',
+                                    prefixIcon: Icon(Icons.people_outline),
+                                  ),
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _defaultSilentController,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Silent Period (Hours)',
+                                    prefixIcon: Icon(Icons.volume_off_outlined),
+                                  ),
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          TextFormField(
+                            controller: _grievanceWindowController,
+                            decoration: const InputDecoration(
+                              labelText:
+                                  'Post-Election Grievance Window (Days)',
+                              prefixIcon: Icon(Icons.report_problem_outlined),
+                            ),
+                            keyboardType: TextInputType.number,
+                          ),
+                        ],
+                      ),
+
+                      _buildSection(
+                        title: 'Transparency Settings',
+                        subtitle: 'Control who sees election results.',
+                        icon: Icons.visibility_outlined,
+                        children: [
+                          DropdownButtonFormField<String>(
+                            value: _selectedVisibility,
+                            decoration: const InputDecoration(
+                              labelText: 'Default Result Visibility',
+                              prefixIcon: Icon(Icons.remove_red_eye_outlined),
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'admin_only',
+                                child: Text('Admin Only'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'voters',
+                                child: Text('Voters Only'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'public',
+                                child: Text('Public'),
+                              ),
+                            ],
+                            onChanged: (val) =>
+                                setState(() => _selectedVisibility = val!),
+                          ),
+                          const SizedBox(height: 24),
+                          Material(
+                            color: AppColors.primary.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.1,
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      
-                      _buildSectionCard(
-                        title: 'Localization',
-                        icon: Icons.language_rounded,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  value: _selectedLanguage,
-                                  decoration: const InputDecoration(labelText: 'Default Language', prefixIcon: Icon(Icons.translate)),
-                                  items: const [
-                                    DropdownMenuItem(value: 'en', child: Text('English')),
-                                    DropdownMenuItem(value: 'ne', child: Text('Nepali')),
-                                  ],
-                                  onChanged: (val) => setState(() => _selectedLanguage = val!),
+                              child: SwitchListTile(
+                                contentPadding: const EdgeInsets.all(16),
+                                title: const Text(
+                                  'Officers Can Publish Results',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  value: _selectedTimezone,
-                                  decoration: const InputDecoration(labelText: 'Timezone', prefixIcon: Icon(Icons.access_time)),
-                                  items: const [
-                                    DropdownMenuItem(value: 'UTC', child: Text('UTC')),
-                                    DropdownMenuItem(value: 'Asia/Kathmandu', child: Text('Asia/Kathmandu (NPT)')),
-                                    DropdownMenuItem(value: 'America/New_York', child: Text('America/New_York (EST)')),
-                                  ],
-                                  onChanged: (val) => setState(() => _selectedTimezone = val!),
+                                subtitle: const Text(
+                                  'Allow Election Officers to publish official results without Org Admin approval.',
+                                  style: TextStyle(fontSize: 12),
                                 ),
+                                value: _officersCanPublish,
+                                activeColor: AppColors.primary,
+                                onChanged: (val) =>
+                                    setState(() => _officersCanPublish = val),
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      
-                      _buildSectionCard(
-                        title: 'Election Defaults',
-                        icon: Icons.how_to_vote_rounded,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(child: TextFormField(controller: _grievanceWindowController, decoration: const InputDecoration(labelText: 'Grievance Window (Days)', prefixIcon: Icon(Icons.report_problem)), keyboardType: TextInputType.number)),
-                              const SizedBox(width: 16),
-                              Expanded(child: TextFormField(controller: _voterRollOffsetController, decoration: const InputDecoration(labelText: 'Voter Roll Freeze Offset', prefixIcon: Icon(Icons.ac_unit)), keyboardType: TextInputType.number)),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(child: TextFormField(controller: _defaultNominationController, decoration: const InputDecoration(labelText: 'Nomination Window (Days)'), keyboardType: TextInputType.number)),
-                              const SizedBox(width: 16),
-                              Expanded(child: TextFormField(controller: _defaultVotingController, decoration: const InputDecoration(labelText: 'Voting Window (Days)'), keyboardType: TextInputType.number)),
-                              const SizedBox(width: 16),
-                              Expanded(child: TextFormField(controller: _defaultSilentController, decoration: const InputDecoration(labelText: 'Silent Period (Hours)'), keyboardType: TextInputType.number)),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          DropdownButtonFormField<String>(
-                            value: _selectedVisibility,
-                            decoration: const InputDecoration(labelText: 'Default Result Visibility', prefixIcon: Icon(Icons.visibility)),
-                            items: const [
-                              DropdownMenuItem(value: 'admin_only', child: Text('Admin Only')),
-                              DropdownMenuItem(value: 'org_members', child: Text('Org Members')),
-                              DropdownMenuItem(value: 'public', child: Text('Public')),
-                            ],
-                            onChanged: (val) => setState(() => _selectedVisibility = val!),
-                          ),
-                          const SizedBox(height: 16),
-                          Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
-                            ),
-                            child: SwitchListTile(
-                              title: const Text('Election Officers Can Publish'),
-                              subtitle: const Text('If enabled, election officers can self-publish results without Org Admin approval.'),
-                              value: _officersCanPublish,
-                              onChanged: (val) => setState(() => _officersCanPublish = val),
-                              activeColor: AppColors.primary,
                             ),
                           ),
                         ],
                       ),
-                      
-                      _buildSectionCard(
-                        title: 'Compliance & Legal (Read-Only)',
-                        icon: Icons.gavel_rounded,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
-                            ),
-                            child: const Row(
-                              children: [
-                                Icon(Icons.info_outline, color: Colors.orange),
-                                SizedBox(width: 12),
-                                Expanded(child: Text('These settings are enforced at the platform level and cannot be modified by organization admins.')),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextFormField(
-                                  initialValue: org.dataRetentionYears.toString(),
-                                  decoration: const InputDecoration(labelText: 'Data Retention (Years)', prefixIcon: Icon(Icons.save)),
-                                  readOnly: true,
-                                  enabled: false,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: TextFormField(
-                                  initialValue: org.legalHold ? 'Active' : 'Inactive',
-                                  decoration: const InputDecoration(labelText: 'Legal Hold Status', prefixIcon: Icon(Icons.shield)),
-                                  readOnly: true,
-                                  enabled: false,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      
-                      const SizedBox(height: 16),
+
+                      const SizedBox(height: 32),
                       SizedBox(
-                        width: double.infinity,
-                        height: 55,
+                        height: 56,
                         child: LoadingButton(
-                          isLoading: isSaving,
                           onPressed: _submit,
-                          label: 'Save All Settings',
+                          isLoading: isSaving,
+                          label: 'Save Organization Settings',
+                          icon: Icons.save_rounded,
                         ),
                       ),
+
                       const SizedBox(height: 40),
                     ],
                   ),

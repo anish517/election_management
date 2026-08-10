@@ -26,11 +26,14 @@ class AdminDrawer extends ConsumerWidget {
             ),
             accountName: Text(user.role == 'org_admin' ? 'Organization Admin' : 'Election Officer', style: const TextStyle(fontWeight: FontWeight.bold)),
             accountEmail: Text(user.email),
-            currentAccountPicture: user.photoUrl.isNotEmpty
-                ? CircleAvatar(backgroundImage: NetworkImage(user.photoUrl))
+            currentAccountPicture: user.organizationLogoUrl.isNotEmpty
+                ? CircleAvatar(
+                    backgroundColor: Colors.white,
+                    backgroundImage: NetworkImage(user.organizationLogoUrl),
+                  )
                 : const CircleAvatar(
                     backgroundColor: AppColors.primary,
-                    child: Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 30),
+                    child: Icon(Icons.business_rounded, color: Colors.white, size: 30),
                   ),
           ),
           ListTile(

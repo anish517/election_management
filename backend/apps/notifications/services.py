@@ -18,7 +18,7 @@ def _format_bs(dt, tz_name):
         return 'TBD'
     tz = zoneinfo.ZoneInfo(tz_name)
     local_dt = dt.astimezone(tz)
-    bs_dt = nepali_datetime.datetime.from_datetime(local_dt)
+    bs_dt = nepali_datetime.datetime.from_datetime_datetime(local_dt)
     return bs_dt.strftime('%B %d, %Y at %I:%M %p (BS)')
 
 

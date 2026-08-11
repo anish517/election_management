@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+class ResponsiveLayout {
+  static bool isMobile(BuildContext context) => MediaQuery.of(context).size.width < 850;
+  static bool isDesktop(BuildContext context) => MediaQuery.of(context).size.width >= 850;
+}
 
 /// Wraps page content (like Dashboards, Lists) to a maximum width
 /// of 1000 pixels so it doesn't stretch awkwardly on desktop.

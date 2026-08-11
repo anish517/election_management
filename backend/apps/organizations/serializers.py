@@ -20,3 +20,11 @@ class OrganizationStatsSerializer(serializers.Serializer):
     total_members = serializers.IntegerField()
     total_elections = serializers.IntegerField()
     active_elections = serializers.IntegerField()
+    total_votes_cast = serializers.IntegerField(default=0)
+    turnout_percentage = serializers.FloatField(default=0.0)
+    voting_progress = serializers.ListField(
+        child=serializers.DictField(), required=False
+    )
+    results_overview = serializers.ListField(
+        child=serializers.DictField(), required=False
+    )

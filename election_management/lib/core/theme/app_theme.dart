@@ -37,10 +37,10 @@ class AppColors {
   static const stateResults = Color(0xFFF97316);
 
   // Light Theme specific colors
-  static const backgroundLight = Color(0xFFF8FAFC); // Slate-50
+  static const backgroundLight = Color(0xFFF1F5F9); // Slate-100 for better contrast
   static const surfaceLight = Color(0xFFFFFFFF);
-  static const surfaceVariantLight = Color(0xFFF1F5F9); // Slate-100
-  static const cardColorLight = Color(0xCCFFFFFF); // Semi-transparent for glassmorphism
+  static const surfaceVariantLight = Color(0xFFF8FAFC); // Slate-50
+  static const cardColorLight = Color(0xB3FFFFFF); // 70% white for frosted glass
   
   static const textPrimaryLightMode = Color(0xFF0F172A); // Slate-900
   static const textSecondaryLightMode = Color(0xFF475569); // Slate-600
@@ -48,12 +48,14 @@ class AppColors {
 
   // Gradients
   static const LinearGradient globalBackgroundGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
+    begin: Alignment.topRight,
+    end: Alignment.bottomLeft,
     colors: [
       Color(0xFF0F172A), // Slate-900
+      Color(0xFF0B1021), // Deeper dark
       Color(0xFF1E1B4B), // Indigo-950
     ],
+    stops: [0.0, 0.5, 1.0],
   );
 
   static const LinearGradient globalBackgroundGradientLight = LinearGradient(
@@ -61,10 +63,11 @@ class AppColors {
     end: Alignment.bottomRight,
     colors: [
       Color(0xFFF8FAFC), // Slate-50
+      Color(0xFFEEF2FF), // Indigo-50
       Color(0xFFE0E7FF), // Indigo-100
     ],
+    stops: [0.0, 0.5, 1.0],
   );
-
 
   static const LinearGradient primaryGradient = LinearGradient(
     colors: [primaryLight, primary],
@@ -91,52 +94,59 @@ class AppTheme {
         primary: AppColors.primaryLight,
         primaryContainer: AppColors.primaryDark,
         secondary: AppColors.accent,
-        surface: AppColors.surface,
+        surface: const Color(0xFF09090B), // Deep sleek black
         error: AppColors.error,
         onPrimary: Colors.white,
         onSurface: AppColors.textPrimary,
       ),
-      scaffoldBackgroundColor: Colors.transparent, // Background handled by global wrapper
-      cardColor: AppColors.cardColor,
+      scaffoldBackgroundColor: const Color(0xFF09090B),
+      cardTheme: CardThemeData(
+        color: const Color(0xFF18181B), // Slightly lighter black for cards
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Color(0xFF27272A), width: 1), // Crisp border
+        ),
+      ),
       textTheme: baseTextTheme.copyWith(
         displayLarge: headingFont(
-          fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.textPrimary,
+          fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white,
         ),
         headlineMedium: headingFont(
-          fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.textPrimary,
+          fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white,
         ),
         titleLarge: headingFont(
-          fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary,
+          fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white,
         ),
         titleMedium: headingFont(
-          fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimary,
+          fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white,
         ),
         bodyLarge: GoogleFonts.inter(
-          fontSize: 16, fontWeight: FontWeight.w400, color: AppColors.textPrimary,
+          fontSize: 16, fontWeight: FontWeight.w400, color: const Color(0xFFFAFAFA),
         ),
         bodyMedium: GoogleFonts.inter(
-          fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.textSecondary,
+          fontSize: 14, fontWeight: FontWeight.w400, color: const Color(0xFFA1A1AA),
         ),
         labelLarge: GoogleFonts.inter(
-          fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary,
+          fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white,
         ),
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.surface.withValues(alpha: 0.8), // Glass appbar
+        backgroundColor: const Color(0xFF09090B),
         elevation: 0,
         centerTitle: false,
         titleTextStyle: headingFont(
-          fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary,
+          fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white,
         ),
-        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primaryLight,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), // Rounder buttons
-          textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), // Less rounded, more professional
+          textStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
           elevation: 0,
         ),
       ),
@@ -200,86 +210,96 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.light,
       colorScheme: ColorScheme.light(
-        primary: AppColors.primaryLight,
-        primaryContainer: AppColors.primary,
+        primary: AppColors.primary,
+        primaryContainer: AppColors.primaryLight,
         secondary: AppColors.accent,
-        surface: AppColors.surfaceLight,
+        surface: const Color(0xFFFFFFFF),
         error: AppColors.error,
         onPrimary: Colors.white,
         onSurface: AppColors.textPrimaryLightMode,
       ),
-      scaffoldBackgroundColor: Colors.transparent, // Background handled by global wrapper
-      cardColor: AppColors.cardColorLight,
+      scaffoldBackgroundColor: const Color(0xFFFAFAFA), // Clean crisp white-grey
+      cardTheme: CardThemeData(
+        color: const Color(0xFFFFFFFF), // Pure white cards
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Color(0xFFE4E4E7), width: 1), // Crisp light border
+        ),
+      ),
       textTheme: baseTextTheme.copyWith(
         displayLarge: headingFont(
-          fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.textPrimaryLightMode,
+          fontSize: 32, fontWeight: FontWeight.bold, color: const Color(0xFF171717), // Near black
         ),
         headlineMedium: headingFont(
-          fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.textPrimaryLightMode,
+          fontSize: 22, fontWeight: FontWeight.w700, color: const Color(0xFF171717),
         ),
         titleLarge: headingFont(
-          fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimaryLightMode,
+          fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF171717),
         ),
         titleMedium: headingFont(
-          fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textPrimaryLightMode,
+          fontSize: 16, fontWeight: FontWeight.w500, color: const Color(0xFF171717),
         ),
         bodyLarge: GoogleFonts.inter(
-          fontSize: 16, fontWeight: FontWeight.w400, color: AppColors.textPrimaryLightMode,
+          fontSize: 16, fontWeight: FontWeight.w400, color: const Color(0xFF171717),
         ),
         bodyMedium: GoogleFonts.inter(
-          fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.textSecondaryLightMode,
+          fontSize: 14, fontWeight: FontWeight.w400, color: const Color(0xFF52525B), // Muted grey
         ),
         labelLarge: GoogleFonts.inter(
-          fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimaryLightMode,
+          fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF171717),
         ),
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.surfaceLight.withValues(alpha: 0.8), // Glass appbar
+        backgroundColor: const Color(0xFFFFFFFF),
         elevation: 0,
         centerTitle: false,
         titleTextStyle: headingFont(
-          fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimaryLightMode,
+          fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF171717),
         ),
-        iconTheme: const IconThemeData(color: AppColors.textPrimaryLightMode),
+        iconTheme: const IconThemeData(color: Color(0xFF171717)),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primaryLight,
+          backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), 
-          textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          textStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
           elevation: 0,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.textPrimaryLightMode,
-          side: const BorderSide(color: AppColors.surfaceVariantLight),
+          foregroundColor: const Color(0xFF171717),
+          side: const BorderSide(color: Color(0xFFE4E4E7)),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          textStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AppColors.surfaceVariantLight),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFE4E4E7)),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AppColors.surfaceVariantLight),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFE4E4E7)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: AppColors.primaryLight, width: 2),
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.primary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.error),
         ),
-        hintStyle: GoogleFonts.inter(color: AppColors.textMutedLightMode, fontSize: 14),
-        labelStyle: GoogleFonts.inter(color: AppColors.textSecondaryLightMode, fontSize: 14),
+        hintStyle: GoogleFonts.inter(color: const Color(0xFFA1A1AA), fontSize: 14),
+        labelStyle: GoogleFonts.inter(color: const Color(0xFF52525B), fontSize: 14),
+        filled: true,
+        fillColor: const Color(0xFFFFFFFF),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.surfaceVariantLight,

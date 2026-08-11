@@ -401,16 +401,28 @@ class OrganizationStatsModel {
   final int totalMembers;
   final int totalElections;
   final int activeElections;
+  final int totalVotesCast;
+  final double turnoutPercentage;
+  final List<Map<String, dynamic>> votingProgress;
+  final List<Map<String, dynamic>> resultsOverview;
 
   const OrganizationStatsModel({
     required this.totalMembers,
     required this.totalElections,
     required this.activeElections,
+    required this.totalVotesCast,
+    required this.turnoutPercentage,
+    required this.votingProgress,
+    required this.resultsOverview,
   });
 
   factory OrganizationStatsModel.fromJson(Map<String, dynamic> json) => OrganizationStatsModel(
         totalMembers: json['total_members'] as int? ?? 0,
         totalElections: json['total_elections'] as int? ?? 0,
         activeElections: json['active_elections'] as int? ?? 0,
+        totalVotesCast: json['total_votes_cast'] as int? ?? 0,
+        turnoutPercentage: (json['turnout_percentage'] as num?)?.toDouble() ?? 0.0,
+        votingProgress: List<Map<String, dynamic>>.from(json['voting_progress'] ?? []),
+        resultsOverview: List<Map<String, dynamic>>.from(json['results_overview'] ?? []),
       );
 }

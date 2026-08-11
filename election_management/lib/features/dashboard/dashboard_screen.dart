@@ -1,6 +1,8 @@
-import 'dart:ui';
-import 'package:flutter/material.dart';import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/org_providers.dart';
@@ -20,131 +22,51 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
-    final electionsAsync = ref.watch(electionsProvider);
+    final isDesktop = ResponsiveLayout.isDesktop(context);
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      drawer: (user != null && user.canManageElections) ? const AdminDrawer() : null,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(64),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            border: Border(bottom: BorderSide(color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7))),
-          ),
-          child: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            centerTitle: false,
-            leading: (user != null && user.canManageElections) 
-              ? Builder(
-                  builder: (context) => IconButton(
-                    icon: const Icon(Icons.menu_rounded),
-                    onPressed: () => Scaffold.of(context).openDrawer(),
-                  ),
-                )
-              : null,
-            title: Row(
-              children: [
-                if (user?.organizationLogoUrl.isNotEmpty == true) ...[
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor: Colors.white,
-                    backgroundImage: NetworkImage(user!.organizationLogoUrl),
-                  ),
-                  const SizedBox(width: 12),
-                ],
-                Text(user?.organizationName ?? 'Dashboard', 
-                     style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-              ],
-            ).animate().fade().slideX(begin: -0.1, duration: 400.ms),
-            actions: [
-              const LiveClockWidget(),
-              IconButton(
-                icon: const Icon(Icons.refresh_rounded, size: 20),
-                onPressed: () => ref.invalidate(electionsProvider),
-              ).animate().fade().scale(delay: 200.ms),
-              PopupMenuButton(
-                offset: const Offset(0, 48),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7)),
-                ),
-                color: Theme.of(context).cardTheme.color,
-                elevation: 4,
-                icon: CircleAvatar(
-                  radius: 16,
-                  backgroundColor: AppColors.primary,
-                  backgroundImage: user?.photoUrl.isNotEmpty == true ? NetworkImage(user!.photoUrl) : null,
-                  child: user?.photoUrl.isNotEmpty == true 
-                      ? null 
-                      : Text(
-                          ((user?.fullName.isNotEmpty == true) ? user!.fullName : ((user?.email.isNotEmpty == true) ? user!.email : '?')).substring(0, 1).toUpperCase(),
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                        ),
-                ),
-                itemBuilder: (_) => <PopupMenuEntry<dynamic>>[
-                  PopupMenuItem(
-                    child: Row(children: [
-                      Icon(Icons.history_rounded, size: 18, color: Theme.of(context).iconTheme.color),
-                      const SizedBox(width: 10),
-                      const Text('My Voting History'),
-                    ]),
-                    onTap: () => context.pushNamed('voting-history'),
-                  ),
-                  PopupMenuItem(
-                    child: Row(children: [
-                      Icon(Icons.person_rounded, size: 18, color: Theme.of(context).iconTheme.color),
-                      const SizedBox(width: 10),
-                      const Text('My Profile'),
-                    ]),
-                    onTap: () => context.pushNamed('profile'),
-                  ),
-                  const PopupMenuDivider(),
-                  PopupMenuItem(
-                    child: const Row(children: [
-                      Icon(Icons.logout_rounded, size: 18, color: AppColors.error),
-                      SizedBox(width: 10),
-                      Text('Logout', style: TextStyle(color: AppColors.error)),
-                    ]),
-                    onTap: () async => await ref.read(authProvider.notifier).logout(),
-                  ),
-                ],
-              ).animate().fade().scale(delay: 300.ms),
-              const SizedBox(width: 16),
-            ],
-          ),
-        ),
-      ),
-      body: ResponsivePageWrapper(
-        child: RefreshIndicator(
-          onRefresh: () async => ref.invalidate(electionsProvider),
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 100),
+      drawer: (!isDesktop && user != null && user.canManageElections) ? const AdminDrawer() : null,
+      body: Row(
+        children: [
+          if (isDesktop && user != null && user.canManageElections)
+            const SizedBox(width: 250, child: AdminDrawer()),
+          Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (user != null) DashboardQuickActions(user: user),
-                if (user != null && user.role == 'org_admin') ...[
-                  const SizedBox(height: 24),
-                  _buildOverviewSection(context, ref),
-                ],
-                const SizedBox(height: 24),
-                _buildSectionHeader(context, 'Your Elections', Icons.how_to_vote_rounded,
-                    onTap: () => context.pushNamed('elections')),
-                const SizedBox(height: 12),
-                electionsAsync.when(
-                  loading: () => _buildShimmerList(),
-                  error: (e, _) => _buildError(e.toString(), () => ref.invalidate(electionsProvider)),
-                  data: (elections) => _buildElectionList(context, elections, user),
+                _buildAppBar(context, ref, user, isDesktop),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: () async {
+                      ref.invalidate(electionsProvider);
+                      ref.invalidate(orgStatsProvider);
+                    },
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 100),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (user != null && user.role == 'org_admin') ...[
+                            _buildPremiumOverviewSection(context, ref),
+                            const SizedBox(height: 32),
+                          ],
+                          if (user != null) DashboardQuickActions(user: user),
+                          const SizedBox(height: 32),
+                          _buildSectionHeader(context, 'Your Elections', Icons.how_to_vote_rounded,
+                              onTap: () => context.pushNamed('elections')),
+                          const SizedBox(height: 16),
+                          _buildElectionsSection(context, ref, user),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-        ),
+        ],
       ),
-      floatingActionButton: (user != null && user.isOrgAdmin)
+      floatingActionButton: (user != null && user.isOrgAdmin && !isDesktop)
           ? FloatingActionButton.extended(
               onPressed: () => context.push('/elections/new'),
               icon: const Icon(Icons.add),
@@ -155,50 +77,340 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildOverviewSection(BuildContext context, WidgetRef ref) {
-    final statsAsync = ref.watch(orgStatsProvider);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader(context, 'Organization Overview', Icons.insights_rounded),
-        const SizedBox(height: 12),
-        statsAsync.when(
-          loading: () => const DashboardSkeleton(),
-          error: (e, _) => Text('Error loading stats: $e'),
-          data: (stats) => Row(
-            children: [
-              Expanded(child: _buildStatCard(context, 'Members', stats.totalMembers.toString(), Icons.people_alt_rounded)),
-              const SizedBox(width: 12),
-              Expanded(child: _buildStatCard(context, 'Active', stats.activeElections.toString(), Icons.how_to_vote_rounded)),
-              const SizedBox(width: 12),
-              Expanded(child: _buildStatCard(context, 'Total', stats.totalElections.toString(), Icons.inventory_2_rounded)),
-            ],
-          ).animate().fade(duration: 400.ms, delay: 100.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuad),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatCard(BuildContext context, String title, String value, IconData icon) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: Theme.of(context).iconTheme.color, size: 24),
-            const SizedBox(height: 12),
-            Text(value, style: Theme.of(context).textTheme.headlineMedium),
-            const SizedBox(height: 4),
-            Text(title, style: Theme.of(context).textTheme.bodySmall),
+  Widget _buildAppBar(BuildContext context, WidgetRef ref, UserModel? user, bool isDesktop) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      height: 64,
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        border: Border(bottom: BorderSide(color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7))),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          if (!isDesktop && user != null && user.canManageElections)
+            IconButton(
+              icon: const Icon(Icons.menu_rounded),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
+          if (user?.organizationLogoUrl.isNotEmpty == true) ...[
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: Colors.white,
+              backgroundImage: NetworkImage(user!.organizationLogoUrl),
+            ),
+            const SizedBox(width: 12),
           ],
-        ),
+          Text(user?.organizationName ?? 'Dashboard', 
+               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+          const Spacer(),
+          const LiveClockWidget(),
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, size: 20),
+            onPressed: () {
+              ref.invalidate(electionsProvider);
+              ref.invalidate(orgStatsProvider);
+            },
+          ).animate().fade().scale(delay: 200.ms),
+          _buildUserMenu(context, ref, user, isDark),
+        ],
       ),
     );
   }
 
-  Widget _buildSectionHeader(BuildContext context, String title, IconData icon,
-      {VoidCallback? onTap}) {
+  Widget _buildUserMenu(BuildContext context, WidgetRef ref, UserModel? user, bool isDark) {
+    return PopupMenuButton(
+      offset: const Offset(0, 48),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7)),
+      ),
+      color: Theme.of(context).cardTheme.color,
+      elevation: 4,
+      icon: CircleAvatar(
+        radius: 16,
+        backgroundColor: AppColors.primary,
+        backgroundImage: user?.photoUrl.isNotEmpty == true ? NetworkImage(user!.photoUrl) : null,
+        child: user?.photoUrl.isNotEmpty == true 
+            ? null 
+            : Text(
+                ((user?.fullName.isNotEmpty == true) ? user!.fullName : ((user?.email.isNotEmpty == true) ? user!.email : '?')).substring(0, 1).toUpperCase(),
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+      ),
+      itemBuilder: (_) => <PopupMenuEntry<dynamic>>[
+        PopupMenuItem(
+          child: Row(children: [
+            Icon(Icons.history_rounded, size: 18, color: Theme.of(context).iconTheme.color),
+            const SizedBox(width: 10),
+            const Text('My Voting History'),
+          ]),
+          onTap: () => context.pushNamed('voting-history'),
+        ),
+        PopupMenuItem(
+          child: Row(children: [
+            Icon(Icons.person_rounded, size: 18, color: Theme.of(context).iconTheme.color),
+            const SizedBox(width: 10),
+            const Text('My Profile'),
+          ]),
+          onTap: () => context.pushNamed('profile'),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          child: const Row(children: [
+            Icon(Icons.logout_rounded, size: 18, color: AppColors.error),
+            SizedBox(width: 10),
+            Text('Logout', style: TextStyle(color: AppColors.error)),
+          ]),
+          onTap: () async => await ref.read(authProvider.notifier).logout(),
+        ),
+      ],
+    ).animate().fade().scale(delay: 300.ms);
+  }
+
+  Widget _buildPremiumOverviewSection(BuildContext context, WidgetRef ref) {
+    final statsAsync = ref.watch(orgStatsProvider);
+    return statsAsync.when(
+      loading: () => const DashboardSkeleton(),
+      error: (e, _) => Text('Error loading stats: $e'),
+      data: (stats) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 800;
+              final crossAxisCount = isWide ? 5 : (constraints.maxWidth > 500 ? 3 : 2);
+              return GridView.count(
+                crossAxisCount: crossAxisCount,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 1.8,
+                children: [
+                  _buildPremiumStatCard(context, 'Total Elections', stats.totalElections.toString(), Icons.inventory_2_rounded, Colors.blue),
+                  _buildPremiumStatCard(context, 'Active Elections', stats.activeElections.toString(), Icons.how_to_vote_rounded, Colors.green),
+                  _buildPremiumStatCard(context, 'Registered Voters', _formatNumber(stats.totalMembers), Icons.people_alt_rounded, Colors.orange),
+                  _buildPremiumStatCard(context, 'Votes Cast', _formatNumber(stats.totalVotesCast), Icons.check_circle_outline_rounded, Colors.teal),
+                  _buildPremiumStatCard(context, 'Turnout Percentage', '${stats.turnoutPercentage.toStringAsFixed(1)}%', Icons.pie_chart_outline_rounded, Colors.purple),
+                ],
+              );
+            },
+          ).animate().fade(duration: 400.ms, delay: 100.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuad),
+          const SizedBox(height: 24),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 800;
+              return Flex(
+                direction: isWide ? Axis.horizontal : Axis.vertical,
+                children: [
+                  Expanded(
+                    flex: isWide ? 2 : 0,
+                    child: _buildChartCard(context, 'Real-time Voting Progress', _buildVotingProgressChart(stats.votingProgress)),
+                  ),
+                  if (isWide) const SizedBox(width: 16),
+                  if (!isWide) const SizedBox(height: 16),
+                  Expanded(
+                    flex: isWide ? 3 : 0,
+                    child: _buildChartCard(context, 'Results Overview', _buildResultsOverviewChart(stats.resultsOverview)),
+                  ),
+                ],
+              );
+            },
+          ).animate().fade(duration: 500.ms, delay: 200.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuad),
+        ],
+      ),
+    );
+  }
+
+  String _formatNumber(int number) {
+    if (number >= 1000000) return '${(number / 1000000).toStringAsFixed(1)}M';
+    if (number >= 1000) return '${(number / 1000).toStringAsFixed(1)}K';
+    return number.toString();
+  }
+
+  Widget _buildPremiumStatCard(BuildContext context, String title, String value, IconData icon, MaterialColor color) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardTheme.color,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black26 : Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+        border: Border.all(color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5)),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: color.shade600, size: 20),
+              ),
+              const Spacer(),
+              Text(value, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+            ],
+          ),
+          const Spacer(),
+          Text(title, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChartCard(BuildContext context, String title, Widget chartWidget) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      height: 300,
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardTheme.color,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: isDark ? Colors.black26 : Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+        border: Border.all(color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5)),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: AppColors.textMuted)),
+          const SizedBox(height: 24),
+          Expanded(child: chartWidget),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVotingProgressChart(List<Map<String, dynamic>> data) {
+    if (data.isEmpty) return const Center(child: Text('No data'));
+    
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: 100,
+        barTouchData: BarTouchData(enabled: false),
+        titlesData: FlTitlesData(
+          show: true,
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                final index = value.toInt();
+                if (index < 0 || index >= data.length) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(data[index]['label'], style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                );
+              },
+            ),
+          ),
+          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+        gridData: const FlGridData(show: false),
+        borderData: FlBorderData(show: false),
+        barGroups: List.generate(data.length, (index) {
+          return BarChartGroupData(
+            x: index,
+            barRods: [
+              BarChartRodData(
+                toY: (data[index]['value'] as num).toDouble(),
+                color: Colors.blue.shade600,
+                width: 16,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+              ),
+            ],
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildResultsOverviewChart(List<Map<String, dynamic>> data) {
+    if (data.isEmpty) return const Center(child: Text('No data'));
+
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: 100,
+        barTouchData: BarTouchData(enabled: false),
+        titlesData: FlTitlesData(
+          show: true,
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                final index = value.toInt();
+                if (index < 0 || index >= data.length) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Text(data[index]['label'], style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                );
+              },
+            ),
+          ),
+          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+        ),
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (value) => FlLine(color: Colors.grey.withValues(alpha: 0.2), strokeWidth: 1, dashArray: [5, 5]),
+        ),
+        borderData: FlBorderData(show: false),
+        barGroups: List.generate(data.length, (index) {
+          final item = data[index];
+          return BarChartGroupData(
+            x: index,
+            groupVertically: true,
+            barRods: [
+              BarChartRodData(
+                toY: (item['valueA'] as num).toDouble(),
+                color: Colors.blue.shade600,
+                width: 32,
+                borderRadius: BorderRadius.zero,
+              ),
+              BarChartRodData(
+                fromY: (item['valueA'] as num).toDouble(),
+                toY: (item['valueA'] as num).toDouble() + (item['valueB'] as num).toDouble(),
+                color: Colors.green.shade600,
+                width: 32,
+                borderRadius: BorderRadius.zero,
+              ),
+              BarChartRodData(
+                fromY: (item['valueA'] as num).toDouble() + (item['valueB'] as num).toDouble(),
+                toY: (item['valueA'] as num).toDouble() + (item['valueB'] as num).toDouble() + (item['valueC'] as num).toDouble(),
+                color: Colors.orange.shade600,
+                width: 32,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+              ),
+            ],
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(BuildContext context, String title, IconData icon, {VoidCallback? onTap}) {
     return Row(
       children: [
         Icon(icon, color: AppColors.primaryLight, size: 20),
@@ -208,6 +420,15 @@ class DashboardScreen extends ConsumerWidget {
         if (onTap != null)
           TextButton(onPressed: onTap, child: const Text('See All')),
       ],
+    );
+  }
+
+  Widget _buildElectionsSection(BuildContext context, WidgetRef ref, UserModel? user) {
+    final electionsAsync = ref.watch(electionsProvider);
+    return electionsAsync.when(
+      loading: () => _buildShimmerList(),
+      error: (e, _) => _buildError(e.toString(), () => ref.invalidate(electionsProvider)),
+      data: (elections) => _buildElectionList(context, elections, user),
     );
   }
 
@@ -268,7 +489,7 @@ class DashboardScreen extends ConsumerWidget {
         children: [
           const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 32),
           const SizedBox(height: 8),
-          Text('Failed to load elections', style: TextStyle(color: AppColors.error)),
+          Text('Failed to load elections', style: const TextStyle(color: AppColors.error)),
           const SizedBox(height: 8),
           TextButton(onPressed: onRetry, child: const Text('Retry')),
         ],

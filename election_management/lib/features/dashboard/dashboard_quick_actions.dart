@@ -50,12 +50,23 @@ class DashboardQuickActions extends StatelessWidget {
   Widget _buildAction(BuildContext context, IconData icon, String label, String routeName, Color color) {
     return Column(
       children: [
-        GlassCard(
-          padding: const EdgeInsets.all(16),
-          color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => context.pushNamed(routeName),
-          child: Icon(icon, color: color, size: 28),
+        Material(
+          color: Theme.of(context).cardTheme.color,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: Theme.of(context).cardTheme.shape is RoundedRectangleBorder 
+                ? (Theme.of(context).cardTheme.shape as RoundedRectangleBorder).side 
+                : BorderSide.none,
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => context.pushNamed(routeName),
+            hoverColor: Theme.of(context).primaryColor.withValues(alpha: 0.05),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Icon(icon, color: Theme.of(context).iconTheme.color, size: 28),
+            ),
+          ),
         ),
         const SizedBox(height: 8),
         Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),

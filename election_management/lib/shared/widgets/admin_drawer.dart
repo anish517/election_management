@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:ui';
+import 'package:flutter/material.dart';import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/auth_provider.dart';
@@ -17,77 +17,104 @@ class AdminDrawer extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Drawer(
-      backgroundColor: isDark ? AppColors.surface : Colors.white,
-      child: Column(
-        children: [
-          UserAccountsDrawerHeader(
-            decoration: BoxDecoration(
-              color: AppColors.primaryDark,
+      elevation: 0,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            right: BorderSide(
+              color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
             ),
-            accountName: Text(user.role == 'org_admin' ? 'Organization Admin' : 'Election Officer', style: const TextStyle(fontWeight: FontWeight.bold)),
-            accountEmail: Text(user.email),
-            currentAccountPicture: user.organizationLogoUrl.isNotEmpty
-                ? CircleAvatar(
-                    backgroundColor: Colors.white,
-                    backgroundImage: NetworkImage(user.organizationLogoUrl),
-                  )
-                : const CircleAvatar(
-                    backgroundColor: AppColors.primary,
-                    child: Icon(Icons.business_rounded, color: Colors.white, size: 30),
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      border: Border(bottom: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05))),
+                    ),
+                    child: Row(
+                      children: [
+                        user.organizationLogoUrl.isNotEmpty
+                            ? CircleAvatar(
+                                radius: 24,
+                                backgroundColor: Colors.white,
+                                backgroundImage: NetworkImage(user.organizationLogoUrl),
+                              )
+                            : Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  gradient: AppColors.primaryGradient,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(Icons.business_rounded, color: Colors.white, size: 24),
+                              ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(user.role == 'org_admin' ? 'Organization Admin' : 'Election Officer', 
+                                   style: Theme.of(context).textTheme.titleSmall?.copyWith(color: AppColors.primaryLight, fontWeight: FontWeight.bold)),
+                              Text(user.email, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary), overflow: TextOverflow.ellipsis),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.dashboard_rounded),
-            title: const Text('Dashboard'),
-            onTap: () {
-              context.pop();
-              context.goNamed('dashboard');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.how_to_vote_rounded),
-            title: const Text('Elections'),
-            onTap: () {
-              context.pop();
-              context.goNamed('elections');
-            },
-          ),
-          if (user.role == 'org_admin')
-            ListTile(
-              leading: const Icon(Icons.people_alt_rounded),
-              title: const Text('Members'),
-              onTap: () {
-                context.pop();
-                context.goNamed('members');
-              },
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      children: [
+                        _buildNavItem(context, 'Dashboard', Icons.dashboard_rounded, () {
+                          context.pop(); context.goNamed('dashboard');
+                        }),
+                        _buildNavItem(context, 'Elections', Icons.how_to_vote_rounded, () {
+                          context.pop(); context.goNamed('elections');
+                        }),
+                        if (user.role == 'org_admin')
+                          _buildNavItem(context, 'Members', Icons.people_alt_rounded, () {
+                            context.pop(); context.goNamed('members');
+                          }),
+                        if (user.role == 'org_admin')
+                          _buildNavItem(context, 'Settings', Icons.settings_applications_rounded, () {
+                            context.pop(); context.goNamed('org-settings');
+                          }),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Divider(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05)),
+                        ),
+                        _buildNavItem(context, 'My Profile', Icons.person_rounded, () {
+                          context.pop(); context.goNamed('profile');
+                        }),
+                        _buildNavItem(context, 'Logout', Icons.logout_rounded, () {
+                          context.pop(); ref.read(authProvider.notifier).logout();
+                        }, isDestructive: true),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          if (user.role == 'org_admin')
-            ListTile(
-              leading: const Icon(Icons.settings_applications_rounded),
-              title: const Text('Organization Settings'),
-              onTap: () {
-                context.pop();
-                context.goNamed('org-settings');
-              },
-            ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.person_rounded),
-            title: const Text('My Profile'),
-            onTap: () {
-              context.pop();
-              context.goNamed('profile');
-            },
           ),
-          ListTile(
-            leading: const Icon(Icons.logout_rounded, color: AppColors.error),
-            title: const Text('Logout', style: TextStyle(color: AppColors.error)),
-            onTap: () {
-              context.pop();
-              ref.read(authProvider.notifier).logout();
-            },
-          ),
-        ],
+    );
+  }
+
+  Widget _buildNavItem(BuildContext context, String title, IconData icon, VoidCallback onTap, {bool isDestructive = false}) {
+    final color = isDestructive ? AppColors.error : AppColors.textPrimary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: ListTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        leading: Icon(icon, color: isDestructive ? color : (isDark ? AppColors.textSecondary : AppColors.textSecondaryLightMode)),
+        title: Text(title, style: TextStyle(fontWeight: FontWeight.w600, color: isDestructive ? color : null)),
+        hoverColor: (isDestructive ? AppColors.error : AppColors.primaryLight).withValues(alpha: 0.1),
+        onTap: onTap,
       ),
     );
   }

@@ -12,6 +12,7 @@ import '../../shared/widgets/shimmer_loaders.dart';
 import '../../shared/widgets/responsive_layout.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'dashboard_quick_actions.dart';
+import '../../shared/widgets/live_clock.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -58,6 +59,7 @@ class DashboardScreen extends ConsumerWidget {
               ],
             ).animate().fade().slideX(begin: -0.1, duration: 400.ms),
             actions: [
+              const LiveClockWidget(),
               IconButton(
                 icon: const Icon(Icons.refresh_rounded, size: 20),
                 onPressed: () => ref.invalidate(electionsProvider),

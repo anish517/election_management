@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../core/theme/app_theme.dart';
+import 'package:nepali_date_picker/nepali_date_picker.dart';
 
 class EditElectionDialog extends ConsumerStatefulWidget {
   final ElectionModel election;
@@ -59,24 +59,26 @@ class _EditElectionDialogState extends ConsumerState<EditElectionDialog> {
   }
 
   Future<void> _pickDateTime(String label, DateTime? current, ValueSetter<DateTime> onPicked) async {
-    final now = DateTime.now();
-    final date = await showDatePicker(
+    final now = NepaliDateTime.now();
+    NepaliDateTime initial = current?.toNepaliDateTime() ?? now;
+    final date = await showMaterialDatePicker(
       context: context,
-      initialDate: current ?? now.add(const Duration(days: 1)),
-      firstDate: now.subtract(const Duration(days: 365)),
-      lastDate: now.add(const Duration(days: 365 * 5)),
+      initialDate: initial,
+      firstDate: NepaliDateTime(2070, 1, 1),
+      lastDate: NepaliDateTime(2100, 12, 30),
       helpText: 'Select date for $label',
     );
     if (date == null || !mounted) return;
 
     final time = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.fromDateTime(current ?? now),
+      initialTime: TimeOfDay.fromDateTime(current ?? DateTime.now()),
       helpText: 'Select time for $label',
     );
     if (time == null || !mounted) return;
 
-    onPicked(DateTime(date.year, date.month, date.day, time.hour, time.minute));
+    final ndt = NepaliDateTime(date.year, date.month, date.day, time.hour, time.minute);
+    onPicked(ndt.toDateTime());
   }
 
   Future<void> _submit() async {
@@ -113,7 +115,7 @@ class _EditElectionDialogState extends ConsumerState<EditElectionDialog> {
 
   String _formatDate(DateTime? dt) {
     if (dt == null) return 'Not set — tap to pick';
-    return DateFormat('MMM dd, yyyy  hh:mm a').format(dt);
+    return NepaliDateFormat('MMM dd, yyyy  hh:mm a').format(dt.toNepaliDateTime());
   }
 
   @override

@@ -4,8 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/admin_providers.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/responsive_layout.dart';
-import '../../../shared/widgets/glass_card.dart';
-import 'package:intl/intl.dart';
+import 'package:nepali_date_picker/nepali_date_picker.dart';
 
 class CreateElectionScreen extends ConsumerStatefulWidget {
   const CreateElectionScreen({super.key});
@@ -32,11 +31,12 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
   }
 
   Future<void> _selectDateTime(DateTime? current, Function(DateTime) onSelected) async {
-    final date = await showDatePicker(
+    NepaliDateTime initial = current?.toNepaliDateTime() ?? NepaliDateTime.now();
+    final date = await showMaterialDatePicker(
       context: context,
-      initialDate: current ?? DateTime.now(),
-      firstDate: DateTime.now().subtract(const Duration(days: 1)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+      initialDate: initial,
+      firstDate: NepaliDateTime(2070, 1, 1),
+      lastDate: NepaliDateTime(2100, 12, 30),
     );
     if (date == null || !mounted) return;
     
@@ -47,7 +47,8 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
     if (time == null) return;
 
     setState(() {
-      onSelected(DateTime(date.year, date.month, date.day, time.hour, time.minute));
+      final ndt = NepaliDateTime(date.year, date.month, date.day, time.hour, time.minute);
+      onSelected(ndt.toDateTime());
     });
   }
 
@@ -81,9 +82,10 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
       body: ResponsiveFormWrapper(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-          child: GlassCard(
-            padding: const EdgeInsets.all(32),
-            child: Form(
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -109,10 +111,10 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
                   const SizedBox(height: 24),
                   const Text('Schedule (Optional, for Celery)', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
-                  _buildDatePickerRow('Nominations Open', _nominationOpenAt, (d) => _nominationOpenAt = d),
-                  _buildDatePickerRow('Nominations Close', _nominationCloseAt, (d) => _nominationCloseAt = d),
-                  _buildDatePickerRow('Voting Starts', _votingStartAt, (d) => _votingStartAt = d),
-                  _buildDatePickerRow('Voting Ends', _votingEndAt, (d) => _votingEndAt = d),
+                  _buildDateTile('Nomination Opens', _nominationOpenAt, (d) => _nominationOpenAt = d),
+                  _buildDateTile('Nomination Closes', _nominationCloseAt, (d) => _nominationCloseAt = d),
+                  _buildDateTile('Voting Starts', _votingStartAt, (d) => _votingStartAt = d),
+                  _buildDateTile('Voting Ends', _votingEndAt, (d) => _votingEndAt = d),
                   const SizedBox(height: 32),
                   SizedBox(
                     width: double.infinity,
@@ -131,10 +133,11 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
           ),
         ),
       ),
+      ),
     );
   }
 
-  Widget _buildDatePickerRow(String label, DateTime? value, Function(DateTime) onChanged) {
+  Widget _buildDateTile(String label, DateTime? value, Function(DateTime) onChanged) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -143,7 +146,7 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
           TextButton.icon(
             onPressed: () => _selectDateTime(value, onChanged),
             icon: const Icon(Icons.calendar_today_rounded, size: 16),
-            label: Text(value != null ? DateFormat('MMM d, yyyy - h:mm a').format(value) : 'Select Date'),
+            label: Text(value != null ? NepaliDateFormat('MMM d, yyyy - h:mm a').format(value.toNepaliDateTime()) : 'Select Date'),
           ),
         ],
       ),

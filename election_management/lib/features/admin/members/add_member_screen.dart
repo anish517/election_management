@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/admin_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_button.dart';
-import 'package:intl/intl.dart';
+import 'package:nepali_date_picker/nepali_date_picker.dart';
 
 class AddMemberScreen extends ConsumerStatefulWidget {
   const AddMemberScreen({super.key});
@@ -51,15 +51,16 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
   }
 
   Future<void> _selectDate(BuildContext context) async {
-    final picked = await showDatePicker(
+    final now = NepaliDateTime.now();
+    final picked = await showMaterialDatePicker(
       context: context,
-      initialDate: _expiryDate ?? DateTime.now().add(const Duration(days: 365)),
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2101),
+      initialDate: _expiryDate?.toNepaliDateTime() ?? now.add(const Duration(days: 365)),
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365 * 100)),
     );
-    if (picked != null && picked != _expiryDate) {
+    if (picked != null) {
       setState(() {
-        _expiryDate = picked;
+        _expiryDate = picked.toDateTime();
       });
     }
   }
@@ -79,7 +80,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
         region: _regionController.text.trim(),
         positionTitle: _positionTitleController.text.trim(),
         membershipStatus: _selectedMembershipStatus,
-        membershipExpiryDate: _expiryDate != null ? DateFormat('yyyy-MM-dd').format(_expiryDate!) : null,
+        membershipExpiryDate: _expiryDate != null ? _expiryDate!.toIso8601String().split('T')[0] : null,
         votingWeight: double.tryParse(_votingWeightController.text.trim()) ?? 1.0,
       );
       if (mounted) {
@@ -287,7 +288,7 @@ class _AddMemberScreenState extends ConsumerState<AddMemberScreen> {
                                   labelText: 'Membership Expiry Date',
                                   prefixIcon: Icon(Icons.calendar_today),
                                 ),
-                                child: Text(_expiryDate != null ? DateFormat('yyyy-MM-dd').format(_expiryDate!) : 'No Expiry'),
+                                child: Text(_expiryDate != null ? NepaliDateFormat('yyyy-MM-dd').format(_expiryDate!.toNepaliDateTime()) : 'No Expiry'),
                               ),
                             ),
                           ),

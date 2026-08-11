@@ -9,8 +9,17 @@ import logging
 import zoneinfo
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
+import nepali_datetime
 
 logger = logging.getLogger(__name__)
+
+def _format_bs(dt, tz_name):
+    if not dt:
+        return 'TBD'
+    tz = zoneinfo.ZoneInfo(tz_name)
+    local_dt = dt.astimezone(tz)
+    bs_dt = nepali_datetime.datetime.from_datetime(local_dt)
+    return bs_dt.strftime('%B %d, %Y at %I:%M %p (BS)')
 
 
 # ---------------------------------------------------------------------------
@@ -139,7 +148,7 @@ class NotificationService:
         election_url = f"{frontend_url}/elections/{election.id}"
 
         tz = zoneinfo.ZoneInfo(election.organization.timezone)
-        nom_close = (election.nomination_close_at.astimezone(tz).strftime('%B %d, %Y at %I:%M %p') + f' {election.organization.timezone}') if election.nomination_close_at else 'TBD'
+        nom_close = _format_bs(election.nomination_close_at, election.organization.timezone)
 
         body = f'''
         <p style="color:#94A3B8;font-size:15px;margin:0 0 20px;line-height:1.6;">
@@ -176,7 +185,7 @@ class NotificationService:
         election_url = f"{frontend_url}/elections/{election.id}"
 
         tz = zoneinfo.ZoneInfo(election.organization.timezone)
-        voting_end = (election.voting_end_at.astimezone(tz).strftime('%B %d, %Y at %I:%M %p') + f' {election.organization.timezone}') if election.voting_end_at else 'TBD'
+        voting_end = _format_bs(election.voting_end_at, election.organization.timezone)
 
         body = f'''
         <p style="color:#94A3B8;font-size:15px;margin:0 0 20px;line-height:1.6;">

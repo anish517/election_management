@@ -19,7 +19,10 @@ def _format_bs(dt, tz_name):
     tz = zoneinfo.ZoneInfo(tz_name)
     local_dt = dt.astimezone(tz)
     bs_dt = nepali_datetime.datetime.from_datetime_datetime(local_dt)
-    return bs_dt.strftime('%B %d, %Y at %I:%M %p (BS)')
+    formatted_time = bs_dt.strftime('%I:%M %p')
+    if formatted_time.startswith('00:'):
+        formatted_time = '12:' + formatted_time[3:]
+    return f"{bs_dt.strftime('%B %d, %Y')} at {formatted_time} (BS)"
 
 
 # ---------------------------------------------------------------------------

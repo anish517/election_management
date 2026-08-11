@@ -1,11 +1,12 @@
-import 'dart:ui';
-import 'package:flutter/material.dart';import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/auth_provider.dart';
 
 class AdminDrawer extends ConsumerWidget {
-  const AdminDrawer({super.key});
+  final bool isPersistent;
+  const AdminDrawer({super.key, this.isPersistent = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -15,6 +16,13 @@ class AdminDrawer extends ConsumerWidget {
     }
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    void handleNav(String routeName) {
+      if (!isPersistent && Scaffold.of(context).isDrawerOpen) {
+        context.pop();
+      }
+      context.goNamed(routeName);
+    }
 
     return Drawer(
       elevation: 0,
@@ -70,29 +78,20 @@ class AdminDrawer extends ConsumerWidget {
                     child: ListView(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       children: [
-                        _buildNavItem(context, 'Dashboard', Icons.dashboard_rounded, () {
-                          context.pop(); context.goNamed('dashboard');
-                        }),
-                        _buildNavItem(context, 'Elections', Icons.how_to_vote_rounded, () {
-                          context.pop(); context.goNamed('elections');
-                        }),
+                        _buildNavItem(context, 'Dashboard', Icons.dashboard_rounded, () => handleNav('dashboard')),
+                        _buildNavItem(context, 'Elections', Icons.how_to_vote_rounded, () => handleNav('elections')),
                         if (user.role == 'org_admin')
-                          _buildNavItem(context, 'Members', Icons.people_alt_rounded, () {
-                            context.pop(); context.goNamed('members');
-                          }),
+                          _buildNavItem(context, 'Members', Icons.people_alt_rounded, () => handleNav('members')),
                         if (user.role == 'org_admin')
-                          _buildNavItem(context, 'Settings', Icons.settings_applications_rounded, () {
-                            context.pop(); context.goNamed('org-settings');
-                          }),
+                          _buildNavItem(context, 'Settings', Icons.settings_applications_rounded, () => handleNav('org-settings')),
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           child: Divider(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05)),
                         ),
-                        _buildNavItem(context, 'My Profile', Icons.person_rounded, () {
-                          context.pop(); context.goNamed('profile');
-                        }),
+                        _buildNavItem(context, 'My Profile', Icons.person_rounded, () => handleNav('profile')),
                         _buildNavItem(context, 'Logout', Icons.logout_rounded, () {
-                          context.pop(); ref.read(authProvider.notifier).logout();
+                          if (!isPersistent && Scaffold.of(context).isDrawerOpen) context.pop();
+                          ref.read(authProvider.notifier).logout();
                         }, isDestructive: true),
                       ],
                     ),

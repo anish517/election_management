@@ -29,7 +29,7 @@ class DashboardScreen extends ConsumerWidget {
       body: Row(
         children: [
           if (isDesktop && user != null && user.canManageElections)
-            const SizedBox(width: 250, child: AdminDrawer()),
+            const SizedBox(width: 250, child: AdminDrawer(isPersistent: true)),
           Expanded(
             child: Column(
               children: [
@@ -66,7 +66,7 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: (user != null && user.isOrgAdmin && !isDesktop)
+      floatingActionButton: (user != null && user.isOrgAdmin)
           ? FloatingActionButton.extended(
               onPressed: () => context.push('/elections/new'),
               icon: const Icon(Icons.add),

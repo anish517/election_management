@@ -104,10 +104,9 @@ class TallyService:
     @staticmethod
     def tally_election(election):
         from apps.voting.models import VoterRoll
-        from apps.members.models import Member
         
         # Calculate turnout
-        total_voters = Member.objects.filter(organization=election.organization, membership_status='active').count()
+        total_voters = VoterRoll.objects.filter(election=election, is_eligible=True).count()
         ballots_cast = VoterRoll.objects.filter(election=election, has_voted=True).count()
         turnout_percentage = round((ballots_cast / total_voters * 100), 2) if total_voters > 0 else 0
 

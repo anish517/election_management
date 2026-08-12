@@ -46,7 +46,6 @@ class OrganizationStatsView(APIView):
         from django.utils import timezone
         
         # Calculate stats
-        total_members = org.members.count()
         total_elections = org.elections.count()
         active_elections = org.elections.filter(state__in=['nomination_open', 'voting_open']).count()
         
@@ -103,7 +102,7 @@ class OrganizationStatsView(APIView):
             })
         
         data = {
-            'total_members': total_members,
+            'total_members': total_eligible,
             'total_elections': total_elections,
             'active_elections': active_elections,
             'total_votes_cast': total_votes_cast,

@@ -612,7 +612,7 @@ class OrganizationStatsModel {
         totalMembers: json['total_members'] as int? ?? 0,
         totalElections: json['total_elections'] as int? ?? 0,
         activeElections: json['active_elections'] as int? ?? 0,
-        totalBallotsCast: json['total_ballots_cast'] as int? ?? 0,
+        totalBallotsCast: json['total_votes_cast'] as int? ?? 0,
         turnoutPercentage: double.tryParse(json['turnout_percentage']?.toString() ?? '0.0') ?? 0.0,
         votingProgress: List<Map<String, dynamic>>.from(json['voting_progress'] ?? []),
         resultsOverview: List<Map<String, dynamic>>.from(json['results_overview'] ?? []),

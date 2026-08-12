@@ -79,21 +79,19 @@ class ElectionViewSet(viewsets.ModelViewSet):
         """Export the voter roll for this election."""
         import csv
         from django.http import HttpResponse
-        from apps.members.models import Member
+        from apps.voting.models import VoterRoll
 
         election = self.get_object()
-        # For MVP, the voter roll is all active members in the org.
-        # In a more advanced version, this would check election-specific eligibility rules.
-        voters = Member.objects.filter(organization=election.organization, membership_status='active')
+        voters = VoterRoll.objects.filter(election=election).order_by('voter_id')
         
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = f'attachment; filename="voter_roll_{election.id}.csv"'
         
         writer = csv.writer(response)
-        writer.writerow(['Member Code', 'Full Name', 'Email', 'Voting Weight'])
+        writer.writerow(['Voter ID', 'Prefix', 'First Name', 'Middle Name', 'Last Name', 'Email', 'Phone', 'Council Number', 'Citizenship Number', 'Eligible'])
         
         for v in voters:
-            writer.writerow([v.member_code, v.full_name, v.email, v.voting_weight])
+            writer.writerow([v.voter_id, v.prefix, v.first_name, v.middle_name, v.last_name, v.email, v.phone, v.council_number, v.citizenship_number, v.is_eligible])
             
         return response
 
@@ -130,7 +128,7 @@ class ElectionViewSet(viewsets.ModelViewSet):
             'total_eligible': total_eligible,
             'total_voted': total_voted,
             'turnout_percentage': round(percentage, 2),
-            'voters': turnout_list
+            'turnout_list': turnout_list
         })
 
     @action(detail=True, methods=['get'], permission_classes=[IsOrgAdmin])

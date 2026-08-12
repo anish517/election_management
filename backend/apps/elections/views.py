@@ -15,7 +15,7 @@ class ElectionViewSet(viewsets.ModelViewSet):
     serializer_class = ElectionSerializer
     
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy', 'publish', 'advance_state', 'assign_role']:
+        if self.action in ['create', 'update', 'partial_update', 'destroy', 'publish', 'advance_state', 'assign_role', 'broadcast_email']:
             return [IsOrgAdmin()]
         return [IsObserver()]
 
@@ -205,27 +205,25 @@ class ElectionViewSet(viewsets.ModelViewSet):
             return Response({'error': 'subject and body_html are required.'}, status=status.HTTP_400_BAD_REQUEST)
             
         from apps.voting.models import VoterRoll
-        from apps.notifications.services import NotificationService
+        from apps.notifications.tasks import send_custom_broadcast_email_task
         
-        voters = VoterRoll.objects.filter(election=election, is_eligible=True)
-        sent_count = 0
+        # Calculate expected recipient count (for log and response)
+        voter_count = VoterRoll.objects.filter(election=election, is_eligible=True).count()
         
-        for voter in voters:
-            NotificationService.send_custom_email(
-                to_email=voter.email,
-                subject=subject,
-                election=election,
-                body_html=body_html
-            )
-            sent_count += 1
-            
+        # Dispatch Celery task
+        send_custom_broadcast_email_task.delay(
+            str(election.id),
+            subject,
+            body_html,
+        )
+        
         log_action('election.email_broadcast', request.user.organization, request.user, {
             'election_id': str(election.id),
-            'sent_count': sent_count,
+            'queued_count': voter_count,
             'subject': subject
         })
         
-        return Response({'message': f'Sent {sent_count} emails.'}, status=status.HTTP_200_OK)
+        return Response({'message': f'Queued {voter_count} emails for sending.'}, status=status.HTTP_200_OK)
 
 
 class ElectionNoticeViewSet(viewsets.ModelViewSet):

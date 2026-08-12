@@ -13,7 +13,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from apps.elections.views import ElectionViewSet, PositionViewSet
 from apps.members.views import MemberViewSet
 from apps.candidates.views import CandidateViewSet
-from apps.voting.views import VotingViewSet, VotingHistoryView
+from apps.voting.views import VotingViewSet, VotingHistoryView, VoterRollViewSet
 from apps.results.views import ElectionResultsViewSet
 from apps.organizations.views import OrganizationView, OrganizationStatsView
 from apps.core.views import FileUploadView
@@ -31,6 +31,7 @@ election_router.register(r'positions', PositionViewSet, basename='election-posit
 election_router.register(r'candidates', CandidateViewSet, basename='election-candidates')
 election_router.register(r'voting', VotingViewSet, basename='election-voting')
 election_router.register(r'results', ElectionResultsViewSet, basename='election-results')
+election_router.register(r'voters', VoterRollViewSet, basename='election-voters')
 
 urlpatterns = [
     # Django admin (Super Admin support tool)

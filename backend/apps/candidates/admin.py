@@ -7,6 +7,7 @@ class CandidateDocumentInline(admin.TabularInline):
 
 @admin.register(Candidate)
 class CandidateAdmin(admin.ModelAdmin):
-    list_display = ('member', 'election', 'position', 'status')
-    list_filter = ('status', 'election')
+    list_display = ('first_name', 'last_name', 'election', 'position', 'status', 'created_at')
+    list_filter = ('election', 'position', 'status')
+    search_fields = ('first_name', 'last_name', 'email')
     inlines = [CandidateDocumentInline]

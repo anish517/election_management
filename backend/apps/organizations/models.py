@@ -21,6 +21,8 @@ class OrgType(models.TextChoices):
     CORPORATE = 'corporate', 'Corporate'
     RELIGIOUS = 'religious', 'Religious Organization'
     POLITICAL_PARTY = 'political_party', 'Political Party (Internal)'
+    GOVERNMENT = 'government', 'Government / Public Body'
+    EDUCATIONAL = 'educational', 'Educational Institution'
     OTHER = 'other', 'Other'
 
 
@@ -40,10 +42,21 @@ class Organization(TimestampedModel):
     # Identity
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255, unique=True)
+    prefix = models.CharField(
+        max_length=10, blank=True, default='',
+        help_text='Short prefix/abbreviation, e.g. SOC, NMB, HAN'
+    )
     org_type = models.CharField(max_length=50, choices=OrgType.choices, default=OrgType.OTHER)
+    council_number = models.CharField(
+        max_length=100, blank=True, default='',
+        help_text='Registration / council number issued by the relevant authority'
+    )
 
     # Contact / Location
     address = models.TextField(blank=True, default='')
+    phone = models.CharField(max_length=30, blank=True, default='')
+    email = models.EmailField(blank=True, default='')
+    website = models.URLField(blank=True, default='')
     timezone = models.CharField(max_length=50, default='Asia/Kathmandu')
     default_language = models.CharField(
         max_length=5,
@@ -51,9 +64,26 @@ class Organization(TimestampedModel):
         default='ne'
     )
 
+    # Type-specific metadata (stored as JSON for flexibility)
+    # Cooperative / SACCO: {'sacco_license': str, 'member_share_value': str}
+    # College / University: {'affiliation_body': str, 'campus_code': str}
+    # NGO / INGO: {'registration_act': str, 'swc_affiliation_no': str}
+    # Housing Society: {'plot_count': int, 'locality': str}
+    # Political Party: {'ec_registration_no': str}
+    type_metadata = models.JSONField(blank=True, default=dict)
+
     # Branding (doc: 11-Organization-Management.md §11.3)
     logo_url = models.URLField(blank=True, default='')
+    cover_image_url = models.URLField(blank=True, default='')
     brand_color = models.CharField(max_length=7, blank=True, default='#1976D2')  # Hex color
+
+    # Bank Details (optional, for payment tracking)
+    bank_name = models.CharField(max_length=255, blank=True, default='')
+    bank_branch = models.CharField(max_length=255, blank=True, default='')
+    bank_account_number = models.CharField(max_length=50, blank=True, default='')
+    bank_account_name = models.CharField(max_length=255, blank=True, default='')
+    bank_swift_code = models.CharField(max_length=20, blank=True, default='')
+    bank_qr_url = models.URLField(blank=True, default='')
 
     # Subscription & Lifecycle (doc: 11-Organization-Management.md §11.2)
     status = models.CharField(max_length=20, choices=OrgStatus.choices, default=OrgStatus.TRIAL)

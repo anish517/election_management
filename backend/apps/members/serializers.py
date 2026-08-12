@@ -5,8 +5,10 @@ class MemberSerializer(serializers.ModelSerializer):
     class Meta:
         model = Member
         fields = [
-            'id', 'member_code', 'full_name', 'photo_url', 'gender',
-            'email', 'phone', 'department', 'region', 'position_title',
+            'id', 'member_code', 'prefix', 'first_name', 'middle_name', 'last_name', 
+            'full_name', 'photo_url', 'gender', 'date_of_birth',
+            'council_number', 'citizenship_number',
+            'email', 'phone', 'address', 'department', 'region', 'position_title',
             'membership_status', 'membership_expiry_date', 'voting_weight',
             'is_eligible_to_vote', 'is_eligible_to_nominate', 'created_at', 'updated_at'
         ]

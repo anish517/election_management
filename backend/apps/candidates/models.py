@@ -19,8 +19,7 @@ class NominationStatus(models.TextChoices):
 
 class Candidate(TimestampedModel):
     """
-    A member running for a position.
-    (doc: 08-Database-Design.md §8.2 candidates table)
+    A standalone candidate running for a position in an election.
     """
     election = models.ForeignKey(
         'elections.Election', on_delete=models.CASCADE, related_name='candidates'
@@ -28,11 +27,23 @@ class Candidate(TimestampedModel):
     position = models.ForeignKey(
         'elections.Position', on_delete=models.CASCADE, related_name='candidates'
     )
-    member = models.ForeignKey(
-        'members.Member', on_delete=models.CASCADE, related_name='candidacies'
-    )
     
-    # Nomination details (doc: 14-Candidate-Management.md §14.2)
+    # Candidate Profile (Rich Data)
+    first_name = models.CharField(max_length=100, blank=True, default='')
+    middle_name = models.CharField(max_length=100, blank=True, default='')
+    last_name = models.CharField(max_length=100, blank=True, default='')
+    email = models.EmailField(blank=True, default='')
+    contact_number = models.CharField(max_length=20, blank=True, default='')
+    gender = models.CharField(max_length=20, blank=True, default='')
+    date_of_birth = models.DateField(null=True, blank=True)
+    address = models.TextField(blank=True, default='')
+    
+    candidate_image = models.URLField(blank=True, default='')
+    candidate_signature = models.URLField(blank=True, default='')
+    personal_description = models.TextField(blank=True, default='')
+    contribution_to_org = models.TextField(blank=True, default='')
+
+    # Nomination details
     manifesto = models.TextField(blank=True, default='')
     status = models.CharField(
         max_length=20, choices=NominationStatus.choices, default=NominationStatus.DRAFT
@@ -51,22 +62,50 @@ class Candidate(TimestampedModel):
 
     class Meta:
         db_table = 'candidates'
-        unique_together = [['election', 'position', 'member']]
+        # unique_together removed since member is removed
         
     def __str__(self):
-        return f"{self.member.full_name} for {self.position.title} ({self.status})"
+        return f"{self.first_name} {self.last_name} for {self.position.title} ({self.status})"
+
+    @property
+    def full_name(self):
+        parts = [self.first_name, self.middle_name, self.last_name]
+        return " ".join([p for p in parts if p])
+
+
+class CandidateEndorsement(TimestampedModel):
+    """
+    Proposers and Supporters for a candidate.
+    """
+    candidate = models.ForeignKey(
+        Candidate, on_delete=models.CASCADE, related_name='endorsements'
+    )
+    endorsement_type = models.CharField(
+        max_length=20, choices=[('proposer', 'Proposer'), ('supporter', 'Supporter')]
+    )
+    name = models.CharField(max_length=255)
+    citizenship_number = models.CharField(max_length=100, blank=True, default='')
+    phone = models.CharField(max_length=20, blank=True, default='')
+    membership_id = models.CharField(max_length=100, blank=True, default='')
+    signature_url = models.URLField(blank=True, default='')
+
+    class Meta:
+        db_table = 'candidate_endorsements'
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.endorsement_type.title()} for {self.candidate}: {self.name}"
 
 
 class CandidateDocument(models.Model):
     """
     Supporting documents for a nomination.
-    (doc: 14-Candidate-Management.md §14.2)
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     candidate = models.ForeignKey(
         Candidate, on_delete=models.CASCADE, related_name='documents'
     )
-    document_type = models.CharField(max_length=50) # e.g. 'citizenship', 'tax_clearance'
+    document_type = models.CharField(max_length=50)
     file_url = models.URLField()
     uploaded_at = models.DateTimeField(auto_now_add=True)
 

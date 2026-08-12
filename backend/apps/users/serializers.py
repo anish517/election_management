@@ -20,15 +20,34 @@ class RegisterSerializer(serializers.Serializer):
     Creates an Org Admin + Organization in Trial state.
     (doc: 21-REST-API-Documentation.md §21.1, UC-01)
     """
+    # Organization Information
+    org_name = serializers.CharField(max_length=255)
+    org_type = serializers.ChoiceField(choices=OrgType.choices, required=False, default='other')
+    prefix = serializers.CharField(max_length=10, required=False, allow_blank=True, default='')
+    council_number = serializers.CharField(max_length=100, required=False, allow_blank=True, default='')
+    org_email = serializers.EmailField(required=False, allow_blank=True, default='')
+    org_phone = serializers.CharField(max_length=30, required=False, allow_blank=True, default='')
+    website = serializers.URLField(required=False, allow_blank=True, default='')
+    address = serializers.CharField(required=False, allow_blank=True, default='')
+    logo_url = serializers.URLField(required=False, allow_blank=True, default='')
+    cover_image_url = serializers.URLField(required=False, allow_blank=True, default='')
+
+    # Bank Details (all optional)
+    bank_name = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
+    bank_branch = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
+    bank_account_number = serializers.CharField(max_length=50, required=False, allow_blank=True, default='')
+    bank_account_name = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
+    bank_swift_code = serializers.CharField(max_length=20, required=False, allow_blank=True, default='')
+    bank_qr_url = serializers.URLField(required=False, allow_blank=True, default='')
+
+    # Type-specific metadata (optional JSON)
+    type_metadata = serializers.DictField(required=False, default=dict)
+
+    # Organization Admin
+    admin_name = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
     email = serializers.EmailField()
     phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
     password = serializers.CharField(min_length=8, write_only=True)
-    org_name = serializers.CharField(max_length=255)
-    org_type = serializers.ChoiceField(
-        choices=OrgType.choices,
-        required=False,
-        default='other'
-    )
 
     def validate_email(self, value):
         if User.objects.filter(email=value.lower()).exists():
@@ -53,6 +72,21 @@ class RegisterSerializer(serializers.Serializer):
             name=validated_data['org_name'],
             slug=slug,
             org_type=validated_data.get('org_type', 'other'),
+            prefix=validated_data.get('prefix', ''),
+            council_number=validated_data.get('council_number', ''),
+            phone=validated_data.get('org_phone', ''),
+            email=validated_data.get('org_email', ''),
+            website=validated_data.get('website', ''),
+            address=validated_data.get('address', ''),
+            logo_url=validated_data.get('logo_url', ''),
+            cover_image_url=validated_data.get('cover_image_url', ''),
+            bank_name=validated_data.get('bank_name', ''),
+            bank_branch=validated_data.get('bank_branch', ''),
+            bank_account_number=validated_data.get('bank_account_number', ''),
+            bank_account_name=validated_data.get('bank_account_name', ''),
+            bank_swift_code=validated_data.get('bank_swift_code', ''),
+            bank_qr_url=validated_data.get('bank_qr_url', ''),
+            type_metadata=validated_data.get('type_metadata', {}),
             status=OrgStatus.TRIAL,
             trial_ends_at=timezone.now() + timedelta(days=settings.ORG_TRIAL_DAYS),
         )
@@ -66,10 +100,32 @@ class RegisterSerializer(serializers.Serializer):
             organization=org,
         )
 
+        # Create a Member record for the admin so their name appears correctly
+        admin_name = validated_data.get('admin_name', '').strip()
+        if admin_name:
+            try:
+                from apps.members.models import Member, MembershipStatus
+                name_parts = admin_name.split(' ', 1)
+                first_name = name_parts[0]
+                last_name = name_parts[1] if len(name_parts) > 1 else ''
+                Member.objects.create(
+                    organization=org,
+                    user=user,
+                    first_name=first_name,
+                    last_name=last_name,
+                    email=user.email,
+                    phone=user.phone,
+                    membership_status=MembershipStatus.ACTIVE,
+                )
+            except Exception:
+                pass  # Name storage is best-effort; do not block registration
+
         log_action('org.created', organization=org, actor=user, target=org,
                    metadata={'org_name': org.name, 'org_type': org.org_type})
 
         return user, org
+
+
 
 
 class LoginSerializer(serializers.Serializer):
@@ -127,6 +183,25 @@ class OTPRequestSerializer(serializers.Serializer):
 
     def validate_phone_or_email(self, value):
         return value.strip()
+
+    def validate(self, attrs):
+        identifier = attrs.get('phone_or_email', '').strip()
+        purpose = attrs.get('purpose', 'login')
+
+        if purpose in ['login', 'password_reset']:
+            if '@' in identifier:
+                user = User.objects.filter(email=identifier.lower()).first()
+                if not user:
+                    from apps.voting.models import VoterRoll
+                    if not VoterRoll.objects.filter(email__iexact=identifier).exists():
+                        raise serializers.ValidationError({'phone_or_email': 'No account found with this email. Make sure you are a registered member of an organization.'})
+            else:
+                user = User.objects.filter(phone=identifier).first()
+                if not user:
+                    from apps.voting.models import VoterRoll
+                    if not VoterRoll.objects.filter(phone=identifier).exists():
+                        raise serializers.ValidationError({'phone_or_email': 'No account found with this phone number. Make sure you are a registered member of an organization.'})
+        return attrs
 
     def create_otp(self, identifier: str, purpose: str, ip_address: str = None) -> str:
         """
@@ -191,28 +266,45 @@ class OTPVerifySerializer(serializers.Serializer):
         if '@' in identifier:
             user = User.objects.filter(email=identifier.lower()).first()
             if not user:
-                # Check if this email belongs to a member — auto-create a voter account
+                # Check if this email belongs to a VoterRoll — auto-create a voter account
                 try:
-                    from apps.members.models import Member
-                    member = Member.objects.filter(
+                    from apps.voting.models import VoterRoll
+                    voter = VoterRoll.objects.filter(
                         email__iexact=identifier.strip(),
-                        deleted_at__isnull=True,
-                    ).select_related('organization').first()
-                    if member and member.organization:
+                    ).select_related('election__organization').first()
+                    
+                    if voter and voter.election and voter.election.organization:
                         user = User.objects.create_user(
                             email=identifier.lower(),
                             role=UserRole.VOTER,
-                            organization=member.organization,
-                            phone=member.phone or '',
+                            organization=voter.election.organization,
+                            phone=voter.phone or '',
                         )
-                        # Link the member record to the new user account
-                        member.user = user
-                        member.membership_status = 'active'
-                        member.save(update_fields=['user', 'membership_status'])
-                except Exception:
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).error(f"Error auto-creating voter: {e}")
                     pass
         else:
             user = User.objects.filter(phone=identifier).first()
+            if not user:
+                # Check if this phone belongs to a VoterRoll — auto-create a voter account
+                try:
+                    from apps.voting.models import VoterRoll
+                    voter = VoterRoll.objects.filter(
+                        phone=identifier.strip(),
+                    ).select_related('election__organization').first()
+                    
+                    if voter and voter.election and voter.election.organization:
+                        user = User.objects.create_user(
+                            email=voter.email or f"{identifier}@voter.local",
+                            role=UserRole.VOTER,
+                            organization=voter.election.organization,
+                            phone=voter.phone or '',
+                        )
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).error(f"Error auto-creating voter: {e}")
+                    pass
 
         if not user:
             raise serializers.ValidationError(
@@ -235,6 +327,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     """Read-only user profile — never exposes sensitive fields."""
     organization_name = serializers.SerializerMethodField()
     organization_logo_url = serializers.SerializerMethodField()
+    organization_cover_image_url = serializers.SerializerMethodField()
     role_display = serializers.SerializerMethodField()
     full_name = serializers.SerializerMethodField()
     photo_url = serializers.SerializerMethodField()
@@ -243,7 +336,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'email', 'phone', 'role', 'role_display',
-            'organization', 'organization_name', 'organization_logo_url',
+            'organization', 'organization_name', 'organization_logo_url', 'organization_cover_image_url',
             'full_name', 'photo_url',
             'is_2fa_enabled', 'last_login_at', 'created_at',
         ]
@@ -254,6 +347,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def get_organization_logo_url(self, obj):
         return obj.organization.logo_url if obj.organization else None
+
+    def get_organization_cover_image_url(self, obj):
+        return obj.organization.cover_image_url if obj.organization else None
 
     def get_role_display(self, obj):
         return obj.get_role_display()

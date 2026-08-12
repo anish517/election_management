@@ -7,15 +7,13 @@ import '../../features/auth/register_screen.dart';
 import '../../features/auth/otp_verify_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/elections/election_list_screen.dart';
+import '../../features/admin/elections/election_dashboard_screen.dart';
 import '../../features/elections/election_detail_screen.dart';
 import '../../features/voting/ballot_screen.dart';
 import '../../features/voting/vote_confirmation_screen.dart';
 import '../../features/voting/receipt_screen.dart';
 import '../../features/admin/elections/create_election_screen.dart';
 import '../../features/admin/elections/voter_turnout_screen.dart';
-import '../../features/admin/members/member_list_screen.dart';
-import '../../features/admin/members/add_member_screen.dart';
-import '../../features/admin/members/member_detail_screen.dart';
 import '../../features/voting/voting_history_screen.dart';
 
 import '../../features/candidates/nomination_screen.dart';
@@ -73,25 +71,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'profile',
         builder: (context, state) => const UserProfileScreen(),
       ),
-      GoRoute(
-        path: '/members',
-        name: 'members',
-        builder: (context, state) => const MemberListScreen(),
-        routes: [
-          GoRoute(
-            path: 'new',
-            name: 'add-member',
-            builder: (context, state) => const AddMemberScreen(),
-          ),
-          GoRoute(
-            path: ':memberId',
-            name: 'member-detail',
-            builder: (context, state) => MemberDetailScreen(
-              memberId: state.pathParameters['memberId']!,
-            ),
-          ),
-        ],
-      ),
+
       GoRoute(
         path: '/voting-history',
         name: 'voting-history',
@@ -110,7 +90,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: ':electionId',
             name: 'election-detail',
-            builder: (context, state) => ElectionDetailScreen(
+            builder: (context, state) => ElectionDashboardScreen(
               electionId: state.pathParameters['electionId']!,
             ),
           ),

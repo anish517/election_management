@@ -6,6 +6,7 @@ import '../../core/network/api_client.dart';
 import '../../core/network/api_constants.dart';
 import '../../shared/widgets/shimmer_loaders.dart';
 import '../../shared/widgets/empty_state.dart';
+import 'candidate_profile_sheet.dart';
 
 final candidatesProvider = FutureProvider.autoDispose.family<List<CandidateModel>, String>((ref, electionId) async {
   final dio = ref.watch(apiClientProvider);
@@ -95,24 +96,93 @@ class NominationListScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (c.positionTitle != null)
-                        Text('Position: ${c.positionTitle}', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      Text(c.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      Text('Manifesto: ${c.manifesto}', style: TextStyle(color: isDark ? Colors.white70 : AppColors.textSecondaryLightMode)),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (c.photoUrl != null && c.photoUrl!.isNotEmpty)
+                            CircleAvatar(
+                              radius: 28,
+                              backgroundImage: NetworkImage(c.photoUrl!),
+                            )
+                          else
+                            CircleAvatar(
+                              radius: 28,
+                              backgroundColor: AppColors.primaryLight.withValues(alpha: 0.2),
+                              child: Text(
+                                c.name.isNotEmpty ? c.name[0].toUpperCase() : '?',
+                                style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryLight, fontSize: 20),
+                              ),
+                            ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (c.positionTitle != null)
+                                  Text('Position: ${c.positionTitle}', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13)),
+                                const SizedBox(height: 2),
+                                Text(c.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                                if (c.slateName.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text('Slate: ${c.slateName}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                ],
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Manifesto: ${c.manifesto}', 
+                                  maxLines: 2, 
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(color: isDark ? Colors.white70 : AppColors.textSecondaryLightMode, fontSize: 13),
+                                ),
+                                const SizedBox(height: 8),
+                                if (c.endorsements.isNotEmpty)
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.people_alt_rounded, size: 14, color: AppColors.primary),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${c.endorsements.length} Endorsements Attached',
+                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                      ),
+                                    ],
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 16),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          TextButton(
-                            onPressed: () => _processNomination(context, ref, c, false),
-                            child: const Text('Reject', style: TextStyle(color: AppColors.error)),
+                          TextButton.icon(
+                            onPressed: () {
+                              print('Viewing candidate: ${c.name} with ${c.endorsements.length} endorsements');
+                              for (var e in c.endorsements) {
+                                print('Endorsement: ${e.name} (${e.endorsementType})');
+                              }
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (_) => CandidateProfileSheet(candidate: c),
+                              );
+                            },
+                            icon: const Icon(Icons.person_search_rounded, size: 18),
+                            label: const Text('View Profile'),
+                            style: TextButton.styleFrom(foregroundColor: AppColors.primaryLight),
                           ),
-                          const SizedBox(width: 8),
-                          ElevatedButton(
-                            onPressed: () => _processNomination(context, ref, c, true),
-                            child: const Text('Approve'),
+                          Row(
+                            children: [
+                              TextButton(
+                                onPressed: () => _processNomination(context, ref, c, false),
+                                child: const Text('Reject', style: TextStyle(color: AppColors.error)),
+                              ),
+                              const SizedBox(width: 8),
+                              ElevatedButton(
+                                onPressed: () => _processNomination(context, ref, c, true),
+                                child: const Text('Approve'),
+                              ),
+                            ],
                           ),
                         ],
                       )

@@ -44,10 +44,14 @@ class Member(SoftDeleteModel):
 
     # Identity
     member_code = models.CharField(max_length=100, help_text='Org-defined member ID')
+    prefix = models.CharField(max_length=20, blank=True, default='')
+    first_name = models.CharField(max_length=100, blank=True, default='')
+    middle_name = models.CharField(max_length=100, blank=True, default='')
+    last_name = models.CharField(max_length=100, blank=True, default='')
     full_name = models.CharField(max_length=255)
     photo_url = models.URLField(blank=True, default='')
 
-    # Demographics
+    # Demographics & IDs
     gender = models.CharField(
         max_length=20,
         choices=[
@@ -56,10 +60,14 @@ class Member(SoftDeleteModel):
         ],
         blank=True, default=''
     )
+    date_of_birth = models.DateField(null=True, blank=True)
+    council_number = models.CharField(max_length=100, blank=True, default='')
+    citizenship_number = models.CharField(max_length=100, blank=True, default='')
 
     # Contact
     email = models.EmailField(blank=True, default='')
     phone = models.CharField(max_length=20, blank=True, default='')
+    address = models.TextField(blank=True, default='')
 
     # Org structure (used in position-level eligibility rules — doc: 12-Member-Management.md §12.6)
     department = models.CharField(max_length=100, blank=True, default='')

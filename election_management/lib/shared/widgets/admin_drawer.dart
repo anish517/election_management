@@ -81,7 +81,6 @@ class AdminDrawer extends ConsumerWidget {
                         _buildNavItem(context, 'Dashboard', Icons.dashboard_rounded, () => handleNav('dashboard')),
                         _buildNavItem(context, 'Elections', Icons.how_to_vote_rounded, () => handleNav('elections')),
                         if (user.role == 'org_admin')
-                          _buildNavItem(context, 'Members', Icons.people_alt_rounded, () => handleNav('members')),
                         if (user.role == 'org_admin')
                           _buildNavItem(context, 'Settings', Icons.settings_applications_rounded, () => handleNav('org-settings')),
                         Padding(

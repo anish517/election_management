@@ -17,16 +17,22 @@ from apps.core.models import TimestampedModel
 
 class VoterRoll(TimestampedModel):
     """
-    Tracks which members are eligible to vote in a specific election,
-    and whether they have cast their ballot.
-    (doc: 15-Voting-Engine.md §15.2)
+    A standalone voter eligible to vote in a specific election.
     """
     election = models.ForeignKey(
         'elections.Election', on_delete=models.CASCADE, related_name='voter_roll'
     )
-    member = models.ForeignKey(
-        'members.Member', on_delete=models.CASCADE, related_name='election_rolls'
-    )
+    
+    # Voter Identity
+    voter_id = models.CharField(max_length=50, blank=True, default='')
+    prefix = models.CharField(max_length=20, blank=True, default='')
+    first_name = models.CharField(max_length=100, blank=True, default='')
+    middle_name = models.CharField(max_length=100, blank=True, default='')
+    last_name = models.CharField(max_length=100, blank=True, default='')
+    email = models.EmailField(blank=True, default='')
+    phone = models.CharField(max_length=20, blank=True, default='')
+    council_number = models.CharField(max_length=100, blank=True, default='')
+    citizenship_number = models.CharField(max_length=100, blank=True, default='')
     
     # State flags
     is_eligible = models.BooleanField(default=True)
@@ -35,18 +41,21 @@ class VoterRoll(TimestampedModel):
     has_voted = models.BooleanField(default=False)
     voted_at = models.DateTimeField(null=True, blank=True)
     
-    # IP/Device tracking for fraud detection (does NOT link to ballot)
     voted_ip_address = models.GenericIPAddressField(null=True, blank=True)
     
     class Meta:
         db_table = 'voter_rolls'
-        unique_together = [['election', 'member']]
         indexes = [
             models.Index(fields=['election', 'has_voted']),
         ]
 
     def __str__(self):
-        return f"{self.member.full_name} - {self.election.title} (Voted: {self.has_voted})"
+        return f"{self.first_name} {self.last_name} - {self.election.title} (Voted: {self.has_voted})"
+
+    @property
+    def full_name(self):
+        parts = [self.prefix, self.first_name, self.middle_name, self.last_name]
+        return " ".join([p for p in parts if p])
 
 
 class VotingSession(models.Model):

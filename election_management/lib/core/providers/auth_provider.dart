@@ -94,6 +94,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String orgName,
     required String orgType,
     String? phone,
+    String? adminName,
+    String? prefix,
+    String? councilNumber,
+    String? orgEmail,
+    String? orgPhone,
+    String? website,
+    String? address,
+    String? logoUrl,
+    String? coverImageUrl,
+    String? bankName,
+    String? bankBranch,
+    String? bankAccountNumber,
+    String? bankAccountName,
+    String? bankSwiftCode,
+    String? bankQrUrl,
+    Map<String, dynamic>? typeMetadata,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
@@ -103,6 +119,22 @@ class AuthNotifier extends StateNotifier<AuthState> {
         'org_name': orgName,
         'org_type': orgType,
         if (phone != null && phone.isNotEmpty) 'phone': phone,
+        if (adminName != null && adminName.isNotEmpty) 'admin_name': adminName,
+        if (prefix != null && prefix.isNotEmpty) 'prefix': prefix,
+        if (councilNumber != null && councilNumber.isNotEmpty) 'council_number': councilNumber,
+        if (orgEmail != null && orgEmail.isNotEmpty) 'org_email': orgEmail,
+        if (orgPhone != null && orgPhone.isNotEmpty) 'org_phone': orgPhone,
+        if (website != null && website.isNotEmpty) 'website': website,
+        if (address != null && address.isNotEmpty) 'address': address,
+        if (logoUrl != null && logoUrl.isNotEmpty) 'logo_url': logoUrl,
+        if (coverImageUrl != null && coverImageUrl.isNotEmpty) 'cover_image_url': coverImageUrl,
+        if (bankName != null && bankName.isNotEmpty) 'bank_name': bankName,
+        if (bankBranch != null && bankBranch.isNotEmpty) 'bank_branch': bankBranch,
+        if (bankAccountNumber != null && bankAccountNumber.isNotEmpty) 'bank_account_number': bankAccountNumber,
+        if (bankAccountName != null && bankAccountName.isNotEmpty) 'bank_account_name': bankAccountName,
+        if (bankSwiftCode != null && bankSwiftCode.isNotEmpty) 'bank_swift_code': bankSwiftCode,
+        if (bankQrUrl != null && bankQrUrl.isNotEmpty) 'bank_qr_url': bankQrUrl,
+        if (typeMetadata != null && typeMetadata.isNotEmpty) 'type_metadata': typeMetadata,
       });
       final data = resp.data as Map<String, dynamic>;
       await JwtInterceptor.saveTokens(
@@ -124,6 +156,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       return msg;
     }
   }
+
 
   Future<String?> loginWithOtp({required String phoneOrEmail, required String otp}) async {
     state = state.copyWith(isLoading: true, error: null);
@@ -188,8 +221,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final firstVal = fieldErrors[firstKey];
         if (firstVal is List && firstVal.isNotEmpty) return firstVal.first.toString();
       }
+      
+      // Standard DRF field errors are usually at the top level
+      for (final key in data.keys) {
+        final val = data[key];
+        if (val is List && val.isNotEmpty) {
+          return val.first.toString();
+        }
+      }
     }
-    return e.message ?? 'Network error. Please check your connection.';
+    return e.response?.statusMessage ?? e.message ?? 'Network error. Please check your connection.';
   }
 }
 

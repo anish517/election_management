@@ -11,7 +11,7 @@ class BallotService:
     @staticmethod
     def generate_ballot(election):
         """Returns the fully structured ballot for rendering."""
-        positions = election.positions.all()
+        positions = election.positions.all().order_by('result_order', 'id')
         return BallotPositionSerializer(positions, many=True).data
 
     @staticmethod
@@ -37,7 +37,7 @@ class BallotService:
         from the saved Vote record (creating a cryptographic receipt).
         """
         try:
-            session = VotingSession.objects.select_related('voter_roll', 'voter_roll__election', 'voter_roll__member').get(token=session_token)
+            session = VotingSession.objects.select_related('voter_roll', 'voter_roll__election').get(token=session_token)
         except VotingSession.DoesNotExist:
             raise ValueError("Invalid session token.")
             
@@ -73,7 +73,7 @@ class BallotService:
                 election=election,
                 ballot_data=ballot_data,
                 receipt_hash=receipt_hash,
-                weight=voter_roll.member.voting_weight
+                weight=1 # Default weight, as VoterRoll does not have member relation
             )
             
         return receipt_hash

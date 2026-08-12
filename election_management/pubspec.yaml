@@ -39,6 +39,7 @@ dependencies:
   flutter_animate: ^4.5.2
   nepali_date_picker: ^6.0.2
   nepali_utils: ^3.0.8
+  flutter_colorpicker: ^1.1.0
 
 dev_dependencies:
   flutter_test:

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/network/api_constants.dart';
 import '../../shared/models/models.dart';
 import '../candidates/candidate_profile_sheet.dart';
 
@@ -219,11 +220,18 @@ class _BallotPositionCard extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
+              color: position.bgColor.isNotEmpty
+                  ? Color(int.parse(position.bgColor.replaceAll('#', 'FF'), radix: 16)).withValues(alpha: 0.1)
+                  : Colors.transparent,
               border: Border(bottom: BorderSide(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05))),
             ),
             child: Row(
               children: [
-                const Icon(Icons.star_rounded, color: AppColors.accent, size: 18),
+                Icon(Icons.star_rounded, 
+                  color: position.bgColor.isNotEmpty 
+                      ? Color(int.parse(position.bgColor.replaceAll('#', 'FF'), radix: 16))
+                      : AppColors.accent, 
+                  size: 18),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
@@ -245,6 +253,19 @@ class _BallotPositionCard extends ConsumerWidget {
                     ],
                   ),
                 ),
+                if (position.quotaName.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.info.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      position.quotaName,
+                      style: const TextStyle(color: AppColors.info, fontWeight: FontWeight.w600, fontSize: 11),
+                    ),
+                  ),
                 if (!position.isRankedChoice && !position.isApproval && !position.isYesNo)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -291,13 +312,25 @@ class _BallotPositionCard extends ConsumerWidget {
                         candidate: candidate,
                         isSelected: isSelected,
                         rank: rank,
-                        onTap: () => ref.read(ballotSelectionsProvider.notifier).toggleCandidate(
-                          positionId: position.id,
-                          candidateId: candidate.id,
-                          maxSeats: position.seatsAvailable,
-                          isApproval: position.isApproval,
-                          isRankedChoice: position.isRankedChoice,
-                        ),
+                        onTap: () {
+                          final prevLength = positionSelections.length;
+                          ref.read(ballotSelectionsProvider.notifier).toggleCandidate(
+                            positionId: position.id,
+                            candidateId: candidate.id,
+                            maxSeats: position.seatsAvailable,
+                            isApproval: position.isApproval,
+                            isRankedChoice: position.isRankedChoice,
+                          );
+                          final newLength = ref.read(ballotSelectionsProvider)[position.id]?.length ?? 0;
+                          
+                          // If length didn't change and wasn't deselected, it means max seats hit
+                          if (!isSelected && prevLength == position.seatsAvailable && prevLength == newLength && position.seatsAvailable > 1) {
+                            ScaffoldMessenger.of(context).clearSnackBars();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('You can only select up to ${position.seatsAvailable} candidates for this position.')),
+                            );
+                          }
+                        },
                       ),
                     );
                   }).toList(),
@@ -346,17 +379,13 @@ class _CandidateTile extends StatelessWidget {
                 Expanded(
                   child: ClipRRect(
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
-                    child: candidate.photoUrl != null && candidate.photoUrl!.isNotEmpty
-                        ? Image.network(candidate.photoUrl!, fit: BoxFit.cover)
-                        : Container(
-                            color: AppColors.primary,
-                            child: Center(
-                              child: Text(
-                                candidate.name.isNotEmpty ? candidate.name[0].toUpperCase() : '?',
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 36),
-                              ),
-                            ),
-                          ),
+                    child: ApiConstants.getFullImageUrl(candidate.photoUrl) != null
+                        ? Image.network(
+                            ApiConstants.getFullImageUrl(candidate.photoUrl)!, 
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _buildPlaceholder(),
+                          )
+                        : _buildPlaceholder(),
                   ),
                 ),
                 Padding(
@@ -443,6 +472,18 @@ class _CandidateTile extends StatelessWidget {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlaceholder() {
+    return Container(
+      color: AppColors.primary,
+      child: Center(
+        child: Text(
+          candidate.name.isNotEmpty ? candidate.name[0].toUpperCase() : '?',
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 36),
         ),
       ),
     );

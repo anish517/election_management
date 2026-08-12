@@ -20,10 +20,12 @@ class LoadingButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: fullWidth ? double.infinity : null,
-      height: 52,
-      child: DecoratedBox(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SizedBox(
+          width: (fullWidth && constraints.maxWidth < double.infinity) ? double.infinity : null,
+          height: 52,
+          child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           gradient: backgroundColor == null ? AppColors.primaryGradient : null,
@@ -65,6 +67,8 @@ class LoadingButton extends StatelessWidget {
                 ),
         ),
       ),
+    );
+    }
     );
   }
 }

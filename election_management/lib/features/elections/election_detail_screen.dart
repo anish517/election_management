@@ -17,6 +17,7 @@ import '../../core/network/api_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/shimmer_loaders.dart';
+import 'package:nepali_date_picker/nepali_date_picker.dart';
 import '../../shared/widgets/responsive_layout.dart';
 import '../candidates/candidate_profile_sheet.dart';
 
@@ -116,18 +117,34 @@ class ElectionDetailScreen extends ConsumerWidget {
     );
   }
 
+  Color _hexToColor(String hex, Color fallback) {
+    try {
+      final h = hex.replaceAll('#', '');
+      return Color(int.parse('FF$h', radix: 16));
+    } catch (_) {
+      return fallback;
+    }
+  }
+
   Widget _buildHeroCard(BuildContext context, ElectionModel election) {
     final stateColor = _stateColor(election.state);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Determine colors
+    final primaryBg = _hexToColor(election.primaryColor, isDark ? AppColors.surface : Colors.white);
+    final isCustomBg = election.primaryColor.isNotEmpty && election.primaryColor != '#6C5CE7';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surface : Colors.white,
+        color: isCustomBg ? primaryBg.withValues(alpha: isDark ? 0.2 : 0.05) : (isDark ? AppColors.surface : Colors.white),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05)),
+        border: Border.all(
+          color: isCustomBg ? primaryBg.withValues(alpha: 0.3) : (isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05))
+        ),
         boxShadow: [
-          if (!isDark)
+          if (!isDark && !isCustomBg)
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 10,
@@ -138,39 +155,105 @@ class ElectionDetailScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: stateColor.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: stateColor.withValues(alpha: 0.5)),
-            ),
-            child: Text(
-              election.state.replaceAll('_', ' ').toUpperCase(),
-              style: TextStyle(color: stateColor, fontSize: 10, fontWeight: FontWeight.w700),
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (election.logoUrl.isNotEmpty) ...[
+                Container(
+                  width: 54, height: 54,
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF27272A) : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Theme.of(context).dividerColor),
+                    image: DecorationImage(
+                      image: NetworkImage(election.logoUrl),
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        if (election.prefix.isNotEmpty) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              election.prefix,
+                              style: const TextStyle(color: AppColors.primaryLight, fontSize: 11, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: stateColor.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: stateColor.withValues(alpha: 0.5)),
+                          ),
+                          child: Text(
+                            election.state.replaceAll('_', ' ').toUpperCase(),
+                            style: TextStyle(color: stateColor, fontSize: 10, fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(election.title, style: Theme.of(context).textTheme.headlineMedium),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
-          Text(election.title, style: Theme.of(context).textTheme.headlineMedium),
+          
           if (election.description.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Text(election.description,
                 style: TextStyle(color: isDark ? Colors.white70 : AppColors.textSecondaryLightMode, fontSize: 14)),
           ],
           const SizedBox(height: 16),
-          Row(
+          Wrap(
+            spacing: 16,
+            runSpacing: 10,
             children: [
               _MetaItem(icon: Icons.how_to_vote_outlined,
                   label: election.isSecretBallot ? 'Secret Ballot' : 'Open Ballot'),
-              const SizedBox(width: 16),
               _MetaItem(icon: Icons.bar_chart_rounded,
                   label: '${election.positions.length} Position(s)'),
+              if (election.contactNumber.isNotEmpty)
+                _MetaItem(icon: Icons.phone_outlined, label: election.contactNumber),
+              if (election.isPaidCandidacy)
+                _MetaItem(icon: Icons.monetization_on_outlined, label: 'Paid Candidacy: Rs. ${election.nomineeCharge.toStringAsFixed(0)}'),
+            ],
+          ),
+          
+          const Divider(height: 32),
+          
+          // Displaying schedules if available
+          Wrap(
+            spacing: 24,
+            runSpacing: 16,
+            children: [
+              if (election.votingStartAt != null && election.votingEndAt != null)
+                _ScheduleBlock(title: 'Voting Period', start: election.votingStartAt!, end: election.votingEndAt!, icon: Icons.schedule_rounded),
+              if (election.nominationOpenAt != null && election.nominationCloseAt != null)
+                _ScheduleBlock(title: 'Nomination Phase', start: election.nominationOpenAt!, end: election.nominationCloseAt!, icon: Icons.assignment_ind_outlined),
             ],
           ),
         ],
       ),
     );
   }
+
 
   Widget _buildPositionsSection(BuildContext context, ElectionModel election, UserModel? user) {
     return Column(
@@ -358,7 +441,7 @@ class ElectionDetailScreen extends ConsumerWidget {
                     builder: (_) => AddPositionDialog(electionId: election.id),
                   ),
                   icon: const Icon(Icons.add_box_outlined, size: 18),
-                  label: const Text('Add Position'),
+                  label: const Text('Add Designation'),
                 ),
               ),
               const SizedBox(width: 12),
@@ -788,6 +871,52 @@ class _MetaItem extends StatelessWidget {
         Icon(icon, color: Colors.white60, size: 15),
         const SizedBox(width: 5),
         Text(label, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+      ],
+    );
+  }
+}
+
+class _ScheduleBlock extends StatelessWidget {
+  final String title;
+  final String start;
+  final String end;
+  final IconData icon;
+
+  const _ScheduleBlock({
+    required this.title,
+    required this.start,
+    required this.end,
+    required this.icon,
+  });
+
+  String _format(String iso) {
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      return NepaliDateFormat('MMM d, yyyy - h:mm a').format(dt.toNepaliDateTime());
+    } catch (_) {
+      return iso;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: isDark ? Colors.white70 : Colors.black54),
+        const SizedBox(width: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? Colors.white : Colors.black87)),
+            const SizedBox(height: 4),
+            Text('Starts: ${_format(start)}', style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.black54)),
+            Text('Ends: ${_format(end)}', style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.black54)),
+          ],
+        ),
       ],
     );
   }

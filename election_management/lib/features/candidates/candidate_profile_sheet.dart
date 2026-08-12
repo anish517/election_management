@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/network/api_constants.dart';
 import '../../shared/models/models.dart';
 
 /// Opens a rich candidate profile as a full-screen modal bottom sheet.
@@ -28,7 +29,7 @@ class _CandidateProfileSheetState extends State<CandidateProfileSheet>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -93,6 +94,7 @@ class _CandidateProfileSheetState extends State<CandidateProfileSheet>
                   tabs: const [
                     Tab(text: 'Platform / Manifesto'),
                     Tab(text: 'About'),
+                    Tab(text: 'Endorsements'),
                   ],
                 ),
               ),
@@ -102,8 +104,9 @@ class _CandidateProfileSheetState extends State<CandidateProfileSheet>
                 child: TabBarView(
                   controller: _tabController,
                   children: [
-                    _ManifestoTab(candidate: c, isDark: isDark, scrollController: scrollController),
-                    _AboutTab(candidate: c, isDark: isDark, scrollController: scrollController),
+                    _ManifestoTab(candidate: c, isDark: isDark),
+                    _AboutTab(candidate: c, isDark: isDark),
+                    _EndorsementsTab(candidate: c, isDark: isDark),
                   ],
                 ),
               ),
@@ -266,16 +269,14 @@ class _HeroHeader extends StatelessWidget {
 class _ManifestoTab extends StatelessWidget {
   final CandidateModel candidate;
   final bool isDark;
-  final ScrollController scrollController;
 
-  const _ManifestoTab({required this.candidate, required this.isDark, required this.scrollController});
+  const _ManifestoTab({required this.candidate, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
     final hasManifesto = candidate.manifesto.trim().isNotEmpty;
 
     return SingleChildScrollView(
-      controller: scrollController,
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
       child: hasManifesto
           ? Column(
@@ -387,14 +388,12 @@ class _EmptyManifesto extends StatelessWidget {
 class _AboutTab extends StatelessWidget {
   final CandidateModel candidate;
   final bool isDark;
-  final ScrollController scrollController;
 
-  const _AboutTab({required this.candidate, required this.isDark, required this.scrollController});
+  const _AboutTab({required this.candidate, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      controller: scrollController,
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -406,11 +405,11 @@ class _AboutTab extends StatelessWidget {
             isDark: isDark,
           ).animate().fadeIn(delay: 50.ms).slideX(begin: 0.1),
 
-          if (candidate.memberEmail != null && candidate.memberEmail!.isNotEmpty)
+          if (candidate.email != null && candidate.email!.isNotEmpty)
             _InfoRow(
               icon: Icons.alternate_email_rounded,
               label: 'Email',
-              value: candidate.memberEmail!,
+              value: candidate.email!,
               isDark: isDark,
             ).animate().fadeIn(delay: 100.ms).slideX(begin: 0.1),
 
@@ -461,6 +460,103 @@ class _AboutTab extends StatelessWidget {
       case 'under_review': return AppColors.warning;
       default: return AppColors.textMuted;
     }
+  }
+}
+
+class _EndorsementsTab extends StatelessWidget {
+  final CandidateModel candidate;
+  final bool isDark;
+
+  const _EndorsementsTab({required this.candidate, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    final endorsements = candidate.endorsements.where((e) => e.name.isNotEmpty).toList();
+    
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+      child: endorsements.isEmpty
+          ? Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(height: 48),
+                Icon(
+                  Icons.group_off_rounded,
+                  size: 64,
+                  color: isDark ? AppColors.textMuted : const Color(0xFFCDD5E0),
+                ).animate().scaleXY(begin: 0.95, end: 1.05, duration: 1200.ms, curve: Curves.easeInOut),
+                const SizedBox(height: 16),
+                Text(
+                  'No Endorsements',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.textMuted : AppColors.textSecondaryLightMode,
+                  ),
+                ),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 8),
+                Text(
+                  'Endorsements',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? AppColors.textPrimary : AppColors.textPrimaryLightMode,
+                  ),
+                ).animate().fadeIn(delay: 50.ms),
+                const SizedBox(height: 16),
+                ...endorsements.map((e) => _buildEndorsementCard(e, isDark)),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildEndorsementCard(CandidateEndorsementModel e, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surface : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isDark ? AppColors.surfaceVariant : Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(e.endorsementType == 'proposer' ? Icons.person_add_alt_1_rounded : Icons.people_alt_rounded,
+                   size: 16, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text(e.endorsementType.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primary)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text('Name: ${e.name}', style: const TextStyle(fontWeight: FontWeight.w600)),
+          if (e.phone.isNotEmpty) Text('Phone: ${e.phone}', style: const TextStyle(fontSize: 13)),
+          if (e.citizenshipNumber.isNotEmpty) Text('Citizenship: ${e.citizenshipNumber}', style: const TextStyle(fontSize: 13)),
+          if (e.membershipId.isNotEmpty) Text('Voter ID: ${e.membershipId}', style: const TextStyle(fontSize: 13)),
+          if (e.signatureUrl.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            const Text('Signature:', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+            const SizedBox(height: 4),
+            Container(
+              height: 60,
+              width: 120,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Image.network(e.signatureUrl, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 24)),
+            ),
+          ],
+        ],
+      ),
+    ).animate().fadeIn(delay: 100.ms).slideX(begin: 0.1);
   }
 }
 

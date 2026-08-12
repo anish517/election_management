@@ -1,8 +1,8 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from apps.elections.models import Election, Position, ElectionState
-from apps.elections.serializers import ElectionSerializer, PositionSerializer, ElectionStateTransitionSerializer
+from apps.elections.models import Election, Position, ElectionState, ElectionNotice
+from apps.elections.serializers import ElectionSerializer, PositionSerializer, ElectionStateTransitionSerializer, ElectionNoticeSerializer
 from apps.core.permissions import IsOrgAdmin
 from apps.elections.permissions import IsElectionOfficer, IsObserver
 from apps.audit.models import log_action
@@ -193,6 +193,64 @@ class ElectionViewSet(viewsets.ModelViewSet):
             'message': f'Role {role} assigned to {email}',
             'created': created
         }, status=status.HTTP_200_OK if not created else status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsOrgAdmin])
+    def broadcast_email(self, request, pk=None):
+        """Send a custom email to all eligible voters in the election."""
+        election = self.get_object()
+        subject = request.data.get('subject')
+        body_html = request.data.get('body_html')
+        
+        if not subject or not body_html:
+            return Response({'error': 'subject and body_html are required.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        from apps.voting.models import VoterRoll
+        from apps.notifications.services import NotificationService
+        
+        voters = VoterRoll.objects.filter(election=election, is_eligible=True)
+        sent_count = 0
+        
+        for voter in voters:
+            NotificationService.send_custom_email(
+                to_email=voter.email,
+                subject=subject,
+                election=election,
+                body_html=body_html
+            )
+            sent_count += 1
+            
+        log_action('election.email_broadcast', request.user.organization, request.user, {
+            'election_id': str(election.id),
+            'sent_count': sent_count,
+            'subject': subject
+        })
+        
+        return Response({'message': f'Sent {sent_count} emails.'}, status=status.HTTP_200_OK)
+
+
+class ElectionNoticeViewSet(viewsets.ModelViewSet):
+    """
+    Manage notices for an election.
+    """
+    serializer_class = ElectionNoticeSerializer
+    
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsOrgAdmin()]
+        return [IsObserver()]
+
+    def get_queryset(self):
+        return ElectionNotice.objects.filter(
+            election__organization=self.request.user.organization,
+            election_id=self.kwargs['election_pk']
+        )
+
+    def perform_create(self, serializer):
+        election = Election.objects.get(
+            id=self.kwargs['election_pk'],
+            organization=self.request.user.organization
+        )
+        serializer.save(election=election)
 
 
 class PositionViewSet(viewsets.ModelViewSet):

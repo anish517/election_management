@@ -205,8 +205,8 @@ class _TurnoutRingCard extends StatelessWidget {
                   ),
                 ],
               ),
-              swapAnimationDuration: const Duration(milliseconds: 600),
-              swapAnimationCurve: Curves.easeInOut,
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeInOut,
             ),
             // Center label
             Column(mainAxisSize: MainAxisSize.min, children: [
@@ -214,7 +214,7 @@ class _TurnoutRingCard extends StatelessWidget {
                 tween: Tween(begin: 0, end: pct),
                 duration: const Duration(milliseconds: 800),
                 curve: Curves.easeOut,
-                builder: (_, val, __) => Text(
+                builder: (_, val, _) => Text(
                   '${val.toStringAsFixed(1)}%',
                   style: const TextStyle(
                       fontSize: 28,
@@ -526,7 +526,7 @@ class _CandidateMomentumRow extends StatelessWidget {
             tween: Tween(begin: 0, end: fraction),
             duration: const Duration(milliseconds: 700),
             curve: Curves.easeOut,
-            builder: (_, val, __) {
+            builder: (_, val, _) {
               return LinearProgressIndicator(
                 value: val,
                 minHeight: 7,
@@ -607,7 +607,7 @@ class _LiveBadgeState extends State<_LiveBadge>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _opacity,
-      builder: (_, __) => Opacity(
+      builder: (_, _) => Opacity(
         opacity: _opacity.value,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -652,7 +652,7 @@ class _PulsingDotState extends State<_PulsingDot>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _ctrl,
-      builder: (_, __) => Container(
+      builder: (_, _) => Container(
         width: 7,
         height: 7,
         decoration: BoxDecoration(

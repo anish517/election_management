@@ -48,7 +48,7 @@ class _CreateDesignationScreenState extends ConsumerState<CreateDesignationScree
     
     setState(() => _isSubmitting = true);
     try {
-      final hexColor = '#${_selectedColor.value.toRadixString(16).substring(2, 8)}';
+      final hexColor = '#${_selectedColor.toARGB32().toRadixString(16).substring(2, 8)}';
       
       final data = {
         'election': widget.electionId,
@@ -166,7 +166,7 @@ class _CreateDesignationScreenState extends ConsumerState<CreateDesignationScree
                                           flex: 1,
                                           child: Center(
                                             child: Text(
-                                              '#${_selectedColor.value.toRadixString(16).substring(2, 8)}',
+                                              '#${_selectedColor.toARGB32().toRadixString(16).substring(2, 8)}',
                                               style: TextStyle(color: Colors.grey.shade600),
                                             ),
                                           ),

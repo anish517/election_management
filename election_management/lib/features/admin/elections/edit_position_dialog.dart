@@ -88,7 +88,7 @@ class _EditPositionDialogState extends ConsumerState<EditPositionDialog> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _votingMethod,
+                initialValue: _votingMethod,
                 decoration: const InputDecoration(labelText: 'Voting Method'),
                 items: const [
                   DropdownMenuItem(value: 'fptp', child: Text('First Past The Post')),

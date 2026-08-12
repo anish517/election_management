@@ -383,7 +383,7 @@ class _CandidateTile extends StatelessWidget {
                         ? Image.network(
                             ApiConstants.getFullImageUrl(candidate.photoUrl)!, 
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _buildPlaceholder(),
+                            errorBuilder: (_, _, _) => _buildPlaceholder(),
                           )
                         : _buildPlaceholder(),
                   ),

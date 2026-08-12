@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
@@ -226,7 +225,7 @@ class _AuditPortalScreenState extends ConsumerState<AuditPortalScreen> {
         _buildResultBox(
           isSuccess: isConsistent,
           message: isConsistent
-              ? '✅ VERIFIED — Vote counts are consistent. No discrepancies detected.'
+              ? '✅ VERIFIED — Vote counts are consistent ($totalVoted cast, $totalRecords in DB). No discrepancies detected.'
               : '❌ MISMATCH — Vote record counts do not match participation records!',
         ),
         const SizedBox(height: 12),

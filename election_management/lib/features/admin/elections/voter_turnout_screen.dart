@@ -117,7 +117,7 @@ class VoterTurnoutScreen extends ConsumerWidget {
                       margin: const EdgeInsets.only(bottom: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+                        side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
                       ),
                       child: ListTile(
                         contentPadding: const EdgeInsets.symmetric(
@@ -126,8 +126,8 @@ class VoterTurnoutScreen extends ConsumerWidget {
                         ),
                         leading: CircleAvatar(
                           backgroundColor: hasVoted
-                              ? Colors.green.withOpacity(0.1)
-                              : Colors.grey.withOpacity(0.1),
+                              ? Colors.green.withValues(alpha: 0.1)
+                              : Colors.grey.withValues(alpha: 0.1),
                           child: Icon(
                             hasVoted
                                 ? Icons.check_circle_rounded
@@ -147,8 +147,8 @@ class VoterTurnoutScreen extends ConsumerWidget {
                           ),
                           decoration: BoxDecoration(
                             color: hasVoted
-                                ? Colors.green.withOpacity(0.1)
-                                : Colors.orange.withOpacity(0.1),
+                                ? Colors.green.withValues(alpha: 0.1)
+                                : Colors.orange.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -196,10 +196,10 @@ class _StatCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceVariant : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withOpacity(isDark ? 0.1 : 0.2)),
+        border: Border.all(color: Colors.grey.withValues(alpha: isDark ? 0.1 : 0.2)),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.05),
+            color: color.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

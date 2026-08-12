@@ -127,7 +127,7 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
                           Expanded(
                             child: electionAsync.when(
                               loading: () => const CircularProgressIndicator(),
-                              error: (_, __) => const Text('Error loading designations'),
+                              error: (_, _) => const Text('Error loading designations'),
                               data: (election) => _buildDropdown(
                                 'Designation *',
                                 _selectedPositionId,
@@ -277,7 +277,7 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
         Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
         const SizedBox(height: 8),
         DropdownButtonFormField<T>(
-          value: value,
+          initialValue: value,
           items: items,
           onChanged: onChanged,
           decoration: InputDecoration(

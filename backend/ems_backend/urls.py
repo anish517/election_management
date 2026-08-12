@@ -10,7 +10,7 @@ from rest_framework_nested import routers
 
 from apps.users.views import RegisterView, LoginView, MeView, OTPRequestView, OTPVerifyView, LogoutView
 from rest_framework_simplejwt.views import TokenRefreshView
-from apps.elections.views import ElectionViewSet, PositionViewSet
+from apps.elections.views import ElectionViewSet, PositionViewSet, ElectionNoticeViewSet
 from apps.members.views import MemberViewSet
 from apps.candidates.views import CandidateViewSet
 from apps.voting.views import VotingViewSet, VotingHistoryView, VoterRollViewSet
@@ -32,6 +32,7 @@ election_router.register(r'candidates', CandidateViewSet, basename='election-can
 election_router.register(r'voting', VotingViewSet, basename='election-voting')
 election_router.register(r'results', ElectionResultsViewSet, basename='election-results')
 election_router.register(r'voters', VoterRollViewSet, basename='election-voters')
+election_router.register(r'notices', ElectionNoticeViewSet, basename='election-notices')
 
 urlpatterns = [
     # Django admin (Super Admin support tool)

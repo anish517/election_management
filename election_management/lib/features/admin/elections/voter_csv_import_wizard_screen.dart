@@ -3,7 +3,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/providers/admin_providers.dart';
@@ -231,7 +230,7 @@ class _VoterCsvImportWizardScreenState extends ConsumerState<VoterCsvImportWizar
         padding: const EdgeInsets.symmetric(vertical: 40),
         child: Column(
           children: [
-            Icon(Icons.upload_file_rounded, size: 64, color: AppColors.primary.withOpacity(0.5)),
+            Icon(Icons.upload_file_rounded, size: 64, color: AppColors.primary.withValues(alpha: 0.5)),
             const SizedBox(height: 16),
             const Text('Upload a CSV file containing voter records.', style: TextStyle(fontSize: 16)),
             const SizedBox(height: 24),
@@ -269,7 +268,7 @@ class _VoterCsvImportWizardScreenState extends ConsumerState<VoterCsvImportWizar
           decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
           child: ListView.separated(
             itemCount: _mapping.keys.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
+            separatorBuilder: (_, _) => const Divider(height: 1),
             itemBuilder: (context, i) {
               final csvCol = _mapping.keys.elementAt(i);
               final currentMap = _mapping[csvCol];

@@ -6,7 +6,9 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import 'designations_screen.dart';
 import 'candidates_screen.dart';
-import 'voters_screen.dart';
+import 'email_screen.dart';
+import 'notice_screen.dart';
+import 'guidelines_screen.dart';
 import '../../elections/election_detail_screen.dart';
 
 class ElectionDashboardScreen extends ConsumerStatefulWidget {
@@ -31,7 +33,7 @@ class _ElectionDashboardScreenState
         title: electionAsync.when(
           data: (election) => Text(election.title),
           loading: () => const Text('Loading...'),
-          error: (_, __) => const Text('Election Dashboard'),
+          error: (_, _) => const Text('Election Dashboard'),
         ),
         actions: [
           TextButton.icon(
@@ -144,6 +146,12 @@ class _ElectionDashboardScreenState
         return CandidatesScreen(electionId: widget.electionId);
       case 4:
         return VotersScreen(electionId: widget.electionId);
+      case 5:
+        return EmailScreen(electionId: widget.electionId);
+      case 6:
+        return NoticeScreen(electionId: widget.electionId);
+      case 7:
+        return GuidelinesScreen(electionId: widget.electionId);
       default:
         return const Center(child: Text('Coming Soon'));
     }

@@ -185,7 +185,7 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
                             children: [
                               Expanded(
                                 child: DropdownButtonFormField<String>(
-                                  value: _selectedMemberId,
+                                  initialValue: _selectedMemberId,
                                   decoration: const InputDecoration(labelText: 'Select Voter *'),
                                   items: voters.map((v) => DropdownMenuItem(
                                     value: v['id'].toString(),
@@ -210,7 +210,7 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
                               const SizedBox(width: 16),
                               Expanded(
                                 child: DropdownButtonFormField<String>(
-                                  value: _selectedPositionId,
+                                  initialValue: _selectedPositionId,
                                   decoration: const InputDecoration(labelText: 'Designation *'),
                                   items: widget.election.positions.map((p) => DropdownMenuItem(
                                     value: p.id,

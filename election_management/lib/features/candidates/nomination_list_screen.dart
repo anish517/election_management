@@ -73,7 +73,7 @@ class NominationListScreen extends ConsumerWidget {
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: pending.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (context, i) {
               final c = pending[i];
               final isDark = Theme.of(context).brightness == Brightness.dark;

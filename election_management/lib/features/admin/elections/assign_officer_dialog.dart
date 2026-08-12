@@ -99,7 +99,7 @@ class _AssignOfficerDialogState extends ConsumerState<AssignOfficerDialog> {
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(labelText: 'Role'),
-              value: _selectedRole,
+              initialValue: _selectedRole,
               items: const [
                 DropdownMenuItem(value: 'election_officer', child: Text('Election Officer')),
                 DropdownMenuItem(value: 'observer', child: Text('Observer')),

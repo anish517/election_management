@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from apps.elections.models import Election, Position, ElectionStateTransition, ElectionRoleAssignment
+from apps.elections.models import Election, Position, ElectionStateTransition, ElectionRoleAssignment, ElectionNotice
 
 class PositionSerializer(serializers.ModelSerializer):
     candidates = serializers.SerializerMethodField()
@@ -57,7 +57,7 @@ class ElectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Election
         fields = [
-            'id', 'title', 'description',
+            'id', 'title', 'description', 'guidelines',
             # Branding
             'prefix', 'logo_url', 'contact_number', 'primary_color', 'secondary_color',
             # State
@@ -99,5 +99,10 @@ class ElectionSerializer(serializers.ModelSerializer):
 class ElectionStateTransitionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ElectionStateTransition
-        fields = ['id', 'from_state', 'to_state', 'triggered_by', 'created_at']
-        read_only_fields = ['id', 'from_state', 'to_state', 'triggered_by', 'created_at']
+        fields = '__all__'
+
+class ElectionNoticeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ElectionNotice
+        fields = ['id', 'election', 'title', 'content', 'is_published', 'created_at']
+        read_only_fields = ['id', 'created_at']

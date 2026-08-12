@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/network/api_constants.dart';
 import '../../shared/models/models.dart';
 
 /// Opens a rich candidate profile as a full-screen modal bottom sheet.
@@ -551,7 +550,7 @@ class _EndorsementsTab extends StatelessWidget {
                 border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Image.network(e.signatureUrl, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 24)),
+              child: Image.network(e.signatureUrl, fit: BoxFit.contain, errorBuilder: (_, _, _) => const Icon(Icons.broken_image, size: 24)),
             ),
           ],
         ],

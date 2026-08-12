@@ -7,10 +7,8 @@ import '../../core/network/api_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../shared/widgets/loading_button.dart';
 import '../../shared/widgets/image_upload_widget.dart';
-import '../../shared/models/models.dart';
 import '../candidates/nomination_list_screen.dart';
 import '../../core/providers/auth_provider.dart';
-import '../../core/theme/app_theme.dart';
 
 class NominationScreen extends ConsumerStatefulWidget {
   final String electionId;
@@ -154,7 +152,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                               margin: const EdgeInsets.only(bottom: 12),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+                                side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
                               ),
                               child: ListTile(
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -176,7 +174,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                     );
                   },
                   loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (_, __) => const SizedBox.shrink(),
+                  error: (_, _) => const SizedBox.shrink(),
                 ),
                 Form(
               key: _formKey,
@@ -201,7 +199,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
 
                   DropdownButtonFormField<String>(
                     decoration: const InputDecoration(labelText: 'Position'),
-                    value: _selectedPositionId,
+                    initialValue: _selectedPositionId,
                     items: election.positions.map((p) {
                       return DropdownMenuItem(value: p.id, child: Text(p.title));
                     }).toList(),

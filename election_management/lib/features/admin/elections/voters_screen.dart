@@ -2,10 +2,8 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/admin_providers.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/utils/download_helper.dart';
@@ -194,7 +192,7 @@ class VotersScreen extends ConsumerWidget {
               children: [
                 CircleAvatar(
                   radius: 16,
-                  backgroundColor: const Color(0xFF563D7C).withOpacity(0.1),
+                  backgroundColor: const Color(0xFF563D7C).withValues(alpha: 0.1),
                   child: Text(initial, style: const TextStyle(color: Color(0xFF563D7C), fontSize: 12)),
                 ),
                 const SizedBox(width: 8),
@@ -241,7 +239,7 @@ class VotersScreen extends ConsumerWidget {
                       context: context,
                       builder: (ctx) => AlertDialog(
                         title: const Text('Delete Voter'),
-                        content: Text('Are you sure you want to delete ${fullName}?'),
+                        content: Text('Are you sure you want to delete $fullName?'),
                         actions: [
                           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
                           FilledButton(

@@ -58,6 +58,9 @@ class Election(TimestampedModel):
     contact_number = models.CharField(max_length=30, blank=True, default='')
     primary_color = models.CharField(max_length=7, blank=True, default='#6C5CE7')
     secondary_color = models.CharField(max_length=7, blank=True, default='#A29BFE')
+    
+    # Guidelines
+    guidelines = models.TextField(blank=True, default='')
 
     # State machine (doc: 07-System-Architecture.md §7.5)
     state = models.CharField(
@@ -262,3 +265,20 @@ class ElectionRoleAssignment(UUIDModel):
     class Meta:
         db_table = 'election_role_assignments'
         unique_together = [['user', 'election', 'role']]
+class ElectionNotice(TimestampedModel):
+    """
+    Announcements or notices for a specific election.
+    """
+    election = models.ForeignKey(
+        Election, on_delete=models.CASCADE, related_name='notices'
+    )
+    title = models.CharField(max_length=255)
+    content = models.TextField()
+    is_published = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = 'election_notices'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.election.title} - {self.title}"

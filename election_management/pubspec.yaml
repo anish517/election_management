@@ -50,6 +50,7 @@ dev_dependencies:
   json_serializable: ^6.9.3
   json_annotation: ^4.9.0
 
+  http: any
 flutter:
   uses-material-design: true
   assets:

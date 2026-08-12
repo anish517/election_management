@@ -8,7 +8,6 @@ import '../../features/auth/otp_verify_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/elections/election_list_screen.dart';
 import '../../features/admin/elections/election_dashboard_screen.dart';
-import '../../features/elections/election_detail_screen.dart';
 import '../../features/voting/ballot_screen.dart';
 import '../../features/voting/vote_confirmation_screen.dart';
 import '../../features/voting/receipt_screen.dart';

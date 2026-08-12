@@ -36,7 +36,14 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
       
       if (mounted) {
         setState(() {
-          _notices = response.data;
+          final data = response.data;
+          if (data is Map && data.containsKey('results')) {
+            _notices = data['results'];
+          } else if (data is List) {
+            _notices = data;
+          } else {
+            _notices = [];
+          }
           _isLoading = false;
         });
       }

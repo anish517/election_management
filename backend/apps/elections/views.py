@@ -238,10 +238,13 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
         return [IsObserver()]
 
     def get_queryset(self):
-        return ElectionNotice.objects.filter(
+        qs = ElectionNotice.objects.filter(
             election__organization=self.request.user.organization,
             election_id=self.kwargs['election_pk']
         )
+        if not self.request.user.is_org_admin:
+            qs = qs.filter(is_published=True)
+        return qs.order_by('-created_at')
 
     def perform_create(self, serializer):
         election = Election.objects.get(

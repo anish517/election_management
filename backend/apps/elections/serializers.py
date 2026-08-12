@@ -105,4 +105,4 @@ class ElectionNoticeSerializer(serializers.ModelSerializer):
     class Meta:
         model = ElectionNotice
         fields = ['id', 'election', 'title', 'content', 'is_published', 'created_at']
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'election', 'created_at']

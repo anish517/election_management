@@ -76,7 +76,7 @@ class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
               ImageUploadWidget(
                 initialImageUrl: _photoUrl,
                 placeholderText: widget.candidate.name.isNotEmpty 
-                    ? widget.candidate.name.substring(0, 1).toUpperCase() 
+                    ? widget.candidate.name[0].toUpperCase() 
                     : 'C',
                 radius: 40,
                 onImageUploaded: (url) => setState(() => _photoUrl = url),

@@ -52,6 +52,13 @@ class Election(TimestampedModel):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, default='')
 
+    # Identity / Branding
+    prefix = models.CharField(max_length=20, blank=True, default='')
+    logo_url = models.URLField(blank=True, default='')
+    contact_number = models.CharField(max_length=30, blank=True, default='')
+    primary_color = models.CharField(max_length=7, blank=True, default='#6C5CE7')
+    secondary_color = models.CharField(max_length=7, blank=True, default='#A29BFE')
+
     # State machine (doc: 07-System-Architecture.md §7.5)
     state = models.CharField(
         max_length=30, choices=ElectionState.choices,
@@ -62,16 +69,27 @@ class Election(TimestampedModel):
     voter_roll_freeze_date = models.DateField(null=True, blank=True)
     voter_roll_frozen_at = models.DateTimeField(null=True, blank=True)
 
+    # Voter List Schedule
+    first_voter_list_date = models.DateTimeField(null=True, blank=True)
+    voter_list_claim_date = models.DateTimeField(null=True, blank=True)
+    final_voter_list_date = models.DateTimeField(null=True, blank=True)
+
     # Nepal-specific election schedule (doc: 03-Nepal-Election-Workflow.md §3.2)
     nomination_open_at = models.DateTimeField(null=True, blank=True)
     nomination_close_at = models.DateTimeField(null=True, blank=True)
+    candidacy_claim_date = models.DateTimeField(null=True, blank=True)
+    candidacy_final_date = models.DateTimeField(null=True, blank=True)
     withdrawal_deadline = models.DateTimeField(null=True, blank=True)
-    campaign_silent_from = models.DateTimeField(null=True, blank=True)  # nullable
+    campaign_silent_from = models.DateTimeField(null=True, blank=True)
     voting_start_at = models.DateTimeField(null=True, blank=True)
     voting_end_at = models.DateTimeField(null=True, blank=True)
 
     # Grievance window (doc: 03-Nepal-Election-Workflow.md §3.2)
     result_contest_deadline = models.DateTimeField(null=True, blank=True)
+
+    # Nominee / Candidacy payment
+    is_paid_candidacy = models.BooleanField(default=False)
+    nominee_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     # Ballot & results settings
     is_secret_ballot = models.BooleanField(default=True)
@@ -94,6 +112,7 @@ class Election(TimestampedModel):
         null=True, related_name='elections_created'
     )
     cancellation_reason = models.TextField(blank=True, default='')
+
 
     class Meta:
         db_table = 'elections'
@@ -177,6 +196,12 @@ class Position(TimestampedModel):
     voting_method = models.CharField(
         max_length=20, choices=VotingMethod.choices, default=VotingMethod.FPTP
     )
+    # UI and Results Ordering
+    quota_name = models.CharField(max_length=100, blank=True, default='', help_text='e.g., Dalit, Female, Open')
+    bg_color = models.CharField(max_length=7, blank=True, default='#563d7c')
+    result_order = models.IntegerField(default=0, help_text='Lower numbers appear first in results')
+    nominee_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+
     max_votes_per_voter = models.PositiveIntegerField(
         default=1,
         help_text='Relevant for multi_choice — how many candidates voter can pick'

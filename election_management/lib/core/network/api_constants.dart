@@ -37,6 +37,7 @@ class ApiConstants {
   static String electionVotingActivity(String id) => '/elections/$id/voting_activity/';
   static String electionPositions(String id) => '/elections/$id/positions/';
   static String electionCandidates(String id) => '/elections/$id/candidates/';
+  static String electionVoters(String id) => '/elections/$id/voters/';
   static String approveCandidate(String eid, String cid) =>
       '/elections/$eid/candidates/$cid/approve/';
   static String rejectCandidate(String eid, String cid) =>
@@ -45,8 +46,13 @@ class ApiConstants {
   // Members
   static const String members = '/members/';
   static String memberDetail(String id) => '/members/$id/';
-  static const String previewCsv = '/members/preview_csv/';
   static const String importCsv = '/members/import_csv/';
+  static const String exportCsv = '/members/export_csv/';
+  
+  static String previewElectionVotersCsv(String electionId) => '/elections/$electionId/voters/preview_csv/';
+  static String importElectionVotersCsv(String electionId) => '/elections/$electionId/voters/import_csv/';
+  static String exportElectionVotersCsv(String electionId) => '/elections/$electionId/voters/export_csv/';
+
 
   // Voting
   static const String votingHistory = '/voting/history/';
@@ -58,6 +64,19 @@ class ApiConstants {
   static String results(String eid) => '/elections/$eid/results/results/';
 
   // Auditor Verification Portal
+  // Helpers
+  static String? getFullImageUrl(String? path) {
+    if (path == null || path.isEmpty) return null;
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    
+    // Base URL contains '/v1', so we need the origin
+    final origin = baseUrl.replaceAll('/v1', '');
+    if (path.startsWith('/')) {
+      return '$origin$path';
+    }
+    return '$origin/$path';
+  }
+
   static String auditExport(String eid) => '/elections/$eid/audit/export/';
   static String auditVerifyHash(String eid) =>
       '/elections/$eid/audit/verify-hash/';

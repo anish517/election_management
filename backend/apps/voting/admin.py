@@ -3,9 +3,9 @@ from apps.voting.models import VoterRoll, VotingSession, Vote
 
 @admin.register(VoterRoll)
 class VoterRollAdmin(admin.ModelAdmin):
-    list_display = ('member', 'election', 'has_voted', 'voted_at')
-    list_filter = ('has_voted', 'election')
-    search_fields = ('member__full_name',)
+    list_display = ('voter_id', 'first_name', 'last_name', 'election', 'is_eligible', 'has_voted')
+    list_filter = ('election', 'is_eligible', 'has_voted')
+    search_fields = ('voter_id', 'first_name', 'last_name', 'email')
 
 @admin.register(VotingSession)
 class VotingSessionAdmin(admin.ModelAdmin):

@@ -44,7 +44,7 @@ class UserProfileScreen extends ConsumerWidget {
                   children: [
                     ImageUploadWidget(
                       initialImageUrl: user.photoUrl,
-                      placeholderText: (user.fullName.isNotEmpty ? user.fullName : user.email).substring(0, 2).toUpperCase(),
+                      placeholderText: (user.fullName.isNotEmpty ? user.fullName : (user.email.isNotEmpty ? user.email : 'U'))[0].toUpperCase(),
                       radius: 50,
                       onImageUploaded: (url) async {
                         try {

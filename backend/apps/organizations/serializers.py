@@ -5,8 +5,12 @@ class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
         fields = [
-            'id', 'name', 'slug', 'org_type', 'address', 'timezone', 
-            'default_language', 'logo_url', 'brand_color',
+            'id', 'name', 'slug', 'prefix', 'org_type', 'council_number',
+            'address', 'phone', 'email', 'website', 'timezone',
+            'default_language', 'logo_url', 'cover_image_url', 'brand_color',
+            'type_metadata',
+            'bank_name', 'bank_branch', 'bank_account_number',
+            'bank_account_name', 'bank_swift_code', 'bank_qr_url',
             'status', 'trial_ends_at',
             'grievance_window_days', 'voter_roll_freeze_offset_days',
             'default_nomination_window_days', 'default_voting_window_days',

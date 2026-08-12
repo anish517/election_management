@@ -45,18 +45,19 @@ class CandidateViewSet(viewsets.ModelViewSet):
                 review_notes="Admin created" if status_val == NominationStatus.APPROVED else ""
             )
         else:
-            # Self-nomination by a voter: enforce their own member record
-            member = self.request.user.organization.members.filter(email=self.request.user.email).first()
-            if not member:
-                from rest_framework.exceptions import ValidationError
-                raise ValidationError({'error': 'You do not have a linked member profile in this organization to run as a candidate.'})
-
             from django.db import IntegrityError
             try:
+                from apps.voting.models import VoterRoll
+                voter = VoterRoll.objects.filter(election=election, email=self.request.user.email).first()
+                if not voter and self.request.user.phone:
+                    voter = VoterRoll.objects.filter(election=election, phone=self.request.user.phone).first()
+
                 serializer.save(
                     election=election,
                     status=NominationStatus.SUBMITTED,
-                    member=member
+                    email=self.request.user.email,
+                    first_name=voter.first_name if voter else '',
+                    last_name=voter.last_name if voter else ''
                 )
             except IntegrityError:
                 from rest_framework.exceptions import ValidationError

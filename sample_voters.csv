@@ -1,0 +1,5 @@
+voter_id,prefix,first_name,middle_name,last_name,email,phone,council_number,citizenship_number
+V001,Mr.,John,A,Doe,johndoe@example.com,555-0101,C-101,CIT-001
+V002,Ms.,Jane,,Smith,janesmith@example.com,555-0102,C-102,CIT-002
+V003,Dr.,Alice,B,Johnson,alicej@example.com,555-0103,C-103,CIT-003
+V004,Mr.,Bob,,Brown,bobbrown@example.com,555-0104,C-104,CIT-004

@@ -1,4 +1,4 @@
-
+import 'package:election_management/core/network/api_constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -25,7 +25,9 @@ class DashboardScreen extends ConsumerWidget {
     final isDesktop = ResponsiveLayout.isDesktop(context);
 
     return Scaffold(
-      drawer: (!isDesktop && user != null && user.canManageElections) ? const AdminDrawer() : null,
+      drawer: (!isDesktop && user != null && user.canManageElections)
+          ? const AdminDrawer()
+          : null,
       body: Row(
         children: [
           if (isDesktop && user != null && user.canManageElections)
@@ -46,14 +48,39 @@ class DashboardScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (user != null &&
+                              user.organizationCoverImageUrl.isNotEmpty) ...[
+                            Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(bottom: 24),
+                              constraints: const BoxConstraints(maxHeight: 300),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                color: Theme.of(context).cardTheme.color,
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: Image.network(
+                                  ApiConstants.getFullImageUrl(
+                                    user.organizationCoverImageUrl,
+                                  )!,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ),
+                          ],
                           if (user != null && user.role == 'org_admin') ...[
                             _buildPremiumOverviewSection(context, ref),
                             const SizedBox(height: 32),
                           ],
                           if (user != null) DashboardQuickActions(user: user),
                           const SizedBox(height: 32),
-                          _buildSectionHeader(context, 'Your Elections', Icons.how_to_vote_rounded,
-                              onTap: () => context.pushNamed('elections')),
+                          _buildSectionHeader(
+                            context,
+                            'Your Elections',
+                            Icons.how_to_vote_rounded,
+                            onTap: () => context.pushNamed('elections'),
+                          ),
                           const SizedBox(height: 16),
                           _buildElectionsSection(context, ref, user),
                         ],
@@ -77,13 +104,22 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAppBar(BuildContext context, WidgetRef ref, UserModel? user, bool isDesktop) {
+  Widget _buildAppBar(
+    BuildContext context,
+    WidgetRef ref,
+    UserModel? user,
+    bool isDesktop,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       height: 64,
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
-        border: Border(bottom: BorderSide(color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7))),
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
+          ),
+        ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
@@ -97,12 +133,19 @@ class DashboardScreen extends ConsumerWidget {
             CircleAvatar(
               radius: 16,
               backgroundColor: Colors.white,
-              backgroundImage: NetworkImage(user!.organizationLogoUrl),
+              backgroundImage: NetworkImage(
+                ApiConstants.getFullImageUrl(user!.organizationLogoUrl)!,
+              ),
             ),
             const SizedBox(width: 12),
           ],
-          Text(user?.organizationName ?? 'Dashboard', 
-               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+          Text(
+            user?.organizationName ?? 'Dashboard',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
+            ),
+          ),
           const Spacer(),
           const LiveClockWidget(),
           IconButton(
@@ -118,50 +161,83 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildUserMenu(BuildContext context, WidgetRef ref, UserModel? user, bool isDark) {
+  Widget _buildUserMenu(
+    BuildContext context,
+    WidgetRef ref,
+    UserModel? user,
+    bool isDark,
+  ) {
     return PopupMenuButton(
       offset: const Offset(0, 48),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7)),
+        side: BorderSide(
+          color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
+        ),
       ),
       color: Theme.of(context).cardTheme.color,
       elevation: 4,
       icon: CircleAvatar(
         radius: 16,
         backgroundColor: AppColors.primary,
-        backgroundImage: user?.photoUrl.isNotEmpty == true ? NetworkImage(user!.photoUrl) : null,
-        child: user?.photoUrl.isNotEmpty == true 
-            ? null 
+        backgroundImage: user?.photoUrl.isNotEmpty == true
+            ? NetworkImage(user!.photoUrl)
+            : null,
+        child: user?.photoUrl.isNotEmpty == true
+            ? null
             : Text(
-                ((user?.fullName.isNotEmpty == true) ? user!.fullName : ((user?.email.isNotEmpty == true) ? user!.email : '?')).substring(0, 1).toUpperCase(),
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                ((user?.fullName.isNotEmpty == true)
+                        ? user!.fullName
+                        : ((user?.email.isNotEmpty == true)
+                              ? user!.email
+                              : '?'))
+                    .substring(0, 1)
+                    .toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
               ),
       ),
       itemBuilder: (_) => <PopupMenuEntry<dynamic>>[
         PopupMenuItem(
-          child: Row(children: [
-            Icon(Icons.history_rounded, size: 18, color: Theme.of(context).iconTheme.color),
-            const SizedBox(width: 10),
-            const Text('My Voting History'),
-          ]),
+          child: Row(
+            children: [
+              Icon(
+                Icons.history_rounded,
+                size: 18,
+                color: Theme.of(context).iconTheme.color,
+              ),
+              const SizedBox(width: 10),
+              const Text('My Voting History'),
+            ],
+          ),
           onTap: () => context.pushNamed('voting-history'),
         ),
         PopupMenuItem(
-          child: Row(children: [
-            Icon(Icons.person_rounded, size: 18, color: Theme.of(context).iconTheme.color),
-            const SizedBox(width: 10),
-            const Text('My Profile'),
-          ]),
+          child: Row(
+            children: [
+              Icon(
+                Icons.person_rounded,
+                size: 18,
+                color: Theme.of(context).iconTheme.color,
+              ),
+              const SizedBox(width: 10),
+              const Text('My Profile'),
+            ],
+          ),
           onTap: () => context.pushNamed('profile'),
         ),
         const PopupMenuDivider(),
         PopupMenuItem(
-          child: const Row(children: [
-            Icon(Icons.logout_rounded, size: 18, color: AppColors.error),
-            SizedBox(width: 10),
-            Text('Logout', style: TextStyle(color: AppColors.error)),
-          ]),
+          child: const Row(
+            children: [
+              Icon(Icons.logout_rounded, size: 18, color: AppColors.error),
+              SizedBox(width: 10),
+              Text('Logout', style: TextStyle(color: AppColors.error)),
+            ],
+          ),
           onTap: () async => await ref.read(authProvider.notifier).logout(),
         ),
       ],
@@ -177,47 +253,93 @@ class DashboardScreen extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           LayoutBuilder(
-            builder: (context, constraints) {
-              final isWide = constraints.maxWidth > 800;
-              final crossAxisCount = isWide ? 5 : (constraints.maxWidth > 500 ? 3 : 2);
-              return GridView.count(
-                crossAxisCount: crossAxisCount,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                childAspectRatio: 1.8,
-                children: [
-                  _buildPremiumStatCard(context, 'Total Elections', stats.totalElections.toString(), Icons.inventory_2_rounded, Colors.blue),
-                  _buildPremiumStatCard(context, 'Active Elections', stats.activeElections.toString(), Icons.how_to_vote_rounded, Colors.green),
-                  _buildPremiumStatCard(context, 'Registered Voters', _formatNumber(stats.totalMembers), Icons.people_alt_rounded, Colors.orange),
-                  _buildPremiumStatCard(context, 'Votes Cast', _formatNumber(stats.totalVotesCast), Icons.check_circle_outline_rounded, Colors.teal),
-                  _buildPremiumStatCard(context, 'Turnout Percentage', '${stats.turnoutPercentage.toStringAsFixed(1)}%', Icons.pie_chart_outline_rounded, Colors.purple),
-                ],
-              );
-            },
-          ).animate().fade(duration: 400.ms, delay: 100.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuad),
+                builder: (context, constraints) {
+                  final isWide = constraints.maxWidth > 800;
+                  final crossAxisCount = isWide
+                      ? 5
+                      : (constraints.maxWidth > 500 ? 3 : 2);
+                  return GridView.count(
+                    crossAxisCount: crossAxisCount,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    childAspectRatio: 1.8,
+                    children: [
+                      _buildPremiumStatCard(
+                        context,
+                        'Total Elections',
+                        stats.totalElections.toString(),
+                        Icons.inventory_2_rounded,
+                        Colors.blue,
+                      ),
+                      _buildPremiumStatCard(
+                        context,
+                        'Active Elections',
+                        stats.activeElections.toString(),
+                        Icons.how_to_vote_rounded,
+                        Colors.green,
+                      ),
+                      _buildPremiumStatCard(
+                        context,
+                        'Registered Voters',
+                        _formatNumber(stats.totalMembers),
+                        Icons.people_alt_rounded,
+                        Colors.orange,
+                      ),
+                      _buildPremiumStatCard(
+                        context,
+                        'Votes Cast',
+                        _formatNumber(stats.totalBallotsCast),
+                        Icons.check_circle_outline_rounded,
+                        Colors.teal,
+                      ),
+                      _buildPremiumStatCard(
+                        context,
+                        'Turnout Percentage',
+                        '${stats.turnoutPercentage.toStringAsFixed(1)}%',
+                        Icons.pie_chart_outline_rounded,
+                        Colors.purple,
+                      ),
+                    ],
+                  );
+                },
+              )
+              .animate()
+              .fade(duration: 400.ms, delay: 100.ms)
+              .slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuad),
           const SizedBox(height: 24),
           LayoutBuilder(
-            builder: (context, constraints) {
-              final isWide = constraints.maxWidth > 800;
-              return Flex(
-                direction: isWide ? Axis.horizontal : Axis.vertical,
-                children: [
-                  Expanded(
-                    flex: isWide ? 2 : 0,
-                    child: _buildChartCard(context, 'Real-time Voting Progress', _buildVotingProgressChart(stats.votingProgress)),
-                  ),
-                  if (isWide) const SizedBox(width: 16),
-                  if (!isWide) const SizedBox(height: 16),
-                  Expanded(
-                    flex: isWide ? 3 : 0,
-                    child: _buildChartCard(context, 'Results Overview', _buildResultsOverviewChart(stats.resultsOverview)),
-                  ),
-                ],
-              );
-            },
-          ).animate().fade(duration: 500.ms, delay: 200.ms).slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuad),
+                builder: (context, constraints) {
+                  final isWide = constraints.maxWidth > 800;
+                  return Flex(
+                    direction: isWide ? Axis.horizontal : Axis.vertical,
+                    children: [
+                      Expanded(
+                        flex: isWide ? 2 : 0,
+                        child: _buildChartCard(
+                          context,
+                          'Real-time Voting Progress',
+                          _buildVotingProgressChart(stats.votingProgress),
+                        ),
+                      ),
+                      if (isWide) const SizedBox(width: 16),
+                      if (!isWide) const SizedBox(height: 16),
+                      Expanded(
+                        flex: isWide ? 3 : 0,
+                        child: _buildChartCard(
+                          context,
+                          'Results Overview',
+                          _buildResultsOverviewChart(stats.resultsOverview),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              )
+              .animate()
+              .fade(duration: 500.ms, delay: 200.ms)
+              .slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuad),
         ],
       ),
     );
@@ -229,7 +351,13 @@ class DashboardScreen extends ConsumerWidget {
     return number.toString();
   }
 
-  Widget _buildPremiumStatCard(BuildContext context, String title, String value, IconData icon, MaterialColor color) {
+  Widget _buildPremiumStatCard(
+    BuildContext context,
+    String title,
+    String value,
+    IconData icon,
+    MaterialColor color,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
@@ -237,12 +365,16 @@ class DashboardScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: isDark ? Colors.black26 : Colors.black.withValues(alpha: 0.05),
+            color: isDark
+                ? Colors.black26
+                : Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
-        border: Border.all(color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5)),
+        border: Border.all(
+          color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
+        ),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -260,17 +392,32 @@ class DashboardScreen extends ConsumerWidget {
                 child: Icon(icon, color: color.shade600, size: 20),
               ),
               const Spacer(),
-              Text(value, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ],
           ),
           const Spacer(),
-          Text(title, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted, fontWeight: FontWeight.w600)),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: AppColors.textMuted,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildChartCard(BuildContext context, String title, Widget chartWidget) {
+  Widget _buildChartCard(
+    BuildContext context,
+    String title,
+    Widget chartWidget,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       height: 300,
@@ -279,18 +426,28 @@ class DashboardScreen extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: isDark ? Colors.black26 : Colors.black.withValues(alpha: 0.05),
+            color: isDark
+                ? Colors.black26
+                : Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
-        border: Border.all(color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5)),
+        border: Border.all(
+          color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
+        ),
       ),
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: AppColors.textMuted)),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppColors.textMuted,
+            ),
+          ),
           const SizedBox(height: 24),
           Expanded(child: chartWidget),
         ],
@@ -300,7 +457,7 @@ class DashboardScreen extends ConsumerWidget {
 
   Widget _buildVotingProgressChart(List<Map<String, dynamic>> data) {
     if (data.isEmpty) return const Center(child: Text('No data'));
-    
+
     return BarChart(
       BarChartData(
         alignment: BarChartAlignment.spaceAround,
@@ -313,17 +470,30 @@ class DashboardScreen extends ConsumerWidget {
               showTitles: true,
               getTitlesWidget: (value, meta) {
                 final index = value.toInt();
-                if (index < 0 || index >= data.length) return const SizedBox.shrink();
+                if (index < 0 || index >= data.length)
+                  return const SizedBox.shrink();
                 return Padding(
                   padding: const EdgeInsets.only(top: 8.0),
-                  child: Text(data[index]['label'], style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                  child: Text(
+                    data[index]['label'],
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
                 );
               },
             ),
           ),
-          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          leftTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
         ),
         gridData: const FlGridData(show: false),
         borderData: FlBorderData(show: false),
@@ -335,7 +505,9 @@ class DashboardScreen extends ConsumerWidget {
                 toY: (data[index]['value'] as num).toDouble(),
                 color: Colors.blue.shade600,
                 width: 16,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(4),
+                ),
               ),
             ],
           );
@@ -359,22 +531,39 @@ class DashboardScreen extends ConsumerWidget {
               showTitles: true,
               getTitlesWidget: (value, meta) {
                 final index = value.toInt();
-                if (index < 0 || index >= data.length) return const SizedBox.shrink();
+                if (index < 0 || index >= data.length)
+                  return const SizedBox.shrink();
                 return Padding(
                   padding: const EdgeInsets.only(top: 8.0),
-                  child: Text(data[index]['label'], style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                  child: Text(
+                    data[index]['label'],
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
                 );
               },
             ),
           ),
-          leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          leftTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
         ),
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
-          getDrawingHorizontalLine: (value) => FlLine(color: Colors.grey.withValues(alpha: 0.2), strokeWidth: 1, dashArray: [5, 5]),
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: Colors.grey.withValues(alpha: 0.2),
+            strokeWidth: 1,
+            dashArray: [5, 5],
+          ),
         ),
         borderData: FlBorderData(show: false),
         barGroups: List.generate(data.length, (index) {
@@ -391,17 +580,26 @@ class DashboardScreen extends ConsumerWidget {
               ),
               BarChartRodData(
                 fromY: (item['valueA'] as num).toDouble(),
-                toY: (item['valueA'] as num).toDouble() + (item['valueB'] as num).toDouble(),
+                toY:
+                    (item['valueA'] as num).toDouble() +
+                    (item['valueB'] as num).toDouble(),
                 color: Colors.green.shade600,
                 width: 32,
                 borderRadius: BorderRadius.zero,
               ),
               BarChartRodData(
-                fromY: (item['valueA'] as num).toDouble() + (item['valueB'] as num).toDouble(),
-                toY: (item['valueA'] as num).toDouble() + (item['valueB'] as num).toDouble() + (item['valueC'] as num).toDouble(),
+                fromY:
+                    (item['valueA'] as num).toDouble() +
+                    (item['valueB'] as num).toDouble(),
+                toY:
+                    (item['valueA'] as num).toDouble() +
+                    (item['valueB'] as num).toDouble() +
+                    (item['valueC'] as num).toDouble(),
                 color: Colors.orange.shade600,
                 width: 32,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(4),
+                ),
               ),
             ],
           );
@@ -410,7 +608,12 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSectionHeader(BuildContext context, String title, IconData icon, {VoidCallback? onTap}) {
+  Widget _buildSectionHeader(
+    BuildContext context,
+    String title,
+    IconData icon, {
+    VoidCallback? onTap,
+  }) {
     return Row(
       children: [
         Icon(icon, color: AppColors.primaryLight, size: 20),
@@ -423,24 +626,40 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildElectionsSection(BuildContext context, WidgetRef ref, UserModel? user) {
+  Widget _buildElectionsSection(
+    BuildContext context,
+    WidgetRef ref,
+    UserModel? user,
+  ) {
     final electionsAsync = ref.watch(electionsProvider);
     return electionsAsync.when(
       loading: () => _buildShimmerList(),
-      error: (e, _) => _buildError(e.toString(), () => ref.invalidate(electionsProvider)),
+      error: (e, _) =>
+          _buildError(e.toString(), () => ref.invalidate(electionsProvider)),
       data: (elections) => _buildElectionList(context, elections, user),
     );
   }
 
-  Widget _buildElectionList(BuildContext context, List<ElectionModel> elections, UserModel? user) {
+  Widget _buildElectionList(
+    BuildContext context,
+    List<ElectionModel> elections,
+    UserModel? user,
+  ) {
     if (elections.isEmpty) {
       return GlassCard(
         padding: const EdgeInsets.all(32),
         child: Column(
           children: [
-            const Icon(Icons.ballot_outlined, size: 48, color: AppColors.textMuted),
+            const Icon(
+              Icons.ballot_outlined,
+              size: 48,
+              color: AppColors.textMuted,
+            ),
             const SizedBox(height: 16),
-            Text('No elections yet', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'No elections yet',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
             Text(
               user?.canManageElections == true
@@ -487,9 +706,16 @@ class DashboardScreen extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 32),
+          const Icon(
+            Icons.error_outline_rounded,
+            color: AppColors.error,
+            size: 32,
+          ),
           const SizedBox(height: 8),
-          Text('Failed to load elections', style: const TextStyle(color: AppColors.error)),
+          Text(
+            'Failed to load elections',
+            style: const TextStyle(color: AppColors.error),
+          ),
           const SizedBox(height: 8),
           TextButton(onPressed: onRetry, child: const Text('Retry')),
         ],
@@ -509,95 +735,159 @@ class _ElectionCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       margin: EdgeInsets.zero,
       child: InkWell(
-        onTap: () => context.pushNamed('election-detail',
-            pathParameters: {'electionId': election.id}),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 44, height: 44,
-              decoration: BoxDecoration(
-                color: stateColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(_stateIcon(election.state), color: stateColor, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(election.title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 15),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: stateColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          _stateLabel(election.state),
-                          style: TextStyle(color: stateColor, fontSize: 11, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text('${election.positions.length} position(s)',
-                          style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            if (election.state == 'voting_open')
+        onTap: () => context.pushNamed(
+          'election-detail',
+          pathParameters: {'electionId': election.id},
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
               Container(
-                margin: const EdgeInsets.only(right: 12),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
+                  color: stateColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Row(
+                child: Icon(
+                  _stateIcon(election.state),
+                  color: stateColor,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.how_to_vote, size: 14, color: Colors.white),
-                    SizedBox(width: 4),
-                    Text('VOTE NOW', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                    Text(
+                      election.title,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleMedium?.copyWith(fontSize: 15),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: stateColor.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            _stateLabel(election.state),
+                            style: TextStyle(
+                              color: stateColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${election.positions.length} position(s)',
+                          style: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
-              ).animate(onPlay: (controller) => controller.repeat(reverse: true)).fade(begin: 0.8, end: 1.0).scaleXY(begin: 0.98, end: 1.02),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
-          ],
+              ),
+              if (election.state == 'voting_open')
+                Container(
+                      margin: const EdgeInsets.only(right: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: AppColors.primaryGradient,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(
+                            Icons.how_to_vote,
+                            size: 14,
+                            color: Colors.white,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            'VOTE NOW',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                    .animate(
+                      onPlay: (controller) => controller.repeat(reverse: true),
+                    )
+                    .fade(begin: 0.8, end: 1.0)
+                    .scaleXY(begin: 0.98, end: 1.02),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textMuted,
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Color _stateColor(String state) {
     switch (state) {
-      case 'draft': return AppColors.stateDraft;
-      case 'published': return AppColors.statePublished;
-      case 'nominations_open': case 'nominations_closed': return AppColors.stateNominations;
-      case 'voting_open': return AppColors.stateVoting;
-      case 'voting_closed': return AppColors.stateClosed;
-      case 'results_provisional': case 'results_final': return AppColors.stateResults;
-      default: return AppColors.textMuted;
+      case 'draft':
+        return AppColors.stateDraft;
+      case 'published':
+        return AppColors.statePublished;
+      case 'nominations_open':
+      case 'nominations_closed':
+        return AppColors.stateNominations;
+      case 'voting_open':
+        return AppColors.stateVoting;
+      case 'voting_closed':
+        return AppColors.stateClosed;
+      case 'results_provisional':
+      case 'results_final':
+        return AppColors.stateResults;
+      default:
+        return AppColors.textMuted;
     }
   }
 
   IconData _stateIcon(String state) {
     switch (state) {
-      case 'draft': return Icons.edit_outlined;
-      case 'published': return Icons.public_rounded;
-      case 'nominations_open': case 'nominations_closed': return Icons.person_add_alt_1_outlined;
-      case 'voting_open': return Icons.how_to_vote_rounded;
-      case 'voting_closed': return Icons.lock_outline_rounded;
-      case 'results_provisional': case 'results_final': return Icons.emoji_events_outlined;
-      default: return Icons.circle_outlined;
+      case 'draft':
+        return Icons.edit_outlined;
+      case 'published':
+        return Icons.public_rounded;
+      case 'nominations_open':
+      case 'nominations_closed':
+        return Icons.person_add_alt_1_outlined;
+      case 'voting_open':
+        return Icons.how_to_vote_rounded;
+      case 'voting_closed':
+        return Icons.lock_outline_rounded;
+      case 'results_provisional':
+      case 'results_final':
+        return Icons.emoji_events_outlined;
+      default:
+        return Icons.circle_outlined;
     }
   }
 

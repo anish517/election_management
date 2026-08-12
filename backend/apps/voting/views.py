@@ -17,14 +17,10 @@ class VotingViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 
     def _get_voter_roll(self, request, election_pk):
-        election = Election.objects.get(id=election_pk, organization=request.user.organization)
-        # Find the member record for this user (assumes 1:1 user->member matching by email for MVP)
-        # In full system, users are mapped to members explicitly. Let's do a simple lookup.
         try:
-            member = request.user.organization.members.filter(email=request.user.email).first()
-            if not member:
-                return None
-            roll, created = VoterRoll.objects.get_or_create(election=election, member=member)
+            election = Election.objects.get(id=election_pk, organization=request.user.organization)
+            # Find the voter roll directly by email
+            roll = VoterRoll.objects.filter(election=election, email=request.user.email).first()
             return roll
         except Exception:
             return None
@@ -89,6 +85,189 @@ class VotingViewSet(viewsets.ViewSet):
             return Response({'error': str(e)}, status=400)
 
 
+class VoterRollViewSet(viewsets.ModelViewSet):
+    """
+    Manage voters for a specific election.
+    """
+    from apps.voting.serializers import VoterRollSerializer
+    serializer_class = VoterRollSerializer
+    permission_classes = [IsAuthenticated] # Could be IsElectionOfficer or IsOrgAdmin for write
+
+    def get_queryset(self):
+        return VoterRoll.objects.filter(
+            election__organization=self.request.user.organization,
+            election_id=self.kwargs.get('election_pk')
+        )
+
+    def perform_create(self, serializer):
+        from apps.elections.models import Election
+        election = Election.objects.get(
+            id=self.kwargs['election_pk'],
+            organization=self.request.user.organization
+        )
+        serializer.save(election=election)
+
+    @action(detail=False, methods=['post'])
+    def preview_csv(self, request, election_pk=None):
+        import csv, io, json
+        if 'file' not in request.FILES:
+            return Response({'error': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
+
+        mapping_raw = request.data.get('mapping', '{}')
+        try:
+            mapping = json.loads(mapping_raw)
+        except (json.JSONDecodeError, TypeError):
+            mapping = {}
+
+        file = request.FILES['file']
+        try:
+            decoded_file = file.read().decode('utf-8-sig')
+            io_string = io.StringIO(decoded_file)
+            reader = csv.DictReader(io_string)
+            columns = reader.fieldnames or []
+
+            valid_rows = []
+            error_rows = []
+
+            existing_voter_ids = set(
+                VoterRoll.objects.filter(election_id=election_pk)
+                .exclude(voter_id='')
+                .values_list('voter_id', flat=True)
+            )
+            existing_emails = set(
+                VoterRoll.objects.filter(election_id=election_pk)
+                .exclude(email='')
+                .values_list('email', flat=True)
+            )
+
+            for i, row in enumerate(reader, start=2):
+                mapped = {}
+                for csv_col, db_field in mapping.items():
+                    mapped[db_field] = row.get(csv_col, '').strip()
+                
+                # direct match fallback
+                for field in ['voter_id', 'prefix', 'first_name', 'middle_name', 'last_name', 'email', 'phone', 'council_number', 'citizenship_number']:
+                    if field not in mapped and field in row:
+                        mapped[field] = row.get(field, '').strip()
+
+                v_id = mapped.get('voter_id', '')
+                email = mapped.get('email', '')
+                first = mapped.get('first_name', '')
+                last = mapped.get('last_name', '')
+
+                error = None
+                if not first or not last:
+                    error = 'First name and Last name are required'
+                elif v_id and v_id in existing_voter_ids:
+                    error = f'Voter ID "{v_id}" already exists'
+                elif email and email in existing_emails:
+                    error = f'Email "{email}" already exists'
+
+                if error:
+                    error_rows.append({'row': i, 'data': dict(row), 'mapped': mapped, 'error': error})
+                else:
+                    if v_id: existing_voter_ids.add(v_id)
+                    if email: existing_emails.add(email)
+                    valid_rows.append({
+                        'row': i,
+                        'voter_id': v_id,
+                        'prefix': mapped.get('prefix', ''),
+                        'first_name': first,
+                        'middle_name': mapped.get('middle_name', ''),
+                        'last_name': last,
+                        'email': email,
+                        'phone': mapped.get('phone', ''),
+                        'council_number': mapped.get('council_number', ''),
+                        'citizenship_number': mapped.get('citizenship_number', ''),
+                    })
+
+            return Response({
+                'columns': columns,
+                'valid_count': len(valid_rows),
+                'error_count': len(error_rows),
+                'valid_rows': valid_rows,
+                'error_rows': error_rows,
+            })
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['post'])
+    def import_csv(self, request, election_pk=None):
+        import csv, io, json
+        from apps.elections.models import Election
+        if 'file' not in request.FILES:
+            return Response({'error': 'No file uploaded'}, status=status.HTTP_400_BAD_REQUEST)
+
+        mapping_raw = request.data.get('mapping', '{}')
+        try:
+            mapping = json.loads(mapping_raw)
+        except (json.JSONDecodeError, TypeError):
+            mapping = {}
+            
+        election = Election.objects.get(id=election_pk, organization=request.user.organization)
+
+        file = request.FILES['file']
+        try:
+            decoded_file = file.read().decode('utf-8-sig')
+            io_string = io.StringIO(decoded_file)
+            reader = csv.DictReader(io_string)
+
+            existing_voter_ids = set(VoterRoll.objects.filter(election=election).exclude(voter_id='').values_list('voter_id', flat=True))
+            existing_emails = set(VoterRoll.objects.filter(election=election).exclude(email='').values_list('email', flat=True))
+
+            imported = 0
+            skipped = 0
+            for row in reader:
+                mapped = {}
+                for csv_col, db_field in mapping.items():
+                    mapped[db_field] = row.get(csv_col, '').strip()
+                for field in ['voter_id', 'prefix', 'first_name', 'middle_name', 'last_name', 'email', 'phone', 'council_number', 'citizenship_number']:
+                    if field not in mapped and field in row: mapped[field] = row.get(field, '').strip()
+
+                v_id = mapped.get('voter_id', '')
+                email = mapped.get('email', '')
+                first = mapped.get('first_name', '')
+                last = mapped.get('last_name', '')
+
+                if not first or not last or (v_id and v_id in existing_voter_ids) or (email and email in existing_emails):
+                    skipped += 1
+                    continue
+
+                if v_id: existing_voter_ids.add(v_id)
+                if email: existing_emails.add(email)
+                
+                VoterRoll.objects.create(
+                    election=election,
+                    voter_id=v_id,
+                    prefix=mapped.get('prefix', ''),
+                    first_name=first,
+                    middle_name=mapped.get('middle_name', ''),
+                    last_name=last,
+                    email=email,
+                    phone=mapped.get('phone', ''),
+                    council_number=mapped.get('council_number', ''),
+                    citizenship_number=mapped.get('citizenship_number', ''),
+                )
+                imported += 1
+
+            return Response({'imported': imported, 'skipped': skipped})
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['get'])
+    def export_csv(self, request, election_pk=None):
+        import csv
+        from django.http import HttpResponse
+        voters = VoterRoll.objects.filter(election_id=election_pk).order_by('voter_id')
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="voters_export.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['Voter ID', 'Prefix', 'First Name', 'Middle Name', 'Last Name', 'Email', 'Phone', 'Council Number', 'Citizenship Number', 'Eligible'])
+        for v in voters:
+            writer.writerow([v.voter_id, v.prefix, v.first_name, v.middle_name, v.last_name, v.email, v.phone, v.council_number, v.citizenship_number, v.is_eligible])
+        return response
+
+
 class VotingHistoryView(viewsets.ViewSet):
     """
     GET /v1/voting/history/
@@ -97,11 +276,7 @@ class VotingHistoryView(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 
     def list(self, request):
-        member = request.user.organization.members.filter(email=request.user.email).first()
-        if not member:
-            return Response([])
-            
-        rolls = VoterRoll.objects.filter(member=member, has_voted=True).select_related('election')
+        rolls = VoterRoll.objects.filter(email=request.user.email, has_voted=True).select_related('election')
         history = []
         for r in rolls:
             history.append({

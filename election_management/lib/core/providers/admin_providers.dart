@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import '../network/api_client.dart';
 import '../network/api_constants.dart';
-import '../../shared/models/models.dart';
 import 'app_providers.dart';
 
 // ─── Election Management ──────────────────────────────────────────────────
@@ -15,10 +14,27 @@ class CreateElectionNotifier extends AsyncNotifier<void> {
   Future<void> createElection({
     required String title,
     required String description,
-    DateTime? nominationOpenAt,
-    DateTime? nominationCloseAt,
+    // Branding
+    String? prefix,
+    String? logoUrl,
+    String? contactNumber,
+    String? primaryColor,
+    String? secondaryColor,
+    // Election schedule
     DateTime? votingStartAt,
     DateTime? votingEndAt,
+    // Voter list schedule
+    DateTime? firstVoterListDate,
+    DateTime? voterListClaimDate,
+    DateTime? finalVoterListDate,
+    // Candidacy schedule
+    DateTime? nominationOpenAt,
+    DateTime? nominationCloseAt,
+    DateTime? candidacyClaimDate,
+    DateTime? candidacyFinalDate,
+    // Payment
+    bool isPaidCandidacy = false,
+    double nomineeCharge = 0,
   }) async {
     if (state.isLoading) return;
     state = const AsyncValue.loading();
@@ -28,10 +44,22 @@ class CreateElectionNotifier extends AsyncNotifier<void> {
         'title': title,
         'description': description,
         'state': 'draft',
-        if (nominationOpenAt != null) 'nomination_open_at': nominationOpenAt.toUtc().toIso8601String(),
-        if (nominationCloseAt != null) 'nomination_close_at': nominationCloseAt.toUtc().toIso8601String(),
+        if (prefix != null && prefix.isNotEmpty) 'prefix': prefix,
+        if (logoUrl != null && logoUrl.isNotEmpty) 'logo_url': logoUrl,
+        if (contactNumber != null && contactNumber.isNotEmpty) 'contact_number': contactNumber,
+        'primary_color': primaryColor,
+        'secondary_color': secondaryColor,
         if (votingStartAt != null) 'voting_start_at': votingStartAt.toUtc().toIso8601String(),
         if (votingEndAt != null) 'voting_end_at': votingEndAt.toUtc().toIso8601String(),
+        if (firstVoterListDate != null) 'first_voter_list_date': firstVoterListDate.toUtc().toIso8601String(),
+        if (voterListClaimDate != null) 'voter_list_claim_date': voterListClaimDate.toUtc().toIso8601String(),
+        if (finalVoterListDate != null) 'final_voter_list_date': finalVoterListDate.toUtc().toIso8601String(),
+        if (nominationOpenAt != null) 'nomination_open_at': nominationOpenAt.toUtc().toIso8601String(),
+        if (nominationCloseAt != null) 'nomination_close_at': nominationCloseAt.toUtc().toIso8601String(),
+        if (candidacyClaimDate != null) 'candidacy_claim_date': candidacyClaimDate.toUtc().toIso8601String(),
+        if (candidacyFinalDate != null) 'candidacy_final_date': candidacyFinalDate.toUtc().toIso8601String(),
+        'is_paid_candidacy': isPaidCandidacy,
+        'nominee_charge': nomineeCharge,
       };
       await dio.post(ApiConstants.elections, data: data);
       
@@ -44,6 +72,7 @@ class CreateElectionNotifier extends AsyncNotifier<void> {
       rethrow;
     }
   }
+
 }
 
 final createElectionProvider = AsyncNotifierProvider<CreateElectionNotifier, void>(
@@ -94,11 +123,90 @@ class PublishElectionNotifier extends AsyncNotifier<void> {
       throw state.error!;
     }
   }
+
+  Future<void> addPosition(Map<String, dynamic> data) async {
+    if (state.isLoading) return;
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final dio = ref.read(apiClientProvider);
+      await dio.post(ApiConstants.electionPositions(data['election'] as String), data: data);
+      ref.invalidate(electionProvider(data['election'] as String));
+    });
+    if (state.hasError) {
+      throw state.error!;
+    }
+  }
+
+  Future<void> addCandidate(Map<String, dynamic> data) async {
+    if (state.isLoading) return;
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final dio = ref.read(apiClientProvider);
+      await dio.post(ApiConstants.electionCandidates(data['election'] as String), data: data);
+      ref.invalidate(electionProvider(data['election'] as String));
+    });
+    if (state.hasError) {
+      throw state.error!;
+    }
+  }
+
+  Future<void> addVoter(Map<String, dynamic> data) async {
+    if (state.isLoading) return;
+    state = const AsyncValue.loading();
+    try {
+      final dio = ref.read(apiClientProvider);
+      await dio.post(ApiConstants.electionVoters(data['election'] as String), data: data);
+      ref.invalidate(votersProvider(data['election'] as String));
+      state = const AsyncValue.data(null);
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+      rethrow;
+    }
+  }
+
+  Future<void> editVoter(String electionId, String voterId, Map<String, dynamic> data) async {
+    if (state.isLoading) return;
+    state = const AsyncValue.loading();
+    try {
+      final dio = ref.read(apiClientProvider);
+      await dio.put('${ApiConstants.electionVoters(electionId)}$voterId/', data: data);
+      ref.invalidate(votersProvider(electionId));
+      state = const AsyncValue.data(null);
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+      rethrow;
+    }
+  }
+
+  Future<void> deleteVoter(String electionId, String voterId) async {
+    if (state.isLoading) return;
+    state = const AsyncValue.loading();
+    try {
+      final dio = ref.read(apiClientProvider);
+      await dio.delete('${ApiConstants.electionVoters(electionId)}$voterId/');
+      ref.invalidate(votersProvider(electionId));
+      state = const AsyncValue.data(null);
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+      rethrow;
+    }
+  }
 }
 
 final publishElectionProvider = AsyncNotifierProvider<PublishElectionNotifier, void>(
   () => PublishElectionNotifier(),
 );
+
+// ─── Voters Provider ────────────────────────────────────────────────────────
+
+final votersProvider = FutureProvider.family<List<dynamic>, String>((ref, electionId) async {
+  final dio = ref.watch(apiClientProvider);
+  final response = await dio.get(ApiConstants.electionVoters(electionId));
+  if (response.data is Map<String, dynamic>) {
+    return response.data['results'] as List<dynamic>;
+  }
+  return response.data as List<dynamic>;
+});
 
 // ─── Candidates Management ────────────────────────────────────────────────
 

@@ -47,7 +47,18 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
       final data = e.response?.data;
       String msg = 'Failed to submit your vote. Please try again.';
       if (data is Map) {
-        msg = data['error'] as String? ?? msg;
+        if (data.containsKey('error')) {
+          msg = data['error'].toString();
+        } else if (data.containsKey('non_field_errors')) {
+          msg = (data['non_field_errors'] as List).join('\n');
+        } else {
+          // Flatten all other validation errors
+          final errors = <String>[];
+          data.forEach((key, value) {
+            errors.add('$key: $value');
+          });
+          msg = errors.join('\n');
+        }
       }
       if (mounted) setState(() { _isSubmitting = false; _error = msg; });
     } catch (e) {

@@ -28,10 +28,30 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
   String _photoUrl = '';
   bool _isSubmitting = false;
 
+  final _proposerNameCtrl = TextEditingController();
+  final _proposerPhoneCtrl = TextEditingController();
+  final _proposerCitizenshipCtrl = TextEditingController();
+  final _proposerVoterIdCtrl = TextEditingController();
+  String _proposerSignatureUrl = '';
+
+  final _supporterNameCtrl = TextEditingController();
+  final _supporterPhoneCtrl = TextEditingController();
+  final _supporterCitizenshipCtrl = TextEditingController();
+  final _supporterVoterIdCtrl = TextEditingController();
+  String _supporterSignatureUrl = '';
+
   @override
   void dispose() {
     _manifestoController.dispose();
     _slateController.dispose();
+    _proposerNameCtrl.dispose();
+    _proposerPhoneCtrl.dispose();
+    _proposerCitizenshipCtrl.dispose();
+    _proposerVoterIdCtrl.dispose();
+    _supporterNameCtrl.dispose();
+    _supporterPhoneCtrl.dispose();
+    _supporterCitizenshipCtrl.dispose();
+    _supporterVoterIdCtrl.dispose();
     super.dispose();
   }
 
@@ -50,8 +70,26 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
         'position': _selectedPositionId,
         'manifesto': _manifestoController.text.trim(),
         'slate_name': _slateController.text.trim(),
-        'photo_url': _photoUrl,
+        'candidate_image': _photoUrl,
         'election': widget.electionId,
+        'endorsements': [
+          {
+            'endorsement_type': 'proposer',
+            'name': _proposerNameCtrl.text.trim(),
+            'phone': _proposerPhoneCtrl.text.trim(),
+            'citizenship_number': _proposerCitizenshipCtrl.text.trim(),
+            'membership_id': _proposerVoterIdCtrl.text.trim(),
+            'signature_url': _proposerSignatureUrl,
+          },
+          {
+            'endorsement_type': 'supporter',
+            'name': _supporterNameCtrl.text.trim(),
+            'phone': _supporterPhoneCtrl.text.trim(),
+            'citizenship_number': _supporterCitizenshipCtrl.text.trim(),
+            'membership_id': _supporterVoterIdCtrl.text.trim(),
+            'signature_url': _supporterSignatureUrl,
+          }
+        ],
       });
 
       if (mounted) {
@@ -103,7 +141,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
               children: [
                 candidatesAsync.when(
                   data: (candidates) {
-                    final myNominations = candidates.where((c) => c.memberEmail == user?.email).toList();
+                    final myNominations = candidates.where((c) => c.email == user?.email).toList();
                     if (myNominations.isEmpty) return const SizedBox.shrink();
 
                     return Column(
@@ -192,6 +230,30 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                   ),
                   const SizedBox(height: 32),
                   
+                  const Text('Proposer Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                  const SizedBox(height: 16),
+                  _buildEndorsementFields(
+                    name: _proposerNameCtrl, 
+                    phone: _proposerPhoneCtrl, 
+                    citizenship: _proposerCitizenshipCtrl, 
+                    voterId: _proposerVoterIdCtrl,
+                    signatureUrl: _proposerSignatureUrl,
+                    onSignatureUploaded: (url) => setState(() => _proposerSignatureUrl = url),
+                  ),
+                  const SizedBox(height: 32),
+                  
+                  const Text('Supporter Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                  const SizedBox(height: 16),
+                  _buildEndorsementFields(
+                    name: _supporterNameCtrl, 
+                    phone: _supporterPhoneCtrl, 
+                    citizenship: _supporterCitizenshipCtrl, 
+                    voterId: _supporterVoterIdCtrl,
+                    signatureUrl: _supporterSignatureUrl,
+                    onSignatureUploaded: (url) => setState(() => _supporterSignatureUrl = url),
+                  ),
+                  const SizedBox(height: 32),
+                  
                   LoadingButton(
                     onPressed: _submit,
                     isLoading: _isSubmitting,
@@ -205,6 +267,52 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildEndorsementFields({
+    required TextEditingController name, 
+    required TextEditingController phone, 
+    required TextEditingController citizenship, 
+    required TextEditingController voterId,
+    required String signatureUrl,
+    required Function(String) onSignatureUploaded,
+  }) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: TextFormField(controller: name, decoration: const InputDecoration(labelText: 'Full Name *'), validator: (v) => v == null || v.isEmpty ? 'Required' : null)),
+            const SizedBox(width: 16),
+            Expanded(child: TextFormField(controller: phone, decoration: const InputDecoration(labelText: 'Phone Number *'), validator: (v) => v == null || v.isEmpty ? 'Required' : null)),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: Column(
+                children: [
+                  TextFormField(controller: citizenship, decoration: const InputDecoration(labelText: 'Citizenship Number (Optional)')),
+                  const SizedBox(height: 16),
+                  TextFormField(controller: voterId, decoration: const InputDecoration(labelText: 'Voter ID (Optional)')),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 1,
+              child: ImageUploadWidget(
+                initialImageUrl: signatureUrl,
+                placeholderText: 'Sign',
+                radius: 32,
+                onImageUploaded: onSignatureUploaded,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

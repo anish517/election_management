@@ -2,10 +2,11 @@ from rest_framework import serializers
 from apps.voting.models import Vote
 from apps.elections.models import Position, Election
 from apps.candidates.models import Candidate, NominationStatus
+from apps.voting.models import VoterRoll
 
 class BallotCandidateSerializer(serializers.ModelSerializer):
-    name = serializers.CharField(source='member.full_name')
-    photo_url = serializers.CharField(source='member.photo_url')
+    name = serializers.CharField(source='full_name')
+    photo_url = serializers.CharField(source='candidate_image')
     
     class Meta:
         model = Candidate
@@ -19,7 +20,8 @@ class BallotPositionSerializer(serializers.ModelSerializer):
         model = Position
         fields = [
             'id', 'title', 'seats_available', 'voting_method', 
-            'max_votes_per_voter', 'abstain_allowed', 'none_of_the_above', 'candidates'
+            'max_votes_per_voter', 'abstain_allowed', 'none_of_the_above', 
+            'result_order', 'bg_color', 'quota_name', 'candidates'
         ]
         
     def get_candidates(self, obj):
@@ -29,6 +31,17 @@ class BallotPositionSerializer(serializers.ModelSerializer):
             status=NominationStatus.APPROVED
         ).order_by('?') # For now random, could follow obj.ballot_ordering
         return BallotCandidateSerializer(cands, many=True).data
+
+
+class VoterRollSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VoterRoll
+        fields = [
+            'id', 'election', 'voter_id', 'prefix', 'first_name', 'middle_name', 'last_name',
+            'full_name', 'email', 'phone', 'council_number', 'citizenship_number',
+            'is_eligible', 'ineligibility_reason', 'has_voted', 'voted_at'
+        ]
+        read_only_fields = ['id', 'election', 'full_name', 'has_voted', 'voted_at']
 
 
 class CastVoteSerializer(serializers.Serializer):

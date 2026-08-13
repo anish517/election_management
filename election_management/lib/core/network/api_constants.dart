@@ -45,6 +45,9 @@ class ApiConstants {
   static String electionNotices(String id) => '/elections/$id/notices/';
   static String electionNoticeDetail(String eid, String nid) => '/elections/$eid/notices/$nid/';
   static String broadcastEmail(String id) => '/elections/$id/broadcast_email/';
+  static String electionCommittees(String id) => '/elections/$id/committees/';
+  static String electionCreateCommittee(String id) => '/elections/$id/create_committee/';
+  static String electionAssignments(String id) => '/elections/$id/assignments/';
 
   // Members
   static const String members = '/members/';

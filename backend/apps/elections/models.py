@@ -282,3 +282,48 @@ class ElectionNotice(TimestampedModel):
 
     def __str__(self):
         return f"{self.election.title} - {self.title}"
+
+
+class ElectionCommittee(TimestampedModel):
+    """
+    Election committee record — stores the formal committee details
+    including the chair's profile and optional signature image.
+    The chair_user FK links to the User account that was created or
+    selected for this committee chair.
+    """
+    COMMITTEE_TYPE_NEW = 'new'
+    COMMITTEE_TYPE_EXISTING = 'existing'
+    COMMITTEE_TYPE_CHOICES = [
+        (COMMITTEE_TYPE_NEW, 'Create New Committee'),
+        (COMMITTEE_TYPE_EXISTING, 'Select Existing Committee'),
+    ]
+
+    election = models.ForeignKey(
+        Election, on_delete=models.CASCADE, related_name='committees'
+    )
+    committee_type = models.CharField(
+        max_length=20, choices=COMMITTEE_TYPE_CHOICES, default=COMMITTEE_TYPE_NEW
+    )
+    committee_name = models.CharField(max_length=255)
+    chair_designation = models.CharField(max_length=255, blank=True, default='')
+    chair_contact = models.CharField(max_length=100, blank=True, default='')
+    chair_email = models.EmailField()
+    chair_signature = models.ImageField(
+        upload_to='committee_signatures/', null=True, blank=True
+    )
+    # Populated after the chair user account is created/looked up
+    chair_user = models.ForeignKey(
+        'users.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='chaired_committees'
+    )
+    created_by = models.ForeignKey(
+        'users.User', on_delete=models.SET_NULL, null=True,
+        related_name='created_committees'
+    )
+
+    class Meta:
+        db_table = 'election_committees'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.committee_name} — {self.election.title}"

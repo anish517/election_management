@@ -116,7 +116,8 @@ class ElectionCommitteeSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'election', 'committee_type', 'committee_name',
             'chair_designation', 'chair_contact', 'chair_email',
-            'chair_signature', 'chair_user', 'chair_user_email', 'created_at'
+            'chair_signature', 'chair_user', 'chair_user_email',
+            'role', 'created_at'
         ]
         read_only_fields = ['id', 'election', 'chair_user', 'created_at']
 

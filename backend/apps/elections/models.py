@@ -320,6 +320,15 @@ class ElectionCommittee(TimestampedModel):
         'users.User', on_delete=models.SET_NULL, null=True,
         related_name='created_committees'
     )
+    # The role assigned to the chair_user for this election
+    role = models.CharField(
+        max_length=50, default='election_officer',
+        choices=[
+            ('election_officer', 'Election Officer'),
+            ('observer', 'Observer'),
+            ('auditor', 'Auditor'),
+        ]
+    )
 
     class Meta:
         db_table = 'election_committees'

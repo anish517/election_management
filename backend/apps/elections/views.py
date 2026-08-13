@@ -20,6 +20,7 @@ class ElectionViewSet(viewsets.ModelViewSet):
             'create', 'update', 'partial_update', 'destroy',
             'publish', 'advance_state', 'assign_role', 'broadcast_email',
             'create_committee', 'committees', 'assignments',
+            'update_committee', 'delete_committee',
         ]:
             return [IsOrgAdmin()]
         return [IsObserver()]
@@ -240,6 +241,7 @@ class ElectionViewSet(viewsets.ModelViewSet):
             chair_email=chair_email,
             chair_signature=chair_signature,
             chair_user=chair_user,
+            role=assigned_role,
             created_by=request.user,
         )
 
@@ -260,6 +262,88 @@ class ElectionViewSet(viewsets.ModelViewSet):
 
         serializer = ElectionCommitteeSerializer(committee)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['patch'], permission_classes=[IsOrgAdmin],
+            parser_classes=[MultiPartParser, FormParser, JSONParser],
+            url_path='committees/(?P<committee_id>[^/.]+)/update')
+    def update_committee(self, request, pk=None, committee_id=None):
+        """Partially update an existing committee record."""
+        election = self.get_object()
+        try:
+            committee = ElectionCommittee.objects.get(pk=committee_id, election=election)
+        except ElectionCommittee.DoesNotExist:
+            return Response({'error': 'Committee not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        updatable = ['committee_name', 'chair_designation', 'chair_contact']
+        for field in updatable:
+            if field in request.data:
+                setattr(committee, field, request.data[field])
+
+        if 'chair_signature' in request.FILES:
+            committee.chair_signature = request.FILES['chair_signature']
+
+        # Update role on committee model
+        if 'role' in request.data:
+            new_role = request.data['role']
+            VALID_ROLES = ['election_officer', 'observer', 'auditor']
+            if new_role in VALID_ROLES:
+                committee.role = new_role
+
+        committee.save()
+
+        # Sync role to user account and role assignment
+        if 'role' in request.data:
+            new_role = request.data['role']
+            VALID_ROLES = ['election_officer', 'observer', 'auditor']
+            if new_role in VALID_ROLES and committee.chair_user:
+                from apps.elections.models import ElectionRoleAssignment
+                committee.chair_user.role = new_role
+                committee.chair_user.save(update_fields=['role'])
+                ElectionRoleAssignment.objects.update_or_create(
+                    user=committee.chair_user,
+                    election=election,
+                    defaults={'role': new_role, 'assigned_by': request.user},
+                )
+
+        serializer = ElectionCommitteeSerializer(committee)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['delete'], permission_classes=[IsOrgAdmin],
+            url_path='committees/(?P<committee_id>[^/.]+)/delete')
+    def delete_committee(self, request, pk=None, committee_id=None):
+        """Delete a committee record.
+
+        Also:
+        - Removes the ElectionRoleAssignment for this user/election
+        - If the user was created specifically for this committee (committee_type='new'),
+          deactivates their account so they can no longer log in.
+        """
+        from apps.elections.models import ElectionRoleAssignment
+
+        election = self.get_object()
+        try:
+            committee = ElectionCommittee.objects.get(pk=committee_id, election=election)
+        except ElectionCommittee.DoesNotExist:
+            return Response({'error': 'Committee not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        chair_user = committee.chair_user
+
+        # Always revoke the election-specific role assignment
+        if chair_user:
+            ElectionRoleAssignment.objects.filter(
+                user=chair_user,
+                election=election,
+            ).delete()
+
+            # If this user was created solely for this committee, deactivate them
+            # so they cannot log in anymore
+            if committee.committee_type == 'new':
+                chair_user.is_active = False
+                chair_user.save(update_fields=['is_active'])
+
+        committee.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
     @action(detail=True, methods=['get'], permission_classes=[IsOrgAdmin])
     def assignments(self, request, pk=None):

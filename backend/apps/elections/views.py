@@ -163,6 +163,24 @@ class ElectionViewSet(viewsets.ModelViewSet):
 
         return Response({'activity_by_hour': activity})
 
+    @action(detail=True, methods=['get'], permission_classes=[IsOrgAdmin])
+    def assignments(self, request, pk=None):
+        """List all role assignments for this election."""
+        from apps.elections.models import ElectionRoleAssignment
+        election = self.get_object()
+        qs = ElectionRoleAssignment.objects.filter(election=election).select_related('user').order_by('role', 'user__email')
+        data = [
+            {
+                'id': str(a.id),
+                'role': a.role,
+                'user': {
+                    'email': a.user.email,
+                }
+            }
+            for a in qs
+        ]
+        return Response({'results': data})
+
     @action(detail=True, methods=['post'], permission_classes=[IsOrgAdmin])
     def assign_role(self, request, pk=None):
         """Assign an election officer role to a user via email."""

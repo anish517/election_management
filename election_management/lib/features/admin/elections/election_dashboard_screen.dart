@@ -9,6 +9,7 @@ import 'candidates_screen.dart';
 import 'email_screen.dart';
 import 'notice_screen.dart';
 import 'guidelines_screen.dart';
+import 'election_committee_screen.dart';
 import '../../elections/election_detail_screen.dart';
 
 class ElectionDashboardScreen extends ConsumerStatefulWidget {
@@ -66,7 +67,7 @@ class _ElectionDashboardScreenState
               children: [
                 _buildNavItem(0, Icons.dashboard_outlined, 'Dashboard'),
                 _buildNavItem(1, Icons.badge_outlined, 'Designations'),
-                _buildNavItem(2, Icons.person_outlined, 'Election Chair'),
+                _buildNavItem(2, Icons.groups_outlined, 'Election Committee'),
                 _buildNavItem(3, Icons.people_outline, 'Candidate'),
                 _buildNavItem(4, Icons.how_to_vote_outlined, 'Voter'),
                 _buildNavItem(5, Icons.email_outlined, 'Email'),
@@ -141,7 +142,7 @@ class _ElectionDashboardScreenState
       case 1:
         return DesignationsScreen(electionId: widget.electionId);
       case 2:
-        return const Center(child: Text('Election Chair Settings'));
+        return ElectionCommitteeScreen(electionId: widget.electionId);
       case 3:
         return CandidatesScreen(electionId: widget.electionId);
       case 4:

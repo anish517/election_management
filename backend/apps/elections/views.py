@@ -1,8 +1,9 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from apps.elections.models import Election, Position, ElectionState, ElectionNotice
-from apps.elections.serializers import ElectionSerializer, PositionSerializer, ElectionStateTransitionSerializer, ElectionNoticeSerializer
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from apps.elections.models import Election, Position, ElectionState, ElectionNotice, ElectionCommittee
+from apps.elections.serializers import ElectionSerializer, PositionSerializer, ElectionStateTransitionSerializer, ElectionNoticeSerializer, ElectionCommitteeSerializer
 from apps.core.permissions import IsOrgAdmin
 from apps.elections.permissions import IsElectionOfficer, IsObserver
 from apps.audit.models import log_action
@@ -15,7 +16,11 @@ class ElectionViewSet(viewsets.ModelViewSet):
     serializer_class = ElectionSerializer
     
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy', 'publish', 'advance_state', 'assign_role', 'broadcast_email']:
+        if self.action in [
+            'create', 'update', 'partial_update', 'destroy',
+            'publish', 'advance_state', 'assign_role', 'broadcast_email',
+            'create_committee', 'committees', 'assignments',
+        ]:
             return [IsOrgAdmin()]
         return [IsObserver()]
 
@@ -162,6 +167,99 @@ class ElectionViewSet(viewsets.ModelViewSet):
         ]
 
         return Response({'activity_by_hour': activity})
+
+    @action(detail=True, methods=['get'], permission_classes=[IsOrgAdmin])
+    def committees(self, request, pk=None):
+        """List all committees for this election."""
+        election = self.get_object()
+        qs = ElectionCommittee.objects.filter(election=election).order_by('-created_at')
+        serializer = ElectionCommitteeSerializer(qs, many=True)
+        return Response({'results': serializer.data})
+
+    @action(detail=True, methods=['post'], permission_classes=[IsOrgAdmin],
+            parser_classes=[MultiPartParser, FormParser, JSONParser])
+    def create_committee(self, request, pk=None):
+        """Create a new committee and optionally create/link a chair user account.
+        Supports roles: election_officer (default), observer, auditor.
+        """
+        from django.contrib.auth import get_user_model
+        from apps.elections.models import ElectionRoleAssignment
+
+        election = self.get_object()
+        data = request.data
+        committee_type = data.get('committee_type', 'new')
+        committee_name = data.get('committee_name', '').strip()
+        chair_designation = data.get('chair_designation', '').strip()
+        chair_contact = data.get('chair_contact', '').strip()
+        chair_email = data.get('chair_email', '').strip().lower()
+        password = data.get('password', '')
+        chair_signature = request.FILES.get('chair_signature')
+
+        # Role for the committee member — defaults to election_officer
+        VALID_ROLES = ['election_officer', 'observer', 'auditor']
+        assigned_role = data.get('role', 'election_officer').strip()
+        if assigned_role not in VALID_ROLES:
+            return Response(
+                {'error': f'Invalid role. Choose from: {", ".join(VALID_ROLES)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not committee_name or not chair_email:
+            return Response({'error': 'committee_name and chair_email are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        User = get_user_model()
+
+        if committee_type == 'new':
+            if not password:
+                return Response({'error': 'password is required when creating a new committee.'}, status=status.HTTP_400_BAD_REQUEST)
+            if User.objects.filter(email=chair_email).exists():
+                return Response({'error': f'A user with email {chair_email} already exists.'}, status=status.HTTP_400_BAD_REQUEST)
+            chair_user = User.objects.create_user(
+                email=chair_email,
+                password=password,
+                organization=request.user.organization,
+                role=assigned_role,
+            )
+        else:
+            # Select existing user from this org
+            try:
+                chair_user = User.objects.get(email=chair_email, organization=request.user.organization)
+                # Update their role to the selected one if different
+                if chair_user.role != assigned_role:
+                    chair_user.role = assigned_role
+                    chair_user.save(update_fields=['role'])
+            except User.DoesNotExist:
+                return Response({'error': 'No user with that email found in this organization.'}, status=status.HTTP_404_NOT_FOUND)
+
+        committee = ElectionCommittee.objects.create(
+            election=election,
+            committee_type=committee_type,
+            committee_name=committee_name,
+            chair_designation=chair_designation,
+            chair_contact=chair_contact,
+            chair_email=chair_email,
+            chair_signature=chair_signature,
+            chair_user=chair_user,
+            created_by=request.user,
+        )
+
+        # Auto-assign the selected role for this election
+        ElectionRoleAssignment.objects.get_or_create(
+            user=chair_user,
+            election=election,
+            role=assigned_role,
+            defaults={'assigned_by': request.user}
+        )
+
+        log_action('election.committee_created', request.user.organization, request.user, {
+            'election_id': str(election.id),
+            'committee_name': committee_name,
+            'chair_email': chair_email,
+            'role': assigned_role,
+        })
+
+        serializer = ElectionCommitteeSerializer(committee)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['get'], permission_classes=[IsOrgAdmin])
     def assignments(self, request, pk=None):

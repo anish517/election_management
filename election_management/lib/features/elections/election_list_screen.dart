@@ -19,21 +19,40 @@ class ElectionListScreen extends ConsumerWidget {
     final electionsAsync = ref.watch(electionsProvider);
     final user = ref.watch(currentUserProvider);
 
+    final isAdmin = user != null && user.canManageElections;
+
     return Scaffold(
-      drawer: (user != null && user.canManageElections) ? const AdminDrawer() : null,
+      drawer: isAdmin ? const AdminDrawer() : null,
       appBar: AppBar(
         title: const Text('Elections'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded),
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/dashboard');
-            }
-          },
-        ),
+        leading: isAdmin
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_rounded),
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/dashboard');
+                  }
+                },
+              )
+            : null, // voters have no back destination
         actions: [
+          if (!isAdmin) ...[
+            IconButton(
+              icon: const Icon(Icons.history_rounded),
+              tooltip: 'Voting History',
+              onPressed: () => context.pushNamed('voting-history'),
+            ),
+            IconButton(
+              icon: const Icon(Icons.logout_rounded),
+              tooltip: 'Logout',
+              onPressed: () async {
+                await ref.read(authProvider.notifier).logout();
+                // Router redirect will handle navigation to /login
+              },
+            ),
+          ],
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: () => ref.invalidate(electionsProvider),

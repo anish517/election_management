@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from apps.elections.models import Election, Position, ElectionStateTransition, ElectionRoleAssignment, ElectionNotice
+from apps.elections.models import Election, Position, ElectionStateTransition, ElectionRoleAssignment, ElectionNotice, ElectionCommittee
 
 class PositionSerializer(serializers.ModelSerializer):
     candidates = serializers.SerializerMethodField()
@@ -106,3 +106,19 @@ class ElectionNoticeSerializer(serializers.ModelSerializer):
         model = ElectionNotice
         fields = ['id', 'election', 'title', 'content', 'is_published', 'created_at']
         read_only_fields = ['id', 'election', 'created_at']
+
+
+class ElectionCommitteeSerializer(serializers.ModelSerializer):
+    chair_user_email = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ElectionCommittee
+        fields = [
+            'id', 'election', 'committee_type', 'committee_name',
+            'chair_designation', 'chair_contact', 'chair_email',
+            'chair_signature', 'chair_user', 'chair_user_email', 'created_at'
+        ]
+        read_only_fields = ['id', 'election', 'chair_user', 'created_at']
+
+    def get_chair_user_email(self, obj):
+        return obj.chair_user.email if obj.chair_user else obj.chair_email

@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/network/api_client.dart';
-import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/glass_card.dart';
 
 class NoticeScreen extends ConsumerStatefulWidget {

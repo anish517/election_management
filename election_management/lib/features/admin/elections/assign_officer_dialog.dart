@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
-import '../../../shared/widgets/loading_button.dart';
+import '../../../core/theme/app_theme.dart';
 
 class AssignOfficerDialog extends ConsumerStatefulWidget {
   final String electionId;
@@ -117,10 +117,22 @@ class _AssignOfficerDialogState extends ConsumerState<AssignOfficerDialog> {
           onPressed: () => context.pop(),
           child: const Text('Cancel'),
         ),
-        LoadingButton(
-          onPressed: _submit,
-          isLoading: _isSubmitting,
-          label: 'Assign',
+        ElevatedButton(
+          onPressed: _isSubmitting ? null : _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+          ),
+          child: _isSubmitting
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text('Assign'),
         ),
       ],
     );

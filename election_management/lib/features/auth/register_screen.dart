@@ -15,30 +15,66 @@ import '../../shared/widgets/loading_button.dart';
 // ---------------------------------------------------------------------------
 const Map<String, List<Map<String, String>>> _typeMetaFields = {
   'cooperative': [
-    {'key': 'sacco_license', 'label': 'SACCO License No.', 'hint': 'e.g. SB-123/078'},
-    {'key': 'member_share_value', 'label': 'Member Share Value (NPR)', 'hint': 'e.g. 1000'},
+    {
+      'key': 'sacco_license',
+      'label': 'SACCO License No.',
+      'hint': 'e.g. SB-123/078',
+    },
+    {
+      'key': 'member_share_value',
+      'label': 'Member Share Value (NPR)',
+      'hint': 'e.g. 1000',
+    },
   ],
   'college': [
-    {'key': 'affiliation_body', 'label': 'Affiliation Body', 'hint': 'e.g. TU, KU, PU'},
+    {
+      'key': 'affiliation_body',
+      'label': 'Affiliation Body',
+      'hint': 'e.g. TU, KU, PU',
+    },
     {'key': 'campus_code', 'label': 'Campus Code', 'hint': 'e.g. CAM-001'},
   ],
   'educational': [
-    {'key': 'affiliation_body', 'label': 'Affiliation Body', 'hint': 'e.g. TU, KU, PU'},
+    {
+      'key': 'affiliation_body',
+      'label': 'Affiliation Body',
+      'hint': 'e.g. TU, KU, PU',
+    },
     {'key': 'campus_code', 'label': 'Campus Code', 'hint': 'e.g. CAM-001'},
   ],
   'ngo': [
-    {'key': 'registration_act', 'label': 'Registration Act', 'hint': 'e.g. Associations Registration Act 2034'},
-    {'key': 'swc_affiliation_no', 'label': 'SWC Affiliation No.', 'hint': 'e.g. SWC-2079/001'},
+    {
+      'key': 'registration_act',
+      'label': 'Registration Act',
+      'hint': 'e.g. Associations Registration Act 2034',
+    },
+    {
+      'key': 'swc_affiliation_no',
+      'label': 'SWC Affiliation No.',
+      'hint': 'e.g. SWC-2079/001',
+    },
   ],
   'housing_society': [
-    {'key': 'locality', 'label': 'Locality / Ward', 'hint': 'e.g. Ward 14, Lalitpur'},
+    {
+      'key': 'locality',
+      'label': 'Locality / Ward',
+      'hint': 'e.g. Ward 14, Lalitpur',
+    },
     {'key': 'plot_count', 'label': 'Total Plots', 'hint': 'e.g. 120'},
   ],
   'political_party': [
-    {'key': 'ec_registration_no', 'label': 'Election Commission Reg. No.', 'hint': 'e.g. EC-2079/01'},
+    {
+      'key': 'ec_registration_no',
+      'label': 'Election Commission Reg. No.',
+      'hint': 'e.g. EC-2079/01',
+    },
   ],
   'government': [
-    {'key': 'ministry', 'label': 'Under Ministry / Department', 'hint': 'e.g. Ministry of Home Affairs'},
+    {
+      'key': 'ministry',
+      'label': 'Under Ministry / Department',
+      'hint': 'e.g. Ministry of Home Affairs',
+    },
     {'key': 'office_code', 'label': 'Office Code', 'hint': 'e.g. OFC-301'},
   ],
 };
@@ -81,9 +117,15 @@ class _ImagePickerTileState extends State<_ImagePickerTile> {
       allowedExtensions: ['jpg', 'jpeg', 'png', 'gif', 'svg'],
       withData: true,
     );
-    if (result == null || result.files.isEmpty || result.files.first.bytes == null) return;
+    if (result == null ||
+        result.files.isEmpty ||
+        result.files.first.bytes == null)
+      return;
     setState(() => _uploading = true);
-    final url = await widget.onUpload(result.files.first.bytes!, result.files.first.name);
+    final url = await widget.onUpload(
+      result.files.first.bytes!,
+      result.files.first.name,
+    );
     if (mounted) {
       setState(() {
         _uploading = false;
@@ -103,7 +145,12 @@ class _ImagePickerTileState extends State<_ImagePickerTile> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(widget.label, style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
+        Text(
+          widget.label,
+          style: Theme.of(
+            context,
+          ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+        ),
         const SizedBox(height: 8),
         GestureDetector(
           onTap: _uploading ? null : _pick,
@@ -114,34 +161,63 @@ class _ImagePickerTileState extends State<_ImagePickerTile> {
               color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7),
+                color: isDark
+                    ? const Color(0xFF3F3F46)
+                    : const Color(0xFFE4E4E7),
                 width: 1.5,
               ),
-              image: hasImage ? DecorationImage(image: NetworkImage(ApiConstants.getFullImageUrl(_url)!), fit: BoxFit.cover) : null,
+              image: hasImage
+                  ? DecorationImage(
+                      image: NetworkImage(ApiConstants.getFullImageUrl(_url)!),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
             ),
             child: _uploading
                 ? const Center(child: CircularProgressIndicator())
                 : hasImage
-                    ? Align(
-                        alignment: Alignment.bottomRight,
-                        child: Container(
-                          margin: const EdgeInsets.all(8),
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                          child: const Icon(Icons.edit, color: Colors.white, size: 14),
-                        ),
-                      )
-                    : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.cloud_upload_outlined, color: AppColors.textMuted, size: 32),
-                          const SizedBox(height: 8),
-                          Text('Tap to upload', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-                          const SizedBox(height: 4),
-                          Text('Max 2MB · jpeg, png, jpg, gif, svg',
-                              style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
-                        ],
+                ? Align(
+                    alignment: Alignment.bottomRight,
+                    child: Container(
+                      margin: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
                       ),
+                      child: const Icon(
+                        Icons.edit,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                    ),
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.cloud_upload_outlined,
+                        color: AppColors.textMuted,
+                        size: 32,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tap to upload',
+                        style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Max 2MB · jpeg, png, jpg, gif, svg',
+                        style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ),
       ],
@@ -164,7 +240,12 @@ Widget _sectionHeader(BuildContext context, String title, IconData icon) {
         child: Icon(icon, color: AppColors.primaryLight, size: 18),
       ),
       const SizedBox(width: 10),
-      Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+      Text(
+        title,
+        style: Theme.of(
+          context,
+        ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+      ),
     ],
   );
 }
@@ -221,15 +302,29 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   void dispose() {
     for (final c in [
-      _orgNameCtrl, _prefixCtrl, _councilCtrl, _orgEmailCtrl, _orgPhoneCtrl,
-      _websiteCtrl, _addressCtrl, _bankNameCtrl, _bankBranchCtrl,
-      _bankAccountNumCtrl, _bankAccountNameCtrl, _bankSwiftCtrl,
-      _adminNameCtrl, _adminEmailCtrl, _adminPhoneCtrl,
-      _passwordCtrl, _confirmPasswordCtrl,
+      _orgNameCtrl,
+      _prefixCtrl,
+      _councilCtrl,
+      _orgEmailCtrl,
+      _orgPhoneCtrl,
+      _websiteCtrl,
+      _addressCtrl,
+      _bankNameCtrl,
+      _bankBranchCtrl,
+      _bankAccountNumCtrl,
+      _bankAccountNameCtrl,
+      _bankSwiftCtrl,
+      _adminNameCtrl,
+      _adminEmailCtrl,
+      _adminPhoneCtrl,
+      _passwordCtrl,
+      _confirmPasswordCtrl,
     ]) {
       c.dispose();
     }
-    for (final c in _metaCtrls.values) { c.dispose(); }
+    for (final c in _metaCtrls.values) {
+      c.dispose();
+    }
     _scrollController.dispose();
     super.dispose();
   }
@@ -240,7 +335,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       final dio = ref.read(apiClientProvider);
       final resp = await dio.post(
         ApiConstants.fileUpload,
-        data: FormData.fromMap({'file': MultipartFile.fromBytes(bytes, filename: name)}),
+        data: FormData.fromMap({
+          'file': MultipartFile.fromBytes(bytes, filename: name),
+        }),
       );
       return resp.data['url'] as String?;
     } catch (_) {
@@ -255,7 +352,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   void _onTypeChanged(String? val) {
     if (val == null) return;
-    for (final c in _metaCtrls.values) { c.dispose(); }
+    for (final c in _metaCtrls.values) {
+      c.dispose();
+    }
     _metaCtrls.clear();
     final fields = _typeMetaFields[val] ?? [];
     for (final f in fields) {
@@ -269,56 +368,83 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     final meta = <String, dynamic>{};
     for (final entry in _metaCtrls.entries) {
-      if (entry.value.text.isNotEmpty) meta[entry.key] = entry.value.text.trim();
+      if (entry.value.text.isNotEmpty)
+        meta[entry.key] = entry.value.text.trim();
     }
 
-    setState(() { _isLoading = true; _error = null; });
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
 
-    final error = await ref.read(authProvider.notifier).register(
-      email: _adminEmailCtrl.text.trim(),
-      password: _passwordCtrl.text,
-      orgName: _orgNameCtrl.text.trim(),
-      orgType: _orgType,
-      adminName: _adminNameCtrl.text.trim(),
-      phone: _adminPhoneCtrl.text.trim(),
-      prefix: _prefixCtrl.text.trim(),
-      councilNumber: _councilCtrl.text.trim(),
-      orgEmail: _orgEmailCtrl.text.trim(),
-      orgPhone: _orgPhoneCtrl.text.trim(),
-      website: _websiteCtrl.text.trim(),
-      address: _addressCtrl.text.trim(),
-      logoUrl: _logoUrl,
-      coverImageUrl: _coverUrl,
-      bankName: _bankNameCtrl.text.trim(),
-      bankBranch: _bankBranchCtrl.text.trim(),
-      bankAccountNumber: _bankAccountNumCtrl.text.trim(),
-      bankAccountName: _bankAccountNameCtrl.text.trim(),
-      bankSwiftCode: _bankSwiftCtrl.text.trim(),
-      bankQrUrl: _bankQrUrl,
-      typeMetadata: meta,
-    );
+    final error = await ref
+        .read(authProvider.notifier)
+        .register(
+          email: _adminEmailCtrl.text.trim(),
+          password: _passwordCtrl.text,
+          orgName: _orgNameCtrl.text.trim(),
+          orgType: _orgType,
+          adminName: _adminNameCtrl.text.trim(),
+          phone: _adminPhoneCtrl.text.trim(),
+          prefix: _prefixCtrl.text.trim(),
+          councilNumber: _councilCtrl.text.trim(),
+          orgEmail: _orgEmailCtrl.text.trim(),
+          orgPhone: _orgPhoneCtrl.text.trim(),
+          website: _websiteCtrl.text.trim(),
+          address: _addressCtrl.text.trim(),
+          logoUrl: _logoUrl,
+          coverImageUrl: _coverUrl,
+          bankName: _bankNameCtrl.text.trim(),
+          bankBranch: _bankBranchCtrl.text.trim(),
+          bankAccountNumber: _bankAccountNumCtrl.text.trim(),
+          bankAccountName: _bankAccountNameCtrl.text.trim(),
+          bankSwiftCode: _bankSwiftCtrl.text.trim(),
+          bankQrUrl: _bankQrUrl,
+          typeMetadata: meta,
+        );
 
-    if (mounted) setState(() { _isLoading = false; _error = error; });
+    if (mounted)
+      setState(() {
+        _isLoading = false;
+        _error = error;
+      });
   }
 
   // ---- ORG TYPE choices ----
   static const _orgTypeItems = [
     DropdownMenuItem(value: 'cooperative', child: Text('Cooperative / SACCO')),
     DropdownMenuItem(value: 'college', child: Text('College / University')),
-    DropdownMenuItem(value: 'educational', child: Text('Educational Institution')),
-    DropdownMenuItem(value: 'association', child: Text('Professional Association')),
+    DropdownMenuItem(
+      value: 'educational',
+      child: Text('Educational Institution'),
+    ),
+    DropdownMenuItem(
+      value: 'association',
+      child: Text('Professional Association'),
+    ),
     DropdownMenuItem(value: 'club', child: Text('Club / Community')),
     DropdownMenuItem(value: 'housing_society', child: Text('Housing Society')),
     DropdownMenuItem(value: 'union', child: Text('Trade Union')),
     DropdownMenuItem(value: 'ngo', child: Text('NGO / INGO')),
     DropdownMenuItem(value: 'corporate', child: Text('Corporate')),
     DropdownMenuItem(value: 'religious', child: Text('Religious Organization')),
-    DropdownMenuItem(value: 'political_party', child: Text('Political Party (Internal)')),
-    DropdownMenuItem(value: 'government', child: Text('Government / Public Body')),
+    DropdownMenuItem(
+      value: 'political_party',
+      child: Text('Political Party (Internal)'),
+    ),
+    DropdownMenuItem(
+      value: 'government',
+      child: Text('Government / Public Body'),
+    ),
     DropdownMenuItem(value: 'other', child: Text('Other')),
   ];
 
-  InputDecoration _field(String label, {String? hint, Widget? prefix, bool required = true}) {
+  InputDecoration _field(
+    String label, {
+    String? hint,
+    Widget? prefix,
+    bool required = true,
+  }) {
     return InputDecoration(
       labelText: required ? '$label *' : label,
       hintText: hint,
@@ -329,7 +455,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     final metaFields = _typeMetaFields[_orgType] ?? [];
 
     return Scaffold(
@@ -348,7 +473,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               controller: _scrollController,
               padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
               children: [
-
                 // ── Error banner ─────────────────────────────────────────
                 if (_error != null) ...[
                   Container(
@@ -357,13 +481,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.error.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                      border: Border.all(
+                        color: AppColors.error.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Row(
                       children: [
                         const Icon(Icons.error_outline, color: AppColors.error),
                         const SizedBox(width: 10),
-                        Expanded(child: Text(_error!, style: const TextStyle(color: AppColors.error))),
+                        Expanded(
+                          child: Text(
+                            _error!,
+                            style: const TextStyle(color: AppColors.error),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -372,7 +503,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 // ══════════════════════════════════════════════════════════
                 // 1. ORGANIZATION INFORMATION
                 // ══════════════════════════════════════════════════════════
-                _sectionHeader(context, 'Organization Information', Icons.business_rounded),
+                _sectionHeader(
+                  context,
+                  'Organization Information',
+                  Icons.business_rounded,
+                ),
                 const SizedBox(height: 20),
 
                 // Row: Name + Prefix
@@ -383,18 +518,32 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       flex: 3,
                       child: TextFormField(
                         controller: _orgNameCtrl,
-                        decoration: _field('Organization Name', hint: 'Enter organization name'),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                        decoration: _field(
+                          'Organization Name',
+                          hint: 'Enter organization name',
+                        ),
+                        validator: (v) =>
+                            (v == null || v.trim().isEmpty) ? 'Required' : null,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: TextFormField(
                         controller: _prefixCtrl,
-                        decoration: _field('Prefix', hint: 'e.g. SOC', required: false),
+                        decoration: _field(
+                          'Prefix',
+                          hint: 'e.g. SOC',
+                          required: false,
+                        ),
                         textCapitalization: TextCapitalization.characters,
                         maxLength: 10,
-                        buildCounter: (_, {required currentLength, required isFocused, required maxLength}) => null,
+                        buildCounter:
+                            (
+                              _, {
+                              required currentLength,
+                              required isFocused,
+                              required maxLength,
+                            }) => null,
                       ),
                     ),
                   ],
@@ -413,7 +562,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 // Council number
                 TextFormField(
                   controller: _councilCtrl,
-                  decoration: _field('Council / Registration No.', hint: 'e.g. 1234/2078', required: false),
+                  decoration: _field(
+                    'Council / Registration No.',
+                    hint: 'e.g. 1234/2078',
+                    required: false,
+                  ),
                 ),
                 const SizedBox(height: 14),
 
@@ -424,7 +577,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     Expanded(
                       child: TextFormField(
                         controller: _orgEmailCtrl,
-                        decoration: _field('Organization Email', hint: 'organization@example.com'),
+                        decoration: _field(
+                          'Organization Email',
+                          hint: 'organization@example.com',
+                        ),
                         keyboardType: TextInputType.emailAddress,
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) return 'Required';
@@ -439,7 +595,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         controller: _orgPhoneCtrl,
                         decoration: _field('Phone', hint: '9876543210'),
                         keyboardType: TextInputType.phone,
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                        validator: (v) =>
+                            (v == null || v.trim().isEmpty) ? 'Required' : null,
                       ),
                     ),
                   ],
@@ -449,7 +606,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 // Website
                 TextFormField(
                   controller: _websiteCtrl,
-                  decoration: _field('Website', hint: 'https://example.com', required: false),
+                  decoration: _field(
+                    'Website',
+                    hint: 'https://example.com',
+                    required: false,
+                  ),
                   keyboardType: TextInputType.url,
                 ),
                 const SizedBox(height: 14),
@@ -457,11 +618,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 // Address
                 TextFormField(
                   controller: _addressCtrl,
-                  decoration: _field('Address', hint: 'Enter full address').copyWith(
-                    alignLabelWithHint: true,
-                  ),
+                  decoration: _field(
+                    'Address',
+                    hint: 'Enter full address',
+                  ).copyWith(alignLabelWithHint: true),
                   maxLines: 3,
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Required' : null,
                 ),
                 const SizedBox(height: 20),
 
@@ -497,28 +660,45 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.primaryLight.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.primaryLight.withValues(alpha: 0.2)),
+                      border: Border.all(
+                        color: AppColors.primaryLight.withValues(alpha: 0.2),
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.tune_rounded, size: 16, color: AppColors.primaryLight),
+                            Icon(
+                              Icons.tune_rounded,
+                              size: 16,
+                              color: AppColors.primaryLight,
+                            ),
                             const SizedBox(width: 6),
-                            Text('${_orgTypeLabel(_orgType)} Details',
-                                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                    color: AppColors.primaryLight, fontWeight: FontWeight.w700)),
+                            Text(
+                              '${_orgTypeLabel(_orgType)} Details',
+                              style: Theme.of(context).textTheme.labelLarge
+                                  ?.copyWith(
+                                    color: AppColors.primaryLight,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 14),
-                        ...metaFields.map((f) => Padding(
-                          padding: const EdgeInsets.only(bottom: 14),
-                          child: TextFormField(
-                            controller: _metaCtrls[f['key']!],
-                            decoration: _field(f['label']!, hint: f['hint'], required: false),
+                        ...metaFields.map(
+                          (f) => Padding(
+                            padding: const EdgeInsets.only(bottom: 14),
+                            child: TextFormField(
+                              controller: _metaCtrls[f['key']!],
+                              decoration: _field(
+                                f['label']!,
+                                hint: f['hint'],
+                                required: false,
+                              ),
+                            ),
                           ),
-                        )),
+                        ),
                       ],
                     ),
                   ),
@@ -528,7 +708,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 // 2. BANK DETAILS
                 // ══════════════════════════════════════════════════════════
                 const SizedBox(height: 32),
-                _sectionHeader(context, 'Bank Details (Optional)', Icons.account_balance_rounded),
+                _sectionHeader(
+                  context,
+                  'Bank Details',
+                  Icons.account_balance_rounded,
+                ),
                 const SizedBox(height: 20),
 
                 Row(
@@ -537,14 +721,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     Expanded(
                       child: TextFormField(
                         controller: _bankNameCtrl,
-                        decoration: _field('Bank Name', hint: 'Enter bank name', required: false),
+                        decoration: _field(
+                          'Bank Name',
+                          hint: 'Enter bank name',
+                          required: false,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: TextFormField(
                         controller: _bankBranchCtrl,
-                        decoration: _field('Branch Name', hint: 'Enter branch name', required: false),
+                        decoration: _field(
+                          'Branch Name',
+                          hint: 'Enter branch name',
+                          required: false,
+                        ),
                       ),
                     ),
                   ],
@@ -557,7 +749,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     Expanded(
                       child: TextFormField(
                         controller: _bankAccountNumCtrl,
-                        decoration: _field('Account Number', hint: 'Enter account number', required: false),
+                        decoration: _field(
+                          'Account Number',
+                          hint: 'Enter account number',
+                          required: false,
+                        ),
                         keyboardType: TextInputType.number,
                       ),
                     ),
@@ -565,7 +761,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     Expanded(
                       child: TextFormField(
                         controller: _bankAccountNameCtrl,
-                        decoration: _field('Account Name', hint: 'Enter account name', required: false),
+                        decoration: _field(
+                          'Account Name',
+                          hint: 'Enter account name',
+                          required: false,
+                        ),
                       ),
                     ),
                   ],
@@ -578,7 +778,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     Expanded(
                       child: TextFormField(
                         controller: _bankSwiftCtrl,
-                        decoration: _field('SWIFT Code', hint: 'Enter SWIFT code', required: false),
+                        decoration: _field(
+                          'SWIFT Code',
+                          hint: 'Enter SWIFT code',
+                          required: false,
+                        ),
                         textCapitalization: TextCapitalization.characters,
                       ),
                     ),
@@ -599,13 +803,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 // 3. ORGANIZATION ADMIN
                 // ══════════════════════════════════════════════════════════
                 const SizedBox(height: 32),
-                _sectionHeader(context, 'Organization Admin', Icons.admin_panel_settings_rounded),
+                _sectionHeader(
+                  context,
+                  'Organization Admin',
+                  Icons.admin_panel_settings_rounded,
+                ),
                 const SizedBox(height: 20),
 
                 TextFormField(
                   controller: _adminNameCtrl,
                   decoration: _field('Admin Name', hint: 'Enter admin name'),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Required' : null,
                 ),
                 const SizedBox(height: 14),
 
@@ -623,7 +832,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
                 TextFormField(
                   controller: _adminPhoneCtrl,
-                  decoration: _field('Admin Phone', hint: '9876543210', required: false),
+                  decoration: _field(
+                    'Admin Phone',
+                    hint: '9876543210',
+                    required: false,
+                  ),
                   keyboardType: TextInputType.phone,
                 ),
                 const SizedBox(height: 14),
@@ -631,12 +844,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 TextFormField(
                   controller: _passwordCtrl,
                   obscureText: !_passwordVisible,
-                  decoration: _field('Admin Password', hint: 'Enter admin password').copyWith(
-                    suffixIcon: IconButton(
-                      icon: Icon(_passwordVisible ? Icons.visibility_off : Icons.visibility),
-                      onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
-                    ),
-                  ),
+                  decoration:
+                      _field(
+                        'Admin Password',
+                        hint: 'Enter admin password',
+                      ).copyWith(
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _passwordVisible
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          onPressed: () => setState(
+                            () => _passwordVisible = !_passwordVisible,
+                          ),
+                        ),
+                      ),
                   validator: (v) {
                     if (v == null || v.isEmpty) return 'Required';
                     if (v.length < 8) return 'Minimum 8 characters';
@@ -648,15 +871,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 TextFormField(
                   controller: _confirmPasswordCtrl,
                   obscureText: !_confirmVisible,
-                  decoration: _field('Confirm Password', hint: 'Re-enter password').copyWith(
-                    suffixIcon: IconButton(
-                      icon: Icon(_confirmVisible ? Icons.visibility_off : Icons.visibility),
-                      onPressed: () => setState(() => _confirmVisible = !_confirmVisible),
-                    ),
-                  ),
+                  decoration:
+                      _field(
+                        'Confirm Password',
+                        hint: 'Re-enter password',
+                      ).copyWith(
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _confirmVisible
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          onPressed: () => setState(
+                            () => _confirmVisible = !_confirmVisible,
+                          ),
+                        ),
+                      ),
                   validator: (v) {
                     if (v == null || v.isEmpty) return 'Required';
-                    if (v != _passwordCtrl.text) return 'Passwords do not match';
+                    if (v != _passwordCtrl.text)
+                      return 'Passwords do not match';
                     return null;
                   },
                 ),
@@ -675,8 +909,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 Center(
                   child: TextButton(
                     onPressed: () {
-                      if (context.canPop()) { context.pop(); }
-                      else { context.go('/'); }
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/');
+                      }
                     },
                     child: const Text('Already have an account? Sign in'),
                   ),

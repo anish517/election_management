@@ -9,10 +9,12 @@ class CreateDesignationScreen extends ConsumerStatefulWidget {
   const CreateDesignationScreen({super.key, required this.electionId});
 
   @override
-  ConsumerState<CreateDesignationScreen> createState() => _CreateDesignationScreenState();
+  ConsumerState<CreateDesignationScreen> createState() =>
+      _CreateDesignationScreenState();
 }
 
-class _CreateDesignationScreenState extends ConsumerState<CreateDesignationScreen> {
+class _CreateDesignationScreenState
+    extends ConsumerState<CreateDesignationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _seatsController = TextEditingController(text: '1');
@@ -45,11 +47,12 @@ class _CreateDesignationScreenState extends ConsumerState<CreateDesignationScree
 
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() => _isSubmitting = true);
     try {
-      final hexColor = '#${_selectedColor.toARGB32().toRadixString(16).substring(2, 8)}';
-      
+      final hexColor =
+          '#${_selectedColor.toARGB32().toRadixString(16).substring(2, 8)}';
+
       final data = {
         'election': widget.electionId,
         'title': _titleController.text.trim(),
@@ -68,7 +71,9 @@ class _CreateDesignationScreenState extends ConsumerState<CreateDesignationScree
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -93,7 +98,9 @@ class _CreateDesignationScreenState extends ConsumerState<CreateDesignationScree
             children: [
               Text(
                 'Election Dashboard > Designations > Create Designation',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(color: Colors.grey),
               ),
               const SizedBox(height: 24),
               Card(
@@ -107,24 +114,39 @@ class _CreateDesignationScreenState extends ConsumerState<CreateDesignationScree
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Create Designation', style: Theme.of(context).textTheme.titleLarge),
+                      Text(
+                        'Create Designation',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
                       const SizedBox(height: 32),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
                             flex: 2,
-                            child: _buildTextField('Designation Name *', _titleController),
+                            child: _buildTextField(
+                              'Designation Name *',
+                              _titleController,
+                            ),
                           ),
                           const SizedBox(width: 24),
                           Expanded(
                             flex: 1,
-                            child: _buildTextField('Max Seats *', _seatsController, helperText: 'No. of winners'),
+                            child: _buildTextField(
+                              'Max Seats *',
+                              _seatsController,
+                              helperText: 'No. of winners',
+                            ),
                           ),
                           const SizedBox(width: 24),
                           Expanded(
                             flex: 2,
-                            child: _buildTextField('Quota (Optional)', _quotaController, helperText: 'E.g. Female, Open'),
+                            child: _buildTextField(
+                              'Quota',
+                              _quotaController,
+                              helperText: 'E.g. Female, Open',
+                              required: false,
+                            ),
                           ),
                         ],
                       ),
@@ -133,21 +155,35 @@ class _CreateDesignationScreenState extends ConsumerState<CreateDesignationScree
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: _buildTextField('Result Order', _orderController, helperText: 'Lower numbers appear first in results'),
+                            child: _buildTextField(
+                              'Result Order',
+                              _orderController,
+                              helperText:
+                                  'Lower numbers appear first in results',
+                              required: false,
+                            ),
                           ),
                           const SizedBox(width: 32),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Background Color', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                const Text(
+                                  'Background Color',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
                                 const SizedBox(height: 8),
                                 InkWell(
                                   onTap: _pickColor,
                                   child: Container(
                                     height: 50,
                                     decoration: BoxDecoration(
-                                      border: Border.all(color: Colors.grey.shade300),
+                                      border: Border.all(
+                                        color: Colors.grey.shade300,
+                                      ),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Row(
@@ -158,7 +194,8 @@ class _CreateDesignationScreenState extends ConsumerState<CreateDesignationScree
                                             margin: const EdgeInsets.all(4),
                                             decoration: BoxDecoration(
                                               color: _selectedColor,
-                                              borderRadius: BorderRadius.circular(6),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
                                             ),
                                           ),
                                         ),
@@ -167,7 +204,9 @@ class _CreateDesignationScreenState extends ConsumerState<CreateDesignationScree
                                           child: Center(
                                             child: Text(
                                               '#${_selectedColor.toARGB32().toRadixString(16).substring(2, 8)}',
-                                              style: TextStyle(color: Colors.grey.shade600),
+                                              style: TextStyle(
+                                                color: Colors.grey.shade600,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -189,7 +228,10 @@ class _CreateDesignationScreenState extends ConsumerState<CreateDesignationScree
                             style: TextButton.styleFrom(
                               backgroundColor: Colors.grey.shade600,
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 16,
+                              ),
                             ),
                             child: const Text('Cancel'),
                           ),
@@ -199,9 +241,16 @@ class _CreateDesignationScreenState extends ConsumerState<CreateDesignationScree
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 16,
+                              ),
                             ),
-                            child: _isSubmitting ? const CircularProgressIndicator(color: Colors.white) : const Text('Create'),
+                            child: _isSubmitting
+                                ? const CircularProgressIndicator(
+                                    color: Colors.white,
+                                  )
+                                : const Text('Create'),
                           ),
                         ],
                       ),
@@ -216,23 +265,37 @@ class _CreateDesignationScreenState extends ConsumerState<CreateDesignationScree
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, {String? helperText}) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller, {
+    String? helperText,
+    bool required = true,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+        ),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
           decoration: InputDecoration(
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
           ),
-          validator: (val) => val!.isEmpty ? 'Required' : null,
+          validator: (val) => (required && (val == null || val.trim().isEmpty)) ? 'Required' : null,
         ),
         if (helperText != null) ...[
           const SizedBox(height: 4),
-          Text(helperText, style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+          Text(
+            helperText,
+            style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+          ),
         ],
       ],
     );

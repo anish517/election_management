@@ -15,16 +15,14 @@ void main() async {
   ]);
 
   // Set system UI overlay style for dark theme
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-  ));
-
-  runApp(
-    const ProviderScope(
-      child: ElectionManagementApp(),
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
     ),
   );
+
+  runApp(const ProviderScope(child: ElectionManagementApp()));
 }
 
 class ElectionManagementApp extends ConsumerWidget {
@@ -46,8 +44,8 @@ class ElectionManagementApp extends ConsumerWidget {
         final isDark = Theme.of(context).brightness == Brightness.dark;
         return Container(
           decoration: BoxDecoration(
-            gradient: isDark 
-                ? AppColors.globalBackgroundGradient 
+            gradient: isDark
+                ? AppColors.globalBackgroundGradient
                 : AppColors.globalBackgroundGradientLight,
           ),
           child: child,
@@ -56,4 +54,3 @@ class ElectionManagementApp extends ConsumerWidget {
     );
   }
 }
-

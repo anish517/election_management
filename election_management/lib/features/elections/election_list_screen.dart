@@ -19,13 +19,16 @@ class ElectionListScreen extends ConsumerWidget {
     final electionsAsync = ref.watch(electionsProvider);
     final user = ref.watch(currentUserProvider);
 
-    final isAdmin = user != null && user.canManageElections;
+    final isOrgAdmin = user != null && (user.isOrgAdmin || user.role == 'super_admin');
+    final isAdmin = user != null && user.canManageElections; // org_admin + election_officer
+    final isVoterLike = !isAdmin; // voter, candidate, observer, auditor
 
     return Scaffold(
       drawer: isAdmin ? const AdminDrawer() : null,
       appBar: AppBar(
         title: const Text('Elections'),
-        leading: isAdmin
+        // Only org_admin gets the back arrow to dashboard
+        leading: isOrgAdmin
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_ios_rounded),
                 onPressed: () {
@@ -36,23 +39,25 @@ class ElectionListScreen extends ConsumerWidget {
                   }
                 },
               )
-            : null, // voters have no back destination
+            : null, // election_officer, voters, observers have no back destination
         actions: [
-          if (!isAdmin) ...[
+          // Voters & candidates: History + Logout
+          if (isVoterLike) ...[ 
             IconButton(
               icon: const Icon(Icons.history_rounded),
               tooltip: 'Voting History',
               onPressed: () => context.pushNamed('voting-history'),
             ),
+          ],
+          // All non-org-admin roles get a logout button
+          if (!isOrgAdmin)
             IconButton(
               icon: const Icon(Icons.logout_rounded),
               tooltip: 'Logout',
               onPressed: () async {
                 await ref.read(authProvider.notifier).logout();
-                // Router redirect will handle navigation to /login
               },
             ),
-          ],
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: () => ref.invalidate(electionsProvider),

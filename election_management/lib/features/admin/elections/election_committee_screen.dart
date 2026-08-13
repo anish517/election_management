@@ -63,8 +63,46 @@ class _ElectionCommitteeScreenState
     });
   }
 
-  IconData _roleIcon(String type) =>
-      type == 'new' ? Icons.group_add_outlined : Icons.group_outlined;
+  void _showViewSheet(Map<String, dynamic> c) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _CommitteeDetailSheet(
+        committee: c,
+        electionId: widget.electionId,
+        onEdited: _fetchCommittees,
+        onDeleted: _fetchCommittees,
+      ),
+    );
+  }
+
+  Color _roleColor(String? role) {
+    switch (role) {
+      case 'election_officer': return Colors.blue;
+      case 'observer': return Colors.orange;
+      case 'auditor': return Colors.green;
+      default: return Colors.blueGrey;
+    }
+  }
+
+  IconData _roleIcon(String? role) {
+    switch (role) {
+      case 'election_officer': return Icons.manage_accounts_outlined;
+      case 'observer': return Icons.visibility_outlined;
+      case 'auditor': return Icons.verified_user_outlined;
+      default: return Icons.group_outlined;
+    }
+  }
+
+  String _roleLabel(String? role) {
+    switch (role) {
+      case 'election_officer': return 'Election Officer';
+      case 'observer': return 'Observer';
+      case 'auditor': return 'Auditor';
+      default: return role ?? 'Unknown';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -146,13 +184,15 @@ class _ElectionCommitteeScreenState
                     itemCount: _committees.length,
                     itemBuilder: (context, i) {
                       final c = _committees[i];
-                      final type = c['committee_type']?.toString() ?? 'new';
+                      final role = c['role']?.toString();
                       final signatureUrl = c['chair_signature'] != null
                           ? ApiConstants.getFullImageUrl(
                               c['chair_signature'].toString())
                           : null;
+                      final roleColor = _roleColor(role);
                       return GlassCard(
                         margin: const EdgeInsets.only(bottom: 14),
+                        onTap: () => _showViewSheet(c),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -166,13 +206,11 @@ class _ElectionCommitteeScreenState
                                       width: 72,
                                       height: 72,
                                       decoration: BoxDecoration(
-                                        color: AppColors.primary
-                                            .withValues(alpha: 0.12),
-                                        borderRadius:
-                                            BorderRadius.circular(8),
+                                        color: roleColor.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(8),
                                       ),
-                                      child: Icon(_roleIcon(type),
-                                          size: 32, color: AppColors.primary),
+                                      child: Icon(_roleIcon(role),
+                                          size: 32, color: roleColor),
                                     ),
                             ),
                             const SizedBox(width: 16),
@@ -185,44 +223,70 @@ class _ElectionCommitteeScreenState
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16)),
                                   const SizedBox(height: 4),
-                                  if ((c['chair_designation'] ?? '')
-                                      .isNotEmpty)
-                                    Text(
-                                      c['chair_designation'],
-                                      style: TextStyle(
-                                          color: AppColors.textMuted,
-                                          fontSize: 13),
-                                    ),
+                                  if ((c['chair_designation'] ?? '').isNotEmpty)
+                                    Text(c['chair_designation'],
+                                        style: TextStyle(
+                                            color: AppColors.textMuted,
+                                            fontSize: 13)),
                                   const SizedBox(height: 4),
-                                  _infoRow(Icons.email_outlined,
-                                      c['chair_email'] ?? ''),
+                                  _infoRow(Icons.email_outlined, c['chair_email'] ?? ''),
                                   if ((c['chair_contact'] ?? '').isNotEmpty)
-                                    _infoRow(Icons.phone_outlined,
-                                        c['chair_contact']),
+                                    _infoRow(Icons.phone_outlined, c['chair_contact']),
+                                  const SizedBox(height: 6),
+                                  // Role badge
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: roleColor.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: roleColor.withValues(alpha: 0.3)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(_roleIcon(role), size: 11, color: roleColor),
+                                        const SizedBox(width: 4),
+                                        Text(_roleLabel(role),
+                                            style: TextStyle(
+                                                fontSize: 11,
+                                                color: roleColor,
+                                                fontWeight: FontWeight.w600)),
+                                      ],
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
-                            // Type badge
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: (type == 'new'
-                                        ? AppColors.primary
-                                        : Colors.teal)
-                                    .withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                type == 'new' ? 'New' : 'Existing',
-                                style: TextStyle(
-                                  color: type == 'new'
-                                      ? AppColors.primary
-                                      : Colors.teal,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                            // 3-dot menu
+                            PopupMenuButton<String>(
+                              icon: const Icon(Icons.more_vert_rounded, size: 20),
+                              onSelected: (val) {
+                                if (val == 'edit') {
+                                  showDialog<bool>(
+                                    context: context,
+                                    builder: (_) => _EditCommitteeDialog(
+                                      committee: c,
+                                      electionId: widget.electionId,
+                                    ),
+                                  ).then((ok) { if (ok == true) _fetchCommittees(); });
+                                } else if (val == 'delete') {
+                                  _confirmDelete(c);
+                                }
+                              },
+                              itemBuilder: (_) => [
+                                const PopupMenuItem(value: 'edit',
+                                    child: Row(children: [
+                                      Icon(Icons.edit_outlined, size: 18),
+                                      SizedBox(width: 8),
+                                      Text('Edit'),
+                                    ])),
+                                const PopupMenuItem(value: 'delete',
+                                    child: Row(children: [
+                                      Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
+                                      SizedBox(width: 8),
+                                      Text('Delete', style: TextStyle(color: Colors.red)),
+                                    ])),
+                              ],
                             ),
                           ],
                         ),
@@ -235,6 +299,39 @@ class _ElectionCommitteeScreenState
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDelete(Map<String, dynamic> c) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Committee?'),
+        content: Text('Remove "${c['committee_name']}"? This cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    try {
+      final dio = ref.read(apiClientProvider);
+      await dio.delete(ApiConstants.electionDeleteCommittee(widget.electionId, c['id'].toString()));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Committee deleted.')));
+        _fetchCommittees();
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to delete committee.')));
+      }
+    }
   }
 
   Widget _infoRow(IconData icon, String text) => Padding(
@@ -250,6 +347,352 @@ class _ElectionCommitteeScreenState
           ],
         ),
       );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Committee Detail Bottom Sheet
+// ─────────────────────────────────────────────────────────────────────────────
+class _CommitteeDetailSheet extends ConsumerWidget {
+  final Map<String, dynamic> committee;
+  final String electionId;
+  final VoidCallback onEdited;
+  final VoidCallback onDeleted;
+
+  const _CommitteeDetailSheet({
+    required this.committee,
+    required this.electionId,
+    required this.onEdited,
+    required this.onDeleted,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = committee;
+    final signatureUrl = c['chair_signature'] != null
+        ? ApiConstants.getFullImageUrl(c['chair_signature'].toString())
+        : null;
+    final role = c['role']?.toString();
+
+    Color roleColor(String? r) {
+      switch (r) {
+        case 'election_officer': return Colors.blue;
+        case 'observer': return Colors.orange;
+        case 'auditor': return Colors.green;
+        default: return Colors.blueGrey;
+      }
+    }
+    String roleLabel(String? r) {
+      switch (r) {
+        case 'election_officer': return 'Election Officer';
+        case 'observer': return 'Observer';
+        case 'auditor': return 'Auditor';
+        default: return r ?? 'Unknown';
+      }
+    }
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.65,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      builder: (_, ctrl) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            // Handle
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 10),
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 16, 0),
+              child: Row(
+                children: [
+                  const Text('Committee Details',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  TextButton.icon(
+                    icon: const Icon(Icons.edit_outlined, size: 16),
+                    label: const Text('Edit'),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      showDialog<bool>(
+                        context: context,
+                        builder: (_) => _EditCommitteeDialog(
+                          committee: c, electionId: electionId),
+                      ).then((ok) { if (ok == true) onEdited(); });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const Divider(),
+            Expanded(
+              child: ListView(
+                controller: ctrl,
+                padding: const EdgeInsets.all(24),
+                children: [
+                  // Signature image
+                  if (signatureUrl != null) ...[
+                    Center(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(signatureUrl,
+                            height: 120, fit: BoxFit.contain),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                  _detailRow('Committee Name', c['committee_name'] ?? '-'),
+                  _detailRow('Chair Email', c['chair_email'] ?? '-'),
+                  _detailRow('Chair Designation', c['chair_designation'] ?? '-'),
+                  _detailRow('Chair Contact', c['chair_contact'] ?? '-'),
+                  const SizedBox(height: 12),
+                  // Role chip
+                  Row(
+                    children: [
+                      const Text('Assigned Role:', style: TextStyle(fontWeight: FontWeight.w600)),
+                      const SizedBox(width: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: roleColor(role).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: roleColor(role).withValues(alpha: 0.3)),
+                        ),
+                        child: Text(roleLabel(role),
+                            style: TextStyle(
+                                color: roleColor(role),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) => Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 150,
+              child: Text(label,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w600, fontSize: 14)),
+            ),
+            Expanded(
+              child: Text(value,
+                  style: const TextStyle(fontSize: 14)),
+            ),
+          ],
+        ),
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Edit Committee Dialog
+// ─────────────────────────────────────────────────────────────────────────────
+class _EditCommitteeDialog extends ConsumerStatefulWidget {
+  final Map<String, dynamic> committee;
+  final String electionId;
+  const _EditCommitteeDialog({required this.committee, required this.electionId});
+
+  @override
+  ConsumerState<_EditCommitteeDialog> createState() => _EditCommitteeDialogState();
+}
+
+class _EditCommitteeDialogState extends ConsumerState<_EditCommitteeDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _designationCtrl;
+  late final TextEditingController _contactCtrl;
+  late String _selectedRole;
+  bool _isSaving = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final c = widget.committee;
+    _nameCtrl = TextEditingController(text: c['committee_name'] ?? '');
+    _designationCtrl = TextEditingController(text: c['chair_designation'] ?? '');
+    _contactCtrl = TextEditingController(text: c['chair_contact'] ?? '');
+    _selectedRole = c['role']?.toString() ?? 'election_officer';
+    if (!['election_officer', 'observer', 'auditor'].contains(_selectedRole)) {
+      _selectedRole = 'election_officer';
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _designationCtrl.dispose();
+    _contactCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() { _isSaving = true; _error = null; });
+    try {
+      final dio = ref.read(apiClientProvider);
+      await dio.patch(
+        ApiConstants.electionUpdateCommittee(
+            widget.electionId, widget.committee['id'].toString()),
+        data: {
+          'committee_name': _nameCtrl.text.trim(),
+          'chair_designation': _designationCtrl.text.trim(),
+          'chair_contact': _contactCtrl.text.trim(),
+          'role': _selectedRole,
+        },
+      );
+      if (mounted) Navigator.of(context).pop(true);
+    } on DioException catch (e) {
+      String msg = 'Failed to update committee.';
+      if (e.response?.data is Map) {
+        final err = e.response!.data['error'];
+        if (err is String) msg = err;
+      }
+      if (mounted) setState(() => _error = msg);
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title
+                Row(
+                  children: [
+                    const Icon(Icons.edit_outlined, size: 22),
+                    const SizedBox(width: 10),
+                    const Text('Edit Committee',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Spacer(),
+                    IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(context).pop(false)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (_error != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 13)),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                TextFormField(
+                  controller: _nameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Committee Name *',
+                    prefixIcon: Icon(Icons.groups_outlined),
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _designationCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Chair Designation',
+                    prefixIcon: Icon(Icons.badge_outlined),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _contactCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Chair Contact',
+                    prefixIcon: Icon(Icons.phone_outlined),
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.phone,
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _selectedRole,
+                  decoration: const InputDecoration(
+                    labelText: 'Assigned Role',
+                    prefixIcon: Icon(Icons.admin_panel_settings_outlined),
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'election_officer',
+                        child: Text('Election Officer')),
+                    DropdownMenuItem(value: 'observer',
+                        child: Text('Observer')),
+                    DropdownMenuItem(value: 'auditor',
+                        child: Text('Auditor')),
+                  ],
+                  onChanged: (v) => setState(() => _selectedRole = v ?? 'election_officer'),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _isSaving ? null : () => Navigator.of(context).pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _isSaving ? null : _submit,
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14)),
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 18, height: 18,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white))
+                            : const Text('Save Changes'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -70,6 +70,7 @@ backend\apps\organizations  .letter this will be used for real payement integrat
 - [ ] "Create New Candidate": **email should be pulled from the voter list**, not entered manually
 - [ ] "Create Candidate": show/pull relevant **voter information fields**, since every candidate originates from the voter list
 - [ ] Candidate can view **only their own vote(s)** — in the **Live Dashboard**
+also in nomination
 
 ## 6. Voter
 - [ ] Voter-add flow should match the **format/structure returned by the API** IE member can also come from API.

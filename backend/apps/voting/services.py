@@ -30,7 +30,7 @@ class BallotService:
         return session.token
 
     @staticmethod
-    def cast_vote(session_token, ballot_data, ip_address=None):
+    def cast_vote(session_token, ballot_data, ip_address=None, mac_address=None):
         """
         ATOMIC OPERATION.
         Validates token, marks roll as voted, and strictly decouples identity
@@ -61,7 +61,8 @@ class BallotService:
             voter_roll.has_voted = True
             voter_roll.voted_at = timezone.now()
             voter_roll.voted_ip_address = ip_address
-            voter_roll.save(update_fields=['has_voted', 'voted_at', 'voted_ip_address'])
+            voter_roll.voted_mac_address = mac_address or ''
+            voter_roll.save(update_fields=['has_voted', 'voted_at', 'voted_ip_address', 'voted_mac_address'])
             
             # 2. Invalidate the session
             session.is_used = True

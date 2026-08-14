@@ -42,6 +42,7 @@ class VoterRoll(TimestampedModel):
     voted_at = models.DateTimeField(null=True, blank=True)
     
     voted_ip_address = models.GenericIPAddressField(null=True, blank=True)
+    voted_mac_address = models.CharField(max_length=255, blank=True, default='')
     
     class Meta:
         db_table = 'voter_rolls'

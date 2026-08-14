@@ -19,8 +19,39 @@ class VotingViewSet(viewsets.ViewSet):
     def _get_voter_roll(self, request, election_pk):
         try:
             election = Election.objects.get(id=election_pk, organization=request.user.organization)
-            # Find the voter roll directly by email
-            roll = VoterRoll.objects.filter(election=election, email=request.user.email).first()
+            user_email = request.user.email.strip().lower()
+            roll = VoterRoll.objects.filter(election=election, email__iexact=user_email).first()
+            if not roll:
+                from apps.candidates.models import Candidate
+                from apps.members.models import Member
+                # Check if user is a registered candidate in this election
+                cand = Candidate.objects.filter(position__election=election, email__iexact=user_email).first()
+                if cand:
+                    roll, _ = VoterRoll.objects.get_or_create(
+                        election=election,
+                        email=user_email,
+                        defaults={
+                            'first_name': cand.full_name,
+                            'phone': cand.contact_number or '',
+                            'is_eligible': True,
+                            'voter_id': f"CAND-{cand.id.hex[:6].upper()}",
+                        }
+                    )
+                else:
+                    # Check if user is a member of this organization
+                    member = Member.objects.filter(organization=election.organization, email__iexact=user_email).first()
+                    if member:
+                        roll, _ = VoterRoll.objects.get_or_create(
+                            election=election,
+                            email=user_email,
+                            defaults={
+                                'first_name': member.first_name,
+                                'last_name': member.last_name,
+                                'phone': member.phone,
+                                'is_eligible': member.is_eligible_to_vote,
+                                'voter_id': member.member_code or f"MEM-{member.id.hex[:6].upper()}",
+                            }
+                        )
             return roll
         except Exception:
             return None
@@ -68,11 +99,18 @@ class VotingViewSet(viewsets.ViewSet):
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
             
+        mac_address = (
+            request.data.get('device_identifier')
+            or request.data.get('mac_address')
+            or request.META.get('HTTP_X_DEVICE_IDENTIFIER', '')
+        )
+        
         try:
             receipt = BallotService.cast_vote(
                 session_token=session_token, 
                 ballot_data=serializer.validated_data['ballot_data'],
-                ip_address=get_client_ip(request)
+                ip_address=get_client_ip(request),
+                mac_address=mac_address
             )
             
             log_action('vote.casted', request.user.organization, request.user, {

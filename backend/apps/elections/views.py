@@ -117,18 +117,25 @@ class ElectionViewSet(viewsets.ModelViewSet):
         turnout_list = []
         total_voted = 0
         
+        is_org_admin = request.user.role in ['org_admin', 'super_admin'] or getattr(request.user, 'is_org_admin', False)
+
         for v in voters:
             if v.has_voted:
                 total_voted += 1
                 
-            turnout_list.append({
+            entry = {
                 'member_id': str(v.id), # Frontend expects member_id, but we map it to voter id
                 'member_code': v.voter_id,
                 'full_name': v.full_name,
                 'email': v.email,
                 'has_voted': v.has_voted,
-                'voted_at': v.voted_at
-            })
+                'voted_at': v.voted_at,
+            }
+            if is_org_admin:
+                entry['voted_ip_address'] = v.voted_ip_address
+                entry['voted_mac_address'] = v.voted_mac_address
+
+            turnout_list.append(entry)
             
         total_eligible = voters.count()
         percentage = (total_voted / total_eligible * 100) if total_eligible > 0 else 0

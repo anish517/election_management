@@ -101,6 +101,9 @@ class BallotSelectionsNotifier extends StateNotifier<Map<String, List<String>>> 
     final current = Map<String, List<String>>.from(state);
     final positionSelections = List<String>.from(current[positionId] ?? []);
 
+    // If boycott was selected, remove it
+    positionSelections.remove('__BOYCOTT__');
+
     if (positionSelections.contains(candidateId)) {
       positionSelections.remove(candidateId);
     } else {
@@ -116,6 +119,32 @@ class BallotSelectionsNotifier extends StateNotifier<Map<String, List<String>>> 
     }
     current[positionId] = positionSelections;
     state = current;
+  }
+
+  void toggleBoycott(String positionId) {
+    final current = Map<String, List<String>>.from(state);
+    final positionSelections = List<String>.from(current[positionId] ?? []);
+    if (positionSelections.contains('__BOYCOTT__')) {
+      positionSelections.remove('__BOYCOTT__');
+    } else {
+      positionSelections
+        ..clear()
+        ..add('__BOYCOTT__');
+    }
+    current[positionId] = positionSelections;
+    state = current;
+  }
+
+  void boycottEntireElection(List<PositionModel> positions) {
+    final current = <String, List<String>>{};
+    for (final p in positions) {
+      current[p.id] = ['__BOYCOTT__'];
+    }
+    state = current;
+  }
+
+  bool isBoycotted(String positionId) {
+    return state[positionId]?.contains('__BOYCOTT__') ?? false;
   }
 
   bool isSelected(String positionId, String candidateId) {
@@ -155,11 +184,16 @@ class VotingService {
     required String electionId,
     required String sessionToken,
     required Map<String, List<String>> ballotData,
+    String? deviceIdentifier,
   }) async {
-    final resp = await _dio.post(ApiConstants.castVote(electionId), data: {
+    final data = <String, dynamic>{
       'session_token': sessionToken,
       'ballot_data': ballotData,
-    });
+    };
+    if (deviceIdentifier != null) {
+      data['device_identifier'] = deviceIdentifier;
+    }
+    final resp = await _dio.post(ApiConstants.castVote(electionId), data: data);
     return resp.data['receipt_hash'] as String;
   }
 }

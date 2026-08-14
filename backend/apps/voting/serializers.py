@@ -41,9 +41,10 @@ class VoterRollSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'election', 'voter_id', 'prefix', 'first_name', 'middle_name', 'last_name',
             'full_name', 'email', 'phone', 'council_number', 'citizenship_number',
-            'is_eligible', 'ineligibility_reason', 'has_voted', 'voted_at'
+            'is_eligible', 'ineligibility_reason', 'has_voted', 'voted_at',
+            'voted_ip_address', 'voted_mac_address'
         ]
-        read_only_fields = ['id', 'election', 'full_name', 'has_voted', 'voted_at']
+        read_only_fields = ['id', 'election', 'full_name', 'has_voted', 'voted_at', 'voted_ip_address', 'voted_mac_address']
 
 
 class CastVoteSerializer(serializers.Serializer):
@@ -52,7 +53,7 @@ class CastVoteSerializer(serializers.Serializer):
     Payload expected:
     {
        "position_id_1": ["candidate_uuid"],
-       "position_id_2": ["cand_A", "cand_B"]
+       "position_id_2": ["__BOYCOTT__"]
     }
     """
     ballot_data = serializers.JSONField()
@@ -73,10 +74,16 @@ class CastVoteSerializer(serializers.Serializer):
             
             position = positions[pos_id]
             
-            # Basic multiple choice / FPTP validation
             if not isinstance(cand_ids, list):
                 raise serializers.ValidationError(f"Payload for position {pos_id} must be a list of candidate IDs.")
             
+            # Allow empty list (abstain) or boycott
+            if not cand_ids:
+                continue
+
+            if len(cand_ids) == 1 and cand_ids[0] in ['__BOYCOTT__', '__NO_VOTE__', 'NOTA']:
+                continue
+
             # Validate number of choices based on voting method
             if position.voting_method not in ['approval', 'ranked_choice']:
                 if len(cand_ids) > position.seats_available:
@@ -84,8 +91,9 @@ class CastVoteSerializer(serializers.Serializer):
             
             # Check candidate validity
             for cand_id in cand_ids:
+                if cand_id in ['__BOYCOTT__', '__NO_VOTE__', 'NOTA']:
+                    continue
                 if not Candidate.objects.filter(id=cand_id, position=position, status=NominationStatus.APPROVED).exists():
                     raise serializers.ValidationError(f"Invalid or unapproved candidate {cand_id} for position {pos_id}.")
 
-        # In production, we'd also validate abstain options, but this covers the MVP.
         return attrs

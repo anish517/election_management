@@ -112,6 +112,9 @@ class VoterTurnoutScreen extends ConsumerWidget {
                       }
                     }
 
+                    final ipAddress = item['voted_ip_address']?.toString() ?? '';
+                    final macAddress = item['voted_mac_address']?.toString() ?? '';
+
                     return Card(
                       elevation: 0,
                       margin: const EdgeInsets.only(bottom: 12),
@@ -139,7 +142,57 @@ class VoterTurnoutScreen extends ConsumerWidget {
                           item['full_name'] ?? 'Unknown',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        subtitle: Text(subtitleText),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(subtitleText),
+                            if (hasVoted && (ipAddress.isNotEmpty || macAddress.isNotEmpty)) ...[
+                              const SizedBox(height: 4),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 4,
+                                children: [
+                                  if (ipAddress.isNotEmpty)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.withValues(alpha: 0.08),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.language_rounded, size: 11, color: Colors.blue),
+                                          const SizedBox(width: 4),
+                                          Text('IP: $ipAddress',
+                                              style: const TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.w600)),
+                                        ],
+                                      ),
+                                    ),
+                                  if (macAddress.isNotEmpty)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.purple.withValues(alpha: 0.08),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: Colors.purple.withValues(alpha: 0.2)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.devices_rounded, size: 11, color: Colors.purple),
+                                          const SizedBox(width: 4),
+                                          Text('Device/MAC: $macAddress',
+                                              style: const TextStyle(fontSize: 11, color: Colors.purple, fontWeight: FontWeight.w600)),
+                                        ],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
                         trailing: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,

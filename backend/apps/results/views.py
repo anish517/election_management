@@ -19,20 +19,50 @@ class ElectionResultsViewSet(viewsets.ViewSet):
         except Election.DoesNotExist:
             return Response({'error': 'Election not found'}, status=404)
             
-        # Security/Visibility Check
-        # In a real app, we check if election.state is 'results_provisional' or 'results_final'
-        # Or if 'live_turnout_enabled' allows early peek.
-        if election.state not in ['voting_closed', 'results_provisional', 'results_final'] and not election.live_turnout_enabled:
-            # Let org admins bypass this rule for testing
-            if not request.user.is_org_admin:
-                # Also let members who have already voted see the live results!
-                # Voter check (MVP: require caller to be authenticated user)
-                from apps.voting.models import VoterRoll
-                has_voted = VoterRoll.objects.filter(election=election, email=request.user.email, has_voted=True).exists()
-                if not has_voted and not getattr(request.user, 'is_staff', False):
-                    return Response({'error': 'Results are not available yet.'}, status=403)
+        # Security/Visibility Check:
+        # Voters must NOT be able to see results until voting is closed and results are published,
+        # even after submitting their ballot.
+        is_privileged = (
+            request.user.role in ['org_admin', 'election_officer', 'observer', 'auditor', 'super_admin']
+            or getattr(request.user, 'is_org_admin', False)
+            or getattr(request.user, 'is_staff', False)
+        )
+
+        is_published = election.state in ['voting_closed', 'results_provisional', 'results_final']
+
+        if request.user.role == 'voter' and not is_published:
+            return Response({
+                'error': 'Results are not available yet. Results will be published once voting is closed.'
+            }, status=403)
+
+        if not is_published and not election.live_turnout_enabled and not is_privileged:
+            return Response({
+                'error': 'Results are not available yet.'
+            }, status=403)
             
         tally_data = TallyService.tally_election(election)
+
+        # Candidates during active voting can view ONLY their own vote counts
+        if request.user.role == 'candidate' and election.state == 'voting_open':
+            from apps.candidates.models import Candidate
+            my_candidates = list(Candidate.objects.filter(
+                election=election,
+                email__iexact=request.user.email.strip().lower()
+            ))
+            my_cand_ids = {str(c.id) for c in my_candidates}
+            my_pos_ids = {str(c.position_id) for c in my_candidates}
+
+            scoped_results = []
+            for pos in tally_data.get('results', []):
+                if str(pos.get('position_id')) in my_pos_ids:
+                    pos['breakdown'] = [
+                        item for item in pos.get('breakdown', [])
+                        if str(item.get('candidate_id')) in my_cand_ids
+                    ]
+                    pos['winners'] = []
+                    scoped_results.append(pos)
+            tally_data['results'] = scoped_results
+
         return Response(tally_data)
 
     @action(detail=False, methods=['get'])

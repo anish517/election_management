@@ -54,25 +54,33 @@ def send_results_published_notification(election_id: str):
         logger.error(f"[notify_results_published] Failed for election {election_id}: {e}")
 
 @shared_task
-def send_custom_broadcast_email_task(election_id: str, subject: str, body_html: str):
+def send_custom_broadcast_email_task(election_id: str, subject: str, body_html: str, recipient_emails: list = None):
     try:
         from apps.elections.models import Election
         from apps.voting.models import VoterRoll
         from apps.notifications.services import NotificationService
         
         election = Election.objects.get(id=election_id)
-        voters = VoterRoll.objects.filter(election=election, is_eligible=True)
         
-        for voter in voters:
+        if recipient_emails is None:
+            recipient_emails = list(
+                VoterRoll.objects.filter(election=election, is_eligible=True)
+                .exclude(email='')
+                .values_list('email', flat=True)
+            )
+        
+        for email in recipient_emails:
+            if not email or not str(email).strip():
+                continue
             try:
                 NotificationService.send_custom_email(
-                    to_email=voter.email,
+                    to_email=str(email).strip(),
                     subject=subject,
                     election=election,
                     body_html=body_html,
                 )
             except Exception as e:
-                logger.error(f"[send_custom_broadcast_email_task] Failed to send to {voter.email}: {e}")
+                logger.error(f"[send_custom_broadcast_email_task] Failed to send to {email}: {e}")
                 
     except Exception as e:
         logger.error(f"[send_custom_broadcast_email_task] Failed for election {election_id}: {e}")

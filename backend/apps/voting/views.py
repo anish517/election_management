@@ -309,6 +309,83 @@ class VoterRollViewSet(viewsets.ModelViewSet):
             writer.writerow([v.voter_id, v.prefix, v.first_name, v.middle_name, v.last_name, v.email, v.phone, v.council_number, v.citizenship_number, v.is_eligible])
         return response
 
+    @action(detail=False, methods=['post'])
+    def import_members(self, request, election_pk=None):
+        """
+        Import organization roster members directly into the election's VoterRoll via API.
+        Optionally accepts 'member_ids' list. If omitted or empty, imports all active,
+        eligible members belonging to the organization.
+        """
+        from apps.elections.models import Election
+        from apps.members.models import Member
+
+        try:
+            election = Election.objects.get(id=election_pk, organization=request.user.organization)
+        except Election.DoesNotExist:
+            return Response({'error': 'Election not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        member_ids = request.data.get('member_ids')
+        qs = Member.objects.filter(organization=request.user.organization, deleted_at__isnull=True)
+
+        if member_ids and isinstance(member_ids, list) and len(member_ids) > 0:
+            qs = qs.filter(id__in=member_ids)
+        else:
+            # Default to active members
+            qs = qs.filter(membership_status='active')
+
+        existing_emails = set(
+            VoterRoll.objects.filter(election=election)
+            .exclude(email='')
+            .values_list('email', flat=True)
+        )
+        existing_voter_ids = set(
+            VoterRoll.objects.filter(election=election)
+            .exclude(voter_id='')
+            .values_list('voter_id', flat=True)
+        )
+
+        imported = 0
+        skipped = 0
+
+        for m in qs:
+            v_id = m.member_code.strip() if m.member_code else str(m.id)[:8]
+            email = m.email.strip().lower() if m.email else ''
+
+            if (email and email in existing_emails) or (v_id and v_id in existing_voter_ids):
+                skipped += 1
+                continue
+
+            first_name = m.first_name.strip() or (m.full_name.split()[0] if m.full_name else 'Member')
+            last_name = m.last_name.strip() or (m.full_name.split()[-1] if len(m.full_name.split()) > 1 else '')
+
+            VoterRoll.objects.create(
+                election=election,
+                voter_id=v_id,
+                prefix=m.prefix,
+                first_name=first_name,
+                middle_name=m.middle_name,
+                last_name=last_name,
+                email=email,
+                phone=m.phone,
+                council_number=m.council_number,
+                citizenship_number=m.citizenship_number,
+                is_eligible=m.is_eligible_to_vote,
+            )
+
+            if email:
+                existing_emails.add(email)
+            if v_id:
+                existing_voter_ids.add(v_id)
+
+            imported += 1
+
+        return Response({
+            'message': f'Successfully imported {imported} member(s) into voter roll. Skipped {skipped} already existing.',
+            'imported': imported,
+            'skipped': skipped,
+            'total_processed': qs.count(),
+        }, status=status.HTTP_200_OK)
+
 
 class VotingHistoryView(viewsets.ViewSet):
     """

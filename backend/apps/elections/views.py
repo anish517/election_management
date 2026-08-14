@@ -71,6 +71,21 @@ class ElectionViewSet(viewsets.ModelViewSet):
                 'election_id': str(election.id),
                 'new_state': target_state
             })
+
+            # Trigger background notification tasks based on state
+            if target_state in ['results_provisional', 'results_final']:
+                try:
+                    from apps.notifications.tasks import send_results_published_notification
+                    send_results_published_notification.delay(str(election.id))
+                except Exception:
+                    pass
+            elif target_state == 'voting_closed':
+                try:
+                    from apps.notifications.tasks import send_voting_closed_notification
+                    send_voting_closed_notification.delay(str(election.id))
+                except Exception:
+                    pass
+
             return Response(self.get_serializer(election).data)
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -454,34 +469,74 @@ class ElectionViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], permission_classes=[IsOrgAdmin])
     def broadcast_email(self, request, pk=None):
-        """Send a custom email to all eligible voters in the election."""
+        """
+        Send a custom email to targeted recipient groups:
+        - 'voters': Eligible voters in VoterRoll
+        - 'candidates': Approved/submitted Candidates
+        - 'election_office': Election Committee members / Officers
+        """
         election = self.get_object()
         subject = request.data.get('subject')
         body_html = request.data.get('body_html')
+        recipient_groups = request.data.get('recipients', ['voters'])
+        
+        if isinstance(recipient_groups, str):
+            recipient_groups = [recipient_groups]
         
         if not subject or not body_html:
             return Response({'error': 'subject and body_html are required.'}, status=status.HTTP_400_BAD_REQUEST)
             
         from apps.voting.models import VoterRoll
+        from apps.candidates.models import Candidate
+        from apps.elections.models import ElectionCommittee
         from apps.notifications.tasks import send_custom_broadcast_email_task
         
-        # Calculate expected recipient count (for log and response)
-        voter_count = VoterRoll.objects.filter(election=election, is_eligible=True).count()
-        
-        # Dispatch Celery task
+        target_emails = set()
+
+        if 'voters' in recipient_groups:
+            voter_emails = VoterRoll.objects.filter(
+                election=election, is_eligible=True
+            ).exclude(email='').values_list('email', flat=True)
+            target_emails.update([e.strip().lower() for e in voter_emails if e and e.strip()])
+
+        if 'candidates' in recipient_groups:
+            cand_emails = Candidate.objects.filter(
+                election=election
+            ).exclude(email='').values_list('email', flat=True)
+            target_emails.update([e.strip().lower() for e in cand_emails if e and e.strip()])
+
+        if 'election_office' in recipient_groups or 'committee' in recipient_groups:
+            comm_emails = ElectionCommittee.objects.filter(
+                election=election
+            ).exclude(chair_email='').values_list('chair_email', flat=True)
+            target_emails.update([e.strip().lower() for e in comm_emails if e and e.strip()])
+
+        email_list = list(target_emails)
+        total_count = len(email_list)
+
+        if total_count == 0:
+            return Response({'error': 'No valid recipient email addresses found for the selected group(s).'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Dispatch Celery task with target emails
         send_custom_broadcast_email_task.delay(
             str(election.id),
             subject,
             body_html,
+            email_list,
         )
         
         log_action('election.email_broadcast', request.user.organization, request.user, {
             'election_id': str(election.id),
-            'queued_count': voter_count,
+            'queued_count': total_count,
+            'recipient_groups': recipient_groups,
             'subject': subject
         })
         
-        return Response({'message': f'Queued {voter_count} emails for sending.'}, status=status.HTTP_200_OK)
+        return Response({
+            'message': f'Queued {total_count} email(s) for sending to {", ".join(recipient_groups)}.',
+            'count': total_count,
+            'recipients': recipient_groups,
+        }, status=status.HTTP_200_OK)
 
 
 class ElectionNoticeViewSet(viewsets.ModelViewSet):

@@ -27,8 +27,8 @@ class CandidateSerializer(serializers.ModelSerializer):
             'id', 'election', 'position', 'position_title', 'quota', 'quota_name',
             'first_name', 'middle_name', 'last_name', 'full_name',
             'email', 'contact_number', 'gender', 'date_of_birth', 'address',
-            'candidate_image', 'candidate_signature', 'personal_description', 'contribution_to_org',
-            'manifesto', 'status', 'slate_name', 'documents', 'endorsements', 
+            'candidate_image', 'personal_description', 'contribution_to_org',
+            'manifesto', 'status', 'documents', 'endorsements', 
             'reviewed_by', 'review_notes', 'reviewed_at', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'election', 'reviewed_by', 'review_notes', 'reviewed_at', 'created_at', 'updated_at', 'full_name']

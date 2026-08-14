@@ -36,7 +36,43 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
   final _personalDescriptionController = TextEditingController();
   final _manifestoController = TextEditingController();
 
+  // Proposer (प्रस्तावक)
+  final _proposerNameCtrl = TextEditingController();
+  final _proposerPhoneCtrl = TextEditingController();
+  final _proposerCitizenshipCtrl = TextEditingController();
+  final _proposerMemIdCtrl = TextEditingController();
+  String _proposerSignatureUrl = '';
+
+  // Supporter (समर्थक)
+  final _supporterNameCtrl = TextEditingController();
+  final _supporterPhoneCtrl = TextEditingController();
+  final _supporterCitizenshipCtrl = TextEditingController();
+  final _supporterMemIdCtrl = TextEditingController();
+  String _supporterSignatureUrl = '';
+
   bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _firstNameController.dispose();
+    _middleNameController.dispose();
+    _lastNameController.dispose();
+    _emailController.dispose();
+    _contactController.dispose();
+    _dobController.dispose();
+    _addressController.dispose();
+    _personalDescriptionController.dispose();
+    _manifestoController.dispose();
+    _proposerNameCtrl.dispose();
+    _proposerPhoneCtrl.dispose();
+    _proposerCitizenshipCtrl.dispose();
+    _proposerMemIdCtrl.dispose();
+    _supporterNameCtrl.dispose();
+    _supporterPhoneCtrl.dispose();
+    _supporterCitizenshipCtrl.dispose();
+    _supporterMemIdCtrl.dispose();
+    super.dispose();
+  }
 
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -50,6 +86,29 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
     }
     
     setState(() => _isSubmitting = true);
+
+    final endorsements = <Map<String, dynamic>>[];
+    if (_proposerNameCtrl.text.trim().isNotEmpty) {
+      endorsements.add({
+        'endorsement_type': 'proposer',
+        'name': _proposerNameCtrl.text.trim(),
+        'phone': _proposerPhoneCtrl.text.trim(),
+        'citizenship_number': _proposerCitizenshipCtrl.text.trim(),
+        'membership_id': _proposerMemIdCtrl.text.trim(),
+        'signature_url': _proposerSignatureUrl,
+      });
+    }
+    if (_supporterNameCtrl.text.trim().isNotEmpty) {
+      endorsements.add({
+        'endorsement_type': 'supporter',
+        'name': _supporterNameCtrl.text.trim(),
+        'phone': _supporterPhoneCtrl.text.trim(),
+        'citizenship_number': _supporterCitizenshipCtrl.text.trim(),
+        'membership_id': _supporterMemIdCtrl.text.trim(),
+        'signature_url': _supporterSignatureUrl,
+      });
+    }
+
     try {
       final dio = ref.read(apiClientProvider);
       await dio.post(ApiConstants.electionCandidates(widget.electionId), data: {
@@ -68,6 +127,7 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
         'personal_description': _personalDescriptionController.text.trim(),
         'manifesto': _manifestoController.text.trim(),
         'status': 'approved', // Auto approve for admin creation
+        if (endorsements.isNotEmpty) 'endorsements': endorsements,
       });
 
       ref.invalidate(electionProvider(widget.electionId));
@@ -81,6 +141,94 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
+  }
+
+  void _pickMemberForEndorsement({
+    required TextEditingController nameCtrl,
+    required TextEditingController phoneCtrl,
+    required TextEditingController memIdCtrl,
+    required TextEditingController citizenCtrl,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return Consumer(
+          builder: (context, ref, _) {
+            final membersAsync = ref.watch(membersProvider);
+            return DraggableScrollableSheet(
+              initialChildSize: 0.6,
+              minChildSize: 0.4,
+              maxChildSize: 0.85,
+              expand: false,
+              builder: (ctx, scrollCtrl) {
+                return Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Select from Member Roster',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(ctx),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: membersAsync.when(
+                          loading: () => const Center(child: CircularProgressIndicator()),
+                          error: (e, _) => Center(child: Text('Error loading members: $e')),
+                          data: (members) {
+                            if (members.isEmpty) {
+                              return const Center(child: Text('No members found in organization.'));
+                            }
+                            return ListView.separated(
+                              controller: scrollCtrl,
+                              itemCount: members.length,
+                              separatorBuilder: (_, __) => const Divider(height: 1),
+                              itemBuilder: (ctx, idx) {
+                                final m = members[idx];
+                                return ListTile(
+                                  leading: CircleAvatar(
+                                    child: Text(m.fullName.isNotEmpty ? m.fullName[0].toUpperCase() : '?'),
+                                  ),
+                                  title: Text(m.fullName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                  subtitle: Text('${m.email} • #${m.memberCode}'),
+                                  trailing: const Icon(Icons.check_circle_outline, size: 20),
+                                  onTap: () {
+                                    nameCtrl.text = m.fullName;
+                                    phoneCtrl.text = m.phone;
+                                    memIdCtrl.text = m.memberCode;
+                                    if (m.citizenshipNumber.isNotEmpty) {
+                                      citizenCtrl.text = m.citizenshipNumber;
+                                    }
+                                    Navigator.pop(ctx);
+                                  },
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -262,6 +410,58 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
                       Text('Additional Details', style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: 16),
                       _buildTextField('Personal Description', _personalDescriptionController, 'Enter personal description', maxLines: 4, required: false),
+
+                      const SizedBox(height: 32),
+                      const Divider(),
+                      const SizedBox(height: 24),
+                      Text('Proposer & Supporter Details (Optional)', style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Optionally assign or manually record official Proposer and Supporter endorsements for this candidate.',
+                        style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Proposer Card (प्रस्तावक)
+                      _buildEndorsementCard(
+                        roleTitle: 'PROPOSER (प्रस्तावक) — Endorser 1',
+                        roleSubtitle: 'Primary member who nominates and proposes the candidate',
+                        primaryColor: const Color(0xFF2563EB),
+                        roleIcon: Icons.how_to_reg_rounded,
+                        nameCtrl: _proposerNameCtrl,
+                        phoneCtrl: _proposerPhoneCtrl,
+                        citizenCtrl: _proposerCitizenshipCtrl,
+                        voterIdCtrl: _proposerMemIdCtrl,
+                        signatureUrl: _proposerSignatureUrl,
+                        onPickRoster: () => _pickMemberForEndorsement(
+                          nameCtrl: _proposerNameCtrl,
+                          phoneCtrl: _proposerPhoneCtrl,
+                          memIdCtrl: _proposerMemIdCtrl,
+                          citizenCtrl: _proposerCitizenshipCtrl,
+                        ),
+                        onSignatureUploaded: (url) => setState(() => _proposerSignatureUrl = url),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Supporter Card (समर्थक)
+                      _buildEndorsementCard(
+                        roleTitle: 'SUPPORTER (समर्थक) — Endorser 2',
+                        roleSubtitle: 'Secondary member who seconds and backs the nomination',
+                        primaryColor: const Color(0xFF059669),
+                        roleIcon: Icons.verified_user_rounded,
+                        nameCtrl: _supporterNameCtrl,
+                        phoneCtrl: _supporterPhoneCtrl,
+                        citizenCtrl: _supporterCitizenshipCtrl,
+                        voterIdCtrl: _supporterMemIdCtrl,
+                        signatureUrl: _supporterSignatureUrl,
+                        onPickRoster: () => _pickMemberForEndorsement(
+                          nameCtrl: _supporterNameCtrl,
+                          phoneCtrl: _supporterPhoneCtrl,
+                          memIdCtrl: _supporterMemIdCtrl,
+                          citizenCtrl: _supporterCitizenshipCtrl,
+                        ),
+                        onSignatureUploaded: (url) => setState(() => _supporterSignatureUrl = url),
+                      ),
                       
                       const SizedBox(height: 48),
                       Row(
@@ -295,6 +495,120 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildEndorsementCard({
+    required String roleTitle,
+    required String roleSubtitle,
+    required Color primaryColor,
+    required IconData roleIcon,
+    required TextEditingController nameCtrl,
+    required TextEditingController phoneCtrl,
+    required TextEditingController citizenCtrl,
+    required TextEditingController voterIdCtrl,
+    required String signatureUrl,
+    required VoidCallback onPickRoster,
+    required Function(String) onSignatureUploaded,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: primaryColor.withValues(alpha: 0.25), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: primaryColor.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: primaryColor.withValues(alpha: 0.08),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+              border: Border(bottom: BorderSide(color: primaryColor.withValues(alpha: 0.15))),
+            ),
+            child: Row(
+              children: [
+                Icon(roleIcon, size: 18, color: primaryColor),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        roleTitle,
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: primaryColor),
+                      ),
+                      Text(
+                        roleSubtitle,
+                        style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                      ),
+                    ],
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: onPickRoster,
+                  icon: const Icon(Icons.people_outline, size: 14),
+                  label: const Text('Pick Member', style: TextStyle(fontSize: 12)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: primaryColor,
+                    side: BorderSide(color: primaryColor.withValues(alpha: 0.4)),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildTextField('Full Name', nameCtrl, 'Enter full name', required: false),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildTextField('Phone Number', phoneCtrl, 'Enter phone number', required: false),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildTextField('Voter ID / Member Code', voterIdCtrl, 'Enter member code', required: false),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildTextField('Citizenship / Council No', citizenCtrl, 'Enter citizenship or council no', required: false),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Text('Official Signature: ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    const SizedBox(width: 12),
+                    ImageUploadWidget(
+                      initialImageUrl: signatureUrl,
+                      placeholderText: 'Upload Sign',
+                      radius: 28,
+                      onImageUploaded: onSignatureUploaded,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

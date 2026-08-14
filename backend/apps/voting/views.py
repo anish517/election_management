@@ -386,6 +386,155 @@ class VoterRollViewSet(viewsets.ModelViewSet):
             'total_processed': qs.count(),
         }, status=status.HTTP_200_OK)
 
+    @action(detail=False, methods=['post'])
+    def import_external_api(self, request, election_pk=None):
+        """
+        Fetch members/voters from an external API URL and preview or import
+        them directly into the election's VoterRoll.
+        """
+        import requests
+        import uuid
+        from apps.elections.models import Election
+
+        try:
+            election = Election.objects.get(id=election_pk, organization=request.user.organization)
+        except Election.DoesNotExist:
+            return Response({'error': 'Election not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        url = str(request.data.get('url', '')).strip()
+        if not url:
+            return Response({'error': 'API Endpoint URL is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        headers = {'User-Agent': 'ElectionManagementSystem/1.0', 'Accept': 'application/json'}
+        auth_header = str(request.data.get('auth_header', '')).strip()
+        if auth_header:
+            headers['Authorization'] = auth_header
+            
+        custom_header_name = str(request.data.get('custom_header_name', '')).strip()
+        custom_header_val = str(request.data.get('custom_header_value', '')).strip()
+        if custom_header_name and custom_header_val:
+            headers[custom_header_name] = custom_header_val
+
+        preview_only = bool(request.data.get('preview_only', False))
+        mapping = request.data.get('mapping', {})
+        if not isinstance(mapping, dict):
+            mapping = {}
+
+        try:
+            res = requests.get(url, headers=headers, timeout=15)
+            res.raise_for_status()
+            data = res.json()
+        except requests.exceptions.Timeout:
+            return Response({'error': 'Connection to external API timed out (15s limit).'}, status=status.HTTP_400_BAD_REQUEST)
+        except requests.exceptions.RequestException as e:
+            return Response({'error': f'External API request failed: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+        except ValueError:
+            return Response({'error': 'External API returned non-JSON response.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        raw_items = []
+        if isinstance(data, list):
+            raw_items = data
+        elif isinstance(data, dict):
+            for key in ['data', 'results', 'members', 'voters', 'users', 'items']:
+                if key in data and isinstance(data[key], list):
+                    raw_items = data[key]
+                    break
+            if not raw_items:
+                raw_items = [data]
+
+        if not raw_items:
+            return Response({'error': 'No voter/member records found in external API response.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        existing_emails = set(
+            VoterRoll.objects.filter(election=election)
+            .exclude(email='')
+            .values_list('email', flat=True)
+        )
+        existing_voter_ids = set(
+            VoterRoll.objects.filter(election=election)
+            .exclude(voter_id='')
+            .values_list('voter_id', flat=True)
+        )
+
+        parsed_records = []
+        for item in raw_items:
+            if not isinstance(item, dict):
+                continue
+            v_id = str(item.get(mapping.get('voter_id', 'voter_id')) or item.get('id') or item.get('member_code') or item.get('member_id') or '').strip()
+            first = str(item.get(mapping.get('first_name', 'first_name')) or item.get('name') or item.get('full_name') or '').strip()
+            middle = str(item.get(mapping.get('middle_name', 'middle_name')) or '').strip()
+            last = str(item.get(mapping.get('last_name', 'last_name')) or '').strip()
+            
+            if not last and ' ' in first:
+                parts = first.split()
+                first = parts[0]
+                last = ' '.join(parts[1:])
+
+            email = str(item.get(mapping.get('email', 'email')) or '').strip().lower()
+            phone = str(item.get(mapping.get('phone', 'phone')) or item.get('mobile') or item.get('contact') or '').strip()
+            citizenship = str(item.get(mapping.get('citizenship_number', 'citizenship_number')) or item.get('citizenship') or '').strip()
+            council = str(item.get(mapping.get('council_number', 'council_number')) or '').strip()
+            prefix = str(item.get(mapping.get('prefix', 'prefix')) or '').strip()
+
+            parsed_records.append({
+                'voter_id': v_id or str(uuid.uuid4())[:8],
+                'prefix': prefix,
+                'first_name': first or 'Voter',
+                'middle_name': middle,
+                'last_name': last,
+                'email': email,
+                'phone': phone,
+                'council_number': council,
+                'citizenship_number': citizenship,
+                'is_eligible': True,
+            })
+
+        if preview_only:
+            return Response({
+                'preview': parsed_records[:25],
+                'total_found': len(parsed_records),
+                'message': f'Found {len(parsed_records)} record(s) from external API.',
+            }, status=status.HTTP_200_OK)
+
+        imported = 0
+        skipped = 0
+
+        for r in parsed_records:
+            v_id = r['voter_id']
+            email = r['email']
+
+            if (email and email in existing_emails) or (v_id and v_id in existing_voter_ids):
+                skipped += 1
+                continue
+
+            VoterRoll.objects.create(
+                election=election,
+                voter_id=v_id,
+                prefix=r['prefix'],
+                first_name=r['first_name'],
+                middle_name=r['middle_name'],
+                last_name=r['last_name'],
+                email=email,
+                phone=r['phone'],
+                council_number=r['council_number'],
+                citizenship_number=r['citizenship_number'],
+                is_eligible=True,
+            )
+
+            if email:
+                existing_emails.add(email)
+            if v_id:
+                existing_voter_ids.add(v_id)
+
+            imported += 1
+
+        return Response({
+            'message': f'Successfully imported {imported} voter(s) from external API. Skipped {skipped} already existing.',
+            'imported': imported,
+            'skipped': skipped,
+            'total_processed': len(parsed_records),
+        }, status=status.HTTP_200_OK)
+
 
 class VotingHistoryView(viewsets.ViewSet):
     """

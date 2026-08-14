@@ -75,6 +75,8 @@ class ApiConstants {
       '/elections/$electionId/voters/export_csv/';
   static String importElectionMembers(String electionId) =>
       '/elections/$electionId/voters/import_members/';
+  static String importExternalApiVoters(String electionId) =>
+      '/elections/$electionId/voters/import_external_api/';
 
   // Voting
   static const String votingHistory = '/voting/history/';

@@ -18,7 +18,6 @@ class _CreateDesignationScreenState
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _seatsController = TextEditingController(text: '1');
-  final _quotaController = TextEditingController(text: '');
   final _chargeController = TextEditingController(text: '0.00');
   final _orderController = TextEditingController(text: '0');
   Color _selectedColor = const Color(0xFF563D7C);
@@ -59,7 +58,6 @@ class _CreateDesignationScreenState
         'seats_available': int.parse(_seatsController.text),
         'voting_method': 'fptp',
         'max_votes_per_voter': int.parse(_seatsController.text),
-        'quota_name': _quotaController.text.trim(),
         'nominee_charge': double.parse(_chargeController.text),
         'result_order': int.parse(_orderController.text),
         'bg_color': hexColor,
@@ -123,7 +121,7 @@ class _CreateDesignationScreenState
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            flex: 2,
+                            flex: 3,
                             child: _buildTextField(
                               'Designation Name *',
                               _titleController,
@@ -136,16 +134,6 @@ class _CreateDesignationScreenState
                               'Max Seats *',
                               _seatsController,
                               helperText: 'No. of winners',
-                            ),
-                          ),
-                          const SizedBox(width: 24),
-                          Expanded(
-                            flex: 2,
-                            child: _buildTextField(
-                              'Quota',
-                              _quotaController,
-                              helperText: 'E.g. Female, Open',
-                              required: false,
                             ),
                           ),
                         ],

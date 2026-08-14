@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import 'designations_screen.dart';
+import 'quota_settings_screen.dart';
 import 'candidates_screen.dart';
 import 'email_screen.dart';
 import 'notice_screen.dart';
@@ -67,18 +68,19 @@ class _ElectionDashboardScreenState
               children: [
                 _buildNavItem(0, Icons.dashboard_outlined, 'Dashboard'),
                 _buildNavItem(1, Icons.badge_outlined, 'Designations'),
-                _buildNavItem(2, Icons.groups_outlined, 'Election Committee'),
-                _buildNavItem(3, Icons.people_outline, 'Candidate'),
-                _buildNavItem(4, Icons.how_to_vote_outlined, 'Voter'),
-                _buildNavItem(5, Icons.email_outlined, 'Email'),
-                _buildNavItem(6, Icons.notifications_outlined, 'Notice'),
+                _buildNavItem(2, Icons.pie_chart_outline_rounded, 'Quota Settings'),
+                _buildNavItem(3, Icons.groups_outlined, 'Election Committee'),
+                _buildNavItem(4, Icons.people_outline, 'Candidate'),
+                _buildNavItem(5, Icons.how_to_vote_outlined, 'Voter'),
+                _buildNavItem(6, Icons.email_outlined, 'Email'),
+                _buildNavItem(7, Icons.notifications_outlined, 'Notice'),
                 _buildNavItem(
-                  7,
+                  8,
                   Icons.menu_book_outlined,
                   'Election Guidelines',
                 ),
                 _buildNavItem(
-                  8,
+                  9,
                   Icons.bar_chart_outlined,
                   'Election Statistics',
                 ),
@@ -142,16 +144,18 @@ class _ElectionDashboardScreenState
       case 1:
         return DesignationsScreen(electionId: widget.electionId);
       case 2:
-        return ElectionCommitteeScreen(electionId: widget.electionId);
+        return QuotaSettingsScreen(electionId: widget.electionId);
       case 3:
-        return CandidatesScreen(electionId: widget.electionId);
+        return ElectionCommitteeScreen(electionId: widget.electionId);
       case 4:
-        return VotersScreen(electionId: widget.electionId);
+        return CandidatesScreen(electionId: widget.electionId);
       case 5:
-        return EmailScreen(electionId: widget.electionId);
+        return VotersScreen(electionId: widget.electionId);
       case 6:
-        return NoticeScreen(electionId: widget.electionId);
+        return EmailScreen(electionId: widget.electionId);
       case 7:
+        return NoticeScreen(electionId: widget.electionId);
+      case 8:
         return GuidelinesScreen(electionId: widget.electionId);
       default:
         return const Center(child: Text('Coming Soon'));

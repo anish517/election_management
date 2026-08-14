@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import '../network/api_client.dart';
 import '../network/api_constants.dart';
+import '../../shared/models/models.dart';
 import 'app_providers.dart';
 
 // ─── Election Management ──────────────────────────────────────────────────
@@ -278,6 +279,69 @@ class AddCandidateNotifier extends AsyncNotifier<void> {
 
 final addCandidateProvider = AsyncNotifierProvider<AddCandidateNotifier, void>(
   () => AddCandidateNotifier(),
+);
+
+// ─── Quota Management ──────────────────────────────────────────────────────
+
+final quotasProvider = FutureProvider.family<List<PositionQuotaModel>, String>((ref, electionId) async {
+  final dio = ref.watch(apiClientProvider);
+  final resp = await dio.get(ApiConstants.electionQuotas(electionId));
+  final results = resp.data is List ? resp.data as List : (resp.data['results'] as List? ?? []);
+  return results.map((e) => PositionQuotaModel.fromJson(e as Map<String, dynamic>)).toList();
+});
+
+class QuotaNotifier extends AsyncNotifier<void> {
+  @override
+  FutureOr<void> build() {}
+
+  Future<void> addQuota(String electionId, Map<String, dynamic> data) async {
+    if (state.isLoading) return;
+    state = const AsyncValue.loading();
+    try {
+      final dio = ref.read(apiClientProvider);
+      await dio.post(ApiConstants.electionQuotas(electionId), data: data);
+      ref.invalidate(quotasProvider(electionId));
+      ref.invalidate(electionProvider(electionId));
+      state = const AsyncValue.data(null);
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+      rethrow;
+    }
+  }
+
+  Future<void> updateQuota(String electionId, String quotaId, Map<String, dynamic> data) async {
+    if (state.isLoading) return;
+    state = const AsyncValue.loading();
+    try {
+      final dio = ref.read(apiClientProvider);
+      await dio.patch(ApiConstants.electionQuotaDetail(electionId, quotaId), data: data);
+      ref.invalidate(quotasProvider(electionId));
+      ref.invalidate(electionProvider(electionId));
+      state = const AsyncValue.data(null);
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+      rethrow;
+    }
+  }
+
+  Future<void> deleteQuota(String electionId, String quotaId) async {
+    if (state.isLoading) return;
+    state = const AsyncValue.loading();
+    try {
+      final dio = ref.read(apiClientProvider);
+      await dio.delete(ApiConstants.electionQuotaDetail(electionId, quotaId));
+      ref.invalidate(quotasProvider(electionId));
+      ref.invalidate(electionProvider(electionId));
+      state = const AsyncValue.data(null);
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+      rethrow;
+    }
+  }
+}
+
+final quotaNotifierProvider = AsyncNotifierProvider<QuotaNotifier, void>(
+  () => QuotaNotifier(),
 );
 
 // ─── Members Management ───────────────────────────────────────────────────

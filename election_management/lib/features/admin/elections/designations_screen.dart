@@ -142,7 +142,33 @@ class DesignationsScreen extends ConsumerWidget {
           Expanded(flex: 1, child: Text(index.toString())),
           Expanded(flex: 3, child: Text(pos.title)),
           Expanded(flex: 1, child: Text(pos.seatsAvailable.toString())),
-          Expanded(flex: 2, child: Text(pos.quotaName.isEmpty ? '-' : pos.quotaName)),
+          Expanded(
+            flex: 2,
+            child: pos.quotas.isNotEmpty
+                ? Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: pos.quotas.map((q) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: q.isActive ? AppColors.primary.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: q.isActive ? AppColors.primary.withValues(alpha: 0.3) : Colors.grey.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Text(
+                        '${q.name}: ${q.seats}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: q.isActive ? AppColors.primaryLight : Colors.grey[600],
+                        ),
+                      ),
+                    )).toList(),
+                  )
+                : Text(pos.quotaName.isEmpty ? '-' : pos.quotaName, style: TextStyle(color: Colors.grey[600])),
+          ),
           Expanded(flex: 2, child: Text('Rs. ${pos.nomineeCharge}')),
           Expanded(flex: 2, child: Text(pos.resultOrder.toString())),
           Expanded(

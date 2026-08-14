@@ -23,6 +23,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
   final _manifestoController = TextEditingController();
   final _slateController = TextEditingController();
   String? _selectedPositionId;
+  String? _selectedQuotaId;
   String _photoUrl = '';
   bool _isSubmitting = false;
 
@@ -66,6 +67,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
       final dio = ref.read(apiClientProvider);
       await dio.post(ApiConstants.electionCandidates(widget.electionId), data: {
         'position': _selectedPositionId,
+        if (_selectedQuotaId != null && _selectedQuotaId!.isNotEmpty) 'quota': _selectedQuotaId,
         'manifesto': _manifestoController.text.trim(),
         'slate_name': _slateController.text.trim(),
         'candidate_image': _photoUrl,
@@ -198,14 +200,48 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                   const SizedBox(height: 24),
 
                   DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Position'),
+                    decoration: const InputDecoration(labelText: 'Position *'),
                     initialValue: _selectedPositionId,
                     items: election.positions.map((p) {
                       return DropdownMenuItem(value: p.id, child: Text(p.title));
                     }).toList(),
-                    onChanged: (val) => setState(() => _selectedPositionId = val),
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedPositionId = val;
+                        _selectedQuotaId = null;
+                      });
+                    },
                     validator: (val) => val == null ? 'Required' : null,
                   ),
+                  if (_selectedPositionId != null) ...[
+                    () {
+                      final selectedPos = election.positions.where((p) => p.id == _selectedPositionId).firstOrNull;
+                      if (selectedPos != null && selectedPos.quotas.isNotEmpty) {
+                        final activeQuotas = selectedPos.quotas.where((q) => q.isActive).toList();
+                        if (activeQuotas.isNotEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 16.0),
+                            child: DropdownButtonFormField<String?>(
+                              initialValue: _selectedQuotaId,
+                              decoration: const InputDecoration(
+                                labelText: 'Quota Category (Reserved Seat)',
+                                helperText: 'Select reserved quota category if contesting under quota, or Open category',
+                              ),
+                              items: [
+                                const DropdownMenuItem<String?>(value: null, child: Text('Open / General (No Quota)')),
+                                ...activeQuotas.map((q) => DropdownMenuItem<String?>(
+                                  value: q.id,
+                                  child: Text('${q.name} (${q.seats} seat(s))'),
+                                )),
+                              ],
+                              onChanged: (val) => setState(() => _selectedQuotaId = val),
+                            ),
+                          );
+                        }
+                      }
+                      return const SizedBox.shrink();
+                    }(),
+                  ],
                   const SizedBox(height: 16),
                   
                   TextFormField(

@@ -23,6 +23,7 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
   final _formKey = GlobalKey<FormState>();
   
   String? _selectedPositionId;
+  String? _selectedQuotaId;
   String? _selectedMemberId;
   
   // Basic Info Controllers
@@ -122,6 +123,7 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
       final dio = ref.read(apiClientProvider);
       await dio.post(ApiConstants.electionCandidates(widget.election.id), data: {
         'position': _selectedPositionId,
+        if (_selectedQuotaId != null && _selectedQuotaId!.isNotEmpty) 'quota': _selectedQuotaId,
         'first_name': _firstNameController.text.trim(),
         'middle_name': _middleNameController.text.trim(),
         'last_name': _lastNameController.text.trim(),
@@ -214,12 +216,45 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
                                   decoration: const InputDecoration(labelText: 'Designation *'),
                                   items: widget.election.positions.map((p) => DropdownMenuItem(
                                     value: p.id,
-                                    child: Text(p.quotaName.isNotEmpty ? '${p.title} (${p.quotaName})' : p.title),
+                                    child: Text(p.title),
                                   )).toList(),
-                                  onChanged: (v) => setState(() => _selectedPositionId = v),
+                                  onChanged: (v) {
+                                    setState(() {
+                                      _selectedPositionId = v;
+                                      _selectedQuotaId = null;
+                                    });
+                                  },
                                   validator: (v) => v == null ? 'Required' : null,
                                 ),
                               ),
+                              if (_selectedPositionId != null) ...[
+                                () {
+                                  final selectedPos = widget.election.positions.where((p) => p.id == _selectedPositionId).firstOrNull;
+                                  if (selectedPos != null && selectedPos.quotas.isNotEmpty) {
+                                    final activeQuotas = selectedPos.quotas.where((q) => q.isActive).toList();
+                                    if (activeQuotas.isNotEmpty) {
+                                      return Expanded(
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(left: 16.0),
+                                          child: DropdownButtonFormField<String?>(
+                                            initialValue: _selectedQuotaId,
+                                            decoration: const InputDecoration(labelText: 'Quota Category'),
+                                            items: [
+                                              const DropdownMenuItem<String?>(value: null, child: Text('Open / General (No Quota)')),
+                                              ...activeQuotas.map((q) => DropdownMenuItem<String?>(
+                                                value: q.id,
+                                                child: Text('${q.name} (${q.seats} seat(s))'),
+                                              )),
+                                            ],
+                                            onChanged: (val) => setState(() => _selectedQuotaId = val),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                  return const SizedBox.shrink();
+                                }(),
+                              ],
                             ],
                           ),
                           const SizedBox(height: 24),

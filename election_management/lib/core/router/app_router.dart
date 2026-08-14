@@ -18,6 +18,7 @@ import '../../features/voting/voting_history_screen.dart';
 import '../../features/candidates/nomination_screen.dart';
 import '../../features/candidates/nomination_list_screen.dart';
 import '../../features/admin/organization/org_settings_screen.dart';
+import '../../features/admin/payment_settings/payment_settings_screen.dart';
 import '../../features/results/results_screen.dart';
 import '../../features/profile/user_profile_screen.dart';
 import '../../features/analytics/analytics_screen.dart';
@@ -75,7 +76,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (isLoggedIn && user != null) {
         final role = user.role;
         final isAdminRoute = loc.startsWith('/dashboard') ||
-            loc.startsWith('/org-settings');
+            loc.startsWith('/org-settings') ||
+            loc.startsWith('/payment-settings');
         final isAdminRole = role == 'org_admin' || role == 'super_admin';
         if (isAdminRoute && !isAdminRole) return '/elections';
       }
@@ -108,7 +110,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/org-settings',
         name: 'org-settings',
-        builder: (context, state) => const OrgSettingsScreen(),
+        builder: (context, state) {
+          final tab = int.tryParse(state.uri.queryParameters['tab'] ?? '0') ?? 0;
+          return OrgSettingsScreen(initialTab: tab);
+        },
+      ),
+      GoRoute(
+        path: '/election-rules',
+        name: 'election-rules',
+        redirect: (_, __) => '/org-settings?tab=1',
+      ),
+      GoRoute(
+        path: '/payment-settings',
+        name: 'payment-settings',
+        builder: (context, state) => const PaymentSettingsScreen(),
       ),
       GoRoute(
         path: '/profile',

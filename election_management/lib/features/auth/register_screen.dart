@@ -87,14 +87,12 @@ class _ImagePickerTile extends StatefulWidget {
   final String? currentUrl;
   final Future<String?> Function(Uint8List bytes, String name) onUpload;
   final void Function(String url) onUploaded;
-  final bool isSquare;
 
   const _ImagePickerTile({
     required this.label,
     required this.currentUrl,
     required this.onUpload,
     required this.onUploaded,
-    this.isSquare = false,
   });
 
   @override
@@ -139,8 +137,8 @@ class _ImagePickerTileState extends State<_ImagePickerTile> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasImage = _url != null && _url!.isNotEmpty;
-    final h = widget.isSquare ? 100.0 : 140.0;
-    final w = widget.isSquare ? 100.0 : double.infinity;
+    final h = 140.0;
+    final w = double.infinity;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -276,14 +274,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   String _logoUrl = '';
   String _coverUrl = '';
 
-  // --- Bank ---
-  final _bankNameCtrl = TextEditingController();
-  final _bankBranchCtrl = TextEditingController();
-  final _bankAccountNumCtrl = TextEditingController();
-  final _bankAccountNameCtrl = TextEditingController();
-  final _bankSwiftCtrl = TextEditingController();
-  String _bankQrUrl = '';
-
   // --- Type metadata ---
   final Map<String, TextEditingController> _metaCtrls = {};
 
@@ -309,11 +299,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       _orgPhoneCtrl,
       _websiteCtrl,
       _addressCtrl,
-      _bankNameCtrl,
-      _bankBranchCtrl,
-      _bankAccountNumCtrl,
-      _bankAccountNameCtrl,
-      _bankSwiftCtrl,
       _adminNameCtrl,
       _adminEmailCtrl,
       _adminPhoneCtrl,
@@ -394,12 +379,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           address: _addressCtrl.text.trim(),
           logoUrl: _logoUrl,
           coverImageUrl: _coverUrl,
-          bankName: _bankNameCtrl.text.trim(),
-          bankBranch: _bankBranchCtrl.text.trim(),
-          bankAccountNumber: _bankAccountNumCtrl.text.trim(),
-          bankAccountName: _bankAccountNameCtrl.text.trim(),
-          bankSwiftCode: _bankSwiftCtrl.text.trim(),
-          bankQrUrl: _bankQrUrl,
           typeMetadata: meta,
         );
 
@@ -705,102 +684,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ],
 
                 // ══════════════════════════════════════════════════════════
-                // 2. BANK DETAILS
-                // ══════════════════════════════════════════════════════════
-                const SizedBox(height: 32),
-                _sectionHeader(
-                  context,
-                  'Bank Details',
-                  Icons.account_balance_rounded,
-                ),
-                const SizedBox(height: 20),
-
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _bankNameCtrl,
-                        decoration: _field(
-                          'Bank Name',
-                          hint: 'Enter bank name',
-                          required: false,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _bankBranchCtrl,
-                        decoration: _field(
-                          'Branch Name',
-                          hint: 'Enter branch name',
-                          required: false,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _bankAccountNumCtrl,
-                        decoration: _field(
-                          'Account Number',
-                          hint: 'Enter account number',
-                          required: false,
-                        ),
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _bankAccountNameCtrl,
-                        decoration: _field(
-                          'Account Name',
-                          hint: 'Enter account name',
-                          required: false,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _bankSwiftCtrl,
-                        decoration: _field(
-                          'SWIFT Code',
-                          hint: 'Enter SWIFT code',
-                          required: false,
-                        ),
-                        textCapitalization: TextCapitalization.characters,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _ImagePickerTile(
-                        label: 'QR Code',
-                        currentUrl: _bankQrUrl.isEmpty ? null : _bankQrUrl,
-                        onUpload: _upload,
-                        onUploaded: (url) => setState(() => _bankQrUrl = url),
-                        isSquare: true,
-                      ),
-                    ),
-                  ],
-                ),
-
-                // ══════════════════════════════════════════════════════════
-                // 3. ORGANIZATION ADMIN
+                // 2. ORGANIZATION ADMIN
                 // ══════════════════════════════════════════════════════════
                 const SizedBox(height: 32),
                 _sectionHeader(

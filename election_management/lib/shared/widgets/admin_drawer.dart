@@ -81,8 +81,11 @@ class AdminDrawer extends ConsumerWidget {
                         _buildNavItem(context, 'Dashboard', Icons.dashboard_rounded, () => handleNav('dashboard')),
                         _buildNavItem(context, 'Elections', Icons.how_to_vote_rounded, () => handleNav('elections')),
                         if (user.role == 'org_admin')
-                        if (user.role == 'org_admin')
                           _buildNavItem(context, 'Settings', Icons.settings_applications_rounded, () => handleNav('org-settings')),
+                        if (user.role == 'org_admin')
+                          _buildNavItem(context, 'Election Rules', Icons.gavel_rounded, () => handleNav('election-rules')),
+                        if (user.role == 'org_admin')
+                          _buildNavItem(context, 'Payment Settings', Icons.payment_rounded, () => handleNav('payment-settings')),
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           child: Divider(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05)),

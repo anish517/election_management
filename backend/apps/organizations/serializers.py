@@ -11,6 +11,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'type_metadata',
             'bank_name', 'bank_branch', 'bank_account_number',
             'bank_account_name', 'bank_swift_code', 'bank_qr_url',
+            'payment_settings',
             'status', 'trial_ends_at',
             'grievance_window_days', 'voter_roll_freeze_offset_days',
             'default_nomination_window_days', 'default_voting_window_days',

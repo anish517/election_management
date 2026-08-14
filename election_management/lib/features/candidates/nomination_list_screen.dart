@@ -130,17 +130,37 @@ class NominationListScreen extends ConsumerWidget {
                                   style: TextStyle(color: isDark ? Colors.white70 : AppColors.textSecondaryLightMode, fontSize: 13),
                                 ),
                                 const SizedBox(height: 8),
-                                if (c.endorsements.isNotEmpty)
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.people_alt_rounded, size: 14, color: AppColors.primary),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        '${c.endorsements.length} Endorsements Attached',
-                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
-                                      ),
-                                    ],
+                                const SizedBox(height: 8),
+                                if (c.endorsements.isNotEmpty) ...[
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 4,
+                                    children: c.endorsements.map((e) {
+                                      final isProp = e.endorsementType.toLowerCase() == 'proposer';
+                                      final col = isProp ? const Color(0xFF2563EB) : const Color(0xFF059669);
+                                      final label = isProp ? 'Proposer' : 'Supporter';
+                                      return Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: col.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(color: col.withValues(alpha: 0.3)),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(isProp ? Icons.how_to_reg_rounded : Icons.verified_user_rounded, size: 12, color: col),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              '$label: ${e.name}${e.membershipId.isNotEmpty ? " (#${e.membershipId})" : ""}',
+                                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: col),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }).toList(),
                                   ),
+                                ],
                               ],
                             ),
                           ),

@@ -491,47 +491,220 @@ class _EndorsementsTab extends StatelessWidget {
   }
 
   Widget _buildEndorsementCard(CandidateEndorsementModel e, bool isDark) {
+    final isProposer = e.endorsementType.toLowerCase() == 'proposer';
+    final primaryColor = isProposer ? const Color(0xFF2563EB) : const Color(0xFF059669);
+    final roleTitle = isProposer ? 'PROPOSER / प्रस्तावक' : 'SUPPORTER / समर्थक';
+    final roleIcon = isProposer ? Icons.how_to_reg_rounded : Icons.verified_user_rounded;
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: isDark ? AppColors.surface : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isDark ? AppColors.surfaceVariant : Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: primaryColor.withValues(alpha: isDark ? 0.35 : 0.25),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: primaryColor.withValues(alpha: isDark ? 0.08 : 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(e.endorsementType == 'proposer' ? Icons.person_add_alt_1_rounded : Icons.people_alt_rounded,
-                   size: 16, color: AppColors.primary),
-              const SizedBox(width: 8),
-              Text(e.endorsementType.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primary)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text('Name: ${e.name}', style: const TextStyle(fontWeight: FontWeight.w600)),
-          if (e.phone.isNotEmpty) Text('Phone: ${e.phone}', style: const TextStyle(fontSize: 13)),
-          if (e.citizenshipNumber.isNotEmpty) Text('Citizenship: ${e.citizenshipNumber}', style: const TextStyle(fontSize: 13)),
-          if (e.membershipId.isNotEmpty) Text('Voter ID: ${e.membershipId}', style: const TextStyle(fontSize: 13)),
-          if (e.signatureUrl.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            const Text('Signature:', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-            const SizedBox(height: 4),
-            Container(
-              height: 60,
-              width: 120,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Image.network(e.signatureUrl, fit: BoxFit.contain, errorBuilder: (_, _, _) => const Icon(Icons.broken_image, size: 24)),
+          // Header Ribbon
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: primaryColor.withValues(alpha: isDark ? 0.15 : 0.08),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              border: Border(bottom: BorderSide(color: primaryColor.withValues(alpha: 0.2))),
             ),
-          ],
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(roleIcon, size: 18, color: primaryColor),
+                    const SizedBox(width: 8),
+                    Text(
+                      roleTitle,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        letterSpacing: 0.5,
+                        color: primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle_rounded, size: 13, color: Colors.green),
+                      SizedBox(width: 4),
+                      Text('Verified Endorser', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.green)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Body Content
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Name & Avatar
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: primaryColor.withValues(alpha: 0.12),
+                      child: Text(
+                        e.name.isNotEmpty ? e.name[0].toUpperCase() : '?',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: primaryColor),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            e.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          if (e.membershipId.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'Voter / Member ID: ${e.membershipId}',
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 14),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
+
+                // Details Grid
+                Row(
+                  children: [
+                    if (e.phone.isNotEmpty)
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Icon(Icons.phone_rounded, size: 16, color: primaryColor),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Phone Number', style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600)),
+                                  Text(e.phone, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (e.citizenshipNumber.isNotEmpty)
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Icon(Icons.badge_outlined, size: 16, color: primaryColor),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Citizenship / Council No', style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600)),
+                                  Text(e.citizenshipNumber, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+
+                // Signature Image Box
+                if (e.signatureUrl.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.withValues(alpha: 0.25)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.draw_rounded, size: 14, color: Colors.grey.shade600),
+                            const SizedBox(width: 6),
+                            Text('Official Signature', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade600)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          height: 70,
+                          width: 180,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: Image.network(
+                              e.signatureUrl,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, _, _) => Center(
+                                child: Text('Signature on file', style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontStyle: FontStyle.italic)),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
-    ).animate().fadeIn(delay: 100.ms).slideX(begin: 0.1);
+    ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.05);
   }
 }
 

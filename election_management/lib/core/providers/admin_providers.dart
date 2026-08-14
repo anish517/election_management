@@ -149,6 +149,29 @@ class PublishElectionNotifier extends AsyncNotifier<void> {
     }
   }
 
+  Future<Map<String, dynamic>> updatePosition(
+    String electionId,
+    String positionId,
+    Map<String, dynamic> data,
+  ) async {
+    if (state.isLoading) return {};
+    state = const AsyncValue.loading();
+    try {
+      final dio = ref.read(apiClientProvider);
+      final resp = await dio.patch(
+        ApiConstants.electionPositionDetail(electionId, positionId),
+        data: data,
+      );
+      ref.invalidate(electionProvider(electionId));
+      ref.invalidate(quotasProvider(electionId));
+      state = const AsyncValue.data(null);
+      return (resp.data as Map<String, dynamic>?) ?? {};
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
   Future<void> deletePosition(String electionId, String positionId) async {
     if (state.isLoading) return;
     state = const AsyncValue.loading();

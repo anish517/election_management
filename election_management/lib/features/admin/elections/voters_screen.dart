@@ -9,6 +9,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/utils/download_helper.dart';
 import 'add_voter_dialog.dart';
 import 'edit_voter_dialog.dart';
+import 'import_members_dialog.dart';
 import 'voter_csv_import_wizard_screen.dart';
 import 'voter_profile_sheet.dart';
 
@@ -35,45 +36,64 @@ class VotersScreen extends ConsumerWidget {
                   'Voters List',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => AddVoterDialog(electionId: electionId),
-                    );
-                  },
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Add New Voter'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF563D7C),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => VoterCsvImportWizardScreen(electionId: electionId),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => AddVoterDialog(electionId: electionId),
+                        );
+                      },
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Add New Voter'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF563D7C),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.upload_file, size: 18),
-                  label: const Text('Import CSV'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed: () => _exportCsv(context, ref),
-                  icon: const Icon(Icons.download_rounded, size: 18),
-                  label: const Text('Export CSV'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => ImportMembersDialog(electionId: electionId),
+                        );
+                      },
+                      icon: const Icon(Icons.people_alt_outlined, size: 18),
+                      label: const Text('Import Members'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => VoterCsvImportWizardScreen(electionId: electionId),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.upload_file, size: 18),
+                      label: const Text('Import CSV'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () => _exportCsv(context, ref),
+                      icon: const Icon(Icons.download_rounded, size: 18),
+                      label: const Text('Export CSV'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

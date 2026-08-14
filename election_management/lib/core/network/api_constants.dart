@@ -62,6 +62,7 @@ class ApiConstants {
   static String previewElectionVotersCsv(String electionId) => '/elections/$electionId/voters/preview_csv/';
   static String importElectionVotersCsv(String electionId) => '/elections/$electionId/voters/import_csv/';
   static String exportElectionVotersCsv(String electionId) => '/elections/$electionId/voters/export_csv/';
+  static String importElectionMembers(String electionId) => '/elections/$electionId/voters/import_members/';
 
 
   // Voting

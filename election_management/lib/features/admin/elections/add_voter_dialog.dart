@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/providers/admin_providers.dart';
+import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_button.dart';
 
@@ -17,6 +18,7 @@ class AddVoterDialog extends ConsumerStatefulWidget {
 class _AddVoterDialogState extends ConsumerState<AddVoterDialog> {
   final _formKey = GlobalKey<FormState>();
   
+  String? _selectedMemberId;
   final _voterIdController = TextEditingController();
   final _prefixController = TextEditingController();
   final _firstNameController = TextEditingController();
@@ -64,6 +66,8 @@ class _AddVoterDialogState extends ConsumerState<AddVoterDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final membersAsync = ref.watch(membersProvider);
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
@@ -75,7 +79,7 @@ class _AddVoterDialogState extends ConsumerState<AddVoterDialog> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Create Voter', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                const Text('Create / Add Voter', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                 IconButton(icon: const Icon(Icons.close), onPressed: () => context.pop()),
               ],
             ),
@@ -87,7 +91,55 @@ class _AddVoterDialogState extends ConsumerState<AddVoterDialog> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Voter Information', style: Theme.of(context).textTheme.titleLarge),
+                      Text('Select Existing Member (Optional)', style: Theme.of(context).textTheme.titleLarge),
+                      const SizedBox(height: 8),
+                      Text('Pick an organization member to auto-fill voter profile details, or fill the fields below manually:',
+                          style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodySmall?.color)),
+                      const SizedBox(height: 12),
+                      membersAsync.when(
+                        loading: () => const LinearProgressIndicator(),
+                        error: (e, _) => Text('Could not load organization members: $e', style: const TextStyle(color: Colors.red, fontSize: 13)),
+                        data: (members) {
+                          if (members.isEmpty) return const SizedBox.shrink();
+                          return DropdownButtonFormField<String?>(
+                            initialValue: _selectedMemberId,
+                            decoration: const InputDecoration(
+                              labelText: 'Select Organization Member (Auto-fill)',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.person_search_rounded),
+                            ),
+                            items: [
+                              const DropdownMenuItem<String?>(
+                                value: null,
+                                child: Text('— None (Enter Voter Manually) —'),
+                              ),
+                              ...members.map((m) => DropdownMenuItem<String?>(
+                                value: m.id,
+                                child: Text('${m.fullName} (${m.email}) — ${m.memberCode}'),
+                              )),
+                            ],
+                            onChanged: (val) {
+                              setState(() {
+                                _selectedMemberId = val;
+                                if (val != null) {
+                                  final m = members.firstWhere((mem) => mem.id == val);
+                                  _voterIdController.text = m.memberCode.isNotEmpty ? m.memberCode : m.id.substring(0, 8);
+                                  _prefixController.text = m.prefix;
+                                  _firstNameController.text = m.firstName;
+                                  _middleNameController.text = m.middleName;
+                                  _lastNameController.text = m.lastName;
+                                  _emailController.text = m.email;
+                                  _phoneController.text = m.phone;
+                                  _councilNumberController.text = m.councilNumber;
+                                  _citizenshipController.text = m.citizenshipNumber;
+                                }
+                              });
+                            },
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      Text('Voter Profile Information', style: Theme.of(context).textTheme.titleLarge),
                       const SizedBox(height: 24),
                       Row(
                         children: [

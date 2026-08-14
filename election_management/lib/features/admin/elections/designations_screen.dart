@@ -127,7 +127,7 @@ class DesignationsScreen extends ConsumerWidget {
           Expanded(flex: 2, child: Text('NOMINEE CHARGE', style: _headerStyle(context))),
           Expanded(flex: 2, child: Text('RESULT ORDER', style: _headerStyle(context))),
           Expanded(flex: 2, child: Text('BACKGROUND', style: _headerStyle(context))),
-          Expanded(flex: 1, child: Text('ACTION', style: _headerStyle(context))),
+          Expanded(flex: 2, child: Text('ACTION', style: _headerStyle(context))),
         ],
       ),
     );
@@ -208,10 +208,25 @@ class DesignationsScreen extends ConsumerWidget {
             ),
           ),
           Expanded(
-            flex: 1,
+            flex: 2,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.primary),
+                  tooltip: 'Edit Designation',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CreateDesignationScreen(
+                          electionId: electionId,
+                          positionToEdit: pos,
+                        ),
+                      ),
+                    );
+                  },
+                ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
                   tooltip: 'Delete Designation',

@@ -5,11 +5,24 @@ import '../../../core/providers/admin_providers.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
 
+import '../../../shared/models/models.dart';
+
 class _QuotaDraft {
-  final TextEditingController nameCtrl = TextEditingController();
-  final TextEditingController seatsCtrl = TextEditingController(text: '1');
-  final TextEditingController descCtrl = TextEditingController();
-  String status = 'active';
+  final String? id;
+  final TextEditingController nameCtrl;
+  final TextEditingController seatsCtrl;
+  final TextEditingController descCtrl;
+  String status;
+
+  _QuotaDraft({
+    this.id,
+    String initialName = '',
+    int initialSeats = 1,
+    String initialDesc = '',
+    this.status = 'active',
+  })  : nameCtrl = TextEditingController(text: initialName),
+        seatsCtrl = TextEditingController(text: initialSeats.toString()),
+        descCtrl = TextEditingController(text: initialDesc);
 
   void dispose() {
     nameCtrl.dispose();
@@ -20,7 +33,13 @@ class _QuotaDraft {
 
 class CreateDesignationScreen extends ConsumerStatefulWidget {
   final String electionId;
-  const CreateDesignationScreen({super.key, required this.electionId});
+  final PositionModel? positionToEdit;
+
+  const CreateDesignationScreen({
+    super.key,
+    required this.electionId,
+    this.positionToEdit,
+  });
 
   @override
   ConsumerState<CreateDesignationScreen> createState() =>
@@ -41,6 +60,8 @@ class _CreateDesignationScreenState
 
   bool _isSubmitting = false;
 
+  bool get _isEditing => widget.positionToEdit != null;
+
   static const List<String> _suggestedQuotas = [
     'Female',
     'Dalit',
@@ -57,6 +78,31 @@ class _CreateDesignationScreenState
   @override
   void initState() {
     super.initState();
+    if (_isEditing) {
+      final pos = widget.positionToEdit!;
+      _titleController.text = pos.title;
+      _seatsController.text = pos.seatsAvailable.toString();
+      _chargeController.text = pos.nomineeCharge.toStringAsFixed(2);
+      _orderController.text = pos.resultOrder.toString();
+      try {
+        final h = pos.bgColor.replaceAll('#', '');
+        _selectedColor = Color(int.parse('FF$h', radix: 16));
+      } catch (_) {
+        _selectedColor = const Color(0xFF563D7C);
+      }
+      if (pos.quotas.isNotEmpty) {
+        _enableQuotas = true;
+        for (final q in pos.quotas) {
+          _quotas.add(_QuotaDraft(
+            id: q.id,
+            initialName: q.name,
+            initialSeats: q.seats,
+            initialDesc: q.description,
+            status: q.status,
+          ));
+        }
+      }
+    }
   }
 
   @override
@@ -153,41 +199,104 @@ class _CreateDesignationScreenState
         'bg_color': hexColor,
       };
 
-      final createdPosition = await ref
-          .read(publishElectionProvider.notifier)
-          .addPosition(data);
+      if (_isEditing) {
+        final positionId = widget.positionToEdit!.id;
+        await ref
+            .read(publishElectionProvider.notifier)
+            .updatePosition(widget.electionId, positionId, data);
 
-      final positionId = createdPosition['id'] as String?;
+        if (_enableQuotas) {
+          final existingIds = widget.positionToEdit!.quotas.map((q) => q.id).toSet();
+          final keptIds = <String>{};
 
-      if (_enableQuotas && positionId != null && positionId.isNotEmpty) {
-        for (final q in _quotas) {
-          final qName = q.nameCtrl.text.trim();
-          if (qName.isEmpty) continue;
-          final qSeats = int.tryParse(q.seatsCtrl.text.trim()) ?? 1;
-          await ref.read(quotaNotifierProvider.notifier).addQuota(
-            widget.electionId,
-            {
+          for (final q in _quotas) {
+            final qName = q.nameCtrl.text.trim();
+            if (qName.isEmpty) continue;
+            final qSeats = int.tryParse(q.seatsCtrl.text.trim()) ?? 1;
+            final payload = {
               'position': positionId,
               'name': qName,
               'seats': qSeats,
               'status': q.status,
               'description': q.descCtrl.text.trim(),
-            },
-          );
+            };
+
+            if (q.id != null && existingIds.contains(q.id)) {
+              keptIds.add(q.id!);
+              await ref
+                  .read(quotaNotifierProvider.notifier)
+                  .updateQuota(widget.electionId, q.id!, payload);
+            } else {
+              await ref
+                  .read(quotaNotifierProvider.notifier)
+                  .addQuota(widget.electionId, payload);
+            }
+          }
+
+          for (final oldId in existingIds) {
+            if (!keptIds.contains(oldId)) {
+              await ref
+                  .read(quotaNotifierProvider.notifier)
+                  .deleteQuota(widget.electionId, oldId);
+            }
+          }
+        } else {
+          for (final q in widget.positionToEdit!.quotas) {
+            await ref
+                .read(quotaNotifierProvider.notifier)
+                .deleteQuota(widget.electionId, q.id);
+          }
         }
-      }
 
-      ref.invalidate(electionProvider(widget.electionId));
-      ref.invalidate(quotasProvider(widget.electionId));
+        ref.invalidate(electionProvider(widget.electionId));
+        ref.invalidate(quotasProvider(widget.electionId));
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Designation & Quotas created successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.of(context).pop();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Designation updated successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.of(context).pop();
+        }
+      } else {
+        final createdPosition = await ref
+            .read(publishElectionProvider.notifier)
+            .addPosition(data);
+
+        final positionId = createdPosition['id'] as String?;
+
+        if (_enableQuotas && positionId != null && positionId.isNotEmpty) {
+          for (final q in _quotas) {
+            final qName = q.nameCtrl.text.trim();
+            if (qName.isEmpty) continue;
+            final qSeats = int.tryParse(q.seatsCtrl.text.trim()) ?? 1;
+            await ref.read(quotaNotifierProvider.notifier).addQuota(
+              widget.electionId,
+              {
+                'position': positionId,
+                'name': qName,
+                'seats': qSeats,
+                'status': q.status,
+                'description': q.descCtrl.text.trim(),
+              },
+            );
+          }
+        }
+
+        ref.invalidate(electionProvider(widget.electionId));
+        ref.invalidate(quotasProvider(widget.electionId));
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Designation & Quotas created successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.of(context).pop();
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -204,7 +313,7 @@ class _CreateDesignationScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create Designation'),
+        title: Text(_isEditing ? 'Edit Designation' : 'Create Designation'),
         elevation: 0,
       ),
       body: SingleChildScrollView(
@@ -215,7 +324,9 @@ class _CreateDesignationScreenState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Election Dashboard > Designations > Create Designation',
+                _isEditing
+                    ? 'Election Dashboard > Designations > Edit Designation'
+                    : 'Election Dashboard > Designations > Create Designation',
                 style: Theme.of(
                   context,
                 ).textTheme.titleMedium?.copyWith(color: Colors.grey),
@@ -510,7 +621,7 @@ class _CreateDesignationScreenState
                                       strokeWidth: 2,
                                     ),
                                   )
-                                : const Text('Create Designation', style: TextStyle(fontWeight: FontWeight.bold)),
+                                : Text(_isEditing ? 'Update Designation' : 'Create Designation', style: const TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ],
                       ),

@@ -65,7 +65,11 @@ class VotingViewSet(viewsets.ViewSet):
             return Response({'error': 'Election not found'}, status=404)
             
         ballot_data = BallotService.generate_ballot(election)
-        return Response({'ballot': ballot_data})
+        return Response({
+            'ballot': ballot_data,
+            'allow_boycott': election.allow_boycott,
+            'is_secret_ballot': election.is_secret_ballot,
+        })
 
     @action(detail=False, methods=['post'])
     def session(self, request, election_pk=None):

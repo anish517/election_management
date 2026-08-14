@@ -227,6 +227,10 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
   bool _isPaid = false;
   final _chargeCtrl = TextEditingController(text: '0');
 
+  // --- Ballot & Voting Rules ---
+  bool _isSecretBallot = true;
+  bool _allowBoycott = true;
+
   @override
   void dispose() {
     _titleCtrl.dispose();
@@ -295,6 +299,8 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
         nominationCloseAt: _candidacyEnd,
         candidacyClaimDate: _candidacyClaim,
         candidacyFinalDate: _candidacyFinal,
+        isSecretBallot: _isSecretBallot,
+        allowBoycott: _allowBoycott,
         isPaidCandidacy: _isPaid,
         nomineeCharge: double.tryParse(_chargeCtrl.text) ?? 0,
       );
@@ -610,6 +616,32 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
                         },
                       ),
                     ],
+                  ],
+                ),
+
+                // ══════════════════════════════════════════════════════════
+                // 6. BALLOT & VOTING RULES
+                // ══════════════════════════════════════════════════════════
+                _sectionCard(context,
+                  title: 'Ballot & Voting Rules',
+                  subtitle: 'Privacy, anonymity, and boycott configurations',
+                  icon: Icons.rule_rounded,
+                  children: [
+                    SwitchListTile(
+                      value: _isSecretBallot,
+                      onChanged: (val) => setState(() => _isSecretBallot = val),
+                      title: const Text('Secret Ballot', style: TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: const Text('Strictly decouple voter identity from cast ballots'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    const Divider(),
+                    SwitchListTile(
+                      value: _allowBoycott,
+                      onChanged: (val) => setState(() => _allowBoycott = val),
+                      title: const Text('Allow No Vote / Boycott (बहिष्कार)', style: TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: const Text('Allow voters to select "No Vote / Boycott" on positions and ballot'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
                   ],
                 ),
 

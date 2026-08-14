@@ -40,6 +40,8 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
   @override
   Widget build(BuildContext context) {
     final ballotAsync = ref.watch(ballotProvider(widget.electionId));
+    final electionAsync = ref.watch(electionProvider(widget.electionId));
+    final allowBoycott = electionAsync.valueOrNull?.allowBoycott ?? true;
     final selections = ref.watch(ballotSelectionsProvider);
 
     return Scaffold(
@@ -96,10 +98,11 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
-                          if (i == 0) _buildBallotHeader(context, positions),
+                          if (i == 0) _buildBallotHeader(context, positions, allowBoycott),
                           _BallotPositionCard(
                             position: positions[i],
                             electionId: widget.electionId,
+                            allowBoycott: allowBoycott,
                           ),
                         ],
                       ),
@@ -115,7 +118,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
     );
   }
 
-  Widget _buildBallotHeader(BuildContext context, List<PositionModel> positions) {
+  Widget _buildBallotHeader(BuildContext context, List<PositionModel> positions, bool allowBoycott) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(14),
@@ -138,23 +141,25 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              OutlinedButton.icon(
-                onPressed: () => _confirmBoycottAll(context, positions),
-                icon: const Icon(Icons.block_rounded, size: 16, color: Colors.orange),
-                label: const Text('Boycott Entire Election (सम्पूर्ण बहिष्कार)'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.orange,
-                  side: BorderSide(color: Colors.orange.withValues(alpha: 0.5)),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          if (allowBoycott) ...[
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => _confirmBoycottAll(context, positions),
+                  icon: const Icon(Icons.block_rounded, size: 16, color: Colors.orange),
+                  label: const Text('Boycott Entire Election (सम्पूर्ण बहिष्कार)'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.orange,
+                    side: BorderSide(color: Colors.orange.withValues(alpha: 0.5)),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -246,7 +251,12 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
 class _BallotPositionCard extends ConsumerWidget {
   final PositionModel position;
   final String electionId;
-  const _BallotPositionCard({required this.position, required this.electionId});
+  final bool allowBoycott;
+  const _BallotPositionCard({
+    required this.position,
+    required this.electionId,
+    this.allowBoycott = true,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -434,17 +444,18 @@ class _BallotPositionCard extends ConsumerWidget {
             ),
 
           // No Vote / Boycott (बहिष्कार) option
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-            child: _BoycottPositionTile(
-              isBoycotted: positionSelections.contains('__BOYCOTT__'),
-              onTap: () {
-                ref
-                    .read(ballotSelectionsProvider.notifier)
-                    .toggleBoycott(position.id);
-              },
+          if (allowBoycott)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+              child: _BoycottPositionTile(
+                isBoycotted: positionSelections.contains('__BOYCOTT__'),
+                onTap: () {
+                  ref
+                      .read(ballotSelectionsProvider.notifier)
+                      .toggleBoycott(position.id);
+                },
+              ),
             ),
-          ),
         ],
       ),
     );

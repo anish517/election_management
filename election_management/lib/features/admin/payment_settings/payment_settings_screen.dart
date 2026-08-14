@@ -135,10 +135,7 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen>
   late TextEditingController _cipseCertPath;
   late TextEditingController _cipseCallbackUrl;
   String _cipseEnv = 'uat';
-  late TextEditingController _qrAccountName;
-  late TextEditingController _qrAccountNumber;
-  late TextEditingController _qrBankName;
-  late TextEditingController _qrBranch;
+  late TextEditingController _qrAccountDetails;
   String _qrImageUrl = '';
   bool _initialized = false;
 
@@ -148,7 +145,7 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen>
     Tab(icon: Icon(Icons.phone_android_rounded), text: 'FonePay'),
     Tab(icon: Icon(Icons.currency_exchange_rounded), text: 'Khalti'),
     Tab(icon: Icon(Icons.link_rounded), text: 'ConnectIPS'),
-    Tab(icon: Icon(Icons.qr_code_2_rounded), text: 'QR & Account'),
+    Tab(icon: Icon(Icons.qr_code_2_rounded), text: 'QR & Account Details'),
   ];
 
   @override
@@ -170,10 +167,7 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen>
     _cipsePassword = TextEditingController();
     _cipseCertPath = TextEditingController();
     _cipseCallbackUrl = TextEditingController();
-    _qrAccountName = TextEditingController();
-    _qrAccountNumber = TextEditingController();
-    _qrBankName = TextEditingController();
-    _qrBranch = TextEditingController();
+    _qrAccountDetails = TextEditingController();
   }
 
   @override
@@ -185,7 +179,7 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen>
       _fonepayProfileId, _fonepaySharedSecretKey, _khaltiLiveSecretKey,
       _cipseMerchantId, _cipseAppId, _cipseAppName, _cipsePassword,
       _cipseCertPath, _cipseCallbackUrl,
-      _qrAccountName, _qrAccountNumber, _qrBankName, _qrBranch,
+      _qrAccountDetails,
     ]) { c.dispose(); }
     super.dispose();
   }
@@ -214,10 +208,16 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen>
     _cipseCallbackUrl.text = _str(cips, 'callback_url');
     _cipseEnv = (cips['environment'] as String?) ?? 'uat';
     final qr = _gatewayMap(ps, 'qr_account');
-    _qrAccountName.text = _str(qr, 'account_name');
-    _qrAccountNumber.text = _str(qr, 'account_number');
-    _qrBankName.text = _str(qr, 'bank_name');
-    _qrBranch.text = _str(qr, 'branch');
+    if (_str(qr, 'details').isNotEmpty) {
+      _qrAccountDetails.text = _str(qr, 'details');
+    } else {
+      final legacy = <String>[];
+      if (_str(qr, 'bank_name').isNotEmpty) legacy.add('Bank Name: ${_str(qr, 'bank_name')}');
+      if (_str(qr, 'account_name').isNotEmpty) legacy.add('Account Name: ${_str(qr, 'account_name')}');
+      if (_str(qr, 'account_number').isNotEmpty) legacy.add('Account Number: ${_str(qr, 'account_number')}');
+      if (_str(qr, 'branch').isNotEmpty) legacy.add('Branch: ${_str(qr, 'branch')}');
+      _qrAccountDetails.text = legacy.join('\n');
+    }
     _qrImageUrl = _str(qr, 'qr_image_url');
     _initialized = true;
   }
@@ -233,8 +233,7 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen>
                    'app_name': _cipseAppName.text.trim(), 'password': _cipsePassword.text.trim(),
                    'certificate_path': _cipseCertPath.text.trim(), 'callback_url': _cipseCallbackUrl.text.trim(),
                    'environment': _cipseEnv},
-    'qr_account': {'account_name': _qrAccountName.text.trim(), 'account_number': _qrAccountNumber.text.trim(),
-                   'bank_name': _qrBankName.text.trim(), 'branch': _qrBranch.text.trim(), 'qr_image_url': _qrImageUrl},
+    'qr_account': {'details': _qrAccountDetails.text.trim(), 'qr_image_url': _qrImageUrl},
   };
 
   Future<void> _submit() async {
@@ -407,28 +406,29 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen>
   ]);
 
   Widget _buildQrAccountTab() => ListView(padding: const EdgeInsets.fromLTRB(20, 24, 20, 100), children: [
-    _section(title: 'Account Details', subtitle: 'Bank account info shown to members for manual payment', icon: Icons.account_balance_outlined,
+    _section(
+      title: 'Account Details & QR Code',
+      subtitle: 'Enter bank account info or payment instructions and upload the QR image for manual payments',
+      icon: Icons.qr_code_2_rounded,
       children: [
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(child: TextFormField(controller: _qrAccountName, decoration: _dec('Account Name', hint: 'e.g. My Org Account', prefix: const Icon(Icons.person_outline)))),
-          const SizedBox(width: 12),
-          Expanded(child: TextFormField(controller: _qrAccountNumber, keyboardType: TextInputType.number,
-            decoration: _dec('Account Number', hint: 'e.g. 0123456789012', prefix: const Icon(Icons.pin_outlined)))),
-        ]),
-        const SizedBox(height: 16),
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(child: TextFormField(controller: _qrBankName, decoration: _dec('Bank Name', hint: 'e.g. Nepal Bank Limited', prefix: const Icon(Icons.account_balance_outlined)))),
-          const SizedBox(width: 12),
-          Expanded(child: TextFormField(controller: _qrBranch, decoration: _dec('Branch', hint: 'e.g. Putalisadak', prefix: const Icon(Icons.location_city_outlined)))),
-        ]),
-      ]),
-    _section(title: 'QR Code Image', subtitle: 'Upload the QR image members can scan to pay', icon: Icons.qr_code_2_rounded,
-      children: [
+        _infoChip('Members will see these account details and QR code when making offline/manual bank transfer payments.'),
+        TextFormField(
+          controller: _qrAccountDetails,
+          maxLines: 6,
+          decoration: _dec(
+            'Account Details / Payment Instructions',
+            hint: 'e.g.\nBank Name: Nepal Bank Limited\nAccount Name: Organization Central Account\nAccount Number: 01234567890123\nBranch: Putalisadak, Kathmandu\nNotes: Please include your Member ID in remarks.',
+            prefix: const Icon(Icons.description_outlined),
+          ),
+        ),
+        const SizedBox(height: 24),
         _QrImageTile(
           initialUrl: _qrImageUrl.isEmpty ? null : _qrImageUrl,
           onUpload: _upload,
-          onUploaded: (url) => setState(() => _qrImageUrl = url)),
-      ]),
+          onUploaded: (url) => setState(() => _qrImageUrl = url),
+        ),
+      ],
+    ),
   ]);
 
   @override

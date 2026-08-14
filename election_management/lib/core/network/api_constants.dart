@@ -37,6 +37,8 @@ class ApiConstants {
   static String electionVotingActivity(String id) =>
       '/elections/$id/voting_activity/';
   static String electionPositions(String id) => '/elections/$id/positions/';
+  static String electionPositionDetail(String eid, String pid) =>
+      '/elections/$eid/positions/$pid/';
   static String electionQuotas(String id) => '/elections/$id/quotas/';
   static String electionQuotaDetail(String eid, String qid) =>
       '/elections/$eid/quotas/$qid/';

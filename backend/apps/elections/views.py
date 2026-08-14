@@ -590,6 +590,21 @@ class PositionViewSet(viewsets.ModelViewSet):
         self.check_object_permissions(self.request, election)
         serializer.save(election=election)
 
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.check_object_permissions(request, instance.election)
+        if instance.candidates.exists():
+            return Response(
+                {
+                    'error': {
+                        'code': 'HAS_CANDIDATES',
+                        'message': f"Cannot delete designation '{instance.title}' because {instance.candidates.count()} candidate(s) are already registered under it. Please remove or reassign candidates first.",
+                    }
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return super().destroy(request, *args, **kwargs)
+
 
 class PositionQuotaViewSet(viewsets.ModelViewSet):
     serializer_class = PositionQuotaSerializer

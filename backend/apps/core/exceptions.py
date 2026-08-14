@@ -52,13 +52,21 @@ def _get_error_code(exc, response):
 
 def _get_error_message(response):
     data = response.data
-    if isinstance(data, dict) and 'detail' in data:
-        return str(data['detail'])
+    if isinstance(data, dict):
+        if 'detail' in data:
+            return str(data['detail'])
+        if 'non_field_errors' in data and data['non_field_errors']:
+            err = data['non_field_errors']
+            return err[0] if isinstance(err, list) else str(err)
+        if 'message' in data:
+            return str(data['message'])
+    elif isinstance(data, list) and data:
+        return data[0] if isinstance(data[0], str) else str(data[0])
     return 'An error occurred.'
 
 
 def _get_field_errors(response):
     data = response.data
     if isinstance(data, dict):
-        return {k: v for k, v in data.items() if k != 'detail'}
+        return {k: v for k, v in data.items() if k not in ('detail', 'non_field_errors', 'message')}
     return {}

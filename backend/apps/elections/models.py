@@ -96,6 +96,10 @@ class Election(TimestampedModel):
 
     # Ballot & results settings
     is_secret_ballot = models.BooleanField(default=True)
+    allow_boycott = models.BooleanField(
+        default=True,
+        help_text='Allow voters to choose No Vote / Boycott (बहिष्कार)'
+    )
     results_visibility = models.CharField(
         max_length=20, choices=ResultsVisibility.choices,
         default=ResultsVisibility.ADMIN_ONLY,

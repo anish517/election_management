@@ -82,6 +82,8 @@ class CastVoteSerializer(serializers.Serializer):
                 continue
 
             if len(cand_ids) == 1 and cand_ids[0] in ['__BOYCOTT__', '__NO_VOTE__', 'NOTA']:
+                if not getattr(election, 'allow_boycott', True):
+                    raise serializers.ValidationError("Boycott / No Vote option is disabled for this election.")
                 continue
 
             # Validate number of choices based on voting method

@@ -33,6 +33,9 @@ class CreateElectionNotifier extends AsyncNotifier<void> {
     DateTime? nominationCloseAt,
     DateTime? candidacyClaimDate,
     DateTime? candidacyFinalDate,
+    // Ballot settings
+    bool isSecretBallot = true,
+    bool allowBoycott = true,
     // Payment
     bool isPaidCandidacy = false,
     double nomineeCharge = 0,
@@ -45,6 +48,8 @@ class CreateElectionNotifier extends AsyncNotifier<void> {
         'title': title,
         'description': description,
         'state': 'draft',
+        'is_secret_ballot': isSecretBallot,
+        'allow_boycott': allowBoycott,
         if (prefix != null && prefix.isNotEmpty) 'prefix': prefix,
         if (logoUrl != null && logoUrl.isNotEmpty) 'logo_url': logoUrl,
         if (contactNumber != null && contactNumber.isNotEmpty) 'contact_number': contactNumber,

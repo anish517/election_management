@@ -68,6 +68,7 @@ class ElectionModel {
   final String state;
   // Ballot settings
   final bool isSecretBallot;
+  final bool allowBoycott;
   final bool liveTurnoutEnabled;
   final String resultsVisibility;
   // Voter list schedule
@@ -100,6 +101,7 @@ class ElectionModel {
     required this.secondaryColor,
     required this.state,
     required this.isSecretBallot,
+    this.allowBoycott = true,
     required this.liveTurnoutEnabled,
     required this.resultsVisibility,
     this.firstVoterListDate,
@@ -128,6 +130,7 @@ class ElectionModel {
         secondaryColor: json['secondary_color'] as String? ?? '#A29BFE',
         state: json['state'] as String,
         isSecretBallot: json['is_secret_ballot'] as bool? ?? true,
+        allowBoycott: json['allow_boycott'] as bool? ?? true,
         liveTurnoutEnabled: json['live_turnout_enabled'] as bool? ?? false,
         resultsVisibility: json['results_visibility'] as String? ?? 'admin_only',
         firstVoterListDate: json['first_voter_list_date'] as String?,

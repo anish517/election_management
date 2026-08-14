@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:dio/dio.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/org_providers.dart';
 import '../../../core/network/api_client.dart';
@@ -148,17 +149,14 @@ class _ImageTileState extends State<_ImageTile> {
 // Main OrgSettingsScreen
 // ---------------------------------------------------------------------------
 class OrgSettingsScreen extends ConsumerStatefulWidget {
-  final int initialTab;
-  const OrgSettingsScreen({super.key, this.initialTab = 0});
+  const OrgSettingsScreen({super.key});
 
   @override
   ConsumerState<OrgSettingsScreen> createState() => _OrgSettingsScreenState();
 }
 
-class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen>
-    with SingleTickerProviderStateMixin {
+class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
   final _formKey = GlobalKey<FormState>();
-  late TabController _tabController;
 
   // --- Organization Identity ---
   late TextEditingController _nameCtrl;
@@ -175,22 +173,11 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen>
   // --- Type metadata ---
   final Map<String, TextEditingController> _metaCtrls = {};
 
-  // --- Election defaults ---
-  late TextEditingController _grievanceWindowCtrl;
-  late TextEditingController _voterRollOffsetCtrl;
-  late TextEditingController _defaultNominationCtrl;
-  late TextEditingController _defaultVotingCtrl;
-  late TextEditingController _defaultSilentCtrl;
-  String _selectedVisibility = 'admin_only';
-  bool _officersCanPublish = false;
-
   bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this,
-        initialIndex: widget.initialTab.clamp(0, 1));
     _nameCtrl = TextEditingController();
     _prefixCtrl = TextEditingController();
     _councilCtrl = TextEditingController();
@@ -198,21 +185,13 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen>
     _orgPhoneCtrl = TextEditingController();
     _websiteCtrl = TextEditingController();
     _addressCtrl = TextEditingController();
-    _grievanceWindowCtrl = TextEditingController();
-    _voterRollOffsetCtrl = TextEditingController();
-    _defaultNominationCtrl = TextEditingController();
-    _defaultVotingCtrl = TextEditingController();
-    _defaultSilentCtrl = TextEditingController();
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
     for (final c in [
       _nameCtrl, _prefixCtrl, _councilCtrl, _orgEmailCtrl, _orgPhoneCtrl,
       _websiteCtrl, _addressCtrl,
-      _grievanceWindowCtrl, _voterRollOffsetCtrl, _defaultNominationCtrl,
-      _defaultVotingCtrl, _defaultSilentCtrl,
     ]) {
       c.dispose();
     }
@@ -239,14 +218,6 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen>
         text: org.typeMetadata[f['key']] as String? ?? '',
       );
     }
-
-    _grievanceWindowCtrl.text = org.grievanceWindowDays.toString();
-    _voterRollOffsetCtrl.text = org.voterRollFreezeOffsetDays.toString();
-    _defaultNominationCtrl.text = org.defaultNominationWindowDays.toString();
-    _defaultVotingCtrl.text = org.defaultVotingWindowDays.toString();
-    _defaultSilentCtrl.text = org.defaultSilentPeriodHours.toString();
-    _selectedVisibility = org.defaultResultVisibility;
-    _officersCanPublish = org.electionOfficersCanPublish;
 
     _initialized = true;
   }
@@ -300,13 +271,6 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen>
         'logo_url': _logoUrl,
         'cover_image_url': _coverUrl,
         'type_metadata': meta,
-        'grievance_window_days': int.tryParse(_grievanceWindowCtrl.text.trim()) ?? 3,
-        'voter_roll_freeze_offset_days': int.tryParse(_voterRollOffsetCtrl.text.trim()) ?? 0,
-        'default_nomination_window_days': int.tryParse(_defaultNominationCtrl.text.trim()) ?? 7,
-        'default_voting_window_days': int.tryParse(_defaultVotingCtrl.text.trim()) ?? 1,
-        'default_silent_period_hours': int.tryParse(_defaultSilentCtrl.text.trim()) ?? 24,
-        'default_result_visibility': _selectedVisibility,
-        'election_officers_can_publish': _officersCanPublish,
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -551,85 +515,37 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen>
               ),
             )).toList(),
           ),
-      ],
-    );
-  }
 
-
-
-  // ===========================================================================
-  // TAB 3 — Election Rules
-  // ===========================================================================
-  Widget _buildElectionTab() {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
-      children: [
-        _section(
-          title: 'Default Timeframes',
-          subtitle: 'Applied automatically when creating new elections',
-          icon: Icons.schedule_rounded,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: TextFormField(controller: _defaultNominationCtrl, decoration: _dec('Nomination Phase (Days)', prefix: const Icon(Icons.assignment_ind_outlined)), keyboardType: TextInputType.number)),
-                const SizedBox(width: 12),
-                Expanded(child: TextFormField(controller: _defaultVotingCtrl, decoration: _dec('Voting Phase (Days)', prefix: const Icon(Icons.how_to_vote_outlined)), keyboardType: TextInputType.number)),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: TextFormField(controller: _voterRollOffsetCtrl, decoration: _dec('Roll Freeze Offset (Days)', prefix: const Icon(Icons.people_outline)), keyboardType: TextInputType.number)),
-                const SizedBox(width: 12),
-                Expanded(child: TextFormField(controller: _defaultSilentCtrl, decoration: _dec('Silent Period (Hours)', prefix: const Icon(Icons.volume_off_outlined)), keyboardType: TextInputType.number)),
-              ],
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _grievanceWindowCtrl,
-              decoration: _dec('Post-Election Grievance Window (Days)', prefix: const Icon(Icons.report_problem_outlined)),
-              keyboardType: TextInputType.number,
-            ),
-          ],
-        ),
-
-        _section(
-          title: 'Transparency & Permissions',
-          subtitle: 'Control who sees results and what officers can do',
-          icon: Icons.visibility_outlined,
-          children: [
-            DropdownButtonFormField<String>(
-              initialValue: _selectedVisibility,
-              decoration: _dec('Default Result Visibility', prefix: const Icon(Icons.remove_red_eye_outlined)),
-              items: const [
-                DropdownMenuItem(value: 'admin_only', child: Text('Admin Only')),
-                DropdownMenuItem(value: 'org_members', child: Text('Org Members')),
-                DropdownMenuItem(value: 'public', child: Text('Public')),
-              ],
-              onChanged: (val) => setState(() => _selectedVisibility = val!),
-            ),
-            const SizedBox(height: 20),
-            Material(
-              color: AppColors.primary.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
-                ),
-                child: SwitchListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  title: const Text('Officers Can Publish Results', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: const Text('Allow Election Officers to publish results without Org Admin approval.', style: TextStyle(fontSize: 12)),
-                  value: _officersCanPublish,
-                  activeThumbColor: AppColors.primary,
-                  onChanged: (val) => setState(() => _officersCanPublish = val),
+        // Election Rules Shortcut Card
+        Container(
+          margin: const EdgeInsets.only(bottom: 24),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.gavel_rounded, color: AppColors.primary, size: 24),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Election Rules & Default Policies', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    SizedBox(height: 2),
+                    Text('Manage default nomination/voting phases, silence periods, and publishing permissions.', style: TextStyle(fontSize: 12)),
+                  ],
                 ),
               ),
-            ),
-          ],
+              OutlinedButton.icon(
+                onPressed: () => context.pushNamed('election-rules'),
+                icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                label: const Text('Manage Rules'),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -671,27 +587,11 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen>
                     ),
                     if (_prefixCtrl.text.isNotEmpty || _selectedOrgType.isNotEmpty) ...[
                       const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20)),
-                        child: Text(
-                          _prefixCtrl.text.isNotEmpty ? '[${_prefixCtrl.text}] · ${_orgTypeLabel(_selectedOrgType)}' : _orgTypeLabel(_selectedOrgType),
-                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
-                        ),
+                      Text(
+                        '${_prefixCtrl.text.isNotEmpty ? "${_prefixCtrl.text} • " : ""}${_orgTypeLabel(_selectedOrgType)}',
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
                       ),
                     ],
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white.withValues(alpha: 0.2))),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.remove_red_eye, color: Colors.white, size: 12),
-                    const SizedBox(width: 6),
-                    Text('LIVE PREVIEW', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
                   ],
                 ),
               ),
@@ -704,16 +604,10 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen>
 
   String _orgTypeLabel(String type) {
     const labels = {
-      'cooperative': 'Cooperative / SACCO',
+      'cooperative': 'Cooperative',
       'college': 'College / University',
-      'educational': 'Educational Institution',
-      'association': 'Professional Association',
-      'club': 'Club / Community',
-      'housing_society': 'Housing Society',
-      'union': 'Trade Union',
-      'ngo': 'NGO / INGO',
-      'corporate': 'Corporate',
-      'religious': 'Religious Organization',
+      'educational': 'Educational Institute',
+      'social_org': 'Social Organization',
       'political_party': 'Political Party',
       'government': 'Government / Public Body',
       'other': 'Other',
@@ -744,30 +638,19 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen>
             ),
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.business_rounded), text: 'Profile'),
-            Tab(icon: Icon(Icons.gavel_rounded), text: 'Election Rules'),
-          ],
-          indicatorColor: AppColors.primaryLight,
-          labelColor: AppColors.primaryLight,
-          unselectedLabelColor: AppColors.textSecondary,
-        ),
       ),
       body: orgAsync.when(
         loading: () => const ListSkeleton(count: 5),
         error: (err, _) => Center(child: Text('Error: $err')),
         data: (org) {
           _populateForm(org);
-          return Form(
-            key: _formKey,
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 800), child: _buildProfileTab())),
-                Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 800), child: _buildElectionTab())),
-              ],
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 800),
+              child: Form(
+                key: _formKey,
+                child: _buildProfileTab(),
+              ),
             ),
           );
         },

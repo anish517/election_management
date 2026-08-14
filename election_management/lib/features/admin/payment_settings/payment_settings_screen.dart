@@ -119,7 +119,6 @@ class PaymentSettingsScreen extends ConsumerStatefulWidget {
 class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen>
     with TickerProviderStateMixin {
   late TabController _tabController;
-  String _mode = 'national';
   late TextEditingController _eSewaProductCode;
   late TextEditingController _eSewaSecretKey;
   late TextEditingController _mocoMerchantId;
@@ -193,7 +192,6 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen>
 
   void _populateForm(Map<String, dynamic> ps) {
     if (_initialized) return;
-    _mode = (ps['mode'] as String?) ?? 'national';
     final esewa = _gatewayMap(ps, 'esewa');
     _eSewaProductCode.text = _str(esewa, 'product_code');
     _eSewaSecretKey.text = _str(esewa, 'secret_key');
@@ -225,7 +223,7 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen>
   }
 
   Map<String, dynamic> _buildPayload() => {
-    'mode': _mode,
+    'mode': 'national',
     'esewa': {'product_code': _eSewaProductCode.text.trim(), 'secret_key': _eSewaSecretKey.text.trim()},
     'moco': {'merchant_id': _mocoMerchantId.text.trim(), 'terminal_id': _mocoTerminalId.text.trim(),
               'outlet_id': _mocoOutletId.text.trim(), 'shared_key': _mocoSharedKey.text.trim()},
@@ -316,30 +314,6 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen>
       const SizedBox(width: 10),
       Expanded(child: Text(text, style: TextStyle(fontSize: 12, color: AppColors.primaryLight))),
     ]));
-
-  Widget _buildModeToggle() => Container(
-    margin: const EdgeInsets.fromLTRB(20, 20, 20, 0), padding: const EdgeInsets.all(4),
-    decoration: BoxDecoration(
-      color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
-      borderRadius: BorderRadius.circular(12)),
-    child: Row(children: [
-      _modeButton('national', Icons.location_on_rounded, 'National'),
-      _modeButton('international', Icons.public_rounded, 'International'),
-    ]));
-
-  Widget _modeButton(String value, IconData icon, String label) {
-    final selected = _mode == value;
-    return Expanded(child: AnimatedContainer(duration: const Duration(milliseconds: 200),
-      decoration: BoxDecoration(color: selected ? AppColors.primary : Colors.transparent, borderRadius: BorderRadius.circular(9)),
-      child: InkWell(borderRadius: BorderRadius.circular(9), onTap: () => setState(() => _mode = value),
-        child: Padding(padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(icon, size: 16, color: selected ? Colors.white : AppColors.textSecondary),
-            const SizedBox(width: 6),
-            Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
-                color: selected ? Colors.white : AppColors.textSecondary)),
-          ])))));
-  }
 
   Widget _envButton(String value, String label, IconData icon) {
     final selected = _cipseEnv == value;
@@ -480,17 +454,13 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen>
         error: (err, _) => Center(child: Text('Error: $err')),
         data: (org) {
           _populateForm(org.paymentSettings);
-          return Column(children: [
-            _buildModeToggle(),
-            const SizedBox(height: 4),
-            Expanded(child: TabBarView(controller: _tabController, children: [
-              Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 800), child: _buildESewaTab())),
-              Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 800), child: _buildMocoTab())),
-              Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 800), child: _buildFonePayTab())),
-              Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 800), child: _buildKhaltiTab())),
-              Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 800), child: _buildConnectIPSTab())),
-              Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 800), child: _buildQrAccountTab())),
-            ])),
+          return TabBarView(controller: _tabController, children: [
+            Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 800), child: _buildESewaTab())),
+            Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 800), child: _buildMocoTab())),
+            Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 800), child: _buildFonePayTab())),
+            Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 800), child: _buildKhaltiTab())),
+            Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 800), child: _buildConnectIPSTab())),
+            Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 800), child: _buildQrAccountTab())),
           ]);
         },
       ),

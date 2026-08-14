@@ -1,88 +1,88 @@
-# EMS — Feature & Change Requirements
+# EMS — UI/UX & Backend Task Checklist
 
-Organized from raw notes into a dev checklist, grouped by module. A few items have an *assumption* noted in italics — flag if any of these don't match what you meant.
-
-## 1. App Drawer / Settings
-
-- [ ] Add **Payment Settings** to drawer, with a **National / International** toggle and a tab per gateway:
-
-  **eSewa**
-  - Product Code* (text)
-  - Secret Key* (text)
-
-  **Moco**
-  - Merchant Id* (e.g. `M000003269`)
-  - Terminal Id* (e.g. `T000000039`)
-  - Outlet Id* (e.g. `O000058633`)
-  - Shared Key* (text)
-
-  **FonePay**
-  - Profile Id* (text)
-  - Shared Secret Key* (text)
-
-  **Khalti**
-  - Live Secret Key* (single field, e.g. `live_secret_key_...`)
-
-  **ConnectIPS**
-  - Merchant Id*
-  - App Id*
-  - App Name*
-  - Password (Basic Auth)*
-  - Requires a digital certificate (PFX file) for token signing — obtained from ConnectIPS
-  - Certificate stored at a path like `storage/certificates/connectips/{id}/`
-  - Callback URLs configured in the payment section
-  - Environments: UAT `https://uat.connectips.com:7443`, Production `https://connectips.com:7443`
-  - Network prerequisite: server IP whitelisted with ConnectIPS, port 7443 open on firewall
-
-  **QR + Account Details** *(structured fields + file upload, not a rich-text editor)*
-  - Account Name
-  - Account Number
-  - Bank Name
-  - Branch
-  - **QR Code** — image upload field, stores and displays the actual QR image
-
-- [ ] Add **Election Rules** to drawer
-
-review this  election_management\lib\features\admin\organization\org_settings_screen.dart
-backend\apps\billing
-backend\apps\organizations  .letter this will be used for real payement integration for now implement this.feature
-
-## 2. Quota Management
-- [ ] Quota field should be a **dynamic dropdown/list**, e.g. Female: 2, Dalit: 2, etc., tied to a Designation
-- [ ] **Remove** quota field from the "Create Designation" form
-- [ ] Create a **separate "Quota Setting"** screen instead — with **Edit** and **Delete**, tied to Designation name
-- [ ] Add a **Status** field/type to Quota *(assumption: Active/Inactive toggle per quota entry)*
- that must bee see in the ballot screen. something like federal system types.
- for example same position have quota system out 5 2 have quota and 3 dont have 
-
-## 3. Election Committee
-- [ ] "Create New Election Committee": add **search-and-select-existing** (search existing members and select them instead of manual entry)
-- [ ] **Remove** fields from "Create New Election Committee": Committee Name, Chair Designation, Contact Number
-
-## 4. Voting
-- [ ] **Candidates should also be able to cast a vote**
-- [ ] Add a **"No Vote / Boycott" (बहिष्कार)** option per election
-- [ ] Log **IP address** and **MAC address** when a voter votes. only organization can view that log 
-
-## 5. Candidate
-- [ ] **Remove** Signature field from candidate
-- [ ] **Remove** Slate/Party Name field from candidate
-- [ ] "Create New Candidate": **email should be pulled from the voter list**, not entered manually
-- [ ] "Create Candidate": show/pull relevant **voter information fields**, since every candidate originates from the voter list
-- [ ] Candidate can view **only their own vote(s)** — in the **Live Dashboard**
-also in nomination
-
-## 6. Voter
-- [ ] Voter-add flow should match the **format/structure returned by the API** IE member can also come from API.
-- [ ] **Voters must NOT be able to see election results** — until result is published ie voting is close even after submiting votes.they will not able to see vote
-
-## 7. Email
-- [ ] Email sending should support recipient options: **Election Office**, **Voters**, **Candidates**
+**Project:** Election Management System (EMS)
+**Scope:** Flutter frontend + Django REST backend
+**Status:** Draft — pending prioritization
 
 ---
 
-8. also this not fully role wise in case of observer and auditor oberser is also able to vote and can nominate . also notice section ,election guidelines where not seen in for voter/candidate.election officer.
+## 1. Election Rules Module
 
+| # | Task | Type | Priority | Notes / Acceptance Criteria |
+|---|------|------|----------|------------------------------|
+| 1.1 | Remove "International" tab | Frontend | Medium | Tab and its route/screen removed; verify no dangling nav references or unused providers left behind |
+| 1.2 | Add "separation" UI to Election Rules | Frontend | Medium | Currently missing a dedicated sub-view. Pattern: tap opens a separate settings-style screen instead of inline expansion. Needs a reference screenshot/screen name to confirm exact target pattern |
 
+---
 
-*Want this broken down further into Django models/API endpoints + Flutter screens, like the other EMS docs?*
+## 2. Account / Payment Details
+
+| # | Task | Type | Priority | Notes / Acceptance Criteria |
+|---|------|------|----------|------------------------------|
+| 2.1 | Merge QR code and Account details into a single field | Frontend | Medium | Single form field/section stores both; a switch/toggle lets the user pick which type (QR vs Account) is active/displayed |
+
+---
+
+## 3. Quota & Designation Management
+
+| # | Task | Type | Priority | Notes / Acceptance Criteria |
+|---|------|------|----------|------------------------------|
+| 3.1 | Fix "Add Quota → Other" clearing the field | Frontend (bug) | High | Currently selecting "Other" wipes the field instead of enabling free text input |
+| 3.2 | Allow custom/self-defined value under "Other" | Frontend | High | Pairs with 3.1 — once "Other" is selected, user can type their own quota label |
+| 3.3 | Add Yes/No toggle to Create Designation | Frontend | Medium | Clarify what the toggle represents (e.g., "is voting eligible" / "is committee-only") — confirm exact meaning before implementation |
+| 3.4 | Move "Create Designation" inside Quota Setting section | Frontend | Medium | Consolidate — currently a separate flow, needs to live under Quota Setting |
+| 3.5 | Add Delete option to Create Designation | Frontend + Backend | Medium | Needs backend DELETE endpoint + confirmation dialog on frontend; check for cascade effects if designation is already assigned to members |
+
+---
+
+## 4. Election Committee
+
+| # | Task | Type | Priority | Notes / Acceptance Criteria |
+|---|------|------|----------|------------------------------|
+| 4.1 | Add Designation field to "Add Election Committee Member" | Frontend + Backend | Medium | Form field + model/serializer update if not already present |
+| 4.2 | Add "Election Manager" as a role option in Assign Role | Frontend + Backend | Medium | New role value in role enum/choices; confirm permission scope for this role (what an Election Manager can/cannot do) |
+
+---
+
+## 5. Proposal & Supporter
+
+| # | Task | Type | Priority | Notes / Acceptance Criteria |
+|---|------|------|----------|------------------------------|
+| 5.1 | Keep/retain Proposal and Supporter sections | Frontend | Low | Confirm these aren't being removed elsewhere — just flagged to preserve |
+| 5.2 | Add Payment to Proposal/Supporter flow | Frontend + Backend | High | Needs payment gateway decision (Khalti/eSewa per existing stack) — confirm which flow (proposal submission fee? supporter contribution?) triggers payment |
+
+---
+
+## 6. Voter Management
+
+| # | Task | Type | Priority | Notes / Acceptance Criteria |
+|---|------|------|----------|------------------------------|
+| 6.1 | Add UI for API endpoint configuration in "Create Voter" | Frontend | Medium | Confirm intent — is this for tenant-specific voter-import API config, or a dev/admin-only settings field? |
+
+---
+
+## 7. Email Broadcast
+
+| # | Task | Type | Priority | Notes / Acceptance Criteria |
+|---|------|------|----------|------------------------------|
+| 7.1 | Store record of successful email sends | Backend | High | New model/table (e.g., `EmailBroadcastLog`) with recipient, subject, timestamp, status |
+| 7.2 | Store record of failed email sends | Backend | High | Same log model, status="failed" + error reason if available from email provider/Celery task |
+
+---
+
+## Open Questions Before Implementation
+- [ ] 1.2 — What exact screen/pattern should "separation UI" match? (screenshot or screen name needed)
+- [ ] 3.3 — What does the Yes/No toggle on Create Designation actually represent?
+- [ ] 4.2 — What permissions should the "Election Manager" role have?
+- [ ] 5.2 — Which flow needs payment: proposal submission, supporter contribution, or both? Khalti/eSewa?
+- [ ] 6.1 — Is the API endpoint field for tenant config or admin/dev use?
+
+---
+
+## Suggested Order of Implementation
+1. **Bug fixes first:** 3.1, 3.2 (Add Quota "Other" bug)
+2. **Backend logging (low risk, high value):** 7.1, 7.2 (Email broadcast records)
+3. **Structural moves:** 3.4, 3.5 (Designation under Quota Setting + delete)
+4. **New fields:** 4.1, 4.2, 2.1
+5. **Bigger scope items (need clarification first):** 5.2 (Payment), 6.1 (API endpoint UI), 1.2 (separation UI)
+6. **Cleanup:** 1.1 (remove International tab)

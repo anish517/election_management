@@ -18,6 +18,7 @@ import '../../features/voting/voting_history_screen.dart';
 import '../../features/candidates/nomination_screen.dart';
 import '../../features/candidates/nomination_list_screen.dart';
 import '../../features/admin/organization/org_settings_screen.dart';
+import '../../features/admin/election_rules/election_rules_screen.dart';
 import '../../features/admin/payment_settings/payment_settings_screen.dart';
 import '../../features/results/results_screen.dart';
 import '../../features/profile/user_profile_screen.dart';
@@ -110,15 +111,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/org-settings',
         name: 'org-settings',
-        builder: (context, state) {
-          final tab = int.tryParse(state.uri.queryParameters['tab'] ?? '0') ?? 0;
-          return OrgSettingsScreen(initialTab: tab);
-        },
+        builder: (context, state) => const OrgSettingsScreen(),
       ),
       GoRoute(
         path: '/election-rules',
         name: 'election-rules',
-        redirect: (_, __) => '/org-settings?tab=1',
+        builder: (context, state) => const ElectionRulesScreen(),
       ),
       GoRoute(
         path: '/payment-settings',

@@ -14,8 +14,13 @@ class IsElectionOfficer(permissions.BasePermission):
         return request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
-        # obj is expected to be an Election, or have an `election` attribute
+        if getattr(request.user, 'role', '') == 'super_admin' or getattr(request.user, 'is_superuser', False):
+            return True
+
+        # obj is expected to be an Election, or have an `election` attribute, or `position.election`
         election = obj if isinstance(obj, Election) else getattr(obj, 'election', None)
+        if not election and hasattr(obj, 'position'):
+            election = getattr(obj.position, 'election', None)
         
         if not election:
             return False
@@ -44,6 +49,8 @@ class IsObserver(permissions.BasePermission):
             return False
             
         election = obj if isinstance(obj, Election) else getattr(obj, 'election', None)
+        if not election and hasattr(obj, 'position'):
+            election = getattr(obj.position, 'election', None)
         
         if not election:
             return False
@@ -54,4 +61,5 @@ class IsObserver(permissions.BasePermission):
             return True
             
         return False
+
 

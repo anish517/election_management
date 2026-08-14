@@ -148,7 +148,8 @@ class _ImageTileState extends State<_ImageTile> {
 // Main OrgSettingsScreen
 // ---------------------------------------------------------------------------
 class OrgSettingsScreen extends ConsumerStatefulWidget {
-  const OrgSettingsScreen({super.key});
+  final int initialTab;
+  const OrgSettingsScreen({super.key, this.initialTab = 0});
 
   @override
   ConsumerState<OrgSettingsScreen> createState() => _OrgSettingsScreenState();
@@ -174,14 +175,6 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen>
   // --- Type metadata ---
   final Map<String, TextEditingController> _metaCtrls = {};
 
-  // --- Bank ---
-  late TextEditingController _bankNameCtrl;
-  late TextEditingController _bankBranchCtrl;
-  late TextEditingController _bankAccountNumCtrl;
-  late TextEditingController _bankAccountNameCtrl;
-  late TextEditingController _bankSwiftCtrl;
-  String _bankQrUrl = '';
-
   // --- Election defaults ---
   late TextEditingController _grievanceWindowCtrl;
   late TextEditingController _voterRollOffsetCtrl;
@@ -196,7 +189,8 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this,
+        initialIndex: widget.initialTab.clamp(0, 1));
     _nameCtrl = TextEditingController();
     _prefixCtrl = TextEditingController();
     _councilCtrl = TextEditingController();
@@ -204,11 +198,6 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen>
     _orgPhoneCtrl = TextEditingController();
     _websiteCtrl = TextEditingController();
     _addressCtrl = TextEditingController();
-    _bankNameCtrl = TextEditingController();
-    _bankBranchCtrl = TextEditingController();
-    _bankAccountNumCtrl = TextEditingController();
-    _bankAccountNameCtrl = TextEditingController();
-    _bankSwiftCtrl = TextEditingController();
     _grievanceWindowCtrl = TextEditingController();
     _voterRollOffsetCtrl = TextEditingController();
     _defaultNominationCtrl = TextEditingController();
@@ -221,8 +210,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen>
     _tabController.dispose();
     for (final c in [
       _nameCtrl, _prefixCtrl, _councilCtrl, _orgEmailCtrl, _orgPhoneCtrl,
-      _websiteCtrl, _addressCtrl, _bankNameCtrl, _bankBranchCtrl,
-      _bankAccountNumCtrl, _bankAccountNameCtrl, _bankSwiftCtrl,
+      _websiteCtrl, _addressCtrl,
       _grievanceWindowCtrl, _voterRollOffsetCtrl, _defaultNominationCtrl,
       _defaultVotingCtrl, _defaultSilentCtrl,
     ]) {
@@ -251,13 +239,6 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen>
         text: org.typeMetadata[f['key']] as String? ?? '',
       );
     }
-
-    _bankNameCtrl.text = org.bankName;
-    _bankBranchCtrl.text = org.bankBranch;
-    _bankAccountNumCtrl.text = org.bankAccountNumber;
-    _bankAccountNameCtrl.text = org.bankAccountName;
-    _bankSwiftCtrl.text = org.bankSwiftCode;
-    _bankQrUrl = org.bankQrUrl;
 
     _grievanceWindowCtrl.text = org.grievanceWindowDays.toString();
     _voterRollOffsetCtrl.text = org.voterRollFreezeOffsetDays.toString();
@@ -319,12 +300,6 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen>
         'logo_url': _logoUrl,
         'cover_image_url': _coverUrl,
         'type_metadata': meta,
-        'bank_name': _bankNameCtrl.text.trim(),
-        'bank_branch': _bankBranchCtrl.text.trim(),
-        'bank_account_number': _bankAccountNumCtrl.text.trim(),
-        'bank_account_name': _bankAccountNameCtrl.text.trim(),
-        'bank_swift_code': _bankSwiftCtrl.text.trim(),
-        'bank_qr_url': _bankQrUrl,
         'grievance_window_days': int.tryParse(_grievanceWindowCtrl.text.trim()) ?? 3,
         'voter_roll_freeze_offset_days': int.tryParse(_voterRollOffsetCtrl.text.trim()) ?? 0,
         'default_nomination_window_days': int.tryParse(_defaultNominationCtrl.text.trim()) ?? 7,
@@ -580,62 +555,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen>
     );
   }
 
-  // ===========================================================================
-  // TAB 2 — Bank Details
-  // ===========================================================================
-  Widget _buildBankTab() {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
-      children: [
-        _section(
-          title: 'Bank Account',
-          subtitle: 'For receipts, payment tracking and QR payments',
-          icon: Icons.account_balance_rounded,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: TextFormField(controller: _bankNameCtrl, decoration: _dec('Bank Name', hint: 'e.g. Nepal Bank Limited', prefix: const Icon(Icons.account_balance_outlined)))),
-                const SizedBox(width: 12),
-                Expanded(child: TextFormField(controller: _bankBranchCtrl, decoration: _dec('Branch Name', hint: 'e.g. Putalisadak', prefix: const Icon(Icons.location_city_outlined)))),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(child: TextFormField(controller: _bankAccountNumCtrl, decoration: _dec('Account Number', prefix: const Icon(Icons.pin_outlined)), keyboardType: TextInputType.number)),
-                const SizedBox(width: 12),
-                Expanded(child: TextFormField(controller: _bankAccountNameCtrl, decoration: _dec('Account Name', prefix: const Icon(Icons.person_outline)))),
-              ],
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _bankSwiftCtrl,
-              decoration: _dec('SWIFT / BIC Code', hint: 'e.g. NIBLNPKT', prefix: const Icon(Icons.code_outlined)),
-              textCapitalization: TextCapitalization.characters,
-            ),
-          ],
-        ),
 
-        _section(
-          title: 'Payment QR Code',
-          subtitle: 'Upload a QR image for member payments (eSewa, FonePay, etc.)',
-          icon: Icons.qr_code_2_rounded,
-          children: [
-            _ImageTile(
-              label: 'QR Code Image',
-              initialUrl: _bankQrUrl.isEmpty ? null : _bankQrUrl,
-              icon: Icons.qr_code_outlined,
-              height: 200,
-              onUpload: _upload,
-              onUploaded: (url) => setState(() => _bankQrUrl = url),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
 
   // ===========================================================================
   // TAB 3 — Election Rules
@@ -828,7 +748,6 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen>
           controller: _tabController,
           tabs: const [
             Tab(icon: Icon(Icons.business_rounded), text: 'Profile'),
-            Tab(icon: Icon(Icons.account_balance_rounded), text: 'Bank'),
             Tab(icon: Icon(Icons.gavel_rounded), text: 'Election Rules'),
           ],
           indicatorColor: AppColors.primaryLight,
@@ -847,7 +766,6 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen>
               controller: _tabController,
               children: [
                 Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 800), child: _buildProfileTab())),
-                Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 800), child: _buildBankTab())),
                 Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 800), child: _buildElectionTab())),
               ],
             ),

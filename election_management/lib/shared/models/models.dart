@@ -504,6 +504,7 @@ class OrganizationModel {
   final String bankAccountName;
   final String bankSwiftCode;
   final String bankQrUrl;
+  final Map<String, dynamic> paymentSettings;
   // Subscription
   final String status;
   final String? trialEndsAt;
@@ -540,6 +541,7 @@ class OrganizationModel {
     required this.bankAccountName,
     required this.bankSwiftCode,
     required this.bankQrUrl,
+    required this.paymentSettings,
     required this.status,
     this.trialEndsAt,
     required this.grievanceWindowDays,
@@ -575,6 +577,7 @@ class OrganizationModel {
         bankAccountName: json['bank_account_name'] as String? ?? '',
         bankSwiftCode: json['bank_swift_code'] as String? ?? '',
         bankQrUrl: json['bank_qr_url'] as String? ?? '',
+        paymentSettings: (json['payment_settings'] as Map<String, dynamic>?) ?? {},
         status: json['status'] as String? ?? '',
         trialEndsAt: json['trial_ends_at'] as String?,
         grievanceWindowDays: json['grievance_window_days'] as int? ?? 3,

@@ -85,6 +85,30 @@ class Organization(TimestampedModel):
     bank_swift_code = models.CharField(max_length=20, blank=True, default='')
     bank_qr_url = models.URLField(blank=True, default='')
 
+    # Payment Gateway Settings (config-only; no live processing yet)
+    # Stores a structured dict, e.g.:
+    # {
+    #   "mode": "national",          // "national" | "international"
+    #   "esewa":     { "product_code": "", "secret_key": "" },
+    #   "moco":      { "merchant_id": "", "terminal_id": "", "outlet_id": "", "shared_key": "" },
+    #   "fonepay":   { "profile_id": "", "shared_secret_key": "" },
+    #   "khalti":    { "live_secret_key": "" },
+    #   "connectips": {
+    #       "merchant_id": "", "app_id": "", "app_name": "",
+    #       "password": "", "certificate_path": "",
+    #       "callback_url": "", "environment": "uat"
+    #   },
+    #   "qr_account": {
+    #       "account_name": "", "account_number": "",
+    #       "bank_name": "", "branch": "", "qr_image_url": ""
+    #   }
+    # }
+    payment_settings = models.JSONField(
+        blank=True,
+        default=dict,
+        help_text='Payment gateway configuration. Structured JSON per gateway.'
+    )
+
     # Subscription & Lifecycle (doc: 11-Organization-Management.md §11.2)
     status = models.CharField(max_length=20, choices=OrgStatus.choices, default=OrgStatus.TRIAL)
     trial_ends_at = models.DateTimeField(null=True, blank=True)

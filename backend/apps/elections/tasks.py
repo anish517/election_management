@@ -121,6 +121,26 @@ def transition_election_states():
             })
             # 📧 Notify members voting has closed & results coming soon
             send_voting_closed_notification.delay(str(election.id))
-            # ⚙️ Automatically trigger tally calculation
+            # ⚙️ Automatically trigger tally calculation and provisional results
             calculate_results.delay(str(election.id))
+
+    # 5. RESULTS_PROVISIONAL -> RESULTS_FINAL (Automatic when dispute/contest deadline passes)
+    with transaction.atomic():
+        from apps.notifications.tasks import send_results_published_notification
+        elections = Election.objects.filter(
+            state=ElectionState.RESULTS_PROVISIONAL,
+            result_contest_deadline__isnull=False,
+            result_contest_deadline__lte=now
+        ).select_for_update()
+
+        for election in elections:
+            election.transition_to(ElectionState.RESULTS_FINAL)
+            log_action('election.state_changed', election.organization, None, {
+                'election_id': str(election.id),
+                'from_state': ElectionState.RESULTS_PROVISIONAL,
+                'to_state': ElectionState.RESULTS_FINAL,
+                'reason': 'Result contest deadline passed — results finalized'
+            })
+            # 📧 Notify members that final official results are published
+            send_results_published_notification.delay(str(election.id))
 

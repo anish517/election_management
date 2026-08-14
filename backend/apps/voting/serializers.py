@@ -11,7 +11,7 @@ class BallotCandidateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Candidate
-        fields = ['id', 'name', 'photo_url', 'manifesto', 'slate_name', 'quota_name']
+        fields = ['id', 'name', 'photo_url', 'manifesto', 'quota_name']
 
 
 class BallotPositionSerializer(serializers.ModelSerializer):

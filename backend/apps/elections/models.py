@@ -137,7 +137,7 @@ class Election(TimestampedModel):
         ElectionState.NOMINATION_OPEN: [ElectionState.NOMINATION_CLOSED, ElectionState.CANCELLED],
         ElectionState.NOMINATION_CLOSED: [ElectionState.VOTING_OPEN, ElectionState.CANCELLED],
         ElectionState.VOTING_OPEN: [ElectionState.VOTING_CLOSED],
-        ElectionState.VOTING_CLOSED: [ElectionState.RESULTS_PROVISIONAL],
+        ElectionState.VOTING_CLOSED: [ElectionState.RESULTS_PROVISIONAL, ElectionState.RESULTS_FINAL],
         ElectionState.RESULTS_PROVISIONAL: [ElectionState.RESULTS_FINAL],
         ElectionState.RESULTS_FINAL: [],
         ElectionState.CANCELLED: [],

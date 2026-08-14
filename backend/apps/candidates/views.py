@@ -21,10 +21,13 @@ class CandidateViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
 
     def get_queryset(self):
-        return Candidate.objects.filter(
+        qs = Candidate.objects.filter(
             election__organization=self.request.user.organization,
             election_id=self.kwargs['election_pk']
         )
+        if self.request.user.role == 'candidate':
+            qs = qs.filter(email__iexact=self.request.user.email)
+        return qs
 
     def perform_create(self, serializer):
         from apps.elections.models import Election
@@ -33,9 +36,12 @@ class CandidateViewSet(viewsets.ModelViewSet):
             organization=self.request.user.organization
         )
         
-        # If an officer creates it, they can specify the status, otherwise it auto-approves.
-        # If a standard user self-nominates, it's always SUBMITTED.
-        if self.request.user.is_org_admin: # or check officer role
+        is_admin_or_officer = (
+            self.request.user.role in ['org_admin', 'election_officer', 'super_admin']
+            or getattr(self.request.user, 'is_org_admin', False)
+        )
+        
+        if is_admin_or_officer:
             status_val = serializer.validated_data.get('status', NominationStatus.APPROVED)
             serializer.save(
                 election=election,
@@ -48,16 +54,28 @@ class CandidateViewSet(viewsets.ModelViewSet):
             from django.db import IntegrityError
             try:
                 from apps.voting.models import VoterRoll
-                voter = VoterRoll.objects.filter(election=election, email=self.request.user.email).first()
+                from apps.members.models import Member
+
+                user_email = self.request.user.email.strip().lower()
+                voter = VoterRoll.objects.filter(election=election, email__iexact=user_email).first()
                 if not voter and self.request.user.phone:
                     voter = VoterRoll.objects.filter(election=election, phone=self.request.user.phone).first()
+
+                member = Member.objects.filter(organization=election.organization, email__iexact=user_email).first()
+
+                first_name = voter.first_name if voter else (member.first_name if member else '')
+                middle_name = voter.middle_name if voter else ''
+                last_name = voter.last_name if voter else (member.last_name if member else '')
+                phone = voter.phone if voter else (member.phone if member else self.request.user.phone)
 
                 serializer.save(
                     election=election,
                     status=NominationStatus.SUBMITTED,
-                    email=self.request.user.email,
-                    first_name=voter.first_name if voter else '',
-                    last_name=voter.last_name if voter else ''
+                    email=user_email,
+                    first_name=first_name,
+                    middle_name=middle_name,
+                    last_name=last_name,
+                    contact_number=phone or '',
                 )
             except IntegrityError:
                 from rest_framework.exceptions import ValidationError

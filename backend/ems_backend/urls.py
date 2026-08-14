@@ -10,7 +10,7 @@ from rest_framework_nested import routers
 
 from apps.users.views import RegisterView, LoginView, MeView, OTPRequestView, OTPVerifyView, LogoutView
 from rest_framework_simplejwt.views import TokenRefreshView
-from apps.elections.views import ElectionViewSet, PositionViewSet, ElectionNoticeViewSet
+from apps.elections.views import ElectionViewSet, PositionViewSet, PositionQuotaViewSet, ElectionNoticeViewSet
 from apps.members.views import MemberViewSet
 from apps.candidates.views import CandidateViewSet
 from apps.voting.views import VotingViewSet, VotingHistoryView, VoterRollViewSet
@@ -28,6 +28,7 @@ router.register(r'voting/history', VotingHistoryView, basename='voting-history')
 # Build the nested router for elections
 election_router = routers.NestedSimpleRouter(router, r'elections', lookup='election')
 election_router.register(r'positions', PositionViewSet, basename='election-positions')
+election_router.register(r'quotas', PositionQuotaViewSet, basename='election-quotas')
 election_router.register(r'candidates', CandidateViewSet, basename='election-candidates')
 election_router.register(r'voting', VotingViewSet, basename='election-voting')
 election_router.register(r'results', ElectionResultsViewSet, basename='election-results')

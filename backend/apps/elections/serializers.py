@@ -1,8 +1,46 @@
 from rest_framework import serializers
-from apps.elections.models import Election, Position, ElectionStateTransition, ElectionRoleAssignment, ElectionNotice, ElectionCommittee
+from apps.elections.models import Election, Position, PositionQuota, ElectionStateTransition, ElectionRoleAssignment, ElectionNotice, ElectionCommittee
+
+
+class PositionQuotaSerializer(serializers.ModelSerializer):
+    position_title = serializers.CharField(source='position.title', read_only=True)
+    election_id = serializers.UUIDField(source='position.election_id', read_only=True)
+
+    class Meta:
+        model = PositionQuota
+        fields = [
+            'id', 'position', 'position_title', 'election_id', 'name', 'seats',
+            'status', 'description', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'position_title', 'election_id', 'created_at', 'updated_at']
+
+    def validate(self, data):
+        position = data.get('position') or (self.instance.position if self.instance else None)
+        seats = data.get('seats', self.instance.seats if self.instance else 1)
+        status_val = data.get('status', self.instance.status if self.instance else 'active')
+
+        if position:
+            if seats > position.seats_available:
+                raise serializers.ValidationError({
+                    'seats': f"Allocated seats ({seats}) cannot exceed the designation's total available seats ({position.seats_available})."
+                })
+
+            if status_val == 'active':
+                existing_active = PositionQuota.objects.filter(position=position, status='active')
+                if self.instance:
+                    existing_active = existing_active.exclude(id=self.instance.id)
+                total_active_seats = sum(q.seats for q in existing_active) + seats
+                if total_active_seats > position.seats_available:
+                    raise serializers.ValidationError({
+                        'seats': f"Total active quota seats ({total_active_seats}) would exceed available seats ({position.seats_available}). Max remaining for this quota is {position.seats_available - sum(q.seats for q in existing_active)}."
+                    })
+
+        return data
+
 
 class PositionSerializer(serializers.ModelSerializer):
     candidates = serializers.SerializerMethodField()
+    quotas = PositionQuotaSerializer(many=True, read_only=True)
 
     class Meta:
         model = Position
@@ -11,9 +49,9 @@ class PositionSerializer(serializers.ModelSerializer):
             'quota_name', 'bg_color', 'result_order', 'nominee_charge',
             'max_votes_per_voter', 'eligibility_rule', 'ballot_ordering',
             'super_majority_threshold', 'abstain_allowed', 'none_of_the_above',
-            'candidates', 'created_at', 'updated_at'
+            'quotas', 'candidates', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'candidates', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'quotas', 'candidates', 'created_at', 'updated_at']
 
     def get_candidates(self, obj):
         # We manually serialize this to avoid circular imports with apps.candidates
@@ -31,6 +69,8 @@ class PositionSerializer(serializers.ModelSerializer):
                 'status': c.status,
                 'position': str(obj.id),
                 'position_title': obj.title,
+                'quota': str(c.quota_id) if c.quota_id else None,
+                'quota_name': c.quota_name,
                 'email': c.email,
                 'contact_number': c.contact_number,
                 'gender': c.gender,

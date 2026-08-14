@@ -24,7 +24,7 @@ class CandidateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Candidate
         fields = [
-            'id', 'election', 'position', 'position_title', 
+            'id', 'election', 'position', 'position_title', 'quota', 'quota_name',
             'first_name', 'middle_name', 'last_name', 'full_name',
             'email', 'contact_number', 'gender', 'date_of_birth', 'address',
             'candidate_image', 'candidate_signature', 'personal_description', 'contribution_to_org',
@@ -36,6 +36,9 @@ class CandidateSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def create(self, validated_data):
         endorsements_data = validated_data.pop('endorsements', [])
+        quota = validated_data.get('quota')
+        if quota and not validated_data.get('quota_name'):
+            validated_data['quota_name'] = quota.name
         candidate = Candidate.objects.create(**validated_data)
         for end_data in endorsements_data:
             CandidateEndorsement.objects.create(candidate=candidate, **end_data)
@@ -48,6 +51,8 @@ class CandidateSerializer(serializers.ModelSerializer):
         # Standard model fields update
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
+        if 'quota' in validated_data and instance.quota and not validated_data.get('quota_name'):
+            instance.quota_name = instance.quota.name
         instance.save()
 
         # Update endorsements if provided (replace all strategy)

@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from apps.voting.models import Vote
 from apps.elections.models import Position, Election
+from apps.elections.serializers import PositionQuotaSerializer
 from apps.candidates.models import Candidate, NominationStatus
 from apps.voting.models import VoterRoll
 
@@ -10,18 +11,19 @@ class BallotCandidateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Candidate
-        fields = ['id', 'name', 'photo_url', 'manifesto', 'slate_name']
+        fields = ['id', 'name', 'photo_url', 'manifesto', 'slate_name', 'quota_name']
 
 
 class BallotPositionSerializer(serializers.ModelSerializer):
     candidates = serializers.SerializerMethodField()
+    quotas = PositionQuotaSerializer(many=True, read_only=True)
     
     class Meta:
         model = Position
         fields = [
             'id', 'title', 'seats_available', 'voting_method', 
             'max_votes_per_voter', 'abstain_allowed', 'none_of_the_above', 
-            'result_order', 'bg_color', 'quota_name', 'candidates'
+            'result_order', 'bg_color', 'quota_name', 'quotas', 'candidates'
         ]
         
     def get_candidates(self, obj):

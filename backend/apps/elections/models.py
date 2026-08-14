@@ -236,6 +236,31 @@ class Position(TimestampedModel):
         return f"{self.title} ({self.get_voting_method_display()}, {self.seats_available} seat(s))"
 
 
+class PositionQuota(TimestampedModel):
+    """
+    Reserved seat / quota allocation for a designation/position
+    e.g. Female: 2 seats, Dalit: 1 seat, Open: 2 seats
+    """
+    position = models.ForeignKey(
+        Position, on_delete=models.CASCADE, related_name='quotas'
+    )
+    name = models.CharField(max_length=100, help_text='e.g., Female, Dalit, Janajati, Youth, Open')
+    seats = models.PositiveIntegerField(default=1, help_text='Number of reserved seats')
+    status = models.CharField(
+        max_length=20,
+        choices=[('active', 'Active'), ('inactive', 'Inactive')],
+        default='active'
+    )
+    description = models.TextField(blank=True, default='')
+
+    class Meta:
+        db_table = 'position_quotas'
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.position.title} - {self.name} ({self.seats} seats)"
+
+
 class ElectionRoleAssignment(UUIDModel):
     """
     Per-election role delegation.

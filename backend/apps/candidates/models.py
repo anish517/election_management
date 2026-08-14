@@ -27,6 +27,10 @@ class Candidate(TimestampedModel):
     position = models.ForeignKey(
         'elections.Position', on_delete=models.CASCADE, related_name='candidates'
     )
+    quota = models.ForeignKey(
+        'elections.PositionQuota', on_delete=models.SET_NULL, null=True, blank=True, related_name='candidates'
+    )
+    quota_name = models.CharField(max_length=100, blank=True, default='')
     
     # Candidate Profile (Rich Data)
     first_name = models.CharField(max_length=100, blank=True, default='')

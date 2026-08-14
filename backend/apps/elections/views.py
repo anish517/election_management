@@ -2,8 +2,11 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from apps.elections.models import Election, Position, ElectionState, ElectionNotice, ElectionCommittee
-from apps.elections.serializers import ElectionSerializer, PositionSerializer, ElectionStateTransitionSerializer, ElectionNoticeSerializer, ElectionCommitteeSerializer
+from apps.elections.models import Election, Position, PositionQuota, ElectionState, ElectionNotice, ElectionCommittee
+from apps.elections.serializers import (
+    ElectionSerializer, PositionSerializer, PositionQuotaSerializer,
+    ElectionStateTransitionSerializer, ElectionNoticeSerializer, ElectionCommitteeSerializer
+)
 from apps.core.permissions import IsOrgAdmin
 from apps.elections.permissions import IsElectionOfficer, IsObserver
 from apps.audit.models import log_action
@@ -476,3 +479,34 @@ class PositionViewSet(viewsets.ModelViewSet):
         )
         self.check_object_permissions(self.request, election)
         serializer.save(election=election)
+
+
+class PositionQuotaViewSet(viewsets.ModelViewSet):
+    serializer_class = PositionQuotaSerializer
+
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsElectionOfficer()]
+        return [IsObserver()]
+
+    def get_queryset(self):
+        qs = PositionQuota.objects.filter(
+            position__election__organization=self.request.user.organization,
+            position__election_id=self.kwargs['election_pk']
+        ).select_related('position')
+        
+        position_id = self.request.query_params.get('position')
+        if position_id:
+            qs = qs.filter(position_id=position_id)
+        return qs
+
+    def perform_create(self, serializer):
+        position_id = self.request.data.get('position')
+        position = Position.objects.get(
+            id=position_id,
+            election_id=self.kwargs['election_pk'],
+            election__organization=self.request.user.organization
+        )
+        self.check_object_permissions(self.request, position.election)
+        serializer.save(position=position)
+

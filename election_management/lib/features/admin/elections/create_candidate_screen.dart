@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/network/api_client.dart';
+import '../../../core/network/api_constants.dart';
 import '../../../core/providers/admin_providers.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
@@ -16,11 +18,13 @@ class CreateCandidateScreen extends ConsumerStatefulWidget {
 class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
   final _formKey = GlobalKey<FormState>();
   
+  String? _selectedVoterId;
+  String? _selectedPositionId;
+  String? _selectedQuotaId;
+  
   final _firstNameController = TextEditingController();
   final _middleNameController = TextEditingController();
   final _lastNameController = TextEditingController();
-  String? _selectedPositionId;
-  String? _selectedQuotaId;
   final _emailController = TextEditingController();
   final _contactController = TextEditingController();
   String? _selectedGender;
@@ -28,11 +32,9 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
   final _addressController = TextEditingController();
   
   String _candidateImageUrl = '';
-  String _candidateSignatureUrl = '';
   
   final _personalDescriptionController = TextEditingController();
   final _manifestoController = TextEditingController();
-  final _slateNameController = TextEditingController();
 
   bool _isSubmitting = false;
 
@@ -42,10 +44,15 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a designation')));
       return;
     }
+    if (_selectedVoterId == null && _emailController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a voter from the voter list')));
+      return;
+    }
     
     setState(() => _isSubmitting = true);
     try {
-      final data = {
+      final dio = ref.read(apiClientProvider);
+      await dio.post(ApiConstants.electionCandidates(widget.electionId), data: {
         'election': widget.electionId,
         'position': _selectedPositionId,
         if (_selectedQuotaId != null && _selectedQuotaId!.isNotEmpty) 'quota': _selectedQuotaId,
@@ -58,14 +65,12 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
         'date_of_birth': _dobController.text.trim().isNotEmpty ? _dobController.text.trim() : null,
         'address': _addressController.text.trim(),
         'candidate_image': _candidateImageUrl,
-        'candidate_signature': _candidateSignatureUrl,
         'personal_description': _personalDescriptionController.text.trim(),
         'manifesto': _manifestoController.text.trim(),
-        'slate_name': _slateNameController.text.trim(),
         'status': 'approved', // Auto approve for admin creation
-      };
+      });
 
-      await ref.read(publishElectionProvider.notifier).addCandidate(data);
+      ref.invalidate(electionProvider(widget.electionId));
       if (mounted) {
         Navigator.of(context).pop();
       }
@@ -81,6 +86,7 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
   @override
   Widget build(BuildContext context) {
     final electionAsync = ref.watch(electionProvider(widget.electionId));
+    final votersAsync = ref.watch(votersProvider(widget.electionId));
 
     return Scaffold(
       appBar: AppBar(
@@ -112,8 +118,40 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Personal Information', style: Theme.of(context).textTheme.titleLarge),
+                      Text('Voter Selection', style: Theme.of(context).textTheme.titleLarge),
+                      const SizedBox(height: 16),
+                      votersAsync.when(
+                        loading: () => const LinearProgressIndicator(),
+                        error: (e, _) => Text('Error loading voters: $e', style: const TextStyle(color: Colors.red)),
+                        data: (voters) => DropdownButtonFormField<String>(
+                          initialValue: _selectedVoterId,
+                          decoration: const InputDecoration(
+                            labelText: 'Select Voter (Candidate must originate from voter list) *',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.person_search_rounded),
+                          ),
+                          items: voters.map((v) => DropdownMenuItem(
+                            value: v['id'].toString(),
+                            child: Text('${v['full_name'] ?? '${v['first_name']} ${v['last_name']}'} (${v['email']}) — ${v['voter_id']}'),
+                          )).toList(),
+                          onChanged: (val) {
+                            setState(() {
+                              _selectedVoterId = val;
+                              final v = voters.firstWhere((item) => item['id'].toString() == val);
+                              _firstNameController.text = v['first_name'] ?? '';
+                              _middleNameController.text = v['middle_name'] ?? '';
+                              _lastNameController.text = v['last_name'] ?? '';
+                              _emailController.text = v['email'] ?? '';
+                              _contactController.text = v['phone'] ?? '';
+                              _addressController.text = v['address'] ?? '';
+                            });
+                          },
+                          validator: (v) => v == null ? 'Voter selection is required' : null,
+                        ),
+                      ),
                       const SizedBox(height: 32),
+                      Text('Candidate Profile Information', style: Theme.of(context).textTheme.titleLarge),
+                      const SizedBox(height: 24),
                       Row(
                         children: [
                           Expanded(child: _buildTextField('First Name *', _firstNameController, 'Enter first name')),
@@ -177,7 +215,7 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
                             ),
                           ],
                           const SizedBox(width: 24),
-                          Expanded(child: _buildTextField('Email *', _emailController, 'Enter email address')),
+                          Expanded(child: _buildTextField('Email (From Voter List) *', _emailController, 'Auto-filled from voter list', readOnly: true)),
                           const SizedBox(width: 24),
                           Expanded(child: _buildTextField('Contact Number *', _contactController, 'Enter contact number')),
                         ],
@@ -199,59 +237,31 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
                             ),
                           ),
                           const SizedBox(width: 24),
-                          Expanded(child: _buildTextField('Date of Birth *', _dobController, 'YYYY-MM-DD')),
+                          Expanded(child: _buildTextField('Date of Birth', _dobController, 'YYYY-MM-DD', required: false)),
                           const SizedBox(width: 24),
-                          Expanded(child: _buildTextField('Address *', _addressController, 'Enter address')),
+                          Expanded(child: _buildTextField('Address', _addressController, 'Enter address', required: false)),
                         ],
                       ),
                       const SizedBox(height: 24),
-                      Row(
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Candidate Image *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                const SizedBox(height: 8),
-                                ImageUploadWidget(
-                                  initialImageUrl: _candidateImageUrl,
-                                  onImageUploaded: (url) => setState(() => _candidateImageUrl = url),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 24),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Candidate Signature *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                const SizedBox(height: 8),
-                                ImageUploadWidget(
-                                  initialImageUrl: _candidateSignatureUrl,
-                                  onImageUploaded: (url) => setState(() => _candidateSignatureUrl = url),
-                                ),
-                              ],
-                            ),
+                          const Text('Candidate Photo (Upload Manually)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          const SizedBox(height: 8),
+                          ImageUploadWidget(
+                            initialImageUrl: _candidateImageUrl,
+                            onImageUploaded: (url) => setState(() => _candidateImageUrl = url),
                           ),
                         ],
                       ),
                       const SizedBox(height: 24),
-                      Text('Nomination Details', style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(child: _buildTextField('Slate / Party Name', _slateNameController, 'Enter slate/party name', required: false)),
-                          const SizedBox(width: 24),
-                          Expanded(child: Container()), // Empty space for alignment
-                        ],
-                      ),
+                      Text('Nomination Manifesto', style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: 16),
                       _buildTextField('Manifesto / Statement *', _manifestoController, 'Enter candidate manifesto', maxLines: 4, required: true),
                       const SizedBox(height: 24),
                       Text('Additional Details', style: Theme.of(context).textTheme.titleMedium),
                       const SizedBox(height: 16),
-                      _buildTextField('Personal Description', _personalDescriptionController, 'Enter personal description', maxLines: 5, required: false),
+                      _buildTextField('Personal Description', _personalDescriptionController, 'Enter personal description', maxLines: 4, required: false),
                       
                       const SizedBox(height: 48),
                       Row(
@@ -289,7 +299,7 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, String hint, {bool required = true, int maxLines = 1}) {
+  Widget _buildTextField(String label, TextEditingController controller, String hint, {bool required = true, int maxLines = 1, bool readOnly = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -298,12 +308,13 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
         TextFormField(
           controller: controller,
           maxLines: maxLines,
+          readOnly: readOnly,
           decoration: InputDecoration(
             hintText: hint,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           ),
-          validator: required ? (val) => val!.isEmpty ? 'Required' : null : null,
+          validator: required ? (val) => (val == null || val.isEmpty) ? 'Required' : null : null,
         ),
       ],
     );

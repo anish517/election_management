@@ -122,10 +122,6 @@ class NominationListScreen extends ConsumerWidget {
                                   Text('Position: ${c.positionTitle}', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13)),
                                 const SizedBox(height: 2),
                                 Text(c.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-                                if (c.slateName.isNotEmpty) ...[
-                                  const SizedBox(height: 2),
-                                  Text('Slate: ${c.slateName}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                                ],
                                 const SizedBox(height: 8),
                                 Text(
                                   'Manifesto: ${c.manifesto}', 

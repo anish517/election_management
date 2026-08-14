@@ -646,15 +646,6 @@ class _CandidateTile extends StatelessWidget {
                           ),
                         ),
                       ],
-                      if (candidate.slateName.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          candidate.slateName,
-                          style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
                       // Manifesto snippet
                       if (candidate.manifesto.isNotEmpty) ...[
                         const SizedBox(height: 4),

@@ -21,7 +21,6 @@ class EditCandidateDialog extends ConsumerStatefulWidget {
 class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _manifestoController;
-  late TextEditingController _slateNameController;
   late String _status;
   String _photoUrl = '';
   bool _isLoading = false;
@@ -30,7 +29,6 @@ class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
   void initState() {
     super.initState();
     _manifestoController = TextEditingController(text: widget.candidate.manifesto);
-    _slateNameController = TextEditingController(text: widget.candidate.slateName);
     _status = widget.candidate.status ?? 'draft';
     _photoUrl = widget.candidate.photoUrl ?? '';
   }
@@ -38,7 +36,6 @@ class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
   @override
   void dispose() {
     _manifestoController.dispose();
-    _slateNameController.dispose();
     super.dispose();
   }
 
@@ -49,7 +46,6 @@ class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
       final dio = ref.read(apiClientProvider);
       await dio.patch('${ApiConstants.electionCandidates(widget.electionId)}${widget.candidate.id}/', data: {
         'manifesto': _manifestoController.text.trim(),
-        'slate_name': _slateNameController.text.trim(),
         'status': _status,
         'photo_url': _photoUrl,
       });
@@ -92,11 +88,6 @@ class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
                 controller: _manifestoController,
                 decoration: const InputDecoration(labelText: 'Manifesto'),
                 maxLines: 4,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _slateNameController,
-                decoration: const InputDecoration(labelText: 'Slate / Party Name (Optional)'),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(

@@ -758,19 +758,6 @@ class _CandidateTile extends ConsumerWidget {
                             ),
                         ],
                       ),
-                      if (candidate.slateName.isNotEmpty) ...[const SizedBox(height: 2),
-                        Row(children: [
-                          const Icon(Icons.groups_rounded, size: 11, color: AppColors.primaryLight),
-                          const SizedBox(width: 3),
-                          Text(
-                            candidate.slateName,
-                            style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.primaryLight,
-                                fontWeight: FontWeight.w600),
-                          ),
-                        ]),
-                      ],
                       if (candidate.manifesto.isNotEmpty) ...[const SizedBox(height: 4),
                         Text(
                           candidate.manifesto,

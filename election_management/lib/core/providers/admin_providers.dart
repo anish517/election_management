@@ -225,7 +225,7 @@ class AddCandidateNotifier extends AsyncNotifier<void> {
     required String positionId,
     required String memberId,
     required String manifesto,
-    required String slateName,
+    String slateName = '',
     required String status,
   }) async {
     if (state.isLoading) return;
@@ -236,7 +236,7 @@ class AddCandidateNotifier extends AsyncNotifier<void> {
         'position': positionId,
         'member': memberId,
         'manifesto': manifesto,
-        'slate_name': slateName,
+        if (slateName.isNotEmpty) 'slate_name': slateName,
         'status': status,
       });
       ref.invalidate(electionProvider(electionId));

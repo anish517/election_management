@@ -342,7 +342,7 @@ class CandidateModel {
     this.personalDescription = '',
     this.contributionToOrg = '',
     required this.manifesto,
-    required this.slateName,
+    this.slateName = '',
     this.status,
     this.positionId,
     this.positionTitle,

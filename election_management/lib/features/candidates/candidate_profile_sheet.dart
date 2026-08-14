@@ -207,22 +207,6 @@ class _HeroHeader extends StatelessWidget {
                   ).animate().fadeIn(duration: 350.ms, delay: 150.ms),
                 ],
 
-                if (candidate.slateName.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Row(children: [
-                    const Icon(Icons.groups_rounded, size: 13, color: AppColors.primaryLight),
-                    const SizedBox(width: 4),
-                    Text(
-                      candidate.slateName,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.primaryLight,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ]).animate().fadeIn(duration: 350.ms, delay: 200.ms),
-                ],
-
                 const SizedBox(height: 8),
                 if (candidate.status != null)
                   Container(
@@ -419,14 +403,6 @@ class _AboutTab extends StatelessWidget {
               value: candidate.positionTitle!,
               isDark: isDark,
             ).animate().fadeIn(delay: 150.ms).slideX(begin: 0.1),
-
-          if (candidate.slateName.isNotEmpty)
-            _InfoRow(
-              icon: Icons.groups_rounded,
-              label: 'Slate / Party',
-              value: candidate.slateName,
-              isDark: isDark,
-            ).animate().fadeIn(delay: 200.ms).slideX(begin: 0.1),
 
           if (candidate.status != null)
             _InfoRow(

@@ -130,16 +130,37 @@ class PublishElectionNotifier extends AsyncNotifier<void> {
     }
   }
 
-  Future<void> addPosition(Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> addPosition(Map<String, dynamic> data) async {
+    if (state.isLoading) return {};
+    state = const AsyncValue.loading();
+    try {
+      final dio = ref.read(apiClientProvider);
+      final resp = await dio.post(
+        ApiConstants.electionPositions(data['election'] as String),
+        data: data,
+      );
+      ref.invalidate(electionProvider(data['election'] as String));
+      ref.invalidate(quotasProvider(data['election'] as String));
+      state = const AsyncValue.data(null);
+      return (resp.data as Map<String, dynamic>?) ?? {};
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> deletePosition(String electionId, String positionId) async {
     if (state.isLoading) return;
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
+    try {
       final dio = ref.read(apiClientProvider);
-      await dio.post(ApiConstants.electionPositions(data['election'] as String), data: data);
-      ref.invalidate(electionProvider(data['election'] as String));
-    });
-    if (state.hasError) {
-      throw state.error!;
+      await dio.delete(ApiConstants.electionPositionDetail(electionId, positionId));
+      ref.invalidate(electionProvider(electionId));
+      ref.invalidate(quotasProvider(electionId));
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
     }
   }
 

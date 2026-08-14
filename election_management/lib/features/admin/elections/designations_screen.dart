@@ -1,9 +1,12 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/app_providers.dart';
+import '../../../core/providers/admin_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/models.dart';
 import 'create_designation_screen.dart';
+import 'quota_settings_screen.dart';
 
 class DesignationsScreen extends ConsumerWidget {
   final String electionId;
@@ -44,6 +47,22 @@ class DesignationsScreen extends ConsumerWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => Scaffold(
+                                  appBar: AppBar(title: const Text('Quota & Reserved Seats')),
+                                  body: QuotaSettingsScreen(electionId: electionId),
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.pie_chart_outline_rounded, size: 18),
+                          label: const Text('Manage Quotas'),
+                        ),
+                        const SizedBox(width: 12),
                         ElevatedButton.icon(
                           onPressed: () {
                             Navigator.push(
@@ -80,7 +99,7 @@ class DesignationsScreen extends ConsumerWidget {
                             separatorBuilder: (context, index) => const Divider(),
                             itemBuilder: (context, index) {
                               final pos = election.positions[index];
-                              return _buildTableRow(context, pos, index + 1);
+                              return _buildTableRow(context, ref, pos, index + 1);
                             },
                           );
                         },
@@ -123,7 +142,7 @@ class DesignationsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTableRow(BuildContext context, PositionModel pos, int index) {
+  Widget _buildTableRow(BuildContext context, WidgetRef ref, PositionModel pos, int index) {
     Color parseColor(String hex) {
       try {
         final h = hex.replaceAll('#', '');
@@ -190,15 +209,92 @@ class DesignationsScreen extends ConsumerWidget {
           ),
           Expanded(
             flex: 1,
-            child: IconButton(
-              icon: const Icon(Icons.more_vert),
-              onPressed: () {
-                // Action menu logic here
-              },
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                  tooltip: 'Delete Designation',
+                  onPressed: () => _confirmDelete(context, ref, pos),
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  void _confirmDelete(BuildContext context, WidgetRef ref, PositionModel pos) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.red),
+            const SizedBox(width: 8),
+            const Text('Delete Designation?'),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to delete "${pos.title}"?\n\nThis will also remove any quota configurations associated with this designation.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.of(dialogCtx).pop();
+              try {
+                await ref
+                    .read(publishElectionProvider.notifier)
+                    .deletePosition(electionId, pos.id);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Designation "${pos.title}" deleted successfully.'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  final errorMsg = _extractErrorMessage(e);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(errorMsg),
+                      backgroundColor: Colors.red.shade700,
+                      duration: const Duration(seconds: 4),
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _extractErrorMessage(dynamic e) {
+    if (e is DioException) {
+      final data = e.response?.data;
+      if (data is Map) {
+        if (data['error'] is Map && data['error']['message'] != null) {
+          return data['error']['message'].toString();
+        }
+        if (data['detail'] != null) return data['detail'].toString();
+        if (data['message'] != null) return data['message'].toString();
+      }
+    }
+    return 'Failed to delete designation: $e';
   }
 }

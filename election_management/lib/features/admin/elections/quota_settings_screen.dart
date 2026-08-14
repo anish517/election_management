@@ -49,6 +49,7 @@ class _QuotaSettingsScreenState extends ConsumerState<QuotaSettingsScreen> {
     'Khas Arya',
     'Tharu',
     'Open / General',
+    'Other',
   ];
 
   @override
@@ -472,14 +473,35 @@ class _QuotaSettingsScreenState extends ConsumerState<QuotaSettingsScreen> {
                           spacing: 6,
                           runSpacing: 6,
                           children: _suggestedQuotas.map((cat) {
-                            final isSelected = nameCtrl.text.trim().toLowerCase() == cat.toLowerCase();
+                            final currentText = nameCtrl.text.trim().toLowerCase();
+                            final isOtherChip = cat == 'Other';
+                            final isStandardCat = _suggestedQuotas
+                                .where((c) => c != 'Other')
+                                .any((c) => c.toLowerCase() == currentText);
+                            final isSelected = isOtherChip
+                                ? (!isStandardCat)
+                                : (currentText == cat.toLowerCase());
                             return ChoiceChip(
-                              label: Text(cat, style: TextStyle(fontSize: 11, color: isSelected ? Colors.white : null)),
+                              avatar: isOtherChip ? Icon(Icons.edit_note_rounded, size: 14, color: isSelected ? Colors.white : AppColors.primary) : null,
+                              label: Text(
+                                isOtherChip ? 'Other (Manual Entry)' : cat,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                  color: isSelected ? Colors.white : null,
+                                ),
+                              ),
                               selected: isSelected,
                               selectedColor: AppColors.primary,
                               onSelected: (selected) {
                                 if (selected) {
-                                  setDialogState(() => nameCtrl.text = cat);
+                                  if (!isOtherChip) {
+                                    setDialogState(() => nameCtrl.text = cat);
+                                  } else {
+                                    setDialogState(() {
+                                      nameCtrl.clear();
+                                    });
+                                  }
                                 }
                               },
                             );
@@ -488,15 +510,29 @@ class _QuotaSettingsScreenState extends ConsumerState<QuotaSettingsScreen> {
                         const SizedBox(height: 14),
 
                         // Quota Name field
-                        TextFormField(
-                          controller: nameCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Quota Category Name *',
-                            hintText: 'e.g. Female, Dalit, Youth',
-                            border: OutlineInputBorder(),
-                          ),
-                          validator: (val) => val == null || val.trim().isEmpty ? 'Required' : null,
-                        ),
+                        () {
+                          final currentText = nameCtrl.text.trim().toLowerCase();
+                          final isStandardCat = _suggestedQuotas
+                              .where((c) => c != 'Other')
+                              .any((c) => c.toLowerCase() == currentText);
+                          return TextFormField(
+                            controller: nameCtrl,
+                            decoration: InputDecoration(
+                              labelText: isStandardCat
+                                  ? 'Quota Category Name *'
+                                  : 'Custom Quota Name * (Manual Entry)',
+                              hintText: isStandardCat
+                                  ? 'e.g. Female, Dalit, Open'
+                                  : 'Type any custom quota name (e.g. Indigenous, Minority)',
+                              helperText: isStandardCat
+                                  ? 'Preset selected. Tap "Other (Manual Entry)" to type custom name.'
+                                  : 'Type your custom self-defined quota label.',
+                              border: const OutlineInputBorder(),
+                            ),
+                            onChanged: (_) => setDialogState(() {}),
+                            validator: (val) => val == null || val.trim().isEmpty ? 'Required' : null,
+                          );
+                        }(),
                         const SizedBox(height: 16),
 
                         // Seats & Status Row

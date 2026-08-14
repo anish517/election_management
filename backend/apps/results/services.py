@@ -22,6 +22,8 @@ class TallyService:
         
         # STANDARD METHODS (Simple Summation)
         standard_methods = ['fptp', 'multi_choice', 'approval', 'weighted', 'proxy', 'yes_no']
+        boycott_score = 0.0
+
         if position.voting_method in standard_methods:
             candidate_scores = {cand_id: 0.0 for cand_id in candidates_map}
             for vote in votes:
@@ -30,7 +32,10 @@ class TallyService:
                     choices = vote.ballot_data[pos_id]
                     weight = float(vote.weight)
                     for cand_id in choices:
-                        candidate_scores[cand_id] += weight
+                        if cand_id in ['__BOYCOTT__', '__NO_VOTE__', 'NOTA']:
+                            boycott_score += weight
+                        elif cand_id in candidate_scores:
+                            candidate_scores[cand_id] += weight
                         
             sorted_scores = sorted(candidate_scores.items(), key=lambda x: x[1], reverse=True)
             if sorted_scores:
@@ -42,7 +47,11 @@ class TallyService:
             for vote in votes:
                 if pos_id in vote.ballot_data:
                     total_valid_ballots += 1
-                    ballots.append({'choices': vote.ballot_data[pos_id], 'weight': float(vote.weight)})
+                    choices = vote.ballot_data[pos_id]
+                    if any(c in ['__BOYCOTT__', '__NO_VOTE__', 'NOTA'] for c in choices):
+                        boycott_score += float(vote.weight)
+                    else:
+                        ballots.append({'choices': choices, 'weight': float(vote.weight)})
                     
             active_candidates = set(candidates_map.keys())
             
@@ -91,6 +100,14 @@ class TallyService:
                 'name': c_info['name'],
                 'photo_url': c_info['photo_url'],
                 'score': score
+            })
+
+        if boycott_score > 0:
+            breakdown.append({
+                'candidate_id': '__BOYCOTT__',
+                'name': 'No Vote / Boycott (बहिष्कार)',
+                'photo_url': '',
+                'score': boycott_score
             })
             
         return {

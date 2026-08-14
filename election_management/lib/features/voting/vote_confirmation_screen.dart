@@ -28,11 +28,12 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
       // Step 1: Get session token
       final sessionToken = await votingService.startSession(widget.electionId);
 
-      // Step 2: Cast vote with ballot data
+      // Step 2: Cast vote with ballot data and device logging
       final receipt = await votingService.castVote(
         electionId: widget.electionId,
         sessionToken: sessionToken,
         ballotData: selections,
+        deviceIdentifier: 'Client App / Web Browser',
       );
 
       // Step 3: Clear ballot selections (security)
@@ -162,6 +163,7 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
   }
 
   Widget _buildPositionSummary(BuildContext context, PositionModel position, List<String> selectedIds) {
+    final isBoycotted = selectedIds.contains('__BOYCOTT__');
     final selectedCandidates = position.candidates.where((c) => selectedIds.contains(c.id)).toList();
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -192,8 +194,31 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
             ],
           ),
           const SizedBox(height: 10),
-          if (selectedCandidates.isEmpty)
-            const Text('⚠️ No candidate selected for this position',
+          if (isBoycotted)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.block_rounded, color: Colors.red, size: 16),
+                  SizedBox(width: 8),
+                  Text(
+                    'No Vote / Boycott (बहिष्कार)',
+                    style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13),
+                  ),
+                ],
+              ),
+            )
+          else if (selectedCandidates.isEmpty)
+            const Text('⚠️ No candidate selected (Abstained)',
                 style: TextStyle(color: AppColors.warning))
           else
             ...selectedCandidates.map((c) => Padding(

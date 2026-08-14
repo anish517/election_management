@@ -96,7 +96,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         children: [
-                          if (i == 0) _buildBallotHeader(context),
+                          if (i == 0) _buildBallotHeader(context, positions),
                           _BallotPositionCard(
                             position: positions[i],
                             electionId: widget.electionId,
@@ -115,7 +115,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
     );
   }
 
-  Widget _buildBallotHeader(BuildContext context) {
+  Widget _buildBallotHeader(BuildContext context, List<PositionModel> positions) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(14),
@@ -124,15 +124,71 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.primaryLight.withValues(alpha: 0.2)),
       ),
-      child: Row(
+      child: Column(
         children: [
-          const Icon(Icons.info_outline_rounded, color: AppColors.primaryLight, size: 18),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Your selections are saved locally and only submitted when you tap "Review & Submit" at the end.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12),
-            ),
+          Row(
+            children: [
+              const Icon(Icons.info_outline_rounded, color: AppColors.primaryLight, size: 18),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Your selections are saved locally and only submitted when you tap "Review & Submit" at the end.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => _confirmBoycottAll(context, positions),
+                icon: const Icon(Icons.block_rounded, size: 16, color: Colors.orange),
+                label: const Text('Boycott Entire Election (सम्पूर्ण बहिष्कार)'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.orange,
+                  side: BorderSide(color: Colors.orange.withValues(alpha: 0.5)),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmBoycottAll(BuildContext context, List<PositionModel> positions) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.block_rounded, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Boycott Entire Election?'),
+          ],
+        ),
+        content: const Text(
+          'This will select "No Vote / Boycott (बहिष्कार)" for all positions on this ballot. You can still review before final submission.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ref.read(ballotSelectionsProvider.notifier).boycottEntireElection(positions);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('All positions marked as No Vote / Boycott.')),
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text('Confirm Boycott All'),
           ),
         ],
       ),
@@ -376,7 +432,126 @@ class _BallotPositionCard extends ConsumerWidget {
                 ),
               ),
             ),
+
+          // No Vote / Boycott (बहिष्कार) option
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+            child: _BoycottPositionTile(
+              isBoycotted: positionSelections.contains('__BOYCOTT__'),
+              onTap: () {
+                ref
+                    .read(ballotSelectionsProvider.notifier)
+                    .toggleBoycott(position.id);
+              },
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _BoycottPositionTile extends StatelessWidget {
+  final bool isBoycotted;
+  final VoidCallback onTap;
+
+  const _BoycottPositionTile({
+    required this.isBoycotted,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: isBoycotted
+              ? Colors.red.withValues(alpha: 0.12)
+              : (isDark
+                  ? Colors.grey.withValues(alpha: 0.08)
+                  : Colors.grey.withValues(alpha: 0.05)),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color:
+                isBoycotted ? Colors.red : Colors.grey.withValues(alpha: 0.25),
+            width: isBoycotted ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isBoycotted
+                    ? Colors.red
+                    : Colors.grey.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.block_rounded,
+                size: 20,
+                color: isBoycotted ? Colors.white : Colors.grey,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'No Vote / Boycott (बहिष्कार)',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                      if (isBoycotted) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Text(
+                            'SELECTED',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    'I choose to abstain / boycott voting for any candidate for this position.',
+                    style: TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Checkbox(
+              value: isBoycotted,
+              activeColor: Colors.red,
+              onChanged: (_) => onTap(),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
@@ -32,7 +33,7 @@ class _EmailScreenState extends ConsumerState<EmailScreen> {
   Map<String, int> _logSummary = {'total': 0, 'sent': 0, 'failed': 0, 'queued': 0};
   String _selectedStatusFilter = 'all';
   final _searchLogController = TextEditingController();
-  dynamic _debounceTimer;
+  Timer? _debounceTimer;
 
   @override
   void initState() {
@@ -42,6 +43,7 @@ class _EmailScreenState extends ConsumerState<EmailScreen> {
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _subjectController.dispose();
     _bodyController.dispose();
     _searchLogController.dispose();
@@ -51,7 +53,7 @@ class _EmailScreenState extends ConsumerState<EmailScreen> {
   void _onSearchChanged(String query) {
     setState(() {}); // trigger instant local re-filter
     _debounceTimer?.cancel();
-    _debounceTimer = Future.delayed(const Duration(milliseconds: 300), () {
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
       if (mounted) _fetchLogs();
     });
   }

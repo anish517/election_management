@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/admin_providers.dart';
+import '../../../core/providers/app_providers.dart';
 
 class CreateVoterScreen extends ConsumerStatefulWidget {
   final String electionId;
@@ -14,6 +15,7 @@ class CreateVoterScreen extends ConsumerStatefulWidget {
 class _CreateVoterScreenState extends ConsumerState<CreateVoterScreen> {
   final _formKey = GlobalKey<FormState>();
   
+  String? _selectedMemberId;
   final _voterIdController = TextEditingController();
   final _prefixController = TextEditingController();
   final _firstNameController = TextEditingController();
@@ -61,6 +63,8 @@ class _CreateVoterScreenState extends ConsumerState<CreateVoterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final membersAsync = ref.watch(membersProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Create New Voter'),
@@ -91,8 +95,56 @@ class _CreateVoterScreenState extends ConsumerState<CreateVoterScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Voter Information', style: Theme.of(context).textTheme.titleLarge),
+                      Text('Select Organization Member (Optional)', style: Theme.of(context).textTheme.titleLarge),
+                      const SizedBox(height: 8),
+                      Text('Pick an organization member to auto-fill voter details, or fill the fields below manually:',
+                          style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodySmall?.color)),
+                      const SizedBox(height: 12),
+                      membersAsync.when(
+                        loading: () => const LinearProgressIndicator(),
+                        error: (e, _) => Text('Could not load members: $e', style: const TextStyle(color: Colors.red, fontSize: 13)),
+                        data: (members) {
+                          if (members.isEmpty) return const SizedBox.shrink();
+                          return DropdownButtonFormField<String?>(
+                            initialValue: _selectedMemberId,
+                            decoration: const InputDecoration(
+                              labelText: 'Select Member (Auto-fill)',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.person_search_rounded),
+                            ),
+                            items: [
+                              const DropdownMenuItem<String?>(
+                                value: null,
+                                child: Text('— None (Enter Voter Manually) —'),
+                              ),
+                              ...members.map((m) => DropdownMenuItem<String?>(
+                                value: m.id,
+                                child: Text('${m.fullName} (${m.email}) — ${m.memberCode}'),
+                              )),
+                            ],
+                            onChanged: (val) {
+                              setState(() {
+                                _selectedMemberId = val;
+                                if (val != null) {
+                                  final m = members.firstWhere((mem) => mem.id == val);
+                                  _voterIdController.text = m.memberCode.isNotEmpty ? m.memberCode : m.id.substring(0, 8);
+                                  _prefixController.text = m.prefix;
+                                  _firstNameController.text = m.firstName;
+                                  _middleNameController.text = m.middleName;
+                                  _lastNameController.text = m.lastName;
+                                  _emailController.text = m.email;
+                                  _phoneController.text = m.phone;
+                                  _councilNumberController.text = m.councilNumber;
+                                  _citizenshipController.text = m.citizenshipNumber;
+                                }
+                              });
+                            },
+                          );
+                        },
+                      ),
                       const SizedBox(height: 32),
+                      Text('Voter Profile Information', style: Theme.of(context).textTheme.titleLarge),
+                      const SizedBox(height: 24),
                       Row(
                         children: [
                           Expanded(child: _buildTextField('Voter ID *', _voterIdController, 'Enter voter ID (e.g. BM - 1)')),

@@ -429,6 +429,65 @@ class ElectionDetailScreen extends ConsumerWidget {
                   label: const Text('Close Voting'),
                   style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateClosed),
                 ),
+              if (election.state == 'voting_closed') ...[
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    try {
+                      await ref.read(publishElectionProvider.notifier).advanceElectionState(election.id, 'results_provisional');
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Provisional Results Published!')));
+                    } catch (e) {
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                    }
+                  },
+                  icon: const Icon(Icons.rate_review_outlined),
+                  label: const Text('Publish Provisional Results'),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade700),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    try {
+                      await ref.read(publishElectionProvider.notifier).advanceElectionState(election.id, 'results_final');
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Final Official Results Published!')));
+                    } catch (e) {
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                    }
+                  },
+                  icon: const Icon(Icons.verified_rounded),
+                  label: const Text('Publish Final Results'),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateResults),
+                ),
+              ],
+              if (election.state == 'results_provisional')
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    try {
+                      await ref.read(publishElectionProvider.notifier).advanceElectionState(election.id, 'results_final');
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Final Official Results Published!')));
+                    } catch (e) {
+                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+                    }
+                  },
+                  icon: const Icon(Icons.verified_rounded),
+                  label: const Text('Finalize & Publish Official Results'),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateResults),
+                ),
+              if (election.state == 'results_final')
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.success),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle_rounded, color: AppColors.success, size: 18),
+                      SizedBox(width: 8),
+                      Text('Final Results Published', style: TextStyle(color: AppColors.success, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 12),

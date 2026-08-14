@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/providers/auth_provider.dart';
+import '../../core/providers/app_providers.dart';
 
-class ReceiptScreen extends StatefulWidget {
+class ReceiptScreen extends ConsumerStatefulWidget {
   final String electionId;
   final String receiptHash;
 
@@ -14,22 +17,13 @@ class ReceiptScreen extends StatefulWidget {
   });
 
   @override
-  State<ReceiptScreen> createState() => _ReceiptScreenState();
+  ConsumerState<ReceiptScreen> createState() => _ReceiptScreenState();
 }
 
-class _ReceiptScreenState extends State<ReceiptScreen> {
+class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
   @override
   void initState() {
     super.initState();
-    // Automatically redirect to Live Results after 4 seconds
-    Future.delayed(const Duration(seconds: 4), () {
-      if (!mounted) return;
-      try {
-        context.go('/elections/${widget.electionId}/results');
-      } catch (_) {
-        // Navigation may have already happened; ignore
-      }
-    });
   }
 
   @override
@@ -190,12 +184,24 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
             icon: Icons.fingerprint_rounded,
             text: 'This hash is a cryptographic fingerprint that uniquely identifies your ballot without revealing its contents.',
           ),
+          const _ExplainerItem(
+            icon: Icons.schedule_rounded,
+            text: 'Election results will be officially published and visible once voting has closed.',
+          ),
         ],
       ),
     );
   }
 
   Widget _buildActions(BuildContext context) {
+    final user = ref.watch(currentUserProvider);
+    final electionAsync = ref.watch(electionProvider(widget.electionId));
+
+    final isResultsAvailable = electionAsync.maybeWhen(
+      data: (e) => e.hasResults || e.state == 'voting_closed' || (user?.canManageElections == true),
+      orElse: () => user?.canManageElections == true,
+    );
+
     return Column(
       children: [
         SizedBox(
@@ -207,16 +213,18 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
             label: const Text('Back to Home'),
           ),
         ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: () => context.pushNamed('results',
-                pathParameters: {'electionId': widget.electionId}),
-            icon: const Icon(Icons.bar_chart_rounded),
-            label: const Text('View Live Tally'),
+        if (isResultsAvailable) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => context.pushNamed('results',
+                  pathParameters: {'electionId': widget.electionId}),
+              icon: const Icon(Icons.bar_chart_rounded),
+              label: const Text('View Results / Tally'),
+            ),
           ),
-        ),
+        ],
       ],
     );
   }

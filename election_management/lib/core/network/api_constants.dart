@@ -34,10 +34,12 @@ class ApiConstants {
       '/elections/$id/advance_state/';
   static String electionHistory(String id) => '/elections/$id/history/';
   static String electionTurnout(String id) => '/elections/$id/turnout/';
-  static String electionVotingActivity(String id) => '/elections/$id/voting_activity/';
+  static String electionVotingActivity(String id) =>
+      '/elections/$id/voting_activity/';
   static String electionPositions(String id) => '/elections/$id/positions/';
   static String electionQuotas(String id) => '/elections/$id/quotas/';
-  static String electionQuotaDetail(String eid, String qid) => '/elections/$eid/quotas/$qid/';
+  static String electionQuotaDetail(String eid, String qid) =>
+      '/elections/$eid/quotas/$qid/';
   static String electionCandidates(String id) => '/elections/$id/candidates/';
   static String electionVoters(String id) => '/elections/$id/voters/';
   static String approveCandidate(String eid, String cid) =>
@@ -45,12 +47,16 @@ class ApiConstants {
   static String rejectCandidate(String eid, String cid) =>
       '/elections/$eid/candidates/$cid/reject/';
   static String electionNotices(String id) => '/elections/$id/notices/';
-  static String electionNoticeDetail(String eid, String nid) => '/elections/$eid/notices/$nid/';
+  static String electionNoticeDetail(String eid, String nid) =>
+      '/elections/$eid/notices/$nid/';
   static String broadcastEmail(String id) => '/elections/$id/broadcast_email/';
   static String electionCommittees(String id) => '/elections/$id/committees/';
-  static String electionCreateCommittee(String id) => '/elections/$id/create_committee/';
-  static String electionUpdateCommittee(String eid, String cid) => '/elections/$eid/committees/$cid/update/';
-  static String electionDeleteCommittee(String eid, String cid) => '/elections/$eid/committees/$cid/delete/';
+  static String electionCreateCommittee(String id) =>
+      '/elections/$id/create_committee/';
+  static String electionUpdateCommittee(String eid, String cid) =>
+      '/elections/$eid/committees/$cid/update/';
+  static String electionDeleteCommittee(String eid, String cid) =>
+      '/elections/$eid/committees/$cid/delete/';
   static String electionAssignments(String id) => '/elections/$id/assignments/';
 
   // Members
@@ -58,12 +64,15 @@ class ApiConstants {
   static String memberDetail(String id) => '/members/$id/';
   static const String importCsv = '/members/import_csv/';
   static const String exportCsv = '/members/export_csv/';
-  
-  static String previewElectionVotersCsv(String electionId) => '/elections/$electionId/voters/preview_csv/';
-  static String importElectionVotersCsv(String electionId) => '/elections/$electionId/voters/import_csv/';
-  static String exportElectionVotersCsv(String electionId) => '/elections/$electionId/voters/export_csv/';
-  static String importElectionMembers(String electionId) => '/elections/$electionId/voters/import_members/';
 
+  static String previewElectionVotersCsv(String electionId) =>
+      '/elections/$electionId/voters/preview_csv/';
+  static String importElectionVotersCsv(String electionId) =>
+      '/elections/$electionId/voters/import_csv/';
+  static String exportElectionVotersCsv(String electionId) =>
+      '/elections/$electionId/voters/export_csv/';
+  static String importElectionMembers(String electionId) =>
+      '/elections/$electionId/voters/import_members/';
 
   // Voting
   static const String votingHistory = '/voting/history/';
@@ -79,7 +88,7 @@ class ApiConstants {
   static String? getFullImageUrl(String? path) {
     if (path == null || path.isEmpty) return null;
     if (path.startsWith('http://') || path.startsWith('https://')) return path;
-    
+
     // Base URL contains '/v1', so we need the origin
     final origin = baseUrl.replaceAll('/v1', '');
     if (path.startsWith('/')) {

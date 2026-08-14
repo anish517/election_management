@@ -146,7 +146,6 @@ class NotificationService:
     @staticmethod
     def send_custom_email(to_email: str, subject: str, election, body_html: str):
         """Send a one-off custom email from the Admin portal."""
-        # Wrap the raw HTML into the nice base template
         html_payload = _base_email(
             header_color=election.primary_color,
             icon="📢",
@@ -154,7 +153,14 @@ class NotificationService:
             subtitle=election.title,
             body_html=f"<div style='font-size:15px;line-height:1.6;color:#E2E8F0;'>{body_html}</div>"
         )
-        NotificationService._send_bulk(subject, "Please view this email in an HTML-compatible client.", html_payload, [to_email])
+        msg = EmailMultiAlternatives(
+            subject=subject,
+            body="Please view this email in an HTML-compatible client.",
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[to_email],
+        )
+        msg.attach_alternative(html_payload, 'text/html')
+        msg.send(fail_silently=False)
 
     @staticmethod
     def notify_nomination_open(election):

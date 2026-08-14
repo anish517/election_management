@@ -22,6 +22,7 @@ class ElectionViewSet(viewsets.ModelViewSet):
         if self.action in [
             'create', 'update', 'partial_update', 'destroy',
             'publish', 'advance_state', 'assign_role', 'broadcast_email',
+            'email_logs', 'retry_failed_emails',
             'create_committee', 'committees', 'assignments',
             'update_committee', 'delete_committee',
         ]:
@@ -517,12 +518,14 @@ class ElectionViewSet(viewsets.ModelViewSet):
         if total_count == 0:
             return Response({'error': 'No valid recipient email addresses found for the selected group(s).'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Dispatch Celery task with target emails
+        # Dispatch Celery task with target emails and sender tracking
         send_custom_broadcast_email_task.delay(
             str(election.id),
             subject,
             body_html,
             email_list,
+            sender_id=str(request.user.id),
+            recipient_group=','.join(recipient_groups),
         )
         
         log_action('election.email_broadcast', request.user.organization, request.user, {
@@ -537,6 +540,76 @@ class ElectionViewSet(viewsets.ModelViewSet):
             'count': total_count,
             'recipients': recipient_groups,
         }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'], permission_classes=[IsOrgAdmin])
+    def email_logs(self, request, pk=None):
+        """
+        List all email delivery records (successful and failed) for this election.
+        """
+        from apps.notifications.models import EmailBroadcastLog
+        from apps.notifications.serializers import EmailBroadcastLogSerializer
+
+        election = self.get_object()
+        qs = EmailBroadcastLog.objects.filter(election=election).select_related('sender').order_by('-created_at')
+
+        status_filter = request.query_params.get('status')
+        if status_filter and status_filter.lower() != 'all':
+            qs = qs.filter(status=status_filter.lower())
+
+        search = request.query_params.get('search')
+        if search and search.strip():
+            from django.db.models import Q
+            q_term = search.strip()
+            qs = qs.filter(
+                Q(recipient_email__icontains=q_term) |
+                Q(subject__icontains=q_term) |
+                Q(recipient_name__icontains=q_term)
+            )
+
+        serializer = EmailBroadcastLogSerializer(qs[:200], many=True)
+        
+        sent_count = EmailBroadcastLog.objects.filter(election=election, status='sent').count()
+        failed_count = EmailBroadcastLog.objects.filter(election=election, status='failed').count()
+        queued_count = EmailBroadcastLog.objects.filter(election=election, status='queued').count()
+
+        return Response({
+            'summary': {
+                'total': sent_count + failed_count + queued_count,
+                'sent': sent_count,
+                'failed': failed_count,
+                'queued': queued_count,
+            },
+            'logs': serializer.data,
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsOrgAdmin])
+    def retry_failed_emails(self, request, pk=None):
+        """
+        Retry sending any previously failed email broadcasts.
+        """
+        from apps.notifications.models import EmailBroadcastLog, EmailBroadcastStatus
+        from apps.notifications.tasks import send_custom_broadcast_email_task
+
+        election = self.get_object()
+        failed_logs = list(EmailBroadcastLog.objects.filter(election=election, status=EmailBroadcastStatus.FAILED))
+        
+        if not failed_logs:
+            return Response({'message': 'No failed emails found to retry.'}, status=status.HTTP_200_OK)
+
+        retried = 0
+        for log in failed_logs:
+            send_custom_broadcast_email_task.delay(
+                str(election.id),
+                log.subject,
+                log.body_html,
+                [log.recipient_email],
+                sender_id=str(request.user.id),
+                recipient_group=log.recipient_group,
+            )
+            log.delete()
+            retried += 1
+
+        return Response({'message': f'Queued {retried} failed email(s) for retry.'}, status=status.HTTP_200_OK)
 
 
 class ElectionNoticeViewSet(viewsets.ModelViewSet):

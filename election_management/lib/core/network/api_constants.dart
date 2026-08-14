@@ -52,6 +52,8 @@ class ApiConstants {
   static String electionNoticeDetail(String eid, String nid) =>
       '/elections/$eid/notices/$nid/';
   static String broadcastEmail(String id) => '/elections/$id/broadcast_email/';
+  static String electionEmailLogs(String id) => '/elections/$id/email_logs/';
+  static String retryFailedEmails(String id) => '/elections/$id/retry_failed_emails/';
   static String electionCommittees(String id) => '/elections/$id/committees/';
   static String electionCreateCommittee(String id) =>
       '/elections/$id/create_committee/';

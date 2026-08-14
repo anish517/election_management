@@ -183,15 +183,18 @@ class ElectionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsOrgAdmin],
             parser_classes=[MultiPartParser, FormParser, JSONParser])
     def create_committee(self, request, pk=None):
-        """Create a new committee and optionally create/link a chair user account.
+        """Create a new committee member and optionally create/link a chair user account.
+        Supports selecting existing member (by member_id or email) or creating a new user.
         Supports roles: election_officer (default), observer, auditor.
         """
         from django.contrib.auth import get_user_model
         from apps.elections.models import ElectionRoleAssignment
+        from apps.members.models import Member
 
         election = self.get_object()
         data = request.data
-        committee_type = data.get('committee_type', 'new')
+        committee_type = data.get('committee_type', 'existing' if data.get('member_id') else 'new')
+        member_id = data.get('member_id')
         committee_name = data.get('committee_name', '').strip()
         chair_designation = data.get('chair_designation', '').strip()
         chair_contact = data.get('chair_contact', '').strip()
@@ -208,14 +211,47 @@ class ElectionViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        if not committee_name or not chair_email:
-            return Response({'error': 'committee_name and chair_email are required.'}, status=status.HTTP_400_BAD_REQUEST)
-
         User = get_user_model()
+        chair_user = None
 
-        if committee_type == 'new':
+        if member_id:
+            try:
+                member = Member.objects.get(id=member_id, organization=request.user.organization)
+                chair_email = member.email.strip().lower() or chair_email
+                if not committee_name:
+                    committee_name = member.full_name or chair_email
+                if not chair_contact:
+                    chair_contact = member.phone or ''
+                if not chair_designation:
+                    chair_designation = member.position_title or ''
+
+                if member.user:
+                    chair_user = member.user
+                else:
+                    # Look up user with same email or create user for member
+                    try:
+                        chair_user = User.objects.get(email=chair_email, organization=request.user.organization)
+                    except User.DoesNotExist:
+                        import secrets
+                        chair_user = User.objects.create_user(
+                            email=chair_email,
+                            password=password or secrets.token_urlsafe(16),
+                            organization=request.user.organization,
+                            role=assigned_role,
+                        )
+                    member.user = chair_user
+                    member.save(update_fields=['user'])
+
+                if chair_user and chair_user.role not in ['org_admin', 'super_admin']:
+                    chair_user.role = assigned_role
+                    chair_user.save(update_fields=['role'])
+            except Member.DoesNotExist:
+                return Response({'error': 'Member not found in this organization.'}, status=status.HTTP_404_NOT_FOUND)
+        elif committee_type == 'new':
+            if not chair_email:
+                return Response({'error': 'Email address is required.'}, status=status.HTTP_400_BAD_REQUEST)
             if not password:
-                return Response({'error': 'password is required when creating a new committee.'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'error': 'Password is required when creating a new committee user.'}, status=status.HTTP_400_BAD_REQUEST)
             if User.objects.filter(email=chair_email).exists():
                 return Response({'error': f'A user with email {chair_email} already exists.'}, status=status.HTTP_400_BAD_REQUEST)
             chair_user = User.objects.create_user(
@@ -224,16 +260,27 @@ class ElectionViewSet(viewsets.ModelViewSet):
                 organization=request.user.organization,
                 role=assigned_role,
             )
+            if not committee_name:
+                committee_name = chair_email
         else:
-            # Select existing user from this org
+            # Select existing user from this org by email
+            if not chair_email:
+                return Response({'error': 'Email is required to select existing user.'}, status=status.HTTP_400_BAD_REQUEST)
             try:
                 chair_user = User.objects.get(email=chair_email, organization=request.user.organization)
-                # Update their role to the selected one if different
-                if chair_user.role != assigned_role:
+                if not committee_name:
+                    if hasattr(chair_user, 'memberships') and chair_user.memberships.exists():
+                        committee_name = chair_user.memberships.first().full_name
+                    else:
+                        committee_name = chair_user.email
+                if chair_user.role not in ['org_admin', 'super_admin']:
                     chair_user.role = assigned_role
                     chair_user.save(update_fields=['role'])
             except User.DoesNotExist:
                 return Response({'error': 'No user with that email found in this organization.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not committee_name:
+            committee_name = chair_email or 'Election Committee Member'
 
         committee = ElectionCommittee.objects.create(
             election=election,
@@ -300,8 +347,9 @@ class ElectionViewSet(viewsets.ModelViewSet):
             VALID_ROLES = ['election_officer', 'observer', 'auditor']
             if new_role in VALID_ROLES and committee.chair_user:
                 from apps.elections.models import ElectionRoleAssignment
-                committee.chair_user.role = new_role
-                committee.chair_user.save(update_fields=['role'])
+                if committee.chair_user.role not in ['org_admin', 'super_admin']:
+                    committee.chair_user.role = new_role
+                    committee.chair_user.save(update_fields=['role'])
                 ElectionRoleAssignment.objects.update_or_create(
                     user=committee.chair_user,
                     election=election,

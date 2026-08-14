@@ -150,6 +150,8 @@ class ElectionNoticeSerializer(serializers.ModelSerializer):
 
 class ElectionCommitteeSerializer(serializers.ModelSerializer):
     chair_user_email = serializers.SerializerMethodField()
+    chair_full_name = serializers.SerializerMethodField()
+    chair_member_code = serializers.SerializerMethodField()
 
     class Meta:
         model = ElectionCommittee
@@ -157,9 +159,27 @@ class ElectionCommitteeSerializer(serializers.ModelSerializer):
             'id', 'election', 'committee_type', 'committee_name',
             'chair_designation', 'chair_contact', 'chair_email',
             'chair_signature', 'chair_user', 'chair_user_email',
+            'chair_full_name', 'chair_member_code',
             'role', 'created_at'
         ]
         read_only_fields = ['id', 'election', 'chair_user', 'created_at']
+        extra_kwargs = {
+            'committee_name': {'required': False, 'allow_blank': True},
+            'chair_designation': {'required': False, 'allow_blank': True},
+            'chair_contact': {'required': False, 'allow_blank': True},
+        }
 
     def get_chair_user_email(self, obj):
         return obj.chair_user.email if obj.chair_user else obj.chair_email
+
+    def get_chair_full_name(self, obj):
+        if obj.chair_user:
+            if hasattr(obj.chair_user, 'memberships') and obj.chair_user.memberships.exists():
+                return obj.chair_user.memberships.first().full_name
+            return obj.chair_user.email
+        return obj.committee_name or obj.chair_email
+
+    def get_chair_member_code(self, obj):
+        if obj.chair_user and hasattr(obj.chair_user, 'memberships') and obj.chair_user.memberships.exists():
+            return obj.chair_user.memberships.first().member_code
+        return ''

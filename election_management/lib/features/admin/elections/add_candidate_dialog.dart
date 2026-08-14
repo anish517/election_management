@@ -41,9 +41,7 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
   final _personalDescController = TextEditingController();
   final _contributionController = TextEditingController();
   final _manifestoController = TextEditingController();
-  final _slateNameController = TextEditingController();
   String _candidateImage = '';
-  String _candidateSignature = '';
 
   // Proposer
   final _proposerNameController = TextEditingController();
@@ -76,7 +74,6 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
     _personalDescController.dispose();
     _contributionController.dispose();
     _manifestoController.dispose();
-    _slateNameController.dispose();
     _proposerNameController.dispose();
     _proposerCitizenshipController.dispose();
     _proposerPhoneController.dispose();
@@ -135,11 +132,9 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
         'citizenship_number': _citizenshipController.text.trim(),
         'membership_id': _membershipIdController.text.trim(),
         'candidate_image': _candidateImage,
-        'candidate_signature': _candidateSignature,
         'personal_description': _personalDescController.text.trim(),
         'contribution_to_org': _contributionController.text.trim(),
         'manifesto': _manifestoController.text.trim(),
-        'slate_name': _slateNameController.text.trim(),
         'status': 'approved',
         'endorsements': endorsements,
       });
@@ -260,15 +255,13 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
                           const SizedBox(height: 24),
                           const Text('Nomination Details', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 16),
-                          TextFormField(controller: _slateNameController, decoration: const InputDecoration(labelText: 'Slate / Party Name (Optional)')),
-                          const SizedBox(height: 16),
                           TextFormField(
                             controller: _manifestoController,
                             decoration: const InputDecoration(labelText: 'Manifesto / Statement'),
                             maxLines: 3,
                           ),
                           const SizedBox(height: 24),
-                          const Text('Additional Information', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          const Text('Voter Profile Information', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 16),
                           Row(
                             children: [
@@ -282,7 +275,7 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
                           const SizedBox(height: 16),
                           Row(
                             children: [
-                              Expanded(child: TextFormField(controller: _emailController, decoration: const InputDecoration(labelText: 'Email *'))),
+                              Expanded(child: TextFormField(controller: _emailController, readOnly: true, decoration: const InputDecoration(labelText: 'Email (From Voter List) *', helperText: 'Auto-populated from voter list'))),
                               const SizedBox(width: 16),
                               Expanded(child: TextFormField(controller: _phoneController, decoration: const InputDecoration(labelText: 'Contact Number *'))),
                               const SizedBox(width: 16),
@@ -299,39 +292,16 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
                           ),
                             
                             const SizedBox(height: 32),
-                            Row(
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Text('Candidate Image *', style: TextStyle(fontWeight: FontWeight.bold)),
-                                      const SizedBox(height: 8),
-                                      Center(
-                                        child: ImageUploadWidget(
-                                          initialImageUrl: _candidateImage,
-                                          placeholderText: 'Upload',
-                                          onImageUploaded: (url) => setState(() => _candidateImage = url),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Text('Candidate Signature *', style: TextStyle(fontWeight: FontWeight.bold)),
-                                      const SizedBox(height: 8),
-                                      Center(
-                                        child: ImageUploadWidget(
-                                          initialImageUrl: _candidateSignature,
-                                          placeholderText: 'Signature',
-                                          radius: 0,
-                                          onImageUploaded: (url) => setState(() => _candidateSignature = url),
-                                        ),
-                                      ),
-                                    ],
+                                const Text('Candidate Photo', style: TextStyle(fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 8),
+                                Center(
+                                  child: ImageUploadWidget(
+                                    initialImageUrl: _candidateImage,
+                                    placeholderText: 'Upload Photo',
+                                    onImageUploaded: (url) => setState(() => _candidateImage = url),
                                   ),
                                 ),
                               ],

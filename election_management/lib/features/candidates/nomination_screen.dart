@@ -21,7 +21,6 @@ class NominationScreen extends ConsumerStatefulWidget {
 class _NominationScreenState extends ConsumerState<NominationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _manifestoController = TextEditingController();
-  final _slateController = TextEditingController();
   String? _selectedPositionId;
   String? _selectedQuotaId;
   String _photoUrl = '';
@@ -42,7 +41,6 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
   @override
   void dispose() {
     _manifestoController.dispose();
-    _slateController.dispose();
     _proposerNameCtrl.dispose();
     _proposerPhoneCtrl.dispose();
     _proposerCitizenshipCtrl.dispose();
@@ -69,7 +67,6 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
         'position': _selectedPositionId,
         if (_selectedQuotaId != null && _selectedQuotaId!.isNotEmpty) 'quota': _selectedQuotaId,
         'manifesto': _manifestoController.text.trim(),
-        'slate_name': _slateController.text.trim(),
         'candidate_image': _photoUrl,
         'election': widget.electionId,
         'endorsements': [
@@ -242,25 +239,15 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                       return const SizedBox.shrink();
                     }(),
                   ],
-                  const SizedBox(height: 16),
-                  
                   TextFormField(
                     controller: _manifestoController,
                     decoration: const InputDecoration(
-                      labelText: 'Manifesto / Statement',
+                      labelText: 'Manifesto / Statement *',
                       alignLabelWithHint: true,
                     ),
                     maxLines: 5,
                     validator: (val) =>
                         val == null || val.isEmpty ? 'Required' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  TextFormField(
-                    controller: _slateController,
-                    decoration: const InputDecoration(
-                      labelText: 'Slate / Party Name (Optional)',
-                    ),
                   ),
                   const SizedBox(height: 32),
                   

@@ -18,7 +18,6 @@ class AddPositionDialog extends ConsumerStatefulWidget {
 class _AddPositionDialogState extends ConsumerState<AddPositionDialog> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
-  final _quotaController = TextEditingController();
   final _seatsController = TextEditingController(text: '1');
   final _resultOrderController = TextEditingController(text: '0');
   final _chargeController = TextEditingController(text: '0.00');
@@ -32,7 +31,6 @@ class _AddPositionDialogState extends ConsumerState<AddPositionDialog> {
   @override
   void dispose() {
     _titleController.dispose();
-    _quotaController.dispose();
     _seatsController.dispose();
     _resultOrderController.dispose();
     _chargeController.dispose();
@@ -46,7 +44,6 @@ class _AddPositionDialogState extends ConsumerState<AddPositionDialog> {
       final dio = ref.read(apiClientProvider);
       await dio.post(ApiConstants.electionPositions(widget.electionId), data: {
         'title': _titleController.text.trim(),
-        'quota_name': _quotaController.text.trim(),
         'seats_available': int.parse(_seatsController.text),
         'result_order': int.parse(_resultOrderController.text),
         'nominee_charge': double.parse(_chargeController.text),
@@ -99,24 +96,11 @@ class _AddPositionDialogState extends ConsumerState<AddPositionDialog> {
                 ),
                 const SizedBox(height: 16),
                 
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _quotaController,
-                        decoration: const InputDecoration(labelText: 'Quota (Optional)', hintText: 'e.g. Female, Dalit'),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _seatsController,
-                        decoration: const InputDecoration(labelText: 'Quota / Seats *'),
-                        keyboardType: TextInputType.number,
-                        validator: (v) => int.tryParse(v ?? '') == null ? 'Invalid' : null,
-                      ),
-                    ),
-                  ],
+                TextFormField(
+                  controller: _seatsController,
+                  decoration: const InputDecoration(labelText: 'Max Seats (Seats Available) *', hintText: 'e.g. 1'),
+                  keyboardType: TextInputType.number,
+                  validator: (v) => int.tryParse(v ?? '') == null ? 'Invalid number' : null,
                 ),
                 const SizedBox(height: 16),
                 

@@ -253,7 +253,46 @@ class _BallotPositionCard extends ConsumerWidget {
                     ],
                   ),
                 ),
-                if (position.quotaName.isNotEmpty)
+                if (position.quotas.isNotEmpty) ...[
+                  () {
+                    final activeQuotas = position.quotas.where((q) => q.isActive).toList();
+                    final quotaSeats = activeQuotas.fold<int>(0, (sum, q) => sum + q.seats);
+                    final openSeats = position.seatsAvailable - quotaSeats;
+
+                    return Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        ...activeQuotas.map((q) => Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                          ),
+                          child: Text(
+                            '${q.name}: ${q.seats} Seat(s)',
+                            style: const TextStyle(color: AppColors.primaryLight, fontWeight: FontWeight.w600, fontSize: 11),
+                          ),
+                        )),
+                        if (openSeats > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.blueGrey.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.blueGrey.withValues(alpha: 0.3)),
+                            ),
+                            child: Text(
+                              'Open: $openSeats Seat(s)',
+                              style: const TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.w600, fontSize: 11),
+                            ),
+                          ),
+                      ],
+                    );
+                  }(),
+                  const SizedBox(width: 8),
+                ] else if (position.quotaName.isNotEmpty)
                   Container(
                     margin: const EdgeInsets.only(right: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -402,6 +441,25 @@ class _CandidateTile extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      if (candidate.quotaName != null && candidate.quotaName!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                          ),
+                          child: Text(
+                            'Quota: ${candidate.quotaName}',
+                            style: const TextStyle(
+                              color: AppColors.primaryLight,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                       if (candidate.slateName.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         Text(

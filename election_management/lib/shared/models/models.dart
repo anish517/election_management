@@ -157,6 +157,53 @@ class ElectionModel {
 
 
 
+class PositionQuotaModel {
+  final String id;
+  final String positionId;
+  final String positionTitle;
+  final String? electionId;
+  final String name;
+  final int seats;
+  final String status;
+  final String description;
+  final DateTime? createdAt;
+
+  const PositionQuotaModel({
+    required this.id,
+    required this.positionId,
+    this.positionTitle = '',
+    this.electionId,
+    required this.name,
+    required this.seats,
+    this.status = 'active',
+    this.description = '',
+    this.createdAt,
+  });
+
+  bool get isActive => status == 'active';
+
+  factory PositionQuotaModel.fromJson(Map<String, dynamic> json) => PositionQuotaModel(
+        id: json['id'] as String,
+        positionId: json['position'] as String? ?? '',
+        positionTitle: json['position_title'] as String? ?? '',
+        electionId: json['election_id'] as String?,
+        name: json['name'] as String? ?? '',
+        seats: json['seats'] as int? ?? 1,
+        status: json['status'] as String? ?? 'active',
+        description: json['description'] as String? ?? '',
+        createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'position': positionId,
+        'name': name,
+        'seats': seats,
+        'status': status,
+        'description': description,
+      };
+}
+
 class PositionModel {
   final String id;
   final String title;
@@ -169,6 +216,7 @@ class PositionModel {
   final int maxVotesPerVoter;
   final bool abstainAllowed;
   final bool noneOfTheAbove;
+  final List<PositionQuotaModel> quotas;
   final List<CandidateModel> candidates;
 
   const PositionModel({
@@ -183,6 +231,7 @@ class PositionModel {
     required this.maxVotesPerVoter,
     required this.abstainAllowed,
     required this.noneOfTheAbove,
+    this.quotas = const [],
     this.candidates = const [],
   });
 
@@ -198,6 +247,10 @@ class PositionModel {
         maxVotesPerVoter: json['max_votes_per_voter'] as int? ?? 1,
         abstainAllowed: json['abstain_allowed'] as bool? ?? false,
         noneOfTheAbove: json['none_of_the_above'] as bool? ?? false,
+        quotas: (json['quotas'] as List<dynamic>?)
+                ?.map((q) => PositionQuotaModel.fromJson(q as Map<String, dynamic>))
+                .toList() ??
+            [],
         candidates: (json['candidates'] as List<dynamic>?)
                 ?.map((c) => CandidateModel.fromJson(c as Map<String, dynamic>))
                 .toList() ??
@@ -265,6 +318,8 @@ class CandidateModel {
   final String? status;
   final String? positionId;
   final String? positionTitle;
+  final String? quotaId;
+  final String? quotaName;
   
   final String? email;
   final String? contactNumber;
@@ -288,6 +343,8 @@ class CandidateModel {
     this.status,
     this.positionId,
     this.positionTitle,
+    this.quotaId,
+    this.quotaName,
     this.email,
     this.contactNumber,
     this.gender,
@@ -310,6 +367,8 @@ class CandidateModel {
         status: json['status'] as String?,
         positionId: json['position'] as String?,
         positionTitle: json['position_title'] as String?,
+        quotaId: json['quota'] as String?,
+        quotaName: json['quota_name'] as String?,
         email: json['email'] as String?,
         contactNumber: json['contact_number'] as String?,
         gender: json['gender'] as String?,

@@ -219,11 +219,52 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (election) {
+          final user = ref.watch(authProvider).user;
+          final isRestricted = user != null && (user.canManageElections || user.isObserver || user.isAuditor);
+
+          if (isRestricted) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.gavel_rounded, size: 54, color: Colors.amber),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Ineligible for Candidacy (Conflict of Interest)',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'As an active ${user.roleDisplay.isNotEmpty ? user.roleDisplay : user.role.replaceAll('_', ' ')}, electoral integrity regulations prohibit you from running as a candidate or submitting nominations in this election.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () => context.pop(),
+                      icon: const Icon(Icons.arrow_back),
+                      label: const Text('Back to Election'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
           if (election.positions.isEmpty) {
             return const Center(child: Text('No positions available to nominate for.'));
           }
 
-          final user = ref.watch(authProvider).user;
           final candidatesAsync = ref.watch(candidatesProvider(widget.electionId));
 
           return SingleChildScrollView(

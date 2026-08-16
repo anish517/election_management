@@ -243,29 +243,30 @@ class ElectionDetailScreen extends ConsumerWidget {
             spacing: 24,
             runSpacing: 16,
             children: [
-              if (election.votingStartAt != null && election.votingEndAt != null)
-                _ScheduleBlock(title: 'Voting Period', start: election.votingStartAt!, end: election.votingEndAt!, icon: Icons.schedule_rounded),
-              if (election.nominationOpenAt != null && election.nominationCloseAt != null)
-                _ScheduleBlock(title: 'Nomination Phase', start: election.nominationOpenAt!, end: election.nominationCloseAt!, icon: Icons.assignment_ind_outlined),
               if (election.firstVoterListDate != null || election.finalVoterListDate != null)
                 _SingleMilestoneBlock(
-                  title: 'Voter Roll Schedule',
+                  title: '1. Voter Roll Schedule',
                   icon: Icons.people_alt_outlined,
                   milestones: [
                     if (election.firstVoterListDate != null) 'First List: ${_formatIsoDate(election.firstVoterListDate!)}',
                     if (election.voterListClaimDate != null) 'Claims Due: ${_formatIsoDate(election.voterListClaimDate!)}',
-                    if (election.finalVoterListDate != null) 'Final List: ${_formatIsoDate(election.finalVoterListDate!)}',
+                    if (election.finalVoterListDate != null) 'Final Roll: ${_formatIsoDate(election.finalVoterListDate!)}',
                   ],
                 ),
-              if (election.candidacyClaimDate != null || election.candidacyFinalDate != null)
-                _SingleMilestoneBlock(
-                  title: 'Candidacy Milestones',
-                  icon: Icons.verified_user_outlined,
-                  milestones: [
-                    if (election.candidacyClaimDate != null) 'Claims Due: ${_formatIsoDate(election.candidacyClaimDate!)}',
-                    if (election.candidacyFinalDate != null) 'Final List: ${_formatIsoDate(election.candidacyFinalDate!)}',
-                  ],
-                ),
+              if (election.nominationOpenAt != null || election.candidacyFinalDate != null)
+                if (election.nominationOpenAt != null && election.nominationCloseAt != null)
+                  _ScheduleBlock(title: '2. Nomination Phase', start: election.nominationOpenAt!, end: election.nominationCloseAt!, icon: Icons.assignment_ind_outlined)
+                else if (election.candidacyClaimDate != null || election.candidacyFinalDate != null)
+                  _SingleMilestoneBlock(
+                    title: '2. Candidacy Milestones',
+                    icon: Icons.verified_user_outlined,
+                    milestones: [
+                      if (election.candidacyClaimDate != null) 'Claims Due: ${_formatIsoDate(election.candidacyClaimDate!)}',
+                      if (election.candidacyFinalDate != null) 'Final List: ${_formatIsoDate(election.candidacyFinalDate!)}',
+                    ],
+                  ),
+              if (election.votingStartAt != null && election.votingEndAt != null)
+                _ScheduleBlock(title: '3. Voting Period', start: election.votingStartAt!, end: election.votingEndAt!, icon: Icons.how_to_vote_rounded),
             ],
           ),
         ],
@@ -313,12 +314,25 @@ class ElectionDetailScreen extends ConsumerWidget {
       spacing: 12,
       runSpacing: 12,
       children: [
-        if (election.state == 'nomination_open')
+        // Only eligible voters/members can self-nominate. Officers, Observers, and Auditors are restricted due to conflict of interest.
+        if (election.state == 'nomination_open' &&
+            user != null &&
+            !user.canManageElections &&
+            !user.isObserver &&
+            !user.isAuditor)
           ElevatedButton.icon(
             onPressed: () => context.pushNamed('nominate',
                 pathParameters: {'electionId': electionId}),
             icon: const Icon(Icons.person_add_alt_1_rounded),
             label: const Text('Nominate Myself'),
+          ),
+        if (election.state == 'nomination_open' && user?.canManageElections == true)
+          ElevatedButton.icon(
+            onPressed: () => context.pushNamed('review_nominations',
+                pathParameters: {'electionId': electionId}),
+            icon: const Icon(Icons.rate_review_rounded),
+            label: const Text('Review Nominations'),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateNominations),
           ),
         if (election.isVotingActive)
           ElevatedButton.icon(
@@ -356,6 +370,60 @@ class ElectionDetailScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _advanceStateWithConfirm(
+    BuildContext context,
+    WidgetRef ref,
+    String electionId,
+    String targetState,
+    String title,
+    String message,
+    String successMsg, {
+    Color? confirmColor,
+  }) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.info_outline, color: confirmColor ?? AppColors.primary),
+            const SizedBox(width: 8),
+            Text(title),
+          ],
+        ),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: confirmColor ?? AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await ref.read(publishElectionProvider.notifier).advanceElectionState(electionId, targetState);
+      ref.invalidate(electionProvider(electionId));
+      ref.invalidate(resultsProvider(electionId));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(successMsg)));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red));
+      }
+    }
+  }
+
   Widget _buildAdminControls(BuildContext context, WidgetRef ref, ElectionModel election) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -387,135 +455,141 @@ class ElectionDetailScreen extends ConsumerWidget {
             spacing: 12,
             runSpacing: 12,
             children: [
-              if (election.state == 'draft')
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    try {
-                      await ref.read(publishElectionProvider.notifier).publishElection(election.id);
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Election Published!')));
-                    } catch (e) {
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-                    }
-                  },
-                  icon: const Icon(Icons.campaign_rounded),
-                  label: const Text('Publish Election'),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-                ),
-              if (election.state == 'published')
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    try {
-                      await ref.read(publishElectionProvider.notifier).advanceElectionState(election.id, 'nomination_open');
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nominations Opened!')));
-                    } catch (e) {
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-                    }
-                  },
-                  icon: const Icon(Icons.play_arrow_rounded),
-                  label: const Text('Open Nominations'),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateNominations),
-                ),
-              if (election.state == 'nomination_open')
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    try {
-                      await ref.read(publishElectionProvider.notifier).advanceElectionState(election.id, 'nomination_closed');
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nominations Closed!')));
-                    } catch (e) {
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-                    }
-                  },
-                  icon: const Icon(Icons.stop_rounded),
-                  label: const Text('Close Nominations'),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateNominations),
-                ),
-              if (election.state == 'nomination_closed')
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    try {
-                      await ref.read(publishElectionProvider.notifier).advanceElectionState(election.id, 'voting_open');
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Voting Started!')));
-                    } catch (e) {
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-                    }
-                  },
-                  icon: const Icon(Icons.play_arrow_rounded),
-                  label: const Text('Start Voting'),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateVoting),
-                ),
-              if (election.state == 'voting_open')
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    try {
-                      await ref.read(publishElectionProvider.notifier).advanceElectionState(election.id, 'voting_closed');
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Voting Closed!')));
-                    } catch (e) {
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-                    }
-                  },
-                  icon: const Icon(Icons.stop_rounded),
-                  label: const Text('Close Voting'),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateClosed),
-                ),
-              if (election.state == 'voting_closed') ...[
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    try {
-                      await ref.read(publishElectionProvider.notifier).advanceElectionState(election.id, 'results_provisional');
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Provisional Results Published!')));
-                    } catch (e) {
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-                    }
-                  },
-                  icon: const Icon(Icons.rate_review_outlined),
-                  label: const Text('Publish Provisional Results'),
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade700),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    try {
-                      await ref.read(publishElectionProvider.notifier).advanceElectionState(election.id, 'results_final');
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Final Official Results Published!')));
-                    } catch (e) {
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-                    }
-                  },
-                  icon: const Icon(Icons.verified_rounded),
-                  label: const Text('Publish Final Results'),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateResults),
-                ),
-              ],
-              if (election.state == 'results_provisional')
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    try {
-                      await ref.read(publishElectionProvider.notifier).advanceElectionState(election.id, 'results_final');
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Final Official Results Published!')));
-                    } catch (e) {
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-                    }
-                  },
-                  icon: const Icon(Icons.verified_rounded),
-                  label: const Text('Finalize & Publish Official Results'),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateResults),
-                ),
-              if (election.state == 'results_final')
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.success),
-                  ),
-                  child: const Row(
+              if (ref.watch(publishElectionProvider).isLoading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.check_circle_rounded, color: AppColors.success, size: 18),
+                      SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)),
                       SizedBox(width: 8),
-                      Text('Final Results Published', style: TextStyle(color: AppColors.success, fontWeight: FontWeight.bold)),
+                      Text('Transitioning election state...'),
                     ],
                   ),
-                ),
+                )
+              else ...[
+                if (election.state == 'draft')
+                  ElevatedButton.icon(
+                    onPressed: () => _advanceStateWithConfirm(
+                      context, ref, election.id, 'published',
+                      'Publish Election',
+                      'Are you sure you want to publish this election? Voters will be notified.',
+                      'Election Published Successfully!',
+                      confirmColor: AppColors.primary,
+                    ),
+                    icon: const Icon(Icons.campaign_rounded),
+                    label: const Text('Publish Election'),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                  ),
+                if (election.state == 'published')
+                  ElevatedButton.icon(
+                    onPressed: () => _advanceStateWithConfirm(
+                      context, ref, election.id, 'nomination_open',
+                      'Open Nominations',
+                      'Are you sure you want to open candidate nominations? Eligible members can begin submitting nominations.',
+                      'Nominations Opened Successfully!',
+                      confirmColor: AppColors.stateNominations,
+                    ),
+                    icon: const Icon(Icons.play_arrow_rounded),
+                    label: const Text('Open Nominations'),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateNominations),
+                  ),
+                if (election.state == 'nomination_open')
+                  ElevatedButton.icon(
+                    onPressed: () => _advanceStateWithConfirm(
+                      context, ref, election.id, 'nomination_closed',
+                      'Close Nominations',
+                      'Are you sure you want to close candidate nominations? No new nominations will be accepted.',
+                      'Nominations Closed Successfully!',
+                      confirmColor: AppColors.stateNominations,
+                    ),
+                    icon: const Icon(Icons.stop_rounded),
+                    label: const Text('Close Nominations'),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateNominations),
+                  ),
+                if (election.state == 'nomination_closed')
+                  ElevatedButton.icon(
+                    onPressed: () => _advanceStateWithConfirm(
+                      context, ref, election.id, 'voting_open',
+                      'Start Voting',
+                      'Are you sure you want to open live voting polls? Verified voters will be able to cast their ballots.',
+                      'Voting Started Successfully!',
+                      confirmColor: AppColors.stateVoting,
+                    ),
+                    icon: const Icon(Icons.play_arrow_rounded),
+                    label: const Text('Start Voting'),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateVoting),
+                  ),
+                if (election.state == 'voting_open')
+                  ElevatedButton.icon(
+                    onPressed: () => _advanceStateWithConfirm(
+                      context, ref, election.id, 'voting_closed',
+                      'Close Voting',
+                      'Are you sure you want to close live voting polls? Voting will cease and ballot counts will be frozen.',
+                      'Voting Closed Successfully!',
+                      confirmColor: AppColors.stateClosed,
+                    ),
+                    icon: const Icon(Icons.stop_rounded),
+                    label: const Text('Close Voting'),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateClosed),
+                  ),
+                if (election.state == 'voting_closed') ...[
+                  ElevatedButton.icon(
+                    onPressed: () => _advanceStateWithConfirm(
+                      context, ref, election.id, 'results_provisional',
+                      'Publish Provisional Results',
+                      'Publish provisional results for initial review and verification?',
+                      'Provisional Results Published!',
+                      confirmColor: Colors.orange.shade700,
+                    ),
+                    icon: const Icon(Icons.rate_review_outlined),
+                    label: const Text('Publish Provisional Results'),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade700),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () => _advanceStateWithConfirm(
+                      context, ref, election.id, 'results_final',
+                      'Publish Final Results',
+                      'Are you sure you want to finalize and certify official election results?',
+                      'Final Official Results Published!',
+                      confirmColor: AppColors.stateResults,
+                    ),
+                    icon: const Icon(Icons.verified_rounded),
+                    label: const Text('Publish Final Results'),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateResults),
+                  ),
+                ],
+                if (election.state == 'results_provisional')
+                  ElevatedButton.icon(
+                    onPressed: () => _advanceStateWithConfirm(
+                      context, ref, election.id, 'results_final',
+                      'Finalize & Publish Official Results',
+                      'Are you sure you want to finalize and certify official election results? This action cannot be undone.',
+                      'Final Official Results Published Successfully!',
+                      confirmColor: AppColors.stateResults,
+                    ),
+                    icon: const Icon(Icons.verified_rounded),
+                    label: const Text('Finalize & Publish Official Results'),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateResults),
+                  ),
+                if (election.state == 'results_final')
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.success),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle_rounded, color: AppColors.success, size: 18),
+                        SizedBox(width: 8),
+                        Text('Final Results Published', style: TextStyle(color: AppColors.success, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+              ],
             ],
           ),
           const SizedBox(height: 12),

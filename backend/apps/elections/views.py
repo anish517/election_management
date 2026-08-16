@@ -21,12 +21,16 @@ class ElectionViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in [
             'create', 'update', 'partial_update', 'destroy',
-            'publish', 'advance_state', 'assign_role', 'broadcast_email',
-            'email_logs', 'retry_failed_emails',
+            'assign_role',
             'create_committee', 'committees', 'assignments',
             'update_committee', 'delete_committee',
         ]:
             return [IsOrgAdmin()]
+        if self.action in [
+            'publish', 'advance_state', 'broadcast_email',
+            'email_logs', 'retry_failed_emails',
+        ]:
+            return [IsElectionOfficer()]
         return [IsObserver()]
 
     def get_queryset(self):

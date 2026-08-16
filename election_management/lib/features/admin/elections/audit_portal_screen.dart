@@ -373,6 +373,26 @@ class _AuditPortalScreenState extends ConsumerState<AuditPortalScreen> with Sing
                   ],
                 ),
                 const SizedBox(height: 10),
+                if (_auditLogs.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(32),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark ? AppColors.surface : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: const Column(
+                      children: [
+                        Icon(Icons.history_toggle_off_rounded, size: 42, color: AppColors.textMuted),
+                        SizedBox(height: 12),
+                        Text('No Audit Events Recorded Yet', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        SizedBox(height: 4),
+                        Text('System state changes, officer rulings, candidate approvals, and voting activity will appear here in real time.',
+                            textAlign: TextAlign.center, style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                      ],
+                    ),
+                  ),
               ],
             );
           }

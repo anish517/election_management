@@ -62,3 +62,21 @@ class CandidateSerializer(serializers.ModelSerializer):
                 CandidateEndorsement.objects.create(candidate=instance, **end_data)
 
         return instance
+
+
+class CandidateObjectionSerializer(serializers.ModelSerializer):
+    candidate_name = serializers.CharField(source='candidate.full_name', read_only=True)
+    position_title = serializers.CharField(source='candidate.position.title', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    resolved_by_email = serializers.EmailField(source='resolved_by.email', read_only=True)
+
+    class Meta:
+        from apps.candidates.models import CandidateObjection
+        model = CandidateObjection
+        fields = [
+            'id', 'election', 'candidate', 'candidate_name', 'position_title',
+            'claimant_name', 'claimant_email', 'claimant_phone', 'claimant_citizenship_number',
+            'objection_reason', 'evidence_file', 'status', 'status_display',
+            'resolution_notes', 'resolved_by', 'resolved_by_email', 'resolved_at', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'election', 'status', 'status_display', 'resolution_notes', 'resolved_by', 'resolved_by_email', 'resolved_at', 'created_at', 'updated_at']

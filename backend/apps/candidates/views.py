@@ -151,3 +151,86 @@ class CandidateViewSet(viewsets.ModelViewSet):
         })
         
         return Response(self.get_serializer(candidate).data)
+
+
+class CandidateObjectionViewSet(viewsets.ModelViewSet):
+    """
+    CRUD and review for Candidate Eligibility Objections.
+    """
+    from rest_framework.permissions import IsAuthenticated
+    permission_classes = [IsAuthenticated]
+    from apps.candidates.serializers import CandidateObjectionSerializer
+    serializer_class = CandidateObjectionSerializer
+
+    def get_queryset(self):
+        from apps.candidates.models import CandidateObjection
+        election_pk = self.kwargs.get('election_pk')
+        user = self.request.user
+        qs = CandidateObjection.objects.filter(election_id=election_pk, election__organization=user.organization)
+
+        is_officer = (
+            user.role in ['org_admin', 'election_officer', 'super_admin']
+            or getattr(user, 'is_org_admin', False)
+        )
+        if not is_officer:
+            qs = qs.filter(claimant_email__iexact=user.email.strip().lower())
+        return qs.order_by('-created_at')
+
+    def perform_create(self, serializer):
+        from django.utils import timezone
+        from apps.elections.models import Election
+        from rest_framework.exceptions import ValidationError
+
+        election_pk = self.kwargs.get('election_pk')
+        election = Election.objects.get(id=election_pk, organization=self.request.user.organization)
+        now = timezone.now()
+
+        # Schedule Gating: Objections open after nomination closes and before candidacy claim deadline
+        if election.nomination_close_at and now < election.nomination_close_at:
+            raise ValidationError({'detail': 'Candidate objection window opens after nominations close.'})
+        if election.candidacy_claim_date and now > election.candidacy_claim_date:
+            raise ValidationError({'detail': 'Candidate objection deadline has passed.'})
+
+        serializer.save(
+            election=election,
+            claimant_name=serializer.validated_data.get('claimant_name') or self.request.user.full_name or self.request.user.email,
+            claimant_email=serializer.validated_data.get('claimant_email') or self.request.user.email,
+        )
+
+    @action(detail=True, methods=['post'])
+    def resolve(self, request, election_pk=None, pk=None):
+        """
+        Election Officer resolves candidate objection (Upheld / Dismissed).
+        """
+        from apps.elections.permissions import IsElectionOfficer
+        if not IsElectionOfficer().has_permission(request, self):
+            return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        objection = self.get_object()
+        new_status = request.data.get('status')
+        if new_status not in ['upheld', 'dismissed']:
+            return Response({'detail': "Status must be 'upheld' or 'dismissed'."}, status=status.HTTP_400_BAD_REQUEST)
+
+        notes = request.data.get('resolution_notes', '')
+        objection.status = new_status
+        objection.resolution_notes = notes
+        objection.resolved_by = request.user
+        objection.resolved_at = timezone.now()
+        objection.save()
+
+        # If objection is upheld, reject/disqualify the candidate
+        if new_status == 'upheld':
+            objection.candidate.status = NominationStatus.REJECTED
+            objection.candidate.review_notes = f"Objection Upheld: {notes or objection.objection_reason}"
+            objection.candidate.reviewed_by = request.user
+            objection.candidate.reviewed_at = timezone.now()
+            objection.candidate.save(update_fields=['status', 'review_notes', 'reviewed_by', 'reviewed_at'])
+
+        log_action('candidate_objection.resolved', objection.election.organization, request.user, {
+            'election_id': str(objection.election.id),
+            'candidate_id': str(objection.candidate.id),
+            'objection_id': str(objection.id),
+            'status': objection.status
+        })
+        from apps.candidates.serializers import CandidateObjectionSerializer
+        return Response(CandidateObjectionSerializer(objection).data)

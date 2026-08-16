@@ -12,6 +12,11 @@ import '../admin/elections/edit_position_dialog.dart';
 import '../admin/elections/edit_candidate_dialog.dart';
 import '../admin/elections/assign_officer_dialog.dart';
 import '../admin/elections/audit_portal_screen.dart';
+import '../voters/dialogs/file_voter_claim_dialog.dart';
+import '../admin/elections/manage_voter_claims_dialog.dart';
+import '../candidates/dialogs/file_candidate_objection_dialog.dart';
+import '../admin/elections/manage_candidate_objections_dialog.dart';
+import '../admin/elections/voters_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/network/api_constants.dart';
 import '../../core/network/api_client.dart';
@@ -101,19 +106,21 @@ class ElectionDetailScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeroCard(context, election),
-          const SizedBox(height: 20),
-          _buildActionButtons(context, ref, election, user),
-          const SizedBox(height: 20),
-          if (user != null && user.canManageElections) ...[
-            _buildAdminControls(context, ref, election),
+          children: [
+            _buildHeroCard(context, election),
             const SizedBox(height: 20),
+            _buildVoterListAndClaimsSection(context, ref, election, user),
+            const SizedBox(height: 20),
+            _buildActionButtons(context, ref, election, user),
+            const SizedBox(height: 20),
+            if (user != null && user.canManageElections) ...[
+              _buildAdminControls(context, ref, election),
+              const SizedBox(height: 20),
+            ],
+            _buildPositionsSection(context, election, user),
           ],
-          _buildPositionsSection(context, election, user),
-        ],
+        ),
       ),
-    ),
     );
   }
 
@@ -283,6 +290,207 @@ class ElectionDetailScreen extends ConsumerWidget {
     }
   }
 
+  Widget _buildVoterListAndClaimsSection(BuildContext context, WidgetRef ref, ElectionModel election, UserModel? user) {
+    final now = DateTime.now();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    DateTime? firstListDate = election.firstVoterListDate != null ? DateTime.tryParse(election.firstVoterListDate!) : null;
+    DateTime? claimDeadline = election.voterListClaimDate != null ? DateTime.tryParse(election.voterListClaimDate!) : null;
+    DateTime? finalListDate = election.finalVoterListDate != null ? DateTime.tryParse(election.finalVoterListDate!) : null;
+
+    DateTime? nomClose = election.nominationCloseAt != null ? DateTime.tryParse(election.nominationCloseAt!) : null;
+    DateTime? candClaimDeadline = election.candidacyClaimDate != null ? DateTime.tryParse(election.candidacyClaimDate!) : null;
+
+    // Check if voter claims are active
+    bool isVoterClaimOpen = false;
+    if (firstListDate != null && now.isAfter(firstListDate)) {
+      if (claimDeadline == null || now.isBefore(claimDeadline)) {
+        isVoterClaimOpen = true;
+      }
+    }
+
+    bool isFinalVoterList = finalListDate != null && now.isAfter(finalListDate);
+
+    // Check if candidate objections are active
+    bool isCandObjectionOpen = false;
+    if (nomClose != null && now.isAfter(nomClose)) {
+      if (candClaimDeadline == null || now.isBefore(candClaimDeadline)) {
+        isCandObjectionOpen = true;
+      }
+    }
+
+    // Only render if election is published or beyond
+    if (election.state == 'draft') return const SizedBox.shrink();
+
+    String voterBadgeText;
+    Color voterBadgeColor;
+    String voterDescription;
+
+    if (isFinalVoterList) {
+      voterBadgeText = 'Certified Final Voter Roll (अन्तिम नामावली)';
+      voterBadgeColor = Colors.green;
+      voterDescription = 'The voter roll has been certified and locked. All eligible members are registered to cast ballots.';
+    } else if (isVoterClaimOpen) {
+      voterBadgeText = 'First Voter Roll Published — Claims Open';
+      voterBadgeColor = Colors.blue;
+      voterDescription = claimDeadline != null
+          ? 'Claims and objections are open until ${_formatIsoDate(election.voterListClaimDate!)}. Review the roll and submit omissions/corrections if needed.'
+          : 'First voter list published. Review the roll and submit claims/objections if needed.';
+    } else if (firstListDate != null && now.isBefore(firstListDate)) {
+      voterBadgeText = 'Voter Roll Scheduled';
+      voterBadgeColor = AppColors.textMuted;
+      voterDescription = 'The first voter list will be officially published on ${_formatIsoDate(election.firstVoterListDate!)}.';
+    } else {
+      voterBadgeText = 'Claims Closed — Scrutiny in Progress';
+      voterBadgeColor = Colors.orange;
+      voterDescription = 'The claim window has closed. The Election Committee is verifying claims before final certified publication.';
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surface : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05)),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.badge_outlined, color: AppColors.primary, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text('Voter Roll & Scrutiny', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: voterBadgeColor.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: voterBadgeColor.withValues(alpha: 0.5)),
+                          ),
+                          child: Text(
+                            voterBadgeText,
+                            style: TextStyle(color: voterBadgeColor, fontSize: 11, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(voterDescription, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => VotersScreen(electionId: election.id),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.people_outline_rounded, size: 18),
+                label: const Text('View Published Voter Roll'),
+              ),
+              if (isVoterClaimOpen)
+                ElevatedButton.icon(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (_) => FileVoterClaimDialog(electionId: election.id),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                  icon: const Icon(Icons.rate_review_rounded, size: 18),
+                  label: const Text('File Claim / Objection (दाबी-विरोध)'),
+                ),
+            ],
+          ),
+          if (isCandObjectionOpen) ...[
+            const Divider(height: 24),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.gavel_rounded, color: Colors.orange, size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Candidate Scrutiny & Objection Window (उम्मेदवार दाबी-विरोध)',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.orange),
+                        ),
+                        Text(
+                          candClaimDeadline != null
+                              ? 'Nominations are closed. You may file eligibility objections against any candidate before ${_formatIsoDate(election.candidacyClaimDate!)}.'
+                              : 'Nominations are closed. You may file formal eligibility objections against candidates.',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      final allCandidates = election.positions.expand((p) => p.candidates).toList();
+                      showDialog(
+                        context: context,
+                        builder: (_) => FileCandidateObjectionDialog(
+                          electionId: election.id,
+                          candidates: allCandidates,
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade800, foregroundColor: Colors.white),
+                    icon: const Icon(Icons.gavel, size: 16),
+                    label: const Text('File Objection'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
   Widget _buildPositionsSection(BuildContext context, ElectionModel election, UserModel? user) {
     return Column(
@@ -614,6 +822,32 @@ class ElectionDetailScreen extends ConsumerWidget {
                   ),
                   icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
                   label: const Text('Add Candidate'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => showDialog(
+                    context: context,
+                    builder: (_) => ManageVoterClaimsDialog(electionId: election.id),
+                  ),
+                  icon: const Icon(Icons.rate_review_rounded, size: 18, color: AppColors.primary),
+                  label: const Text('Manage Voter Claims'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => showDialog(
+                    context: context,
+                    builder: (_) => ManageCandidateObjectionsDialog(electionId: election.id),
+                  ),
+                  icon: const Icon(Icons.gavel_rounded, size: 18, color: Colors.orange),
+                  label: const Text('Review Candidate Objections'),
                 ),
               ),
             ],

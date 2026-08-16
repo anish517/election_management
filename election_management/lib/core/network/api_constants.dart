@@ -62,6 +62,10 @@ class ApiConstants {
   static String electionDeleteCommittee(String eid, String cid) =>
       '/elections/$eid/committees/$cid/delete/';
   static String electionAssignments(String id) => '/elections/$id/assignments/';
+  static String electionVoterClaims(String id) => '/elections/$id/voter-claims/';
+  static String electionCandidateObjections(String id) => '/elections/$id/candidate-objections/';
+  static String resolveVoterClaim(String eid, String cid) => '/elections/$eid/voter-claims/$cid/resolve/';
+  static String resolveCandidateObjection(String eid, String oid) => '/elections/$eid/candidate-objections/$oid/resolve/';
 
   // Members
   static const String members = '/members/';

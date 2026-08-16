@@ -105,24 +105,24 @@ class NotificationService:
 
     @staticmethod
     def _get_member_emails(election):
-        """Return unified deduplicated list of active members, registered voters, and org users."""
-        from apps.members.models import Member
+        """
+        Return deduplicated list of recipients strictly scoped to THIS election:
+        1. Registered eligible voters in this election's VoterRoll
+        2. Election Committee members assigned to this election
+        3. Appointed Election Officers, Observers, and Auditors for this election
+        4. Candidates in this election
+        5. Election Creator & Org Admins managing this election
+        (Falls back to active org members if no voters/committee are uploaded yet)
+        """
         from apps.voting.models import VoterRoll
+        from apps.elections.models import ElectionRoleAssignment, ElectionCommittee
+        from apps.candidates.models import Candidate
         from apps.users.models import User
+        from apps.members.models import Member
 
         recipient_set = set()
 
-        # 1. Active Members
-        member_emails = Member.objects.filter(
-            organization=election.organization,
-            membership_status='active',
-            email__contains='@',
-        ).values_list('email', flat=True)
-        for e in member_emails:
-            if e and e.strip():
-                recipient_set.add(e.strip().lower())
-
-        # 2. Eligible VoterRoll entries for this election
+        # 1. Registered eligible voters for this specific election
         voter_emails = VoterRoll.objects.filter(
             election=election,
             is_eligible=True,
@@ -132,44 +132,122 @@ class NotificationService:
             if e and e.strip():
                 recipient_set.add(e.strip().lower())
 
-        # 3. Organization users
-        user_emails = User.objects.filter(
-            organization=election.organization,
-            email__contains='@',
-        ).values_list('email', flat=True)
-        for e in user_emails:
+        # 2. Election Committee chairs assigned to this election
+        committee_emails = ElectionCommittee.objects.filter(
+            election=election,
+            chair_email__contains='@',
+        ).values_list('chair_email', flat=True)
+        for e in committee_emails:
             if e and e.strip():
                 recipient_set.add(e.strip().lower())
 
+        # 3. Election Role Assignments (officers, observers, auditors)
+        assigned_user_emails = ElectionRoleAssignment.objects.filter(
+            election=election,
+            user__email__contains='@',
+        ).values_list('user__email', flat=True)
+        for e in assigned_user_emails:
+            if e and e.strip():
+                recipient_set.add(e.strip().lower())
+
+        # 4. Candidates in this election
+        candidate_emails = Candidate.objects.filter(
+            election=election,
+            email__contains='@',
+        ).values_list('email', flat=True)
+        for e in candidate_emails:
+            if e and e.strip():
+                recipient_set.add(e.strip().lower())
+
+        # 5. Election Creator & Org Admins
+        if getattr(election, 'created_by', None) and election.created_by.email:
+            recipient_set.add(election.created_by.email.strip().lower())
+
+        org_admin_emails = User.objects.filter(
+            organization=election.organization,
+            role='org_admin',
+            email__contains='@',
+        ).values_list('email', flat=True)
+        for e in org_admin_emails:
+            if e and e.strip():
+                recipient_set.add(e.strip().lower())
+
+        # 6. Fallback: If no voters or committee members are registered yet, notify active org members
+        if not voter_emails.exists() and not committee_emails.exists() and not assigned_user_emails.exists():
+            member_emails = Member.objects.filter(
+                organization=election.organization,
+                membership_status='active',
+                email__contains='@',
+            ).values_list('email', flat=True)
+            for e in member_emails:
+                if e and e.strip():
+                    recipient_set.add(e.strip().lower())
+
         emails = list(recipient_set)
-        logger.info(f"[Notify] Sending to {len(emails)} unified recipients for election '{election.title}'")
+        logger.info(f"[Notify] Enqueueing notification for {len(emails)} scoped recipients for election '{election.title}'")
         return emails
 
     @staticmethod
-    def _send_bulk(subject: str, plain_text: str, html_body: str, recipients: list):
-        """Send one email to each recipient."""
+    def _send_bulk(subject: str, plain_text: str, html_body: str, recipients: list, election=None, async_mode: bool = True):
+        """Send one email to each recipient asynchronously in a background thread and log to DB."""
         if not recipients:
             logger.warning("[Notify] No recipients found — skipping.")
             return
 
-        sent = 0
-        failed = 0
-        for email in recipients:
-            try:
-                msg = EmailMultiAlternatives(
-                    subject=subject,
-                    body=plain_text,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    to=[email],
-                )
-                msg.attach_alternative(html_body, 'text/html')
-                msg.send(fail_silently=False)
-                sent += 1
-            except Exception as e:
-                logger.error(f"[Notify] Failed to send to {email}: {e}")
-                failed += 1
+        from apps.notifications.models import EmailBroadcastLog, EmailBroadcastStatus
+        from django.utils import timezone
 
-        logger.info(f"[Notify] '{subject}': {sent} sent, {failed} failed.")
+        created_logs = []
+        if election and getattr(election, 'organization', None):
+            for email in recipients:
+                try:
+                    log_entry = EmailBroadcastLog.objects.create(
+                        organization=election.organization,
+                        election=election,
+                        recipient_email=email,
+                        subject=subject,
+                        body_html=html_body,
+                        status=EmailBroadcastStatus.QUEUED,
+                    )
+                    created_logs.append(log_entry)
+                except Exception:
+                    pass
+
+        def _worker(recip_list, log_entries):
+            sent = 0
+            failed = 0
+            for idx, email in enumerate(recip_list):
+                log_obj = log_entries[idx] if idx < len(log_entries) else None
+                try:
+                    msg = EmailMultiAlternatives(
+                        subject=subject,
+                        body=plain_text,
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        to=[email],
+                    )
+                    msg.attach_alternative(html_body, 'text/html')
+                    msg.send(fail_silently=False)
+                    sent += 1
+                    if log_obj:
+                        log_obj.status = EmailBroadcastStatus.SENT
+                        log_obj.sent_at = timezone.now()
+                        log_obj.save(update_fields=['status', 'sent_at'])
+                except Exception as e:
+                    logger.error(f"[Notify] Failed to send to {email}: {e}")
+                    failed += 1
+                    if log_obj:
+                        log_obj.status = EmailBroadcastStatus.FAILED
+                        log_obj.error_message = str(e)
+                        log_obj.save(update_fields=['status', 'error_message'])
+
+            logger.info(f"[Notify] '{subject}': {sent} sent, {failed} failed.")
+
+        if async_mode:
+            import threading
+            t = threading.Thread(target=_worker, args=(list(recipients), created_logs), daemon=True)
+            t.start()
+        else:
+            _worker(list(recipients), created_logs)
 
     # ------------------------------------------------------------------
     # Public notification methods
@@ -229,6 +307,7 @@ class NotificationService:
             plain_text=f"Nominations are open for '{election.title}'. Deadline: {nom_close}. Visit {election_url} to nominate.",
             html_body=html,
             recipients=recipients,
+            election=election,
         )
 
     @staticmethod
@@ -267,6 +346,7 @@ class NotificationService:
             plain_text=f"Voting is now open for '{election.title}'. Closes: {voting_end}. Vote at {election_url}",
             html_body=html,
             recipients=recipients,
+            election=election,
         )
 
     @staticmethod
@@ -302,6 +382,7 @@ class NotificationService:
             plain_text=f"Voting has closed for '{election.title}'. Results are being tallied. Visit {election_url}",
             html_body=html,
             recipients=recipients,
+            election=election,
         )
 
     @staticmethod
@@ -337,6 +418,7 @@ class NotificationService:
             plain_text=f"Results for '{election.title}' are now published. View at {results_url}",
             html_body=html,
             recipients=recipients,
+            election=election,
         )
 
     @staticmethod
@@ -420,6 +502,89 @@ class NotificationService:
             plain_text=f"The voter roll for '{election.title}' is published. Review claims before: {claim_deadline}. Visit {election_url}",
             html_body=html,
             recipients=recipients,
+            election=election,
+        )
+
+    @staticmethod
+    def notify_final_voter_list_published(election):
+        """Notify members that the final certified voter list is published and locked."""
+        recipients = NotificationService._get_member_emails(election)
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+        election_url = f"{frontend_url}/elections/{election.id}"
+        tz = getattr(election.organization, 'timezone', None)
+        nom_open = _format_bs(election.nomination_open_at, tz)
+
+        from apps.voting.models import VoterRoll
+        voter_count = VoterRoll.objects.filter(election=election, is_eligible=True).count()
+
+        body = f'''
+        <p style="color:#94A3B8;font-size:15px;margin:0 0 20px;line-height:1.6;">
+          The final official voter roll for <strong style="color:#E2E8F0;">{election.title}</strong>
+          has been certified and locked by the Election Committee.
+        </p>
+        {_election_info_block(election)}
+        {_info_row("👥", f"Total Verified Voters: <strong style='color:#34D399;'>{voter_count} voters</strong>")}
+        {_info_row("📋", f"Nominations Open At: <strong style='color:#60A5FA;'>{nom_open}</strong>") if nom_open else ""}
+        {_info_row("🔒", "The voter list is now finalized; no further claims or additions will be accepted.")}
+        '''
+
+        html = _base_email(
+            header_color='#059669',
+            icon='✅',
+            title='Final Voter List Published & Certified',
+            subtitle=election.title,
+            body_html=body,
+            cta_url=election_url,
+            cta_label='View Final Voter Roll →',
+        )
+
+        NotificationService._send_bulk(
+            subject=f'📜 Final Voter List Published — {election.title}',
+            plain_text=f"Final voter roll for '{election.title}' is certified ({voter_count} voters). Nominations open: {nom_open}. Visit {election_url}",
+            html_body=html,
+            recipients=recipients,
+            election=election,
+        )
+
+    @staticmethod
+    def notify_final_candidates_published(election):
+        """Notify members that the final list of approved candidates is published."""
+        recipients = NotificationService._get_member_emails(election)
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+        election_url = f"{frontend_url}/elections/{election.id}"
+        tz = getattr(election.organization, 'timezone', None)
+        voting_start = _format_bs(election.voting_start_at, tz)
+
+        from apps.candidates.models import Candidate
+        candidate_count = Candidate.objects.filter(election=election, status='approved').count()
+
+        body = f'''
+        <p style="color:#94A3B8;font-size:15px;margin:0 0 20px;line-height:1.6;">
+          The scrutiny and withdrawal period is complete. The final list of approved candidates for
+          <strong style="color:#E2E8F0;">{election.title}</strong> has been officially published!
+        </p>
+        {_election_info_block(election)}
+        {_info_row("👤", f"Approved Candidates: <strong style='color:#60A5FA;'>{candidate_count} candidates</strong>")}
+        {_info_row("🗳️", f"Voting Starts At: <strong style='color:#34D399;'>{voting_start}</strong>") if voting_start else ""}
+        {_info_row("📖", "Review the candidate profiles, manifestos, and qualifications on the portal.")}
+        '''
+
+        html = _base_email(
+            header_color='#7C3AED',
+            icon='👥',
+            title='Final Approved Candidates Published',
+            subtitle=election.title,
+            body_html=body,
+            cta_url=election_url,
+            cta_label='View Candidates & Manifestos →',
+        )
+
+        NotificationService._send_bulk(
+            subject=f'👥 Final Candidate List Published — {election.title}',
+            plain_text=f"Final candidate list for '{election.title}' is published ({candidate_count} candidates). Voting starts: {voting_start}. Visit {election_url}",
+            html_body=html,
+            recipients=recipients,
+            election=election,
         )
 
     @staticmethod
@@ -465,4 +630,40 @@ class NotificationService:
             plain_text=f"Schedule announced for '{election.title}'. Voting starts: {voting_start}, closes: {voting_end}. Visit {election_url}",
             html_body=html,
             recipients=recipients,
+            election=election,
+        )
+
+    @staticmethod
+    def notify_results_published(election):
+        """Notify all voters and members that the final certified results are published."""
+        recipients = NotificationService._get_member_emails(election)
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+        results_url = f"{frontend_url}/elections/{election.id}/results"
+
+        body = f'''
+        <p style="color:#94A3B8;font-size:15px;margin:0 0 20px;line-height:1.6;">
+          Official, certified election results for <strong style="color:#E2E8F0;">{election.title}</strong>
+          have been finalized and published!
+        </p>
+        {_election_info_block(election)}
+        {_info_row("🏆", "Official winners and vote counts are certified.")}
+        {_info_row("📊", "View detailed seat breakdowns, vote totals, and audit records on the results portal.")}
+        '''
+
+        html = _base_email(
+            header_color='#10B981',
+            icon='🏆',
+            title='Official Election Results Published!',
+            subtitle=election.title,
+            body_html=body,
+            cta_url=results_url,
+            cta_label='View Official Results →',
+        )
+
+        NotificationService._send_bulk(
+            subject=f'🏆 Official Election Results Published — {election.title}',
+            plain_text=f"Official election results for '{election.title}' are finalized! View results at {results_url}",
+            html_body=html,
+            recipients=recipients,
+            election=election,
         )

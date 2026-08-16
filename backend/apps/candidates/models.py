@@ -98,7 +98,49 @@ class CandidateEndorsement(TimestampedModel):
         ordering = ['created_at']
 
     def __str__(self):
-        return f"{self.endorsement_type.title()} for {self.candidate}: {self.name}"
+        return f"{self.endorsement_type.capitalize()}: {self.name} for {self.candidate.first_name}"
+
+
+class CandidateObjectionStatus(models.TextChoices):
+    PENDING = 'pending', 'Pending Review'
+    UPHELD = 'upheld', 'Upheld (Objection Accepted)'
+    DISMISSED = 'dismissed', 'Dismissed (Candidate Cleared)'
+
+
+class CandidateObjection(TimestampedModel):
+    """
+    Formal objections filed against candidate eligibility during candidacy claim period.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    election = models.ForeignKey(
+        'elections.Election', on_delete=models.CASCADE, related_name='candidate_objections'
+    )
+    candidate = models.ForeignKey(
+        Candidate, on_delete=models.CASCADE, related_name='objections'
+    )
+    claimant_name = models.CharField(max_length=255)
+    claimant_email = models.EmailField(max_length=255)
+    claimant_phone = models.CharField(max_length=50, blank=True, default='')
+    claimant_citizenship_number = models.CharField(max_length=100, blank=True, default='')
+    
+    objection_reason = models.TextField()
+    evidence_file = models.FileField(upload_to='candidate_objections/', null=True, blank=True)
+
+    status = models.CharField(
+        max_length=20, choices=CandidateObjectionStatus.choices, default=CandidateObjectionStatus.PENDING, db_index=True
+    )
+    resolution_notes = models.TextField(blank=True, default='')
+    resolved_by = models.ForeignKey(
+        'users.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='resolved_candidate_objections'
+    )
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'candidate_objections'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Objection against {self.candidate.full_name} by {self.claimant_name} ({self.status})"
 
 
 class CandidateDocument(models.Model):

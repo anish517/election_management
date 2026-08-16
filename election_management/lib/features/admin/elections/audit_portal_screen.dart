@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import 'package:nepali_date_picker/nepali_date_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
@@ -426,7 +428,10 @@ class _AuditPortalScreenState extends ConsumerState<AuditPortalScreen> with Sing
                         ),
                       ),
                       const Spacer(),
-                      Text(timestamp.replaceFirst('T', ' ').substring(0, 19), style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                      Text(
+                        _formatLogTime(timestamp),
+                        style: const TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.w500),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -443,6 +448,19 @@ class _AuditPortalScreenState extends ConsumerState<AuditPortalScreen> with Sing
         },
       ),
     );
+  }
+
+  String _formatLogTime(String iso) {
+    if (iso.isEmpty) return '-';
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      final nepali = dt.toNepaliDateTime();
+      final timeStr = DateFormat('hh:mm:ss a').format(dt);
+      final nepaliDateStr = NepaliDateFormat('MMM d, yyyy').format(nepali);
+      return '$nepaliDateStr • $timeStr (BS)';
+    } catch (_) {
+      return iso.replaceFirst('T', ' ').substring(0, iso.length > 19 ? 19 : iso.length);
+    }
   }
 
   // ---------------------------------------------------------------------------

@@ -24,10 +24,15 @@ class _EditElectionDialogState extends ConsumerState<EditElectionDialog> {
   bool _isLoading = false;
 
   // Date/time schedule fields
-  DateTime? _nominationOpenAt;
-  DateTime? _nominationCloseAt;
   DateTime? _votingStartAt;
   DateTime? _votingEndAt;
+  DateTime? _firstVoterListDate;
+  DateTime? _voterListClaimDate;
+  DateTime? _finalVoterListDate;
+  DateTime? _nominationOpenAt;
+  DateTime? _nominationCloseAt;
+  DateTime? _candidacyClaimDate;
+  DateTime? _candidacyFinalDate;
 
   @override
   void initState() {
@@ -36,10 +41,15 @@ class _EditElectionDialogState extends ConsumerState<EditElectionDialog> {
     _descController = TextEditingController(text: widget.election.description);
 
     // Pre-fill existing dates if they exist
-    _nominationOpenAt = _parseDate(widget.election.nominationOpenAt);
-    _nominationCloseAt = _parseDate(widget.election.nominationCloseAt);
     _votingStartAt = _parseDate(widget.election.votingStartAt);
     _votingEndAt = _parseDate(widget.election.votingEndAt);
+    _firstVoterListDate = _parseDate(widget.election.firstVoterListDate);
+    _voterListClaimDate = _parseDate(widget.election.voterListClaimDate);
+    _finalVoterListDate = _parseDate(widget.election.finalVoterListDate);
+    _nominationOpenAt = _parseDate(widget.election.nominationOpenAt);
+    _nominationCloseAt = _parseDate(widget.election.nominationCloseAt);
+    _candidacyClaimDate = _parseDate(widget.election.candidacyClaimDate);
+    _candidacyFinalDate = _parseDate(widget.election.candidacyFinalDate);
   }
 
   DateTime? _parseDate(String? iso) {
@@ -83,18 +93,29 @@ class _EditElectionDialogState extends ConsumerState<EditElectionDialog> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_votingStartAt != null && _votingEndAt != null && _votingEndAt!.isBefore(_votingStartAt!)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Voting End date must be after Voting Start date.')));
+      return;
+    }
+    if (_nominationOpenAt != null && _nominationCloseAt != null && _nominationCloseAt!.isBefore(_nominationOpenAt!)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nomination Close date must be after Nomination Open date.')));
+      return;
+    }
     setState(() => _isLoading = true);
     try {
       final payload = <String, dynamic>{
         'title': _titleController.text.trim(),
         'description': _descController.text.trim(),
+        'voting_start_at': _votingStartAt?.toUtc().toIso8601String(),
+        'voting_end_at': _votingEndAt?.toUtc().toIso8601String(),
+        'first_voter_list_date': _firstVoterListDate?.toUtc().toIso8601String(),
+        'voter_list_claim_date': _voterListClaimDate?.toUtc().toIso8601String(),
+        'final_voter_list_date': _finalVoterListDate?.toUtc().toIso8601String(),
+        'nomination_open_at': _nominationOpenAt?.toUtc().toIso8601String(),
+        'nomination_close_at': _nominationCloseAt?.toUtc().toIso8601String(),
+        'candidacy_claim_date': _candidacyClaimDate?.toUtc().toIso8601String(),
+        'candidacy_final_date': _candidacyFinalDate?.toUtc().toIso8601String(),
       };
-
-      // Only include dates if they are set
-      if (_nominationOpenAt != null) payload['nomination_open_at'] = _nominationOpenAt!.toUtc().toIso8601String();
-      if (_nominationCloseAt != null) payload['nomination_close_at'] = _nominationCloseAt!.toUtc().toIso8601String();
-      if (_votingStartAt != null) payload['voting_start_at'] = _votingStartAt!.toUtc().toIso8601String();
-      if (_votingEndAt != null) payload['voting_end_at'] = _votingEndAt!.toUtc().toIso8601String();
 
       final dio = ref.read(apiClientProvider);
       await dio.patch(ApiConstants.electionDetail(widget.election.id), data: payload);
@@ -115,126 +136,190 @@ class _EditElectionDialogState extends ConsumerState<EditElectionDialog> {
 
   String _formatDate(DateTime? dt) {
     if (dt == null) return 'Not set — tap to pick';
-    return NepaliDateFormat('MMM dd, yyyy  hh:mm a').format(dt.toNepaliDateTime());
+    return '${NepaliDateFormat('MMM dd, yyyy  hh:mm a').format(dt.toNepaliDateTime())} (BS)';
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      insetPadding: const EdgeInsets.all(16),
-      child: SingleChildScrollView(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 580, maxHeight: 720),
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Form(
             key: _formKey,
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Title
+                // Header
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryLight.withValues(alpha: 0.15),
+                        color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(Icons.edit_calendar_rounded, color: AppColors.primaryLight, size: 20),
                     ),
                     const SizedBox(width: 12),
-                    Text('Edit Election', style: Theme.of(context).textTheme.titleLarge),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Edit Election & Schedule', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                          Text('Manage election details and timetable', style: theme.textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      onPressed: () => context.pop(),
+                      visualDensity: VisualDensity.compact,
+                    ),
                   ],
                 ),
-                const SizedBox(height: 20),
-
-                // Basic Info Section
-                _buildSectionHeader('Basic Info', Icons.info_outline_rounded),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: _titleController,
-                  decoration: const InputDecoration(labelText: 'Election Title', prefixIcon: Icon(Icons.title_rounded)),
-                  validator: (v) => v!.isEmpty ? 'Required' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _descController,
-                  decoration: const InputDecoration(labelText: 'Description (Optional)', prefixIcon: Icon(Icons.description_outlined)),
-                  maxLines: 2,
-                ),
-
-                const SizedBox(height: 24),
-                const Divider(),
-                const SizedBox(height: 8),
-
-                // Automated Timer Section
-                _buildSectionHeader('⏱️ Automated Timer Schedule', Icons.schedule_rounded),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.accent.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.accent.withValues(alpha: 0.25)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.info_rounded, color: AppColors.accent, size: 16),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Celery & Redis are running! Set dates below and the system will automatically advance the election state every minute.',
-                          style: TextStyle(color: AppColors.accent, fontSize: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
                 const SizedBox(height: 16),
+                const Divider(height: 1),
+                const SizedBox(height: 14),
 
-                // Date pickers
-                _buildDateRow(
-                  icon: Icons.person_add_alt_1_outlined,
-                  color: AppColors.stateNominations,
-                  label: 'Nominations Open',
-                  subtitle: 'State → nominations_open',
-                  value: _nominationOpenAt,
-                  onTap: () => _pickDateTime('Nominations Open', _nominationOpenAt, (d) => setState(() => _nominationOpenAt = d)),
-                  onClear: () => setState(() => _nominationOpenAt = null),
-                ),
-                const SizedBox(height: 10),
-                _buildDateRow(
-                  icon: Icons.lock_clock_outlined,
-                  color: AppColors.warning,
-                  label: 'Nominations Close',
-                  subtitle: 'State → nominations_closed',
-                  value: _nominationCloseAt,
-                  onTap: () => _pickDateTime('Nominations Close', _nominationCloseAt, (d) => setState(() => _nominationCloseAt = d)),
-                  onClear: () => setState(() => _nominationCloseAt = null),
-                ),
-                const SizedBox(height: 10),
-                _buildDateRow(
-                  icon: Icons.how_to_vote_rounded,
-                  color: AppColors.stateVoting,
-                  label: 'Voting Opens',
-                  subtitle: 'State → voting_open 🗳️',
-                  value: _votingStartAt,
-                  onTap: () => _pickDateTime('Voting Opens', _votingStartAt, (d) => setState(() => _votingStartAt = d)),
-                  onClear: () => setState(() => _votingStartAt = null),
-                ),
-                const SizedBox(height: 10),
-                _buildDateRow(
-                  icon: Icons.lock_outline_rounded,
-                  color: AppColors.error,
-                  label: 'Voting Closes',
-                  subtitle: 'State → voting_closed 🔒 + auto-tally',
-                  value: _votingEndAt,
-                  onTap: () => _pickDateTime('Voting Closes', _votingEndAt, (d) => setState(() => _votingEndAt = d)),
-                  onClear: () => setState(() => _votingEndAt = null),
+                // Scrollable content
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextFormField(
+                          controller: _titleController,
+                          decoration: const InputDecoration(
+                            labelText: 'Election Title *',
+                            prefixIcon: Icon(Icons.title_rounded, size: 18),
+                          ),
+                          validator: (v) => v == null || v.trim().isEmpty ? 'Title is required' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _descController,
+                          maxLines: 2,
+                          decoration: const InputDecoration(
+                            labelText: 'Description',
+                            alignLabelWithHint: true,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Section 1: Election Schedule (Voting)
+                        _buildSectionHeader('🗳️ Election Schedule (Voting)'),
+                        const SizedBox(height: 8),
+                        _buildDateRow(
+                          icon: Icons.how_to_vote_rounded,
+                          color: AppColors.stateVoting,
+                          label: 'Voting Start Date',
+                          subtitle: 'State → voting_open 🗳️',
+                          value: _votingStartAt,
+                          onTap: () => _pickDateTime('Voting Opens', _votingStartAt, (d) => setState(() => _votingStartAt = d)),
+                          onClear: () => setState(() => _votingStartAt = null),
+                        ),
+                        const SizedBox(height: 8),
+                        _buildDateRow(
+                          icon: Icons.lock_outline_rounded,
+                          color: AppColors.error,
+                          label: 'Voting End Date',
+                          subtitle: 'State → voting_closed 🔒 + auto-tally',
+                          value: _votingEndAt,
+                          onTap: () => _pickDateTime('Voting Closes', _votingEndAt, (d) => setState(() => _votingEndAt = d)),
+                          onClear: () => setState(() => _votingEndAt = null),
+                        ),
+                        const SizedBox(height: 18),
+
+                        // Section 2: Voter List Schedule
+                        _buildSectionHeader('👥 Voter List Schedule'),
+                        const SizedBox(height: 8),
+                        _buildDateRow(
+                          icon: Icons.people_outline_rounded,
+                          color: const Color(0xFF3B82F6),
+                          label: 'First Voter List Publication',
+                          subtitle: 'Initial roll published for verification',
+                          value: _firstVoterListDate,
+                          onTap: () => _pickDateTime('First Voter List', _firstVoterListDate, (d) => setState(() => _firstVoterListDate = d)),
+                          onClear: () => setState(() => _firstVoterListDate = null),
+                        ),
+                        const SizedBox(height: 8),
+                        _buildDateRow(
+                          icon: Icons.rule_folder_outlined,
+                          color: const Color(0xFFF59E0B),
+                          label: 'Voter List Claim & Objection Deadline',
+                          subtitle: 'Voter claim/objection period ends',
+                          value: _voterListClaimDate,
+                          onTap: () => _pickDateTime('Voter List Claim', _voterListClaimDate, (d) => setState(() => _voterListClaimDate = d)),
+                          onClear: () => setState(() => _voterListClaimDate = null),
+                        ),
+                        const SizedBox(height: 8),
+                        _buildDateRow(
+                          icon: Icons.verified_user_outlined,
+                          color: const Color(0xFF10B981),
+                          label: 'Final Voter List Publication',
+                          subtitle: 'Final frozen voter list published',
+                          value: _finalVoterListDate,
+                          onTap: () => _pickDateTime('Final Voter List', _finalVoterListDate, (d) => setState(() => _finalVoterListDate = d)),
+                          onClear: () => setState(() => _finalVoterListDate = null),
+                        ),
+                        const SizedBox(height: 18),
+
+                        // Section 3: Candidacy Schedule
+                        _buildSectionHeader('📋 Candidacy Schedule'),
+                        const SizedBox(height: 8),
+                        _buildDateRow(
+                          icon: Icons.person_add_alt_1_outlined,
+                          color: AppColors.stateNominations,
+                          label: 'Candidacy Start (Nominations Open)',
+                          subtitle: 'State → nominations_open',
+                          value: _nominationOpenAt,
+                          onTap: () => _pickDateTime('Nominations Open', _nominationOpenAt, (d) => setState(() => _nominationOpenAt = d)),
+                          onClear: () => setState(() => _nominationOpenAt = null),
+                        ),
+                        const SizedBox(height: 8),
+                        _buildDateRow(
+                          icon: Icons.lock_clock_outlined,
+                          color: AppColors.warning,
+                          label: 'Candidacy End (Nominations Close)',
+                          subtitle: 'State → nominations_closed',
+                          value: _nominationCloseAt,
+                          onTap: () => _pickDateTime('Nominations Close', _nominationCloseAt, (d) => setState(() => _nominationCloseAt = d)),
+                          onClear: () => setState(() => _nominationCloseAt = null),
+                        ),
+                        const SizedBox(height: 8),
+                        _buildDateRow(
+                          icon: Icons.rate_review_outlined,
+                          color: const Color(0xFF8B5CF6),
+                          label: 'Candidacy Claim & Review Deadline',
+                          subtitle: 'Objection and claim review deadline',
+                          value: _candidacyClaimDate,
+                          onTap: () => _pickDateTime('Candidacy Claim', _candidacyClaimDate, (d) => setState(() => _candidacyClaimDate = d)),
+                          onClear: () => setState(() => _candidacyClaimDate = null),
+                        ),
+                        const SizedBox(height: 8),
+                        _buildDateRow(
+                          icon: Icons.how_to_reg_rounded,
+                          color: const Color(0xFF059669),
+                          label: 'Final Candidate List Publication',
+                          subtitle: 'Final official list of approved candidates',
+                          value: _candidacyFinalDate,
+                          onTap: () => _pickDateTime('Final Candidate List', _candidacyFinalDate, (d) => setState(() => _candidacyFinalDate = d)),
+                          onClear: () => setState(() => _candidacyFinalDate = null),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    ),
+                  ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+                const Divider(height: 1),
+                const SizedBox(height: 14),
 
                 // Action buttons
                 Row(
@@ -251,7 +336,7 @@ class _EditElectionDialogState extends ConsumerState<EditElectionDialog> {
                       child: LoadingButton(
                         isLoading: _isLoading,
                         onPressed: _submit,
-                        label: 'Save Schedule',
+                        label: 'Save Changes',
                         icon: Icons.save_rounded,
                       ),
                     ),
@@ -265,13 +350,10 @@ class _EditElectionDialogState extends ConsumerState<EditElectionDialog> {
     );
   }
 
-  Widget _buildSectionHeader(String title, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: AppColors.primaryLight),
-        const SizedBox(width: 6),
-        Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primaryLight, fontSize: 13)),
-      ],
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary),
     );
   }
 

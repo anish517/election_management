@@ -13,16 +13,20 @@ import nepali_datetime
 
 logger = logging.getLogger(__name__)
 
-def _format_bs(dt, tz_name):
+def _format_bs(dt, tz_name=None):
     if not dt:
         return 'TBD'
-    tz = zoneinfo.ZoneInfo(tz_name)
+    try:
+        tz = zoneinfo.ZoneInfo(tz_name or 'Asia/Kathmandu')
+    except Exception:
+        tz = zoneinfo.ZoneInfo('Asia/Kathmandu')
     local_dt = dt.astimezone(tz)
     bs_dt = nepali_datetime.datetime.from_datetime_datetime(local_dt)
     formatted_time = bs_dt.strftime('%I:%M %p')
     if formatted_time.startswith('00:'):
         formatted_time = '12:' + formatted_time[3:]
-    return f"{bs_dt.strftime('%B %d, %Y')} at {formatted_time} (BS)"
+    ad_date_str = local_dt.strftime('%b %d, %Y')
+    return f"{bs_dt.strftime('%B %d, %Y')} ({ad_date_str}) at {formatted_time}"
 
 
 # ---------------------------------------------------------------------------
@@ -310,7 +314,7 @@ class NotificationService:
     @staticmethod
     def notify_candidate_approved(election, candidate):
         """Notify a candidate that their nomination was approved."""
-        email = getattr(candidate.member, 'email', None) if candidate.member else None
+        email = getattr(candidate, 'email', None) or (getattr(candidate.member, 'email', None) if getattr(candidate, 'member', None) else None)
         if not email or '@' not in email:
             logger.warning(f"[Notify] No email for candidate {candidate.id} — skipping approval notification.")
             return
@@ -353,3 +357,84 @@ class NotificationService:
             logger.info(f"[Notify] Candidate approval sent to {email}")
         except Exception as e:
             logger.error(f"[Notify] Failed to send candidate approval to {email}: {e}")
+
+    @staticmethod
+    def notify_voter_list_published(election):
+        """Notify members that the voter list is published and claim window is open."""
+        recipients = NotificationService._get_member_emails(election)
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+        election_url = f"{frontend_url}/elections/{election.id}"
+
+        claim_deadline = _format_bs(election.voter_list_claim_date, getattr(election.organization, 'timezone', None))
+
+        body = f'''
+        <p style="color:#94A3B8;font-size:15px;margin:0 0 20px;line-height:1.6;">
+          The initial voter roll for <strong style="color:#E2E8F0;">{election.title}</strong>
+          has been published. Please review your details and submit any claims or corrections before the deadline.
+        </p>
+        {_election_info_block(election)}
+        {_info_row("📋", f"Claim / Objection Deadline: <strong style='color:#F59E0B;'>{claim_deadline}</strong>")}
+        {_info_row("🔍", "Log in to check your voter eligibility and registration status.")}
+        '''
+
+        html = _base_email(
+            header_color='#2563EB',
+            icon='📜',
+            title='Voter List Published — Review Your Details',
+            subtitle=election.title,
+            body_html=body,
+            cta_url=election_url,
+            cta_label='Check Voter Roll →',
+        )
+
+        NotificationService._send_bulk(
+            subject=f'📜 Voter List Published — {election.title}',
+            plain_text=f"The voter roll for '{election.title}' is published. Review claims before: {claim_deadline}. Visit {election_url}",
+            html_body=html,
+            recipients=recipients,
+        )
+
+    @staticmethod
+    def notify_schedule_announcement(election):
+        """Send a comprehensive election schedule announcement email to all members."""
+        recipients = NotificationService._get_member_emails(election)
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+        election_url = f"{frontend_url}/elections/{election.id}"
+        tz = getattr(election.organization, 'timezone', None)
+
+        voter_claim = _format_bs(election.voter_list_claim_date, tz)
+        final_voters = _format_bs(election.final_voter_list_date, tz)
+        nom_open = _format_bs(election.nomination_open_at, tz)
+        nom_close = _format_bs(election.nomination_close_at, tz)
+        cand_final = _format_bs(election.candidacy_final_date, tz)
+        voting_start = _format_bs(election.voting_start_at, tz)
+        voting_end = _format_bs(election.voting_end_at, tz)
+
+        body = f'''
+        <p style="color:#94A3B8;font-size:15px;margin:0 0 20px;line-height:1.6;">
+          Official election schedule and timeline for <strong style="color:#E2E8F0;">{election.title}</strong>:
+        </p>
+        {_election_info_block(election)}
+        {_info_row("1️⃣", f"Voter Claim Deadline: <strong>{voter_claim}</strong>")}
+        {_info_row("2️⃣", f"Final Voter Roll: <strong>{final_voters}</strong>")}
+        {_info_row("3️⃣", f"Nominations Period: <strong>{nom_open}</strong> to <strong>{nom_close}</strong>")}
+        {_info_row("4️⃣", f"Final Candidate List: <strong>{cand_final}</strong>")}
+        {_info_row("5️⃣", f"Voting Period: <strong style='color:#10B981;'>{voting_start}</strong> to <strong style='color:#F59E0B;'>{voting_end}</strong>")}
+        '''
+
+        html = _base_email(
+            header_color='#6C5CE7',
+            icon='📅',
+            title='Official Election Timeline Announcement',
+            subtitle=election.title,
+            body_html=body,
+            cta_url=election_url,
+            cta_label='View Election Dashboard →',
+        )
+
+        NotificationService._send_bulk(
+            subject=f'📅 Election Schedule — {election.title}',
+            plain_text=f"Schedule announced for '{election.title}'. Voting starts: {voting_start}, closes: {voting_end}. Visit {election_url}",
+            html_body=html,
+            recipients=recipients,
+        )

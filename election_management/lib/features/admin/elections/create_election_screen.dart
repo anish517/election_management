@@ -41,8 +41,9 @@ Future<DateTime?> _pickNepaliDateTime(BuildContext context, DateTime? current) a
 }
 
 String _formatNepali(DateTime? dt) {
-  if (dt == null) return 'Select';
-  return NepaliDateFormat('EEE, MMM d yyyy  h:mm a').format(dt.toNepaliDateTime());
+  if (dt == null) return 'Select Date';
+  final bsStr = NepaliDateFormat('MMM d, yyyy h:mm a').format(dt.toNepaliDateTime());
+  return '$bsStr (BS)';
 }
 
 // ---------------------------------------------------------------------------
@@ -279,6 +280,22 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
     if (!_formKey.currentState!.validate()) return;
     if (_votingStart == null || _votingEnd == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Election Start and End dates are required.')));
+      return;
+    }
+    if (_votingEnd!.isBefore(_votingStart!)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Voting End date must be after Voting Start date.')));
+      return;
+    }
+    if (_candidacyStart != null && _candidacyEnd != null && _candidacyEnd!.isBefore(_candidacyStart!)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nomination Close date must be after Nomination Open date.')));
+      return;
+    }
+    if (_firstVoterList != null && _voterListClaim != null && _voterListClaim!.isBefore(_firstVoterList!)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Voter List Claim date must be after First Voter List date.')));
+      return;
+    }
+    if (_voterListClaim != null && _finalVoterList != null && _finalVoterList!.isBefore(_voterListClaim!)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Final Voter List date must be after Voter List Claim date.')));
       return;
     }
     try {

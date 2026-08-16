@@ -247,11 +247,39 @@ class ElectionDetailScreen extends ConsumerWidget {
                 _ScheduleBlock(title: 'Voting Period', start: election.votingStartAt!, end: election.votingEndAt!, icon: Icons.schedule_rounded),
               if (election.nominationOpenAt != null && election.nominationCloseAt != null)
                 _ScheduleBlock(title: 'Nomination Phase', start: election.nominationOpenAt!, end: election.nominationCloseAt!, icon: Icons.assignment_ind_outlined),
+              if (election.firstVoterListDate != null || election.finalVoterListDate != null)
+                _SingleMilestoneBlock(
+                  title: 'Voter Roll Schedule',
+                  icon: Icons.people_alt_outlined,
+                  milestones: [
+                    if (election.firstVoterListDate != null) 'First List: ${_formatIsoDate(election.firstVoterListDate!)}',
+                    if (election.voterListClaimDate != null) 'Claims Due: ${_formatIsoDate(election.voterListClaimDate!)}',
+                    if (election.finalVoterListDate != null) 'Final List: ${_formatIsoDate(election.finalVoterListDate!)}',
+                  ],
+                ),
+              if (election.candidacyClaimDate != null || election.candidacyFinalDate != null)
+                _SingleMilestoneBlock(
+                  title: 'Candidacy Milestones',
+                  icon: Icons.verified_user_outlined,
+                  milestones: [
+                    if (election.candidacyClaimDate != null) 'Claims Due: ${_formatIsoDate(election.candidacyClaimDate!)}',
+                    if (election.candidacyFinalDate != null) 'Final List: ${_formatIsoDate(election.candidacyFinalDate!)}',
+                  ],
+                ),
             ],
           ),
         ],
       ),
     );
+  }
+
+  static String _formatIsoDate(String iso) {
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      return '${NepaliDateFormat('MMM d, yyyy').format(dt.toNepaliDateTime())} (BS)';
+    } catch (_) {
+      return iso;
+    }
   }
 
 
@@ -961,6 +989,43 @@ class _ScheduleBlock extends StatelessWidget {
             const SizedBox(height: 4),
             Text('Starts: ${_format(start)}', style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.black54)),
             Text('Ends: ${_format(end)}', style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.black54)),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _SingleMilestoneBlock extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final List<String> milestones;
+
+  const _SingleMilestoneBlock({
+    required this.title,
+    required this.icon,
+    required this.milestones,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: isDark ? Colors.white70 : Colors.black54),
+        const SizedBox(width: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? Colors.white : Colors.black87)),
+            const SizedBox(height: 4),
+            ...milestones.map((m) => Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Text(m, style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.black54)),
+            )),
           ],
         ),
       ],

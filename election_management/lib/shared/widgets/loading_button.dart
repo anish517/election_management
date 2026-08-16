@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
+
 class LoadingButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool isLoading;
@@ -20,55 +21,69 @@ class LoadingButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return SizedBox(
-          width: (fullWidth && constraints.maxWidth < double.infinity) ? double.infinity : null,
-          height: 52,
-          child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: backgroundColor == null ? AppColors.primaryGradient : null,
-          color: backgroundColor,
-          boxShadow: [
-            if (!isLoading && onPressed != null)
-              BoxShadow(
-                color: (backgroundColor ?? AppColors.primaryLight).withValues(alpha: 0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-          ],
+    final buttonChild = DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        gradient: backgroundColor == null ? AppColors.primaryGradient : null,
+        color: backgroundColor,
+        boxShadow: [
+          if (!isLoading && onPressed != null)
+            BoxShadow(
+              color: (backgroundColor ?? AppColors.primaryLight).withValues(alpha: 0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: isLoading ? null : onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          padding: EdgeInsets.symmetric(horizontal: fullWidth ? 16 : 20, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
-        child: ElevatedButton(
-          onPressed: isLoading ? null : onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          ),
-          child: isLoading
-              ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (icon != null) ...[
-                      Icon(icon, size: 20, color: Colors.white),
-                      const SizedBox(width: 8),
-                    ],
-                    Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Colors.white)),
-                  ],
+        child: isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
-        ),
+              )
+            : Row(
+                mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (icon != null) ...[
+                    Icon(icon, size: 18, color: Colors.white),
+                    const SizedBox(width: 8),
+                  ],
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14.5,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
+
+    if (fullWidth) {
+      return SizedBox(
+        width: double.infinity,
+        height: 48,
+        child: buttonChild,
+      );
     }
+
+    return SizedBox(
+      height: 44,
+      child: buttonChild,
     );
   }
 }

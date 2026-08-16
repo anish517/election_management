@@ -47,25 +47,17 @@ class VotingHistoryScreen extends ConsumerWidget {
             itemBuilder: (context, i) {
               final item = history[i];
               final votedAt = DateTime.parse(item['voted_at']).toLocal();
-              
               final isDark = Theme.of(context).brightness == Brightness.dark;
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.surface : Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05)),
-                  boxShadow: [
-                    if (!isDark)
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.03),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                  ],
-                ),
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
                 child: Material(
-                  color: Colors.transparent,
+                  color: isDark ? AppColors.surface : Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05)),
+                  ),
+                  elevation: isDark ? 0 : 1,
+                  shadowColor: Colors.black.withValues(alpha: 0.03),
                   child: ListTile(
                     contentPadding: const EdgeInsets.all(16),
                   leading: const CircleAvatar(

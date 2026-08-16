@@ -154,7 +154,7 @@ class _FileCandidateObjectionDialogState extends ConsumerState<FileCandidateObje
                   Text('Select Candidate to Object *', style: Theme.of(context).textTheme.labelLarge),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    value: _selectedCandidateId,
+                    initialValue: _selectedCandidateId,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

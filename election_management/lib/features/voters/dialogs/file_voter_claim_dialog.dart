@@ -151,7 +151,7 @@ class _FileVoterClaimDialogState extends ConsumerState<FileVoterClaimDialog> {
                   Text('Select Claim Type', style: Theme.of(context).textTheme.labelLarge),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    value: _claimType,
+                    initialValue: _claimType,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

@@ -15,13 +15,61 @@ import 'import_members_dialog.dart';
 import 'voter_csv_import_wizard_screen.dart';
 import 'voter_profile_sheet.dart';
 
-class VotersScreen extends ConsumerWidget {
+class VotersScreen extends ConsumerStatefulWidget {
   final String electionId;
   const VotersScreen({super.key, required this.electionId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final votersAsync = ref.watch(votersProvider(electionId));
+  ConsumerState<VotersScreen> createState() => _VotersScreenState();
+}
+
+class _VotersScreenState extends ConsumerState<VotersScreen> {
+  String _searchQuery = '';
+  String _eligibilityFilter = 'all'; // 'all', 'eligible', 'ineligible'
+
+  Future<void> _exportCsv() async {
+    try {
+      final dio = ref.read(apiClientProvider);
+      final url = ApiConstants.exportElectionVotersCsv(widget.electionId);
+      final response = await dio.get(url, options: Options(responseType: ResponseType.plain));
+
+      final csvString = response.data.toString();
+      final bytes = utf8.encode(csvString);
+      final base64String = base64Encode(bytes);
+
+      try {
+        downloadFileFromBase64(base64String, 'voters_export.csv');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.download_done_rounded, color: Colors.white),
+                  SizedBox(width: 10),
+                  Text('Voter roll exported to CSV successfully!'),
+                ],
+              ),
+              backgroundColor: Colors.green.shade700,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not download file: $e')));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final votersAsync = ref.watch(votersProvider(widget.electionId));
     final user = ref.watch(currentUserProvider);
     final isAdmin = user?.canManageElections ?? false;
     final isObserverOrAuditor = (user?.isObserver ?? false) || (user?.isAuditor ?? false);
@@ -30,17 +78,32 @@ class VotersScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: isDark ? AppColors.background : const Color(0xFFF8F9FA),
       appBar: AppBar(
-        title: const Text('Voter Roll (मतदाता नामावली)'),
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Voter Roll (मतदाता नामावली)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text('Electoral roll directory & franchise administration', style: TextStyle(fontSize: 11, color: Colors.white70)),
+          ],
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Refresh Voter Roll',
+            onPressed: () => ref.invalidate(votersProvider(widget.electionId)),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Observer / Auditor Notice
             if (isObserverOrAuditor)
               Container(
                 margin: const EdgeInsets.only(bottom: 16),
@@ -63,37 +126,40 @@ class VotersScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+
+            // Top Header & Action Suite
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Published Voter Roll',
+                      'Published Voter Roll (मतदाता सूची)',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       isAdmin
-                          ? 'Official registered voter roll with management controls'
+                          ? 'Official registered voter roll with management controls and verification'
                           : isObserverOrAuditor
                               ? 'Read-only voter roll for independent audit and monitoring'
-                              : 'Public voter list for verification and scrutiny (दाबी-विरोध)',
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                              : 'Public voter list for verification and statutory scrutiny (दाबी-विरोध)',
+                      style: TextStyle(color: isDark ? Colors.white60 : AppColors.textMuted, fontSize: 13),
                     ),
                   ],
                 ),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: 10,
+                  runSpacing: 10,
                   children: [
                     if (!isAdmin && !isObserverOrAuditor) ...[
                       ElevatedButton.icon(
                         onPressed: () {
                           showDialog(
                             context: context,
-                            builder: (_) => FileVoterClaimDialog(electionId: electionId),
+                            builder: (_) => FileVoterClaimDialog(electionId: widget.electionId),
                           );
                         },
                         icon: const Icon(Icons.rate_review_rounded, size: 18),
@@ -101,38 +167,39 @@ class VotersScreen extends ConsumerWidget {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                       ),
                     ] else if (isAdmin) ...[
-                      ElevatedButton.icon(
+                      FilledButton.icon(
                         onPressed: () {
                           showDialog(
                             context: context,
-                            builder: (context) => AddVoterDialog(electionId: electionId),
+                            builder: (context) => AddVoterDialog(electionId: widget.electionId),
                           );
                         },
-                        icon: const Icon(Icons.add, size: 18),
+                        icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
                         label: const Text('Add New Voter'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF563D7C),
-                          foregroundColor: Colors.white,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF4F46E5),
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                       ),
-                      ElevatedButton.icon(
+                      FilledButton.icon(
                         onPressed: () {
                           showDialog(
                             context: context,
-                            builder: (context) => ImportMembersDialog(electionId: electionId),
+                            builder: (context) => ImportMembersDialog(electionId: widget.electionId),
                           );
                         },
                         icon: const Icon(Icons.people_alt_outlined, size: 18),
                         label: const Text('Import Members'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF7C3AED),
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                       ),
                       OutlinedButton.icon(
@@ -140,22 +207,24 @@ class VotersScreen extends ConsumerWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => VoterCsvImportWizardScreen(electionId: electionId),
+                              builder: (_) => VoterCsvImportWizardScreen(electionId: widget.electionId),
                             ),
                           );
                         },
-                        icon: const Icon(Icons.upload_file, size: 18),
+                        icon: const Icon(Icons.upload_file_rounded, size: 18),
                         label: const Text('Import CSV'),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                       ),
                       OutlinedButton.icon(
-                        onPressed: () => _exportCsv(context, ref),
+                        onPressed: _exportCsv,
                         icon: const Icon(Icons.download_rounded, size: 18),
                         label: const Text('Export CSV'),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                       ),
                     ],
@@ -163,36 +232,140 @@ class VotersScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
 
+            // Live Search & Franchise Filter Toolbar
+            votersAsync.maybeWhen(
+              data: (voters) {
+                final totalVoters = voters.length;
+                final eligibleCount = voters.where((v) => v['is_eligible'] == true).length;
+                final ineligibleCount = totalVoters - eligibleCount;
+
+                return Material(
+                  color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.3) : Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    side: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Row(
+                      children: [
+                        // Search Field
+                        Expanded(
+                          child: TextField(
+                            decoration: InputDecoration(
+                              hintText: 'Search by voter name, email, Voter ID, council or citizenship no...',
+                              hintStyle: const TextStyle(fontSize: 13),
+                              prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              filled: true,
+                              fillColor: isDark ? AppColors.surfaceVariant : const Color(0xFFF9FAFB),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade300),
+                              ),
+                            ),
+                            onChanged: (v) => setState(() => _searchQuery = v),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+
+                        // Franchise Filter Choice Chips
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            ChoiceChip(
+                              label: Text('All ($totalVoters)', style: const TextStyle(fontSize: 12)),
+                              selected: _eligibilityFilter == 'all',
+                              onSelected: (val) => setState(() => _eligibilityFilter = 'all'),
+                            ),
+                            ChoiceChip(
+                              label: Text('Eligible ($eligibleCount)', style: const TextStyle(fontSize: 12)),
+                              selected: _eligibilityFilter == 'eligible',
+                              selectedColor: Colors.green.withValues(alpha: 0.2),
+                              onSelected: (val) => setState(() => _eligibilityFilter = 'eligible'),
+                            ),
+                            if (ineligibleCount > 0)
+                              ChoiceChip(
+                                label: Text('Ineligible ($ineligibleCount)', style: const TextStyle(fontSize: 12)),
+                                selected: _eligibilityFilter == 'ineligible',
+                                selectedColor: Colors.red.withValues(alpha: 0.2),
+                                onSelected: (val) => setState(() => _eligibilityFilter = 'ineligible'),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+              orElse: () => const SizedBox.shrink(),
+            ),
+            const SizedBox(height: 16),
+
+            // Elector Directory Table Card
             Expanded(
               child: Card(
                 elevation: 0,
                 color: isDark ? AppColors.surface : Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   side: BorderSide(color: isDark ? AppColors.surfaceVariant : Colors.grey.shade200),
                 ),
                 child: Column(
                   children: [
-                    _buildTableHeader(isAdmin),
+                    _buildTableHeader(isAdmin, isDark),
                     const Divider(height: 1),
                     Expanded(
                       child: votersAsync.when(
                         loading: () => const Center(child: CircularProgressIndicator()),
-                        error: (err, stack) => Center(child: Text('Error loading voters: $err')),
+                        error: (err, stack) => Center(child: Text('Error loading voters: $err', style: const TextStyle(color: Colors.red))),
                         data: (voters) {
                           if (voters.isEmpty) {
                             return const Center(
-                              child: Text('No voters found on the roll.'),
+                              child: Text('No voters registered on the electoral roll.', style: TextStyle(fontSize: 13, color: Colors.grey)),
                             );
                           }
+
+                          // Filter voters
+                          final filtered = voters.where((item) {
+                            final map = item as Map<String, dynamic>;
+                            final fullName = (map['full_name'] ?? '${map['first_name']} ${map['last_name']}').toString().toLowerCase();
+                            final email = (map['email'] ?? '').toString().toLowerCase();
+                            final voterId = (map['voter_id'] ?? '').toString().toLowerCase();
+                            final councilNo = (map['council_number'] ?? '').toString().toLowerCase();
+                            final citizenNo = (map['citizenship_number'] ?? '').toString().toLowerCase();
+                            final isEligible = map['is_eligible'] == true;
+
+                            if (_eligibilityFilter == 'eligible' && !isEligible) return false;
+                            if (_eligibilityFilter == 'ineligible' && isEligible) return false;
+
+                            if (_searchQuery.isNotEmpty) {
+                              final q = _searchQuery.toLowerCase();
+                              return fullName.contains(q) ||
+                                  email.contains(q) ||
+                                  voterId.contains(q) ||
+                                  councilNo.contains(q) ||
+                                  citizenNo.contains(q);
+                            }
+                            return true;
+                          }).toList();
+
+                          if (filtered.isEmpty) {
+                            return const Center(
+                              child: Text('No voters matching search or filter criteria.', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                            );
+                          }
+
                           return ListView.separated(
-                            itemCount: voters.length,
+                            itemCount: filtered.length,
                             separatorBuilder: (context, index) => const Divider(height: 1),
                             itemBuilder: (context, index) {
-                              final voter = voters[index] as Map<String, dynamic>;
-                              return _buildTableRow(context, ref, voter, index + 1, isAdmin, isObserverOrAuditor);
+                              final voter = filtered[index] as Map<String, dynamic>;
+                              return _buildTableRow(context, ref, voter, index + 1, isAdmin, isObserverOrAuditor, isDark);
                             },
                           );
                         },
@@ -208,115 +381,73 @@ class VotersScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTableHeader(bool isAdmin) {
+  Widget _buildTableHeader(bool isAdmin, bool isDark) {
+    final style = TextStyle(
+      fontWeight: FontWeight.bold,
+      fontSize: 12.5,
+      color: isDark ? Colors.white70 : Colors.grey.shade800,
+    );
+
     if (!isAdmin) {
-      // Clean, privacy-first view for regular Voters and Candidates
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+      // Privacy-first view for regular Voters and Observers
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 14.0),
         child: Row(
           children: [
-            SizedBox(
-              width: 50,
-              child: Text('S.N.', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-            Expanded(
-              flex: 2,
-              child: Text(
-                'Voter ID',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            Expanded(
-              flex: 4,
-              child: Text(
-                'Full Name',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Text(
-                'Status',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-            SizedBox(
-              width: 140,
-              child: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.right),
-            ),
+            SizedBox(width: 48, child: Text('S.N.', style: style)),
+            Expanded(flex: 2, child: Text('Voter Roll ID', style: style)),
+            Expanded(flex: 4, child: Text('Full Legal Name', style: style)),
+            Expanded(flex: 2, child: Text('Franchise Status', style: style)),
+            SizedBox(width: 140, child: Text('Actions', style: style, textAlign: TextAlign.right)),
           ],
         ),
       );
     }
 
-    // Admin view with full contact details
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+    // Admin view with verification credentials
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 14.0),
       child: Row(
         children: [
-          SizedBox(
-            width: 50,
-            child: Text('S.N.', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              'Voter ID',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Text(
-              'Name',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Text(
-              'Email',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text('Phone', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text('Council No.', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text('Citizenship No.', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-          SizedBox(
-            width: 150,
-            child: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.right),
-          ),
+          SizedBox(width: 48, child: Text('S.N.', style: style)),
+          Expanded(flex: 2, child: Text('Voter ID', style: style)),
+          Expanded(flex: 3, child: Text('Elector Name', style: style)),
+          Expanded(flex: 3, child: Text('Email Address', style: style)),
+          Expanded(flex: 2, child: Text('Contact Phone', style: style)),
+          Expanded(flex: 2, child: Text('Council / Reg No', style: style)),
+          Expanded(flex: 2, child: Text('Citizenship No', style: style)),
+          SizedBox(width: 150, child: Text('Actions', style: style, textAlign: TextAlign.right)),
         ],
       ),
     );
   }
 
-  Widget _buildTableRow(BuildContext context, WidgetRef ref, Map<String, dynamic> voter, int sn, bool isAdmin, bool isObserverOrAuditor) {
-    final fullName = (voter['full_name'] as String?)?.trim() ?? '';
+  Widget _buildTableRow(
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> voter,
+    int sn,
+    bool isAdmin,
+    bool isObserverOrAuditor,
+    bool isDark,
+  ) {
+    final fullName = (voter['full_name'] as String?)?.trim() ?? '${voter['first_name'] ?? ''} ${voter['last_name'] ?? ''}'.trim();
     final initial = fullName.isNotEmpty ? fullName[0].toUpperCase() : 'V';
     final isEligible = voter['is_eligible'] == true;
+    final voterId = voter['voter_id']?.toString() ?? '-';
 
     if (!isAdmin) {
       // Read-Only Privacy Row for Voters & Candidates
       return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+        padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 12.0),
         child: Row(
           children: [
-            SizedBox(width: 50, child: Text(sn.toString())),
+            SizedBox(width: 48, child: Text(sn.toString(), style: const TextStyle(fontSize: 13))),
             Expanded(
               flex: 2,
               child: Text(
-                voter['voter_id']?.toString().isNotEmpty == true ? voter['voter_id'] : '-',
-                style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                voterId.isNotEmpty ? voterId : '-',
+                style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryLight, fontSize: 13),
               ),
             ),
             Expanded(
@@ -325,14 +456,14 @@ class VotersScreen extends ConsumerWidget {
                 children: [
                   CircleAvatar(
                     radius: 16,
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                    child: Text(initial, style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.bold)),
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                    child: Text(initial, style: const TextStyle(color: AppColors.primaryLight, fontSize: 12, fontWeight: FontWeight.bold)),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       fullName.isNotEmpty ? fullName : '-',
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -348,7 +479,7 @@ class VotersScreen extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  isEligible ? 'Eligible Voter' : 'Ineligible',
+                  isEligible ? 'Franchise Active' : 'Ineligible',
                   style: TextStyle(
                     color: isEligible ? Colors.green : Colors.red,
                     fontSize: 11,
@@ -364,7 +495,7 @@ class VotersScreen extends ConsumerWidget {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.person_search_rounded, size: 18, color: AppColors.primaryLight),
-                    tooltip: 'View Profile',
+                    tooltip: 'View Profile Dossier',
                     onPressed: () {
                       showModalBottomSheet(
                         context: context,
@@ -382,7 +513,7 @@ class VotersScreen extends ConsumerWidget {
                         showDialog(
                           context: context,
                           builder: (_) => FileVoterClaimDialog(
-                            electionId: electionId,
+                            electionId: widget.electionId,
                             initialVoterName: fullName,
                           ),
                         );
@@ -396,31 +527,79 @@ class VotersScreen extends ConsumerWidget {
       );
     }
 
-    // Admin Row with full controls (Edit / Delete)
+    // Admin Row with full controls (Edit / Delete / Profile)
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 10.0),
       child: Row(
         children: [
-          SizedBox(width: 50, child: Text(sn.toString())),
-          Expanded(flex: 2, child: Text(voter['voter_id']?.toString().isNotEmpty == true ? voter['voter_id'] : '-')),
+          SizedBox(width: 48, child: Text(sn.toString(), style: const TextStyle(fontSize: 13))),
+          Expanded(
+            flex: 2,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                voterId.isNotEmpty ? voterId : '-',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primaryLight),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
           Expanded(
             flex: 3,
             child: Row(
               children: [
                 CircleAvatar(
-                  radius: 16,
-                  backgroundColor: const Color(0xFF563D7C).withValues(alpha: 0.1),
-                  child: Text(initial, style: const TextStyle(color: Color(0xFF563D7C), fontSize: 12)),
+                  radius: 15,
+                  backgroundColor: const Color(0xFF4F46E5).withValues(alpha: 0.12),
+                  child: Text(initial, style: const TextStyle(color: Color(0xFF4F46E5), fontSize: 12, fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(width: 8),
-                Expanded(child: Text(fullName.isNotEmpty ? fullName : '-', style: const TextStyle(fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis)),
+                Expanded(
+                  child: Text(
+                    fullName.isNotEmpty ? fullName : '-',
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
           ),
-          Expanded(flex: 3, child: Text(voter['email']?.toString().isNotEmpty == true ? voter['email'] : '-', overflow: TextOverflow.ellipsis)),
-          Expanded(flex: 2, child: Text(voter['phone']?.toString().isNotEmpty == true ? voter['phone'] : '-')),
-          Expanded(flex: 2, child: Text(voter['council_number']?.toString().isNotEmpty == true ? voter['council_number'] : '-')),
-          Expanded(flex: 2, child: Text(voter['citizenship_number']?.toString().isNotEmpty == true ? voter['citizenship_number'] : '-')),
+          Expanded(
+            flex: 3,
+            child: Text(
+              voter['email']?.toString().isNotEmpty == true ? voter['email'] : '-',
+              style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.grey.shade700),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              voter['phone']?.toString().isNotEmpty == true ? voter['phone'] : '-',
+              style: const TextStyle(fontSize: 12),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              voter['council_number']?.toString().isNotEmpty == true ? voter['council_number'] : '-',
+              style: const TextStyle(fontSize: 12),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              voter['citizenship_number']?.toString().isNotEmpty == true ? voter['citizenship_number'] : '-',
+              style: const TextStyle(fontSize: 12),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
           SizedBox(
             width: 150,
             child: Row(
@@ -428,7 +607,7 @@ class VotersScreen extends ConsumerWidget {
               children: [
                 IconButton(
                   icon: const Icon(Icons.person_search_rounded, size: 18, color: AppColors.primaryLight),
-                  tooltip: 'View Profile',
+                  tooltip: 'View Profile Dossier',
                   onPressed: () {
                     showModalBottomSheet(
                       context: context,
@@ -439,36 +618,37 @@ class VotersScreen extends ConsumerWidget {
                   },
                 ),
                 IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
-                  tooltip: 'Edit',
+                  icon: const Icon(Icons.edit_outlined, size: 18, color: Colors.indigo),
+                  tooltip: 'Edit Voter',
                   onPressed: () {
                     showDialog(
                       context: context,
-                      builder: (context) => EditVoterDialog(electionId: electionId, voter: voter),
+                      builder: (context) => EditVoterDialog(electionId: widget.electionId, voter: voter),
                     );
                   },
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
-                  tooltip: 'Delete',
+                  tooltip: 'Delete Voter',
                   onPressed: () async {
                     final confirm = await showDialog<bool>(
                       context: context,
                       builder: (ctx) => AlertDialog(
-                        title: const Text('Delete Voter'),
-                        content: Text('Are you sure you want to delete $fullName?'),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        title: const Text('Delete Voter from Roll'),
+                        content: Text('Are you sure you want to delete "$fullName" from this election roll?'),
                         actions: [
                           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
                           FilledButton(
                             style: FilledButton.styleFrom(backgroundColor: Colors.red),
                             onPressed: () => Navigator.pop(ctx, true),
-                            child: const Text('Delete'),
+                            child: const Text('Delete Voter'),
                           ),
                         ],
                       ),
                     );
                     if (confirm == true) {
-                      ref.read(publishElectionProvider.notifier).deleteVoter(electionId, voter['id'].toString());
+                      ref.read(publishElectionProvider.notifier).deleteVoter(widget.electionId, voter['id'].toString());
                     }
                   },
                 ),
@@ -478,29 +658,5 @@ class VotersScreen extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
-    try {
-      final dio = ref.read(apiClientProvider);
-      final url = ApiConstants.exportElectionVotersCsv(electionId);
-      final response = await dio.get(url, options: Options(responseType: ResponseType.plain));
-      
-      final csvString = response.data.toString();
-      final bytes = utf8.encode(csvString);
-      final base64String = base64Encode(bytes);
-      
-      try {
-        downloadFileFromBase64(base64String, 'voters_export.csv');
-      } catch (e) {
-        if (context.mounted) {
-           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not download file: $e')));
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
-      }
-    }
   }
 }

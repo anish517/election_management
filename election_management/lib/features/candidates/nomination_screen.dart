@@ -174,7 +174,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                             return ListView.separated(
                               controller: scrollCtrl,
                               itemCount: members.length,
-                              separatorBuilder: (_, __) => const Divider(height: 1),
+                              separatorBuilder: (_, _) => const Divider(height: 1),
                               itemBuilder: (ctx, idx) {
                                 final m = members[idx];
                                 return ListTile(
@@ -483,7 +483,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                         child: Text(p.title),
                       );
                     }).toList(),
-                    value: _selectedPositionId,
+                    initialValue: _selectedPositionId,
                     onChanged: (val) {
                       setState(() {
                         _selectedPositionId = val;
@@ -510,7 +510,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                                 child: Text('${q.name} (${q.seats} seats)'),
                               )),
                             ],
-                            value: _selectedQuotaId,
+                            initialValue: _selectedQuotaId,
                             onChanged: (val) => setState(() => _selectedQuotaId = val),
                           ),
                           const SizedBox(height: 16),

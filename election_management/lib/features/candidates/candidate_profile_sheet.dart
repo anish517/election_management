@@ -42,7 +42,7 @@ class _CandidateProfileSheetState extends State<CandidateProfileSheet>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final c = widget.candidate;
     final hasPhoto = c.photoUrl != null && c.photoUrl!.isNotEmpty;
-    final sheetBg = isDark ? AppColors.surface : Colors.white;
+    final sheetBg = isDark ? const Color(0xFF18181B) : Colors.white;
     final statusColor = _statusColor(c.status);
 
     return DraggableScrollableSheet(
@@ -58,47 +58,54 @@ class _CandidateProfileSheetState extends State<CandidateProfileSheet>
           ),
           child: Column(
             children: [
-              // ── Drag handle ──
+              // ── Drag Handle ──
               Container(
-                margin: const EdgeInsets.only(top: 10, bottom: 4),
-                width: 38,
-                height: 4,
+                margin: const EdgeInsets.only(top: 12, bottom: 6),
+                width: 44,
+                height: 4.5,
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.surfaceVariant : const Color(0xFFCDD5E0),
-                  borderRadius: BorderRadius.circular(2),
+                  color: isDark ? Colors.white24 : Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(3),
                 ),
               ),
 
-              // ── Hero header ──
+              // ── Hero Header Banner ──
               _HeroHeader(candidate: c, isDark: isDark, hasPhoto: hasPhoto, statusColor: statusColor),
 
-              // ── Tab bar ──
+              // ── Segmented Tab Bar ──
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.background : const Color(0xFFF0F3F8),
-                  borderRadius: BorderRadius.circular(12),
+                  color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.5) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: TabBar(
                   controller: _tabController,
                   indicator: BoxDecoration(
                     color: AppColors.primaryLight,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primaryLight.withValues(alpha: 0.25),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   indicatorSize: TabBarIndicatorSize.tab,
                   dividerColor: Colors.transparent,
                   labelColor: Colors.white,
-                  unselectedLabelColor: isDark ? AppColors.textMuted : AppColors.textSecondaryLightMode,
-                  labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                  unselectedLabelColor: isDark ? Colors.white60 : Colors.grey.shade600,
+                  labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
                   tabs: const [
-                    Tab(text: 'Platform / Manifesto'),
-                    Tab(text: 'About'),
-                    Tab(text: 'Endorsements'),
+                    Tab(icon: Icon(Icons.menu_book_rounded, size: 16), text: 'Platform & Manifesto'),
+                    Tab(icon: Icon(Icons.person_outline_rounded, size: 16), text: 'Credentials & About'),
+                    Tab(icon: Icon(Icons.draw_rounded, size: 16), text: 'Endorsements'),
                   ],
                 ),
               ),
 
-              // ── Tab content ──
+              // ── Tab Content ──
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
@@ -117,12 +124,19 @@ class _CandidateProfileSheetState extends State<CandidateProfileSheet>
   }
 
   Color _statusColor(String? status) {
-    switch (status) {
-      case 'approved': return AppColors.success;
-      case 'rejected': return AppColors.error;
-      case 'submitted': return Colors.blue;
-      case 'under_review': return AppColors.warning;
-      default: return AppColors.textMuted;
+    switch (status?.toLowerCase()) {
+      case 'approved':
+        return const Color(0xFF10B981);
+      case 'rejected':
+        return const Color(0xFFEF4444);
+      case 'withdrawn':
+        return Colors.grey;
+      case 'submitted':
+      case 'pending':
+      case 'under_review':
+        return const Color(0xFFF59E0B);
+      default:
+        return AppColors.textMuted;
     }
   }
 }
@@ -145,28 +159,32 @@ class _HeroHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Row(
         children: [
-          // Avatar with animated border
+          // Avatar with gradient border
           Hero(
             tag: 'candidate_avatar_${candidate.id}',
             child: Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.primaryLight.withValues(alpha: 0.8),
-                    AppColors.primary.withValues(alpha: 0.4),
-                  ],
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF4F46E5).withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
               ),
               padding: const EdgeInsets.all(3),
               child: CircleAvatar(
                 radius: 40,
-                backgroundColor: isDark ? AppColors.background : const Color(0xFFF0F3F8),
+                backgroundColor: isDark ? const Color(0xFF27272A) : const Color(0xFFF0F3F8),
                 backgroundImage: hasPhoto ? NetworkImage(candidate.photoUrl!) : null,
                 child: !hasPhoto
                     ? Text(
@@ -184,7 +202,7 @@ class _HeroHeader extends StatelessWidget {
               .animate()
               .scale(begin: const Offset(0.7, 0.7), duration: 400.ms, curve: Curves.easeOutBack),
 
-          const SizedBox(width: 16),
+          const SizedBox(width: 18),
 
           // Name + position + status badge
           Expanded(
@@ -193,45 +211,78 @@ class _HeroHeader extends StatelessWidget {
               children: [
                 Text(
                   candidate.name,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
                 ).animate().fadeIn(duration: 350.ms, delay: 100.ms).slideX(begin: 0.15),
 
-                if (candidate.positionTitle != null) ...[
+                if (candidate.positionTitle != null && candidate.positionTitle!.isNotEmpty) ...[
                   const SizedBox(height: 3),
-                  Text(
-                    'Running for ${candidate.positionTitle}',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isDark ? AppColors.textMuted : AppColors.textSecondaryLightMode,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'Running for ${candidate.positionTitle}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryLight,
+                      ),
                     ),
                   ).animate().fadeIn(duration: 350.ms, delay: 150.ms),
                 ],
 
                 const SizedBox(height: 8),
-                if (candidate.status != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: statusColor.withValues(alpha: 0.35)),
-                    ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Row(
+                  children: [
+                    if (candidate.status != null)
                       Container(
-                        width: 6, height: 6,
-                        decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        candidate.status!.replaceAll('_', ' ').toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                          color: statusColor,
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: statusColor.withValues(alpha: 0.35)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              candidate.status!.replaceAll('_', ' ').toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w800,
+                                color: statusColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ).animate().fadeIn(duration: 350.ms, delay: 250.ms),
+
+                    if (candidate.slateName.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                        ),
+                        child: Text(
+                          candidate.slateName,
+                          style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Colors.blue),
                         ),
                       ),
-                    ]),
-                  ).animate().fadeIn(duration: 350.ms, delay: 250.ms),
+                    ],
+                  ],
+                ),
               ],
             ),
           ),
@@ -257,47 +308,103 @@ class _ManifestoTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasPersonalDesc = candidate.personalDescription.trim().isNotEmpty;
     final hasManifesto = candidate.manifesto.trim().isNotEmpty;
 
+    if (!hasPersonalDesc && !hasManifesto) {
+      return _EmptyManifesto(isDark: isDark);
+    }
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-      child: hasManifesto
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Decorative quote mark
-                Text(
-                  '"',
-                  style: TextStyle(
-                    fontSize: 72,
-                    height: 0.8,
-                    color: AppColors.primaryLight.withValues(alpha: 0.18),
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                // Manifesto text rendered as styled paragraphs
-                ..._buildParagraphs(context, candidate.manifesto, isDark),
-                const SizedBox(height: 20),
-                // Decorative bottom bar
-                Row(children: [
-                  Expanded(
-                    child: Container(
-                      height: 2,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [AppColors.primaryLight.withValues(alpha: 0.5), Colors.transparent],
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Personal Description & Background Summary
+          if (hasPersonalDesc) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.4) : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: isDark ? Colors.white12 : Colors.grey.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.account_box_outlined, size: 18, color: AppColors.primaryLight),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Biographical Summary & Experience',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white70 : Colors.grey.shade800,
                         ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    candidate.personalDescription.trim(),
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      height: 1.6,
+                      color: isDark ? Colors.white70 : const Color(0xFF374151),
                     ),
                   ),
-                ]),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+
+          // Platform & Manifesto
+          if (hasManifesto) ...[
+            Row(
+              children: [
+                const Icon(Icons.menu_book_rounded, size: 18, color: AppColors.primaryLight),
+                const SizedBox(width: 8),
+                Text(
+                  'Election Manifesto & Platform Agenda (घोषणापत्र)',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
               ],
-            )
-            .animate()
-            .fadeIn(duration: 400.ms)
-            .slideY(begin: 0.05, duration: 400.ms, curve: Curves.easeOut)
-          : _EmptyManifesto(isDark: isDark),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.3) : const Color(0xFFFAFAFA),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: isDark ? Colors.white12 : Colors.grey.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '"',
+                    style: TextStyle(
+                      fontSize: 48,
+                      height: 0.6,
+                      color: AppColors.primaryLight.withValues(alpha: 0.25),
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ..._buildParagraphs(context, candidate.manifesto, isDark),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.05, duration: 400.ms, curve: Curves.easeOut),
     );
   }
 
@@ -308,11 +415,11 @@ class _ManifestoTab extends StatelessWidget {
     return paragraphs.asMap().entries.map((entry) {
       final isFirst = entry.key == 0;
       return Padding(
-        padding: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.only(bottom: 12),
         child: Text(
           entry.value.trim(),
           style: TextStyle(
-            fontSize: isFirst ? 16 : 14.5,
+            fontSize: isFirst ? 14.5 : 13.5,
             height: 1.65,
             color: textColor,
             fontWeight: isFirst ? FontWeight.w600 : FontWeight.normal,
@@ -334,14 +441,11 @@ class _EmptyManifesto extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Animated pencil icon
           Icon(
             Icons.edit_note_rounded,
             size: 64,
             color: isDark ? AppColors.textMuted : const Color(0xFFCDD5E0),
-          )
-              .animate(onPlay: (ctrl) => ctrl.repeat(reverse: true))
-              .scaleXY(begin: 0.95, end: 1.05, duration: 1200.ms, curve: Curves.easeInOut),
+          ).animate(onPlay: (ctrl) => ctrl.repeat(reverse: true)).scaleXY(begin: 0.95, end: 1.05, duration: 1200.ms, curve: Curves.easeInOut),
           const SizedBox(height: 16),
           Text(
             'No manifesto submitted yet',
@@ -353,7 +457,7 @@ class _EmptyManifesto extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'The candidate has not written a platform statement.',
+            'The candidate has not submitted a platform statement.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,
@@ -366,7 +470,7 @@ class _EmptyManifesto extends StatelessWidget {
   }
 }
 
-// ─── Tab 2: About ─────────────────────────────────────────────────────────────
+// ─── Tab 2: About & Credentials ──────────────────────────────────────────────
 
 class _AboutTab extends StatelessWidget {
   final CandidateModel candidate;
@@ -377,13 +481,13 @@ class _AboutTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _InfoRow(
             icon: Icons.badge_rounded,
-            label: 'Full Name',
+            label: 'Full Legal Name',
             value: candidate.name,
             isDark: isDark,
           ).animate().fadeIn(delay: 50.ms).slideX(begin: 0.1),
@@ -391,23 +495,64 @@ class _AboutTab extends StatelessWidget {
           if (candidate.email != null && candidate.email!.isNotEmpty)
             _InfoRow(
               icon: Icons.alternate_email_rounded,
-              label: 'Email',
+              label: 'Verified Electoral Email',
               value: candidate.email!,
               isDark: isDark,
             ).animate().fadeIn(delay: 100.ms).slideX(begin: 0.1),
 
-          if (candidate.positionTitle != null)
+          if (candidate.contactNumber != null && candidate.contactNumber!.isNotEmpty)
             _InfoRow(
-              icon: Icons.work_outline_rounded,
-              label: 'Running For',
+              icon: Icons.phone_rounded,
+              label: 'Contact Phone Number',
+              value: candidate.contactNumber!,
+              isDark: isDark,
+            ).animate().fadeIn(delay: 120.ms).slideX(begin: 0.1),
+
+          if (candidate.positionTitle != null && candidate.positionTitle!.isNotEmpty)
+            _InfoRow(
+              icon: Icons.military_tech_rounded,
+              label: 'Contested Office & Designation',
               value: candidate.positionTitle!,
               isDark: isDark,
             ).animate().fadeIn(delay: 150.ms).slideX(begin: 0.1),
 
+          if (candidate.quotaName != null && candidate.quotaName!.isNotEmpty)
+            _InfoRow(
+              icon: Icons.category_rounded,
+              label: 'Affirmative Action Quota',
+              value: candidate.quotaName!,
+              isDark: isDark,
+              valueColor: Colors.purple,
+            ).animate().fadeIn(delay: 170.ms).slideX(begin: 0.1),
+
+          if (candidate.gender != null && candidate.gender!.isNotEmpty)
+            _InfoRow(
+              icon: Icons.wc_rounded,
+              label: 'Gender',
+              value: candidate.gender!,
+              isDark: isDark,
+            ).animate().fadeIn(delay: 190.ms).slideX(begin: 0.1),
+
+          if (candidate.address != null && candidate.address!.isNotEmpty)
+            _InfoRow(
+              icon: Icons.location_on_rounded,
+              label: 'Residential Address',
+              value: candidate.address!,
+              isDark: isDark,
+            ).animate().fadeIn(delay: 210.ms).slideX(begin: 0.1),
+
+          if (candidate.slateName.isNotEmpty)
+            _InfoRow(
+              icon: Icons.groups_rounded,
+              label: 'Slate / Panel Affiliation',
+              value: candidate.slateName,
+              isDark: isDark,
+            ).animate().fadeIn(delay: 230.ms).slideX(begin: 0.1),
+
           if (candidate.status != null)
             _InfoRow(
               icon: Icons.verified_rounded,
-              label: 'Nomination Status',
+              label: 'Scrutiny Nomination Status',
               value: candidate.status!.replaceAll('_', ' ').toUpperCase(),
               isDark: isDark,
               valueColor: _statusColor(candidate.status),
@@ -417,7 +562,7 @@ class _AboutTab extends StatelessWidget {
             const SizedBox(height: 8),
             _InfoRow(
               icon: Icons.comment_rounded,
-              label: 'Review Notes',
+              label: 'Scrutiny Officer Review Notes',
               value: candidate.reviewNotes,
               isDark: isDark,
             ).animate().fadeIn(delay: 300.ms).slideX(begin: 0.1),
@@ -428,15 +573,24 @@ class _AboutTab extends StatelessWidget {
   }
 
   Color _statusColor(String? status) {
-    switch (status) {
-      case 'approved': return AppColors.success;
-      case 'rejected': return AppColors.error;
-      case 'submitted': return Colors.blue;
-      case 'under_review': return AppColors.warning;
-      default: return AppColors.textMuted;
+    switch (status?.toLowerCase()) {
+      case 'approved':
+        return const Color(0xFF10B981);
+      case 'rejected':
+        return const Color(0xFFEF4444);
+      case 'withdrawn':
+        return Colors.grey;
+      case 'submitted':
+      case 'pending':
+      case 'under_review':
+        return const Color(0xFFF59E0B);
+      default:
+        return AppColors.textMuted;
     }
   }
 }
+
+// ─── Tab 3: Endorsements ──────────────────────────────────────────────────────
 
 class _EndorsementsTab extends StatelessWidget {
   final CandidateModel candidate;
@@ -447,9 +601,9 @@ class _EndorsementsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final endorsements = candidate.endorsements.where((e) => e.name.isNotEmpty).toList();
-    
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
       child: endorsements.isEmpty
           ? Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -462,26 +616,36 @@ class _EndorsementsTab extends StatelessWidget {
                 ).animate().scaleXY(begin: 0.95, end: 1.05, duration: 1200.ms, curve: Curves.easeInOut),
                 const SizedBox(height: 16),
                 Text(
-                  'No Endorsements',
+                  'No Statutory Endorsements',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                     color: isDark ? AppColors.textMuted : AppColors.textSecondaryLightMode,
                   ),
                 ),
+                const SizedBox(height: 6),
+                Text(
+                  'No proposer or seconder endorsements are attached to this nomination.',
+                  style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.grey.shade600),
+                ),
               ],
             )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 8),
-                Text(
-                  'Endorsements',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? AppColors.textPrimary : AppColors.textPrimaryLightMode,
-                  ),
+                Row(
+                  children: [
+                    const Icon(Icons.draw_rounded, size: 18, color: AppColors.primaryLight),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Statutory Nominators & Endorsements (प्रस्तावक र समर्थक)',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ],
                 ).animate().fadeIn(delay: 50.ms),
                 const SizedBox(height: 16),
                 ...endorsements.map((e) => _buildEndorsementCard(e, isDark)),
@@ -493,13 +657,13 @@ class _EndorsementsTab extends StatelessWidget {
   Widget _buildEndorsementCard(CandidateEndorsementModel e, bool isDark) {
     final isProposer = e.endorsementType.toLowerCase() == 'proposer';
     final primaryColor = isProposer ? const Color(0xFF2563EB) : const Color(0xFF059669);
-    final roleTitle = isProposer ? 'PROPOSER / प्रस्तावक' : 'SUPPORTER / समर्थक';
+    final roleTitle = isProposer ? 'PROPOSER / प्रस्तावक (Endorser 1)' : 'SUPPORTER / समर्थक (Endorser 2)';
     final roleIcon = isProposer ? Icons.how_to_reg_rounded : Icons.verified_user_rounded;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surface : Colors.white,
+        color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.3) : Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: primaryColor.withValues(alpha: isDark ? 0.35 : 0.25),
@@ -536,7 +700,7 @@ class _EndorsementsTab extends StatelessWidget {
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
-                        letterSpacing: 0.5,
+                        letterSpacing: 0.3,
                         color: primaryColor,
                       ),
                     ),
@@ -553,7 +717,7 @@ class _EndorsementsTab extends StatelessWidget {
                     children: [
                       Icon(Icons.check_circle_rounded, size: 13, color: Colors.green),
                       SizedBox(width: 4),
-                      Text('Verified Endorser', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.green)),
+                      Text('Verified Roll', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.green)),
                     ],
                   ),
                 ),
@@ -585,7 +749,7 @@ class _EndorsementsTab extends StatelessWidget {
                         children: [
                           Text(
                             e.name,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                           ),
                           if (e.membershipId.isNotEmpty)
                             Padding(
@@ -598,7 +762,7 @@ class _EndorsementsTab extends StatelessWidget {
                                 ),
                                 child: Text(
                                   'Voter / Member ID: ${e.membershipId}',
-                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isDark ? Colors.white70 : Colors.grey.shade700),
                                 ),
                               ),
                             ),
@@ -625,8 +789,8 @@ class _EndorsementsTab extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Phone Number', style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600)),
-                                  Text(e.phone, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                  Text('Phone Number', style: TextStyle(fontSize: 10.5, color: isDark ? Colors.white54 : Colors.grey.shade600)),
+                                  Text(e.phone, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
                                 ],
                               ),
                             ),
@@ -643,8 +807,8 @@ class _EndorsementsTab extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Citizenship / Council No', style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600)),
-                                  Text(e.citizenshipNumber, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                  Text('Citizenship / Council No', style: TextStyle(fontSize: 10.5, color: isDark ? Colors.white54 : Colors.grey.shade600)),
+                                  Text(e.citizenshipNumber, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
                                 ],
                               ),
                             ),
@@ -670,9 +834,12 @@ class _EndorsementsTab extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.draw_rounded, size: 14, color: Colors.grey.shade600),
+                            Icon(Icons.draw_rounded, size: 14, color: isDark ? Colors.white54 : Colors.grey.shade600),
                             const SizedBox(width: 6),
-                            Text('Official Signature', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade600)),
+                            Text(
+                              'Endorsement Signature',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isDark ? Colors.white54 : Colors.grey.shade600),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -689,7 +856,7 @@ class _EndorsementsTab extends StatelessWidget {
                             child: Image.network(
                               e.signatureUrl,
                               fit: BoxFit.contain,
-                              errorBuilder: (_, _, _) => Center(
+                              errorBuilder: (ctx, err, stack) => Center(
                                 child: Text('Signature on file', style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontStyle: FontStyle.italic)),
                               ),
                             ),
@@ -729,10 +896,10 @@ class _InfoRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.background : const Color(0xFFF8FAFC),
+        color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.3) : const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05),
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
         ),
       ),
       child: Row(
@@ -753,19 +920,23 @@ class _InfoRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isDark ? AppColors.textMuted : AppColors.textSecondaryLightMode,
-                      fontWeight: FontWeight.w500,
-                    )),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark ? AppColors.textMuted : AppColors.textSecondaryLightMode,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 const SizedBox(height: 3),
-                Text(value,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: valueColor,
-                    )),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: valueColor,
+                  ),
+                ),
               ],
             ),
           ),

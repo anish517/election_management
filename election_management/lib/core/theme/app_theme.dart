@@ -83,9 +83,38 @@ class AppColors {
 }
 
 class AppTheme {
+  static const List<String> devanagariFallback = [
+    'Noto Sans Devanagari',
+    'NotoSansDevanagari',
+    'sans-serif',
+  ];
+
+  static TextStyle _heading({
+    required double fontSize,
+    required FontWeight fontWeight,
+    required Color color,
+  }) => GoogleFonts.outfit(
+    fontSize: fontSize,
+    fontWeight: fontWeight,
+    color: color,
+    textStyle: const TextStyle(fontFamilyFallback: devanagariFallback),
+  );
+
+  static TextStyle _body({
+    required double fontSize,
+    required FontWeight fontWeight,
+    required Color color,
+  }) => GoogleFonts.inter(
+    fontSize: fontSize,
+    fontWeight: fontWeight,
+    color: color,
+    textStyle: const TextStyle(fontFamilyFallback: devanagariFallback),
+  );
+
   static ThemeData get dark {
-    final baseTextTheme = GoogleFonts.interTextTheme(ThemeData.dark().textTheme);
-    final headingFont = GoogleFonts.outfit;
+    final baseTextTheme = GoogleFonts.interTextTheme(ThemeData.dark().textTheme).apply(
+      fontFamilyFallback: devanagariFallback,
+    );
 
     return ThemeData(
       useMaterial3: true,
@@ -109,35 +138,19 @@ class AppTheme {
         ),
       ),
       textTheme: baseTextTheme.copyWith(
-        displayLarge: headingFont(
-          fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white,
-        ),
-        headlineMedium: headingFont(
-          fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white,
-        ),
-        titleLarge: headingFont(
-          fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white,
-        ),
-        titleMedium: headingFont(
-          fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white,
-        ),
-        bodyLarge: GoogleFonts.inter(
-          fontSize: 16, fontWeight: FontWeight.w400, color: const Color(0xFFFAFAFA),
-        ),
-        bodyMedium: GoogleFonts.inter(
-          fontSize: 14, fontWeight: FontWeight.w400, color: const Color(0xFFA1A1AA),
-        ),
-        labelLarge: GoogleFonts.inter(
-          fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white,
-        ),
+        displayLarge: _heading(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
+        headlineMedium: _heading(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white),
+        titleLarge: _heading(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
+        titleMedium: _heading(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+        bodyLarge: _body(fontSize: 16, fontWeight: FontWeight.w400, color: const Color(0xFFFAFAFA)),
+        bodyMedium: _body(fontSize: 14, fontWeight: FontWeight.w400, color: const Color(0xFFA1A1AA)),
+        labelLarge: _body(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: const Color(0xFF09090B),
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: headingFont(
-          fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white,
-        ),
+        titleTextStyle: _heading(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -146,7 +159,7 @@ class AppTheme {
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), // Less rounded, more professional
-          textStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
+          textStyle: _body(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
           elevation: 0,
         ),
       ),
@@ -176,12 +189,12 @@ class AppTheme {
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: AppColors.error),
         ),
-        hintStyle: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 14),
-        labelStyle: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 14),
+        hintStyle: _body(color: AppColors.textMuted, fontSize: 14, fontWeight: FontWeight.normal),
+        labelStyle: _body(color: AppColors.textSecondary, fontSize: 14, fontWeight: FontWeight.normal),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.surfaceVariant,
-        labelStyle: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary),
+        labelStyle: _body(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.normal),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: const BorderSide(color: Colors.transparent),
@@ -203,8 +216,9 @@ class AppTheme {
   }
 
   static ThemeData get light {
-    final baseTextTheme = GoogleFonts.interTextTheme(ThemeData.light().textTheme);
-    final headingFont = GoogleFonts.outfit;
+    final baseTextTheme = GoogleFonts.interTextTheme(ThemeData.light().textTheme).apply(
+      fontFamilyFallback: devanagariFallback,
+    );
 
     return ThemeData(
       useMaterial3: true,
@@ -228,35 +242,19 @@ class AppTheme {
         ),
       ),
       textTheme: baseTextTheme.copyWith(
-        displayLarge: headingFont(
-          fontSize: 32, fontWeight: FontWeight.bold, color: const Color(0xFF171717), // Near black
-        ),
-        headlineMedium: headingFont(
-          fontSize: 22, fontWeight: FontWeight.w700, color: const Color(0xFF171717),
-        ),
-        titleLarge: headingFont(
-          fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF171717),
-        ),
-        titleMedium: headingFont(
-          fontSize: 16, fontWeight: FontWeight.w500, color: const Color(0xFF171717),
-        ),
-        bodyLarge: GoogleFonts.inter(
-          fontSize: 16, fontWeight: FontWeight.w400, color: const Color(0xFF171717),
-        ),
-        bodyMedium: GoogleFonts.inter(
-          fontSize: 14, fontWeight: FontWeight.w400, color: const Color(0xFF52525B), // Muted grey
-        ),
-        labelLarge: GoogleFonts.inter(
-          fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF171717),
-        ),
+        displayLarge: _heading(fontSize: 32, fontWeight: FontWeight.bold, color: const Color(0xFF171717)),
+        headlineMedium: _heading(fontSize: 22, fontWeight: FontWeight.w700, color: const Color(0xFF171717)),
+        titleLarge: _heading(fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF171717)),
+        titleMedium: _heading(fontSize: 16, fontWeight: FontWeight.w500, color: const Color(0xFF171717)),
+        bodyLarge: _body(fontSize: 16, fontWeight: FontWeight.w400, color: const Color(0xFF171717)),
+        bodyMedium: _body(fontSize: 14, fontWeight: FontWeight.w400, color: const Color(0xFF52525B)),
+        labelLarge: _body(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF171717)),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: const Color(0xFFFFFFFF),
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: headingFont(
-          fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF171717),
-        ),
+        titleTextStyle: _heading(fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF171717)),
         iconTheme: const IconThemeData(color: Color(0xFF171717)),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -265,7 +263,7 @@ class AppTheme {
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          textStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
+          textStyle: _body(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white),
           elevation: 0,
         ),
       ),
@@ -275,7 +273,7 @@ class AppTheme {
           side: const BorderSide(color: Color(0xFFE4E4E7)),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          textStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
+          textStyle: _body(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF171717)),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -296,14 +294,14 @@ class AppTheme {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.error),
         ),
-        hintStyle: GoogleFonts.inter(color: const Color(0xFFA1A1AA), fontSize: 14),
-        labelStyle: GoogleFonts.inter(color: const Color(0xFF52525B), fontSize: 14),
+        hintStyle: _body(color: const Color(0xFFA1A1AA), fontSize: 14, fontWeight: FontWeight.normal),
+        labelStyle: _body(color: const Color(0xFF52525B), fontSize: 14, fontWeight: FontWeight.normal),
         filled: true,
         fillColor: const Color(0xFFFFFFFF),
       ),
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.surfaceVariantLight,
-        labelStyle: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondaryLightMode),
+        labelStyle: _body(fontSize: 12, color: AppColors.textSecondaryLightMode, fontWeight: FontWeight.normal),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: const BorderSide(color: Colors.transparent),

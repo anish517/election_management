@@ -11,15 +11,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_button.dart';
 
 // ---------------------------------------------------------------------------
-// Paid status choices
-// ---------------------------------------------------------------------------
-const _paidOptions = [
-  DropdownMenuItem<bool>(value: false, child: Text('Free — No charge for candidacy')),
-  DropdownMenuItem<bool>(value: true, child: Text('Paid — Nominee charged a fee')),
-];
-
-// ---------------------------------------------------------------------------
-// Date/time picker helper
+// Nepali Date/time picker helper
 // ---------------------------------------------------------------------------
 Future<DateTime?> _pickNepaliDateTime(BuildContext context, DateTime? current) async {
   NepaliDateTime initial = (current ?? DateTime.now()).toNepaliDateTime();
@@ -41,13 +33,23 @@ Future<DateTime?> _pickNepaliDateTime(BuildContext context, DateTime? current) a
 }
 
 String _formatNepali(DateTime? dt) {
-  if (dt == null) return 'Select Date';
-  final bsStr = NepaliDateFormat('MMM d, yyyy h:mm a').format(dt.toNepaliDateTime());
+  if (dt == null) return 'Select Date & Time';
+  final bsStr = NepaliDateFormat('MMM d, yyyy • h:mm a').format(dt.toNepaliDateTime());
   return '$bsStr (BS)';
 }
 
+// Preset theme colors for quick election branding
+const _presetColors = [
+  {'name': 'Indigo', 'primary': '#4F46E5', 'secondary': '#818CF8'},
+  {'name': 'Emerald', 'primary': '#059669', 'secondary': '#34D399'},
+  {'name': 'Crimson', 'primary': '#DC2626', 'secondary': '#F87171'},
+  {'name': 'Ocean', 'primary': '#0284C7', 'secondary': '#38BDF8'},
+  {'name': 'Amber', 'primary': '#D97706', 'secondary': '#FBBF24'},
+  {'name': 'Purple', 'primary': '#7C3AED', 'secondary': '#A78BFA'},
+];
+
 // ---------------------------------------------------------------------------
-// Compact date picker tile
+// Professional Compact Date Tile
 // ---------------------------------------------------------------------------
 class _DateTile extends StatelessWidget {
   final String label;
@@ -55,57 +57,89 @@ class _DateTile extends StatelessWidget {
   final bool required;
   final VoidCallback onTap;
 
-  const _DateTile({required this.label, required this.value, required this.onTap, this.required = false});
+  const _DateTile({
+    required this.label,
+    required this.value,
+    required this.onTap,
+    this.required = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasVal = value != null;
+
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: hasVal
-              ? AppColors.primary.withValues(alpha: 0.07)
-              : Theme.of(context).inputDecorationTheme.fillColor ?? Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
+              ? (isDark ? AppColors.primary.withValues(alpha: 0.15) : AppColors.primary.withValues(alpha: 0.05))
+              : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC)),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: hasVal ? AppColors.primaryLight.withValues(alpha: 0.5) : Theme.of(context).dividerColor,
+            color: hasVal
+                ? AppColors.primaryLight.withValues(alpha: 0.6)
+                : (isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.08)),
+            width: hasVal ? 1.5 : 1.0,
           ),
         ),
         child: Row(
           children: [
-            Icon(
-              Icons.calendar_today_rounded,
-              size: 16,
-              color: hasVal ? AppColors.primaryLight : AppColors.textMuted,
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: hasVal ? AppColors.primary : (isDark ? Colors.white10 : Colors.grey.shade200),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.calendar_today_rounded,
+                size: 15,
+                color: hasVal ? Colors.white : (isDark ? Colors.white70 : Colors.black54),
+              ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    required ? '$label *' : label,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: AppColors.textSecondary,
+                  Row(
+                    children: [
+                      Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 12,
                           fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white70 : Colors.grey.shade800,
                         ),
+                      ),
+                      if (required) ...[
+                        const SizedBox(width: 4),
+                        const Text('*', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold, fontSize: 13)),
+                      ],
+                    ],
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(
                     _formatNepali(value),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: hasVal ? AppColors.primaryLight : AppColors.textMuted,
-                          fontWeight: hasVal ? FontWeight.w600 : FontWeight.normal,
-                        ),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: hasVal ? FontWeight.w600 : FontWeight.normal,
+                      color: hasVal
+                          ? (isDark ? AppColors.primaryLight : AppColors.primary)
+                          : (isDark ? Colors.white38 : Colors.grey.shade500),
+                    ),
                   ),
                 ],
               ),
             ),
             if (hasVal)
-              Icon(Icons.check_circle_rounded, color: AppColors.primaryLight, size: 16),
+              const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 18)
+            else
+              Icon(Icons.arrow_drop_down_rounded, color: isDark ? Colors.white38 : Colors.grey.shade400),
           ],
         ),
       ),
@@ -114,79 +148,90 @@ class _DateTile extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// 2-column date row
+// Section Card Container
 // ---------------------------------------------------------------------------
-Widget _dateRow(BuildContext context, String labelA, DateTime? valA, VoidCallback onA,
-    String labelB, DateTime? valB, VoidCallback onB, {bool reqA = false, bool reqB = false}) {
-  return Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Expanded(child: _DateTile(label: labelA, value: valA, onTap: onA, required: reqA)),
-      const SizedBox(width: 10),
-      Expanded(child: _DateTile(label: labelB, value: valB, onTap: onB, required: reqB)),
-    ],
-  );
-}
+Widget _sectionCard(
+  BuildContext context, {
+  required String step,
+  required String title,
+  required String subtitle,
+  required IconData icon,
+  required List<Widget> children,
+  Widget? trailing,
+}) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
 
-// ---------------------------------------------------------------------------
-// Section header card
-// ---------------------------------------------------------------------------
-Widget _sectionCard(BuildContext context, {required String title, required String subtitle, required IconData icon, required List<Widget> children}) {
   return Padding(
-    padding: const EdgeInsets.only(bottom: 28),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(9),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-              ),
-              child: Icon(icon, color: AppColors.primaryLight, size: 18),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                  Text(subtitle, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
-                ],
-              ),
-            ),
-          ],
+    padding: const EdgeInsets.only(bottom: 24),
+    child: Material(
+      color: isDark ? AppColors.surface : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade200,
         ),
-        const SizedBox(height: 14),
-        Card(
-          elevation: 0,
-          margin: EdgeInsets.zero,
-          color: Theme.of(context).brightness == Brightness.dark
-              ? AppColors.surfaceVariant.withValues(alpha: 0.5)
-              : Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.black.withValues(alpha: 0.05),
-            ),
+      ),
+      elevation: isDark ? 0 : 1,
+      shadowColor: Colors.black.withValues(alpha: 0.04),
+      child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppColors.primary, AppColors.primaryLight],
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  step,
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: -0.2,
+                          ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: isDark ? Colors.white60 : Colors.grey.shade600,
+                            fontSize: 12,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              ?trailing,
+            ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
-          ),
-        ),
-      ],
+          const SizedBox(height: 18),
+          const Divider(height: 1),
+          const SizedBox(height: 18),
+          ...children,
+        ],
+      ),
     ),
-  );
+  ),
+);
 }
 
 // ---------------------------------------------------------------------------
-// Create Election Screen
+// Create Election Screen Implementation
 // ---------------------------------------------------------------------------
 class CreateElectionScreen extends ConsumerStatefulWidget {
   const CreateElectionScreen({super.key});
@@ -205,8 +250,8 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
   final _prefixCtrl = TextEditingController();
   final _contactCtrl = TextEditingController();
   String _logoUrl = '';
-  String _primaryColor = '#6C5CE7';
-  String _secondaryColor = '#A29BFE';
+  String _primaryColor = '#4F46E5';
+  String _secondaryColor = '#818CF8';
   bool _uploading = false;
 
   // --- Election Schedule ---
@@ -261,43 +306,85 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
         data: FormData.fromMap({'file': MultipartFile.fromBytes(bytes, filename: name)}),
       );
       final url = resp.data['url'] as String?;
-      if (url != null) { setState(() => _logoUrl = url); }
+      if (url != null) {
+        setState(() => _logoUrl = url);
+      }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Logo upload failed.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Logo upload failed. Please try again.')),
+        );
       }
     } finally {
-      if (mounted) { setState(() => _uploading = false); }
+      if (mounted) {
+        setState(() => _uploading = false);
+      }
     }
   }
 
   Future<void> _pick(DateTime? current, void Function(DateTime) onSet) async {
     final dt = await _pickNepaliDateTime(context, current);
-    if (dt != null && mounted) { setState(() => onSet(dt)); }
+    if (dt != null && mounted) {
+      setState(() => onSet(dt));
+    }
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please complete all required fields.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     if (_votingStart == null || _votingEnd == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Election Start and End dates are required.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Election Start and End dates are required.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return;
     }
     if (_votingEnd!.isBefore(_votingStart!)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Voting End date must be after Voting Start date.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Voting End date must be after Voting Start date.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return;
     }
     if (_candidacyStart != null && _candidacyEnd != null && _candidacyEnd!.isBefore(_candidacyStart!)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nomination Close date must be after Nomination Open date.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nomination Close date must be after Nomination Open date.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return;
     }
     if (_firstVoterList != null && _voterListClaim != null && _voterListClaim!.isBefore(_firstVoterList!)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Voter List Claim date must be after First Voter List date.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Voter List Claim deadline must be after First Voter List date.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return;
     }
     if (_voterListClaim != null && _finalVoterList != null && _finalVoterList!.isBefore(_voterListClaim!)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Final Voter List date must be after Voter List Claim date.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Final Voter List date must be after Voter List Claim date.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return;
     }
+
     try {
       await ref.read(createElectionProvider.notifier).createElection(
         title: _titleCtrl.text.trim(),
@@ -322,14 +409,20 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
         nomineeCharge: double.tryParse(_chargeCtrl.text) ?? 0,
       );
       if (mounted) {
-        if (context.canPop()) { context.pop(); }
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/admin/elections');
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Row(children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 10),
-              Text('Election created as Draft!', style: TextStyle(fontWeight: FontWeight.bold)),
-            ]),
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 10),
+                Text('Election created successfully as Draft!', style: TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
             backgroundColor: Colors.green.shade600,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -340,56 +433,30 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red.shade600),
+          SnackBar(
+            content: Text('Error creating election: $e'),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     }
   }
 
-  InputDecoration _dec(String label, {String? hint, Widget? prefix}) => InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: prefix,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-      );
-
-  // --- Color picker tile ---
-  Widget _colorTile(String label, String color, void Function(String) onChange) {
-    return GestureDetector(
-      onTap: () async {
-        final ctrl = TextEditingController(text: color);
-        final result = await showDialog<String>(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: Text(label),
-            content: TextField(
-              controller: ctrl,
-              decoration: const InputDecoration(labelText: 'Hex color (e.g. #6C5CE7)', prefixIcon: Icon(Icons.colorize)),
-              autofocus: true,
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-              FilledButton(onPressed: () => Navigator.pop(context, ctrl.text.trim()), child: const Text('Apply')),
-            ],
-          ),
-        );
-        if (result != null && result.isNotEmpty) { setState(() => onChange(result)); }
-      },
-      child: Container(
-        height: 52,
-        decoration: BoxDecoration(
-          color: _hexToColor(color),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.colorize, color: Colors.white, size: 16),
-            const SizedBox(width: 6),
-            Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12)),
-          ],
-        ),
+  InputDecoration _dec(String label, {String? hint, Widget? prefix}) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: prefix,
+      filled: true,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? Colors.white12 : Colors.grey.shade300),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.primary, width: 2),
       ),
     );
   }
@@ -406,6 +473,7 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(createElectionProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -417,7 +485,7 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
             padding: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
             child: LoadingButton(
               isLoading: state.isLoading,
-              label: 'Create Draft',
+              label: 'Save Draft',
               icon: Icons.save_rounded,
               onPressed: _submit,
               fullWidth: false,
@@ -427,23 +495,76 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
+          constraints: const BoxConstraints(maxWidth: 860),
           child: Form(
             key: _formKey,
             child: ListView(
               controller: _scrollCtrl,
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
               children: [
+                // Top Welcome Card
+                Container(
+                  margin: const EdgeInsets.only(bottom: 24),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        _hexToColor(_primaryColor),
+                        _hexToColor(_secondaryColor),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _hexToColor(_primaryColor).withValues(alpha: 0.3),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(Icons.how_to_vote_rounded, color: Colors.white, size: 28),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Election Setup Wizard',
+                              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Configure your election identity, timeline milestones, candidacy rules, and security.',
+                              style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
                 // ══════════════════════════════════════════════════════════
                 // 1. ELECTION INFORMATION
                 // ══════════════════════════════════════════════════════════
-                _sectionCard(context,
-                  title: 'Election Information',
-                  subtitle: 'Basic identity and branding of this election',
-                  icon: Icons.how_to_vote_rounded,
+                _sectionCard(
+                  context,
+                  step: 'STEP 1',
+                  title: 'Election Identity & Branding',
+                  subtitle: 'Basic name, code, contact information, and theme',
+                  icon: Icons.badge_outlined,
                   children: [
-                    // Title + Prefix
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -451,15 +572,16 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
                           flex: 3,
                           child: TextFormField(
                             controller: _titleCtrl,
-                            decoration: _dec('Election Title *', hint: 'Enter election title', prefix: const Icon(Icons.how_to_vote_outlined)),
-                            validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                            decoration: _dec('Election Title *', hint: 'e.g. Annual Executive Committee Election 2083', prefix: const Icon(Icons.how_to_vote_outlined)),
+                            validator: (v) => (v == null || v.trim().isEmpty) ? 'Election title is required' : null,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 14),
                         Expanded(
+                          flex: 1,
                           child: TextFormField(
                             controller: _prefixCtrl,
-                            decoration: _dec('Prefix *', hint: 'e.g. ELEC', prefix: const Icon(Icons.label_outline)),
+                            decoration: _dec('Prefix Code *', hint: 'e.g. ELEC', prefix: const Icon(Icons.tag_rounded)),
                             textCapitalization: TextCapitalization.characters,
                             maxLength: 10,
                             buildCounter: (_, {required currentLength, required isFocused, required maxLength}) => null,
@@ -468,41 +590,47 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
 
-                    // Description
                     TextFormField(
                       controller: _descCtrl,
-                      decoration: _dec('Description', hint: 'Brief description of this election', prefix: const Icon(Icons.description_outlined)),
+                      decoration: _dec('Description', hint: 'Provide a brief overview of this election for members', prefix: const Icon(Icons.notes_rounded)),
                       maxLines: 3,
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
 
-                    // Contact
                     TextFormField(
                       controller: _contactCtrl,
-                      decoration: _dec('Contact Number *', hint: 'Enter contact number', prefix: const Icon(Icons.phone_outlined)),
+                      decoration: _dec('Official Helpline / Contact *', hint: 'e.g. +977-9841234567', prefix: const Icon(Icons.phone_outlined)),
                       keyboardType: TextInputType.phone,
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Contact number is required' : null,
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 20),
 
-                    // Logo
+                    // Logo Upload Card
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Logo *', style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
+                        Row(
+                          children: [
+                            const Icon(Icons.image_outlined, size: 16, color: AppColors.primary),
+                            const SizedBox(width: 6),
+                            Text('Official Election Emblem / Logo', style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
+                          ],
+                        ),
                         const SizedBox(height: 8),
                         GestureDetector(
                           onTap: _uploading ? null : _uploadLogo,
                           child: Container(
-                            height: 110,
+                            height: 120,
                             width: double.infinity,
                             decoration: BoxDecoration(
-                              color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Theme.of(context).dividerColor, width: 1.5),
-                              image: _logoUrl.isNotEmpty ? DecorationImage(image: NetworkImage(_logoUrl), fit: BoxFit.contain) : null,
+                              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: _logoUrl.isNotEmpty ? AppColors.primary : (isDark ? Colors.white12 : Colors.grey.shade300),
+                                width: 1.5,
+                              ),
                             ),
                             child: _uploading
                                 ? const Center(child: CircularProgressIndicator())
@@ -510,56 +638,132 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
                                     ? Column(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          Icon(Icons.add_photo_alternate_outlined, color: AppColors.textMuted, size: 30),
-                                          const SizedBox(height: 6),
-                                          Text('Tap to upload logo', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-                                          Text('Max 2MB · jpeg, png, jpg, gif, svg', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                                          Icon(Icons.cloud_upload_outlined, color: AppColors.primary, size: 34),
+                                          const SizedBox(height: 8),
+                                          const Text('Click or tap to upload election logo', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                                          Text('Supported: JPG, PNG, SVG (Max 2MB)', style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
                                         ],
                                       )
-                                    : Align(
-                                        alignment: Alignment.bottomRight,
-                                        child: Container(
-                                          margin: const EdgeInsets.all(8),
-                                          padding: const EdgeInsets.all(6),
-                                          decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                                          child: const Icon(Icons.edit, color: Colors.white, size: 14),
-                                        ),
+                                    : Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(12),
+                                            child: Image.network(_logoUrl, fit: BoxFit.contain, height: 100),
+                                          ),
+                                          Positioned(
+                                            right: 12,
+                                            bottom: 12,
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                              decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(20)),
+                                              child: const Row(
+                                                children: [
+                                                  Icon(Icons.edit, color: Colors.white, size: 12),
+                                                  SizedBox(width: 4),
+                                                  Text('Change', style: TextStyle(color: Colors.white, fontSize: 11)),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 20),
 
-                    // Colors
-                    Row(
+                    // Color Palettes
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(child: _colorTile('Primary Color', _primaryColor, (c) => _primaryColor = c)),
-                        const SizedBox(width: 12),
-                        Expanded(child: _colorTile('Secondary Color', _secondaryColor, (c) => _secondaryColor = c)),
+                        Text('Theme Palette Presets', style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _presetColors.map((p) {
+                            final isSelected = _primaryColor.toLowerCase() == p['primary']!.toLowerCase();
+                            final pColor = _hexToColor(p['primary']!);
+                            final sColor = _hexToColor(p['secondary']!);
+
+                            return InkWell(
+                              onTap: () {
+                                setState(() {
+                                  _primaryColor = p['primary']!;
+                                  _secondaryColor = p['secondary']!;
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(20),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? pColor.withValues(alpha: 0.15) : (isDark ? Colors.white10 : Colors.grey.shade100),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: isSelected ? pColor : Colors.transparent,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 12,
+                                      height: 12,
+                                      decoration: BoxDecoration(color: pColor, shape: BoxShape.circle),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Container(
+                                      width: 12,
+                                      height: 12,
+                                      decoration: BoxDecoration(color: sColor, shape: BoxShape.circle),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      p['name']!,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                        color: isSelected ? pColor : (isDark ? Colors.white70 : Colors.black87),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text('Tap a color swatch to enter a hex value.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted)),
                   ],
                 ),
 
                 // ══════════════════════════════════════════════════════════
-                // 2. VOTER LIST SCHEDULE (Step 1 of Election System)
+                // 2. VOTER LIST SCHEDULE (Step 1)
                 // ══════════════════════════════════════════════════════════
-                _sectionCard(context,
-                  title: '1. Voter List Schedule',
-                  subtitle: 'Dates for voter list publication, claims, and finalization',
-                  icon: Icons.people_rounded,
+                _sectionCard(
+                  context,
+                  step: 'STEP 2',
+                  title: 'Voter List Schedule (नामावली तालिका)',
+                  subtitle: 'Initial publication, voter claims & objections, and certified final list',
+                  icon: Icons.people_outline_rounded,
                   children: [
-                    _dateRow(
-                      context,
-                      'First Voter List', _firstVoterList, () => _pick(_firstVoterList, (d) => _firstVoterList = d),
-                      'Voter List Claim', _voterListClaim, () => _pick(_voterListClaim, (d) => _voterListClaim = d),
+                    _DateTile(
+                      label: '1. Preliminary Voter List Published (पहिलो नामावली)',
+                      value: _firstVoterList,
+                      onTap: () => _pick(_firstVoterList, (d) => _firstVoterList = d),
                     ),
                     const SizedBox(height: 10),
                     _DateTile(
-                      label: 'Final Voter List',
+                      label: '2. Voter List Claim Deadline (दाबी-विरोध अन्तिम मिति)',
+                      value: _voterListClaim,
+                      onTap: () => _pick(_voterListClaim, (d) => _voterListClaim = d),
+                    ),
+                    const SizedBox(height: 10),
+                    _DateTile(
+                      label: '3. Certified Final Voter List (अन्तिम नामावली प्रकाशन)',
                       value: _finalVoterList,
                       onTap: () => _pick(_finalVoterList, (d) => _finalVoterList = d),
                     ),
@@ -567,40 +771,87 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
                 ),
 
                 // ══════════════════════════════════════════════════════════
-                // 3. CANDIDACY SCHEDULE (Step 2 of Election System)
+                // 3. CANDIDACY SCHEDULE (Step 2)
                 // ══════════════════════════════════════════════════════════
-                _sectionCard(context,
-                  title: '2. Candidacy Schedule',
-                  subtitle: 'Nomination, claim, and finalization dates',
-                  icon: Icons.assignment_ind_rounded,
+                _sectionCard(
+                  context,
+                  step: 'STEP 3',
+                  title: 'Candidacy & Nomination Schedule (उम्मेदवारी तालिका)',
+                  subtitle: 'Filing period, scrutiny / objections, and certified candidate roster',
+                  icon: Icons.assignment_ind_outlined,
                   children: [
-                    _dateRow(
-                      context,
-                      'Candidacy Start', _candidacyStart, () => _pick(_candidacyStart, (d) => _candidacyStart = d),
-                      'Candidacy End', _candidacyEnd, () => _pick(_candidacyEnd, (d) => _candidacyEnd = d),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _DateTile(
+                            label: '1. Nominations Open',
+                            value: _candidacyStart,
+                            onTap: () => _pick(_candidacyStart, (d) => _candidacyStart = d),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _DateTile(
+                            label: '2. Nominations Close',
+                            value: _candidacyEnd,
+                            onTap: () => _pick(_candidacyEnd, (d) => _candidacyEnd = d),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 10),
-                    _dateRow(
-                      context,
-                      'Candidacy Claim', _candidacyClaim, () => _pick(_candidacyClaim, (d) => _candidacyClaim = d),
-                      'Candidacy Final', _candidacyFinal, () => _pick(_candidacyFinal, (d) => _candidacyFinal = d),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _DateTile(
+                            label: '3. Scrutiny / Objection Deadline',
+                            value: _candidacyClaim,
+                            onTap: () => _pick(_candidacyClaim, (d) => _candidacyClaim = d),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _DateTile(
+                            label: '4. Final Candidate List Published',
+                            value: _candidacyFinal,
+                            onTap: () => _pick(_candidacyFinal, (d) => _candidacyFinal = d),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
 
                 // ══════════════════════════════════════════════════════════
-                // 4. VOTING SCHEDULE (Step 3 of Election System)
+                // 4. VOTING SCHEDULE (Step 3 - Core Required)
                 // ══════════════════════════════════════════════════════════
-                _sectionCard(context,
-                  title: '3. Voting & Polling Schedule',
-                  subtitle: 'Voting start and end dates (required)',
+                _sectionCard(
+                  context,
+                  step: 'STEP 4',
+                  title: 'Voting & Polling Window (मतदान अवधि)',
+                  subtitle: 'Official balloting start and end dates (Required)',
                   icon: Icons.how_to_vote_rounded,
                   children: [
-                    _dateRow(
-                      context,
-                      'Election Start Date *', _votingStart, () => _pick(_votingStart, (d) => _votingStart = d),
-                      'Election End Date *', _votingEnd, () => _pick(_votingEnd, (d) => _votingEnd = d),
-                      reqA: true, reqB: true,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _DateTile(
+                            label: 'Polling Opens (मतदान सुरु)',
+                            value: _votingStart,
+                            onTap: () => _pick(_votingStart, (d) => _votingStart = d),
+                            required: true,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _DateTile(
+                            label: 'Polling Closes (मतदान समाप्त)',
+                            value: _votingEnd,
+                            onTap: () => _pick(_votingEnd, (d) => _votingEnd = d),
+                            required: true,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -608,26 +859,75 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
                 // ══════════════════════════════════════════════════════════
                 // 5. PAID STATUS
                 // ══════════════════════════════════════════════════════════
-                _sectionCard(context,
-                  title: 'Candidacy Payment',
-                  subtitle: 'Only if candidacy nominees are charged a fee',
-                  icon: Icons.payments_rounded,
+                _sectionCard(
+                  context,
+                  step: 'STEP 5',
+                  title: 'Candidacy Nomination Fee',
+                  subtitle: 'Configure whether candidates are charged a nomination fee',
+                  icon: Icons.payments_outlined,
                   children: [
-                    DropdownButtonFormField<bool>(
-                      initialValue: _isPaid,
-                      decoration: _dec('Paid Status *', prefix: const Icon(Icons.monetization_on_outlined)),
-                      items: _paidOptions,
-                      onChanged: (val) => setState(() => _isPaid = val ?? false),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setState(() => _isPaid = false),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: !_isPaid ? AppColors.primary.withValues(alpha: 0.1) : (isDark ? Colors.white10 : Colors.grey.shade100),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: !_isPaid ? AppColors.primary : Colors.transparent,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(!_isPaid ? Icons.radio_button_checked : Icons.radio_button_off, color: !_isPaid ? AppColors.primary : Colors.grey),
+                                  const SizedBox(width: 8),
+                                  const Text('Free (निःशुल्क)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setState(() => _isPaid = true),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: _isPaid ? AppColors.primary.withValues(alpha: 0.1) : (isDark ? Colors.white10 : Colors.grey.shade100),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: _isPaid ? AppColors.primary : Colors.transparent,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(_isPaid ? Icons.radio_button_checked : Icons.radio_button_off, color: _isPaid ? AppColors.primary : Colors.grey),
+                                  const SizedBox(width: 8),
+                                  const Text('Paid Fee (शुल्क)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     if (_isPaid) ...[
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
                       TextFormField(
                         controller: _chargeCtrl,
-                        decoration: _dec('Nominee Charge (NPR) *', hint: 'e.g. 500', prefix: const Icon(Icons.currency_rupee_outlined)),
+                        decoration: _dec('Nominee Charge (NPR) *', hint: 'e.g. 500', prefix: const Icon(Icons.currency_rupee_rounded)),
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         validator: (v) {
                           if (!_isPaid) return null;
-                          if (v == null || v.trim().isEmpty) return 'Required when paid';
+                          if (v == null || v.trim().isEmpty) return 'Fee is required when paid';
                           if (double.tryParse(v) == null) return 'Enter a valid amount';
                           return null;
                         },
@@ -639,16 +939,18 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
                 // ══════════════════════════════════════════════════════════
                 // 6. BALLOT & VOTING RULES
                 // ══════════════════════════════════════════════════════════
-                _sectionCard(context,
-                  title: 'Ballot & Voting Rules',
-                  subtitle: 'Privacy, anonymity, and boycott configurations',
-                  icon: Icons.rule_rounded,
+                _sectionCard(
+                  context,
+                  step: 'STEP 6',
+                  title: 'Electoral Privacy & Ballot Rules',
+                  subtitle: 'Cryptographic secrecy, anonymity, and boycott configurations',
+                  icon: Icons.security_rounded,
                   children: [
                     SwitchListTile(
                       value: _isSecretBallot,
                       onChanged: (val) => setState(() => _isSecretBallot = val),
-                      title: const Text('Secret Ballot', style: TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: const Text('Strictly decouple voter identity from cast ballots'),
+                      title: const Text('Cryptographic Secret Ballot', style: TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: const Text('Strictly decouple voter identities from cast ballots with SHA-256 receipts'),
                       contentPadding: EdgeInsets.zero,
                     ),
                     const Divider(),
@@ -656,16 +958,16 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
                       value: _allowBoycott,
                       onChanged: (val) => setState(() => _allowBoycott = val),
                       title: const Text('Allow No Vote / Boycott (बहिष्कार)', style: TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: const Text('Allow voters to select "No Vote / Boycott" on positions and ballot'),
+                      subtitle: const Text('Allow voters to select "No Vote / Boycott" on candidate ballots'),
                       contentPadding: EdgeInsets.zero,
                     ),
                   ],
                 ),
 
-                // Submit
+                // Submit Button
                 const SizedBox(height: 8),
                 SizedBox(
-                  height: 54,
+                  height: 52,
                   child: LoadingButton(
                     isLoading: state.isLoading,
                     label: 'Create Election as Draft',
@@ -679,7 +981,11 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
                     icon: const Icon(Icons.arrow_back_rounded, size: 16),
                     label: const Text('Back to Elections'),
                     onPressed: () {
-                      if (context.canPop()) { context.pop(); } else { context.go('/admin/elections'); }
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/admin/elections');
+                      }
                     },
                   ),
                 ),
@@ -691,3 +997,4 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
     );
   }
 }
+

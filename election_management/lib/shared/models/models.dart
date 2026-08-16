@@ -553,6 +553,7 @@ class OrganizationModel {
   final String councilNumber;
   final String address;
   final String phone;
+  final String email;
   final String website;
   final String timezone;
   final String defaultLanguage;
@@ -591,6 +592,7 @@ class OrganizationModel {
     required this.councilNumber,
     required this.address,
     required this.phone,
+    this.email = '',
     required this.website,
     required this.timezone,
     required this.defaultLanguage,
@@ -627,6 +629,7 @@ class OrganizationModel {
         councilNumber: json['council_number'] as String? ?? '',
         address: json['address'] as String? ?? '',
         phone: json['phone'] as String? ?? '',
+        email: json['email'] as String? ?? '',
         website: json['website'] as String? ?? '',
         timezone: json['timezone'] as String? ?? '',
         defaultLanguage: json['default_language'] as String? ?? '',

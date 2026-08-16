@@ -27,9 +27,12 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
   @override
   void initState() {
     super.initState();
-    // Smart Polling: Refresh results every 5 seconds for near real-time dashboard
-    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      ref.invalidate(resultsProvider(widget.electionId));
+    // Smart Polling: Refresh results every 6 seconds during live voting
+    _pollingTimer = Timer.periodic(const Duration(seconds: 6), (_) {
+      final election = ref.read(electionProvider(widget.electionId)).valueOrNull;
+      if (election?.state == 'voting_open' || election?.state == 'voting_closed') {
+        ref.invalidate(resultsProvider(widget.electionId));
+      }
     });
   }
 
@@ -37,6 +40,24 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
   void dispose() {
     _pollingTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _exportCsv() async {
+    try {
+      final token = await JwtInterceptor.getAccessToken();
+      final url = Uri.parse('${ApiConstants.baseUrl}/elections/${widget.electionId}/results/export_csv/?token=$token');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch export URL')));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+      }
+    }
   }
 
   @override
@@ -47,10 +68,37 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
 
     final election = electionAsync.valueOrNull;
     final isLive = election?.state == 'voting_open';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: isDark ? AppColors.background : const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Text(isLive ? 'Live Tally 🔴' : 'Election Results'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  isLive ? 'Live Ballot Tally' : 'Election Results',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                if (isLive) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(color: Colors.greenAccent, shape: BoxShape.circle),
+                  ),
+                ],
+              ],
+            ),
+            Text(
+              isLive ? 'प्रत्यक्ष मतगणना तथा नतिजा' : 'अन्तिम निर्वाचन नतिजा तथा विवरण',
+              style: const TextStyle(fontSize: 11, color: Colors.white70),
+            ),
+          ],
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_rounded),
           onPressed: () => context.pop(),
@@ -58,34 +106,25 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
         actions: [
           if (user != null && user.canManageElections)
             IconButton(
-              icon: const Icon(Icons.bar_chart_rounded),
+              icon: const Icon(Icons.analytics_outlined),
               tooltip: 'Live Analytics',
-              onPressed: () => context.pushNamed('analytics',
-                  pathParameters: {'electionId': widget.electionId}),
+              onPressed: () => context.pushNamed('analytics', pathParameters: {'electionId': widget.electionId}),
             ),
           if (!isLive)
             IconButton(
               icon: const Icon(Icons.download_rounded),
               tooltip: 'Download CSV Report',
-              onPressed: () async {
-                final token = await JwtInterceptor.getAccessToken();
-                final url = Uri.parse('${ApiConstants.baseUrl}/elections/${widget.electionId}/results/export_csv/?token=$token');
-                if (await canLaunchUrl(url)) {
-                  await launchUrl(url, mode: LaunchMode.externalApplication);
-                } else {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch export URL')));
-                  }
-                }
-              },
+              onPressed: _exportCsv,
             ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Refresh Results',
             onPressed: () {
               ref.invalidate(resultsProvider(widget.electionId));
               ref.invalidate(electionProvider(widget.electionId));
             },
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: resultsAsync.when(
@@ -94,64 +133,106 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.bar_chart_rounded, color: AppColors.textMuted, size: 48),
+              const Icon(Icons.bar_chart_rounded, color: AppColors.textMuted, size: 54),
               const SizedBox(height: 16),
-              Text('Results not available yet', style: Theme.of(context).textTheme.titleMedium),
+              Text('Results Not Available Yet', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              Text('Voting may still be in progress or results are not published yet.',
-                  style: Theme.of(context).textTheme.bodyMedium),
-              const SizedBox(height: 16),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                  'Voting may still be in progress or election officers have not yet published the tally.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                ),
+              ),
+              const SizedBox(height: 20),
               OutlinedButton.icon(
                 onPressed: () => context.pop(),
                 icon: const Icon(Icons.arrow_back_rounded),
-                label: const Text('Go Back'),
+                label: const Text('Back to Dashboard'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
               ),
             ],
           ),
         ),
-        data: (tally) => ResponsivePageWrapper(child: _buildResults(context, tally, election, user)),
+        data: (tally) => ResponsivePageWrapper(child: _buildResults(context, tally, election, user, isDark)),
       ),
     );
   }
 
-  Widget _buildResults(BuildContext context, TallyResult tally, ElectionModel? election, UserModel? user) {
+  Widget _buildResults(BuildContext context, TallyResult tally, ElectionModel? election, UserModel? user, bool isDark) {
     final isLive = election?.state == 'voting_open';
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildResultsHeader(context, tally, election, user),
+          _buildResultsHeader(context, tally, election, user, isDark),
           const SizedBox(height: 24),
-          ...tally.results.map((posResult) => _buildPositionResult(context, posResult, isLive)),
+          Row(
+            children: [
+              const Icon(Icons.military_tech_rounded, size: 20, color: AppColors.primaryLight),
+              const SizedBox(width: 8),
+              Text(
+                'Contested Offices & Candidate Standings (पदगत नतिजा)',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ...tally.results.map((posResult) => _buildPositionResult(context, posResult, isLive, isDark)),
         ],
       ),
     );
   }
 
-  Widget _buildResultsHeader(BuildContext context, TallyResult tally, ElectionModel? election, UserModel? user) {
+  Widget _buildResultsHeader(BuildContext context, TallyResult tally, ElectionModel? election, UserModel? user, bool isDark) {
     final state = election?.state ?? 'voting_open';
     final isLive = state == 'voting_open';
 
-    Color headerBg1 = const Color(0xFF0F2B6F);
-    Color headerBg2 = const Color(0xFF1E3A8A);
+    List<Color> gradientColors;
     if (isLive) {
-      headerBg1 = const Color(0xFF1A1A2E);
-      headerBg2 = const Color(0xFF16213E);
+      gradientColors = isDark
+          ? [const Color(0xFF1E1B4B), const Color(0xFF312E81)]
+          : [const Color(0xFF4338CA), const Color(0xFF6366F1)];
     } else if (state == 'results_provisional') {
-      headerBg1 = const Color(0xFF7C2D12);
-      headerBg2 = const Color(0xFFC2410C);
+      gradientColors = isDark
+          ? [const Color(0xFF7C2D12), const Color(0xFF9A3412)]
+          : [const Color(0xFFC2410C), const Color(0xFFEA580C)];
     } else if (state == 'results_final') {
-      headerBg1 = const Color(0xFF064E3B);
-      headerBg2 = const Color(0xFF047857);
+      gradientColors = isDark
+          ? [const Color(0xFF064E3B), const Color(0xFF065F46)]
+          : [const Color(0xFF047857), const Color(0xFF10B981)];
+    } else {
+      gradientColors = isDark
+          ? [const Color(0xFF1E293B), const Color(0xFF334155)]
+          : [const Color(0xFF334155), const Color(0xFF475569)];
     }
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [headerBg1, headerBg2]),
+        gradient: LinearGradient(
+          colors: gradientColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: gradientColors.first.withValues(alpha: 0.3),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -161,66 +242,83 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
             children: [
               _buildStateBadge(state),
               if (user != null && user.canManageElections)
-                Text('Admin View', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12, fontWeight: FontWeight.bold)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text('Election Administration', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(tally.electionTitle,
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
+          Text(
+            tally.electionTitle,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 22),
+          ),
+          const SizedBox(height: 4),
           Text(
             state == 'voting_open'
-                ? 'Voting is in progress — tally updates in real time'
+                ? 'Voting franchise is actively open — real-time tally telemetry'
                 : state == 'voting_closed'
-                    ? 'Voting has closed. Results are ready to be published.'
+                    ? 'Polls have closed. Results tally is computed and awaiting publication.'
                     : state == 'results_provisional'
-                        ? 'Provisional Results (Subject to review/claim period)'
-                        : 'Official Final Results',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                        ? 'Provisional Results (Published for scrutiny & claim period)'
+                        : 'Official Final Certified Results & Mandate',
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 13),
           ),
-          const SizedBox(height: 16),
-          // Turnout Stats
+          const SizedBox(height: 20),
+
+          // Telemetry Stats Row
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
+              color: Colors.white.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildTurnoutStat('Turnout', '${tally.turnoutPercentage}%'),
-                _buildTurnoutStat('Voted', '${tally.ballotsCast}'),
-                _buildTurnoutStat('Total Voters', '${tally.totalVoters}'),
+                _buildTurnoutStat('Turnout Rate', '${tally.turnoutPercentage}%'),
+                Container(width: 1, height: 28, color: Colors.white24),
+                _buildTurnoutStat('Votes Cast', '${tally.ballotsCast}'),
+                Container(width: 1, height: 28, color: Colors.white24),
+                _buildTurnoutStat('Elector Roll', '${tally.totalVoters}'),
               ],
             ),
           ),
+
           // Admin Publish Actions
           if (user != null && user.canManageElections && (state == 'voting_closed' || state == 'results_provisional')) ...[
-            const SizedBox(height: 16),
-            const Divider(color: Colors.white24),
-            const SizedBox(height: 8),
+            const SizedBox(height: 18),
+            const Divider(color: Colors.white24, height: 1),
+            const SizedBox(height: 14),
             Wrap(
               spacing: 12,
-              runSpacing: 8,
+              runSpacing: 10,
               children: [
                 if (state == 'voting_closed')
-                  ElevatedButton.icon(
+                  FilledButton.icon(
                     onPressed: () => _advanceState(context, 'results_provisional', 'Provisional Results Published!'),
                     icon: const Icon(Icons.rate_review_outlined, size: 18),
-                    label: const Text('Publish Provisional Results'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange.shade700,
+                    label: const Text('Publish Provisional Results (प्रारम्भिक नतिजा)'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.orange.shade800,
                       foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                   ),
-                ElevatedButton.icon(
+                FilledButton.icon(
                   onPressed: () => _advanceState(context, 'results_final', 'Official Final Results Published!'),
                   icon: const Icon(Icons.verified_rounded, size: 18),
-                  label: const Text('Publish Final Results'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.success,
+                  label: const Text('Publish Final Results (अन्तिम नतिजा)'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
                     foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
               ],
@@ -236,16 +334,16 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: AppColors.error.withValues(alpha: 0.2),
+          color: Colors.white.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.error.withValues(alpha: 0.5)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
         ),
-        child: Row(
+        child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle)),
-            const SizedBox(width: 6),
-            const Text('LIVE TALLY', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w800, fontSize: 12)),
+            Icon(Icons.fiber_manual_record, color: Colors.greenAccent, size: 12),
+            SizedBox(width: 6),
+            Text('LIVE TALLY', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11.5)),
           ],
         ),
       );
@@ -255,29 +353,36 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
         decoration: BoxDecoration(
           color: Colors.amber.withValues(alpha: 0.25),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.amber),
+          border: Border.all(color: Colors.amberAccent),
         ),
-        child: const Text('VOTING CLOSED (UNPUBLISHED)', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 12)),
+        child: const Text('POLLS CLOSED (UNPUBLISHED)', style: TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold, fontSize: 11.5)),
       );
     } else if (state == 'results_provisional') {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.orange.withValues(alpha: 0.25),
+          color: Colors.white.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.orange),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
         ),
-        child: const Text('PROVISIONAL RESULTS', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 12)),
+        child: const Text('PROVISIONAL RESULTS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11.5)),
       );
     } else if (state == 'results_final') {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: AppColors.success.withValues(alpha: 0.25),
+          color: Colors.white.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.success),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
         ),
-        child: const Text('FINAL OFFICIAL RESULTS', style: TextStyle(color: AppColors.success, fontWeight: FontWeight.bold, fontSize: 12)),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.verified_rounded, color: Colors.white, size: 14),
+            SizedBox(width: 5),
+            Text('OFFICIAL FINAL RESULTS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11.5)),
+          ],
+        ),
       );
     }
     return const SizedBox.shrink();
@@ -286,23 +391,23 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
   Future<void> _advanceState(BuildContext context, String targetState, String successMsg) async {
     final title = targetState == 'results_provisional' ? 'Publish Provisional Results?' : 'Publish Official Final Results?';
     final desc = targetState == 'results_provisional'
-        ? 'This will make provisional results visible to voters and participants.'
-        : 'This will finalize and officially publish final results for this election.';
+        ? 'This will release provisional results to all voters and electors for statutory scrutiny and claims.'
+        : 'This will officially certify and lock the final mandate results for this election.';
 
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(title),
         content: Text(desc),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          ElevatedButton(
+          FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: targetState == 'results_provisional' ? Colors.orange.shade700 : AppColors.success,
-              foregroundColor: Colors.white,
+            style: FilledButton.styleFrom(
+              backgroundColor: targetState == 'results_provisional' ? Colors.orange.shade800 : const Color(0xFF10B981),
             ),
-            child: const Text('Yes, Publish'),
+            child: const Text('Confirm & Publish'),
           ),
         ],
       ),
@@ -315,7 +420,20 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
       ref.invalidate(electionProvider(widget.electionId));
       ref.invalidate(resultsProvider(widget.electionId));
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(successMsg)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white),
+                const SizedBox(width: 10),
+                Text(successMsg),
+              ],
+            ),
+            backgroundColor: Colors.green.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -328,24 +446,23 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
     return Column(
       children: [
         Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        const SizedBox(height: 2),
+        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11)),
       ],
     );
   }
 
-  Widget _buildPositionResult(BuildContext context, PositionResult posResult, bool isLive) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget _buildPositionResult(BuildContext context, PositionResult posResult, bool isLive, bool isDark) {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
         color: isDark ? AppColors.surface : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05)),
+        border: Border.all(color: isDark ? AppColors.surfaceVariant : Colors.grey.shade200),
         boxShadow: [
           if (!isDark)
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -359,24 +476,33 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                const Icon(Icons.star_rounded, color: AppColors.accent, size: 20),
-                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.star_rounded, color: AppColors.primaryLight, size: 20),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(posResult.title, style: Theme.of(context).textTheme.titleMedium),
-                      Text('${posResult.totalValidBallots} vote(s) cast',
-                          style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                      Text(posResult.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text(
+                        '${posResult.totalValidBallots} vote(s) cast across candidates',
+                        style: TextStyle(color: isDark ? Colors.white60 : AppColors.textMuted, fontSize: 12),
+                      ),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          Divider(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05), height: 1),
-          // Candidates
+          Divider(color: isDark ? AppColors.surfaceVariant : Colors.grey.shade200, height: 1),
+
+          // Candidates List
           ...posResult.breakdown.asMap().entries.map((entry) {
             final i = entry.key;
             final score = entry.value;
@@ -387,7 +513,6 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
             return _CandidateResultTile(
               rank: i + 1,
               score: score,
-              // During live voting, no one is the "winner" yet. Also requires at least 1 vote.
               isWinner: !isLive && isTopCandidate && score.score > 0,
               isLeading: isLive && isTopCandidate && score.score > 0,
               percentage: pct,
@@ -422,11 +547,12 @@ class _CandidateResultTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isHighlighted = isWinner || isLeading;
-    final barColor = isWinner ? AppColors.success : (isLeading ? AppColors.accent : AppColors.primaryLight);
-    
-    // Convert alpha instead of opacity to avoid deprecated warnings if using newer flutter
-    final borderColor = isHighlighted ? barColor.withValues(alpha: 0.5) : (isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05));
-    final bgColor = isHighlighted ? barColor.withValues(alpha: 0.05) : Colors.transparent;
+    final barColor = isWinner ? const Color(0xFF10B981) : (isLeading ? Colors.amber.shade700 : AppColors.primaryLight);
+
+    final borderColor = isHighlighted
+        ? barColor.withValues(alpha: 0.5)
+        : (isDark ? AppColors.surfaceVariant : Colors.grey.shade200);
+    final bgColor = isHighlighted ? barColor.withValues(alpha: isDark ? 0.1 : 0.05) : Colors.transparent;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -434,28 +560,28 @@ class _CandidateResultTile extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor),
+        border: Border.all(color: borderColor, width: isHighlighted ? 1.5 : 1),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Large Premium Image
+          // Candidate Photo / Avatar
           Container(
-            width: 72,
-            height: 72,
+            width: 64,
+            height: 64,
             decoration: BoxDecoration(
               color: isDark ? AppColors.surfaceVariant : Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 6,
+                  offset: const Offset(0, 3),
                 ),
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
               child: score.photoUrl.isNotEmpty
                   ? Image.network(
                       score.photoUrl,
@@ -466,22 +592,24 @@ class _CandidateResultTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 16),
-          // Info Column
+
+          // Candidate Info & Progress
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Name & Rank Badge
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: isWinner ? AppColors.success : (isLeading ? AppColors.accent : (isDark ? AppColors.surfaceVariant : Colors.grey.shade200)),
-                        borderRadius: BorderRadius.circular(8),
+                        color: isWinner
+                            ? const Color(0xFF10B981)
+                            : (isLeading ? Colors.amber.shade700 : (isDark ? AppColors.surfaceVariant : Colors.grey.shade200)),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        isWinner ? 'WINNER' : (isLeading ? 'LEADING' : '#$rank'),
+                        isWinner ? '🏆 ELECTED' : (isLeading ? '🟢 LEADING' : '#$rank'),
                         style: TextStyle(
                           color: isHighlighted ? Colors.white : (isDark ? Colors.white70 : Colors.black54),
                           fontSize: 10,
@@ -496,7 +624,7 @@ class _CandidateResultTile extends StatelessWidget {
                         score.name,
                         style: TextStyle(
                           color: isDark ? Colors.white : Colors.black,
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),
                         maxLines: 1,
@@ -505,22 +633,28 @@ class _CandidateResultTile extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
+
                 // Stats Row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       '${score.score == score.score.toInt() ? score.score.toInt() : score.score.toStringAsFixed(2)} votes',
-                      style: TextStyle(color: barColor, fontSize: 14, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: barColor, fontSize: 13.5, fontWeight: FontWeight.bold),
                     ),
                     Text(
                       '${(percentage * 100).toStringAsFixed(1)}%',
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 13, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: isDark ? Colors.white60 : AppColors.textMuted,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 6),
+
                 // Progress Bar
                 ClipRRect(
                   borderRadius: BorderRadius.circular(4),
@@ -528,7 +662,7 @@ class _CandidateResultTile extends StatelessWidget {
                     value: percentage.clamp(0.0, 1.0),
                     backgroundColor: isDark ? AppColors.surfaceVariant : Colors.grey.shade200,
                     valueColor: AlwaysStoppedAnimation<Color>(barColor),
-                    minHeight: 8,
+                    minHeight: 7,
                   ),
                 ),
               ],
@@ -541,8 +675,7 @@ class _CandidateResultTile extends StatelessWidget {
 
   Widget _buildPlaceholder(bool isDark) {
     return Center(
-      child: Icon(Icons.person_rounded, color: isDark ? Colors.white24 : Colors.grey.shade400, size: 36),
+      child: Icon(Icons.person_rounded, color: isDark ? Colors.white24 : Colors.grey.shade400, size: 32),
     );
   }
 }
-

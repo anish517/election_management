@@ -9,24 +9,30 @@ import '../../../core/network/api_constants.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/models.dart';
-import '../../../shared/widgets/glass_card.dart';
+import '../../../shared/widgets/loading_button.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Main screen
+// Main Election Committee Screen
 // ─────────────────────────────────────────────────────────────────────────────
 class ElectionCommitteeScreen extends ConsumerStatefulWidget {
   final String electionId;
-  const ElectionCommitteeScreen({super.key, required this.electionId});
+  final bool? showAppBar;
+
+  const ElectionCommitteeScreen({
+    super.key,
+    required this.electionId,
+    this.showAppBar,
+  });
 
   @override
-  ConsumerState<ElectionCommitteeScreen> createState() =>
-      _ElectionCommitteeScreenState();
+  ConsumerState<ElectionCommitteeScreen> createState() => _ElectionCommitteeScreenState();
 }
 
-class _ElectionCommitteeScreenState
-    extends ConsumerState<ElectionCommitteeScreen> {
+class _ElectionCommitteeScreenState extends ConsumerState<ElectionCommitteeScreen> {
   bool _isLoading = true;
   List<dynamic> _committees = [];
+  String _searchQuery = '';
+  String _roleFilter = 'all'; // 'all', 'election_officer', 'observer', 'auditor'
 
   @override
   void initState() {
@@ -38,8 +44,7 @@ class _ElectionCommitteeScreenState
     setState(() => _isLoading = true);
     try {
       final dio = ref.read(apiClientProvider);
-      final resp =
-          await dio.get(ApiConstants.electionCommittees(widget.electionId));
+      final resp = await dio.get(ApiConstants.electionCommittees(widget.electionId));
       if (mounted) {
         final data = resp.data;
         setState(() {
@@ -58,8 +63,7 @@ class _ElectionCommitteeScreenState
     showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (_) =>
-          _CreateCommitteeDialog(electionId: widget.electionId),
+      builder: (_) => _CreateCommitteeDialog(electionId: widget.electionId),
     ).then((created) {
       if (created == true) _fetchCommittees();
     });
@@ -82,11 +86,11 @@ class _ElectionCommitteeScreenState
   Color _roleColor(String? role) {
     switch (role) {
       case 'election_officer':
-        return Colors.blue;
+        return const Color(0xFF4F46E5); // Indigo
       case 'observer':
-        return Colors.orange;
+        return Colors.orange.shade700;
       case 'auditor':
-        return Colors.green;
+        return const Color(0xFF10B981); // Emerald
       default:
         return Colors.blueGrey;
     }
@@ -95,26 +99,26 @@ class _ElectionCommitteeScreenState
   IconData _roleIcon(String? role) {
     switch (role) {
       case 'election_officer':
-        return Icons.manage_accounts_outlined;
+        return Icons.admin_panel_settings_rounded;
       case 'observer':
-        return Icons.visibility_outlined;
+        return Icons.visibility_rounded;
       case 'auditor':
-        return Icons.verified_user_outlined;
+        return Icons.verified_user_rounded;
       default:
-        return Icons.group_outlined;
+        return Icons.group_rounded;
     }
   }
 
   String _roleLabel(String? role) {
     switch (role) {
       case 'election_officer':
-        return 'Election Officer';
+        return 'Election Officer (अधिकृत)';
       case 'observer':
-        return 'Observer';
+        return 'Independent Observer (पर्यवेक्षक)';
       case 'auditor':
-        return 'Auditor';
+        return 'Auditor (लेखापरीक्षक)';
       default:
-        return role ?? 'Unknown';
+        return role ?? 'Committee Member';
     }
   }
 
@@ -126,244 +130,29 @@ class _ElectionCommitteeScreenState
     return c['chair_email']?.toString() ?? 'Committee Member';
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 860),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Header ──────────────────────────────────────────────────
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Election Committee',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineMedium
-                              ?.copyWith(fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Assign Election Officers, Observers, and Auditors to this election.',
-                        style: TextStyle(
-                            color: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.color,
-                            fontSize: 15),
-                      ),
-                    ],
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: _showCreateDialog,
-                    icon: const Icon(Icons.add),
-                    label: const Text('New Committee'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 24, vertical: 16),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 28),
-
-              // ── Body ────────────────────────────────────────────────────
-              if (_isLoading)
-                const Expanded(
-                    child: Center(child: CircularProgressIndicator()))
-              else if (_committees.isEmpty)
-                const Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.group_outlined, size: 64, color: Colors.grey),
-                        SizedBox(height: 16),
-                        Text('No election committee members assigned yet.',
-                            style:
-                                TextStyle(fontSize: 18, color: Colors.grey)),
-                        SizedBox(height: 8),
-                        Text(
-                          'Click "New Committee" to assign election officers or observers.',
-                          style: TextStyle(color: Colors.grey),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: _committees.length,
-                    itemBuilder: (context, i) {
-                      final c = _committees[i];
-                      final role = c['role']?.toString();
-                      final signatureUrl = c['chair_signature'] != null
-                          ? ApiConstants.getFullImageUrl(
-                              c['chair_signature'].toString())
-                          : null;
-                      final roleColor = _roleColor(role);
-                      final memberCode = c['chair_member_code']?.toString() ?? '';
-
-                      return GlassCard(
-                        margin: const EdgeInsets.only(bottom: 14),
-                        onTap: () => _showViewSheet(c),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Signature avatar
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: signatureUrl != null
-                                  ? Image.network(signatureUrl,
-                                      width: 64, height: 64, fit: BoxFit.cover)
-                                  : Container(
-                                      width: 64,
-                                      height: 64,
-                                      decoration: BoxDecoration(
-                                        color: roleColor.withValues(alpha: 0.12),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Icon(_roleIcon(role),
-                                          size: 28, color: roleColor),
-                                    ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Text(
-                                        _displayName(c),
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16),
-                                      ),
-                                      if (memberCode.isNotEmpty) ...[
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: Colors.grey.withValues(alpha: 0.1),
-                                            borderRadius: BorderRadius.circular(4),
-                                          ),
-                                          child: Text(
-                                            '#$memberCode',
-                                            style: TextStyle(
-                                                fontSize: 11,
-                                                color: Colors.grey[700],
-                                                fontWeight: FontWeight.w600),
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  _infoRow(Icons.email_outlined, c['chair_email'] ?? ''),
-                                  const SizedBox(height: 8),
-                                  // Role badge
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: roleColor.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: roleColor.withValues(alpha: 0.3)),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(_roleIcon(role), size: 11, color: roleColor),
-                                        const SizedBox(width: 4),
-                                        Text(_roleLabel(role),
-                                            style: TextStyle(
-                                                fontSize: 11,
-                                                color: roleColor,
-                                                fontWeight: FontWeight.w600)),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // 3-dot menu
-                            PopupMenuButton<String>(
-                              icon: const Icon(Icons.more_vert_rounded, size: 20),
-                              onSelected: (val) {
-                                if (val == 'edit') {
-                                  showDialog<bool>(
-                                    context: context,
-                                    builder: (_) => _EditCommitteeDialog(
-                                      committee: c,
-                                      electionId: widget.electionId,
-                                    ),
-                                  ).then((ok) {
-                                    if (ok == true) _fetchCommittees();
-                                  });
-                                } else if (val == 'delete') {
-                                  _confirmDelete(c);
-                                }
-                              },
-                              itemBuilder: (_) => [
-                                const PopupMenuItem(
-                                    value: 'edit',
-                                    child: Row(children: [
-                                      Icon(Icons.edit_outlined, size: 18),
-                                      SizedBox(width: 8),
-                                      Text('Edit Role / Signature'),
-                                    ])),
-                                const PopupMenuItem(
-                                    value: 'delete',
-                                    child: Row(children: [
-                                      Icon(Icons.delete_outline_rounded,
-                                          size: 18, color: Colors.red),
-                                      SizedBox(width: 8),
-                                      Text('Delete',
-                                          style: TextStyle(color: Colors.red)),
-                                    ])),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Future<void> _confirmDelete(Map<String, dynamic> c) async {
     final name = _displayName(c);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Committee Member?'),
-        content: Text('Remove "$name" from this election committee?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.delete_outline_rounded, color: Colors.red),
+            SizedBox(width: 10),
+            Text('Remove Committee Member?'),
+          ],
+        ),
+        content: Text('Are you sure you want to remove "$name" from this election committee?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
-          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Remove Member'),
           ),
         ],
       ),
@@ -371,34 +160,427 @@ class _ElectionCommitteeScreenState
     if (confirm != true || !mounted) return;
     try {
       final dio = ref.read(apiClientProvider);
-      await dio.delete(ApiConstants.electionDeleteCommittee(
-          widget.electionId, c['id'].toString()));
+      await dio.delete(ApiConstants.electionDeleteCommittee(widget.electionId, c['id'].toString()));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Committee member removed.')));
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Colors.white),
+                SizedBox(width: 10),
+                Text('Committee member removed successfully.'),
+              ],
+            ),
+            backgroundColor: Colors.green.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
         _fetchCommittees();
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to delete committee member.')));
+          const SnackBar(
+            content: Text('Failed to delete committee member.'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
   }
 
-  Widget _infoRow(IconData icon, String text) => Padding(
-        padding: const EdgeInsets.only(top: 3),
-        child: Row(
-          children: [
-            Icon(icon, size: 13, color: AppColors.textMuted),
-            const SizedBox(width: 4),
-            Flexible(
-                child: Text(text,
-                    style: const TextStyle(fontSize: 13),
-                    overflow: TextOverflow.ellipsis)),
-          ],
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final canPop = Navigator.of(context).canPop();
+    final shouldShowAppBar = widget.showAppBar ?? canPop;
+
+    // Filter by role and search
+    final filtered = _committees.where((item) {
+      final map = item as Map<String, dynamic>;
+      final role = (map['role'] ?? '').toString();
+      final name = _displayName(map).toLowerCase();
+      final email = (map['chair_email'] ?? '').toString().toLowerCase();
+      final memberCode = (map['chair_member_code'] ?? '').toString().toLowerCase();
+
+      if (_roleFilter != 'all' && role != _roleFilter) return false;
+
+      if (_searchQuery.isNotEmpty) {
+        final q = _searchQuery.toLowerCase();
+        return name.contains(q) || email.contains(q) || memberCode.contains(q);
+      }
+      return true;
+    }).toList();
+
+    Widget bodyWidget = _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : SafeArea(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1000),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header & Action Bar
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Election Committee (निर्वाचन समिति)',
+                                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Assign Election Officers, Observers, and Auditors to administer this election.',
+                                style: TextStyle(color: isDark ? Colors.white60 : AppColors.textMuted, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          FilledButton.icon(
+                            onPressed: _showCreateDialog,
+                            icon: const Icon(Icons.person_add_rounded, size: 18),
+                            label: const Text('Add Member'),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF4F46E5),
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Search & Role Filter Bar
+                      Material(
+                        color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.3) : Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          side: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  decoration: InputDecoration(
+                                    hintText: 'Search by name, email, or member code...',
+                                    hintStyle: const TextStyle(fontSize: 13),
+                                    prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                                    isDense: true,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                    filled: true,
+                                    fillColor: isDark ? AppColors.surfaceVariant : const Color(0xFFF9FAFB),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade300),
+                                    ),
+                                  ),
+                                  onChanged: (v) => setState(() => _searchQuery = v),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Wrap(
+                                  spacing: 8,
+                                  children: [
+                                    ChoiceChip(
+                                      label: Text('All (${_committees.length})', style: const TextStyle(fontSize: 12)),
+                                      selected: _roleFilter == 'all',
+                                      onSelected: (val) => setState(() => _roleFilter = 'all'),
+                                    ),
+                                    ChoiceChip(
+                                      label: Text('Officers (${_committees.where((c) => c['role'] == 'election_officer').length})', style: const TextStyle(fontSize: 12)),
+                                      selected: _roleFilter == 'election_officer',
+                                      selectedColor: const Color(0xFF4F46E5).withValues(alpha: 0.18),
+                                      onSelected: (val) => setState(() => _roleFilter = 'election_officer'),
+                                    ),
+                                    ChoiceChip(
+                                      label: Text('Observers (${_committees.where((c) => c['role'] == 'observer').length})', style: const TextStyle(fontSize: 12)),
+                                      selected: _roleFilter == 'observer',
+                                      selectedColor: Colors.orange.withValues(alpha: 0.18),
+                                      onSelected: (val) => setState(() => _roleFilter = 'observer'),
+                                    ),
+                                    ChoiceChip(
+                                      label: Text('Auditors (${_committees.where((c) => c['role'] == 'auditor').length})', style: const TextStyle(fontSize: 12)),
+                                      selected: _roleFilter == 'auditor',
+                                      selectedColor: Colors.green.withValues(alpha: 0.18),
+                                      onSelected: (val) => setState(() => _roleFilter = 'auditor'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.refresh_rounded),
+                                tooltip: 'Refresh List',
+                                onPressed: _fetchCommittees,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Member Cards List
+                      Expanded(
+                        child: filtered.isEmpty
+                            ? Center(
+                                child: Container(
+                                  padding: const EdgeInsets.all(36),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? AppColors.surface : Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary.withValues(alpha: 0.1),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.group_outlined, size: 48, color: AppColors.primaryLight),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      const Text('No Committee Members Found', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'Assign election officers, independent observers, or auditors to manage and monitor this election.',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(fontSize: 13, color: isDark ? Colors.white60 : Colors.grey.shade600),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            : ListView.builder(
+                                itemCount: filtered.length,
+                                itemBuilder: (context, i) {
+                                  final c = filtered[i];
+                                  final role = c['role']?.toString();
+                                  final signatureUrl = c['chair_signature'] != null
+                                      ? ApiConstants.getFullImageUrl(c['chair_signature'].toString())
+                                      : null;
+                                  final roleColor = _roleColor(role);
+                                  final memberCode = c['chair_member_code']?.toString() ?? '';
+                                  final name = _displayName(c);
+                                  final email = c['chair_email']?.toString() ?? '';
+
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: 14),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? AppColors.surface : Colors.white,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(color: isDark ? AppColors.surfaceVariant : Colors.grey.shade200),
+                                      boxShadow: [
+                                        if (!isDark)
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.03),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 3),
+                                          ),
+                                      ],
+                                    ),
+                                    child: InkWell(
+                                      onTap: () => _showViewSheet(c),
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(16),
+                                        child: Row(
+                                          crossAxisAlignment: CrossAxisAlignment.center,
+                                          children: [
+                                            // Avatar / Signature Icon
+                                            Container(
+                                              width: 54,
+                                              height: 54,
+                                              decoration: BoxDecoration(
+                                                color: roleColor.withValues(alpha: 0.12),
+                                                borderRadius: BorderRadius.circular(12),
+                                                border: Border.all(color: roleColor.withValues(alpha: 0.25)),
+                                              ),
+                                              child: ClipRRect(
+                                                borderRadius: BorderRadius.circular(11),
+                                                child: signatureUrl != null
+                                                    ? Image.network(
+                                                        signatureUrl,
+                                                        fit: BoxFit.cover,
+                                                        errorBuilder: (ctx, err, stack) => Icon(_roleIcon(role), size: 26, color: roleColor),
+                                                      )
+                                                    : Icon(_roleIcon(role), size: 26, color: roleColor),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 16),
+
+                                            // Details
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      Text(
+                                                        name,
+                                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                                      ),
+                                                      if (memberCode.isNotEmpty) ...[
+                                                        const SizedBox(width: 8),
+                                                        Container(
+                                                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                                          decoration: BoxDecoration(
+                                                            color: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
+                                                            borderRadius: BorderRadius.circular(6),
+                                                          ),
+                                                          child: Text(
+                                                            '#$memberCode',
+                                                            style: TextStyle(
+                                                              fontSize: 11,
+                                                              fontWeight: FontWeight.bold,
+                                                              color: isDark ? Colors.white70 : Colors.blueGrey.shade800,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 3),
+                                                  Row(
+                                                    children: [
+                                                      Icon(Icons.email_outlined, size: 13, color: isDark ? Colors.white54 : AppColors.textMuted),
+                                                      const SizedBox(width: 5),
+                                                      Text(
+                                                        email,
+                                                        style: TextStyle(fontSize: 12.5, color: isDark ? Colors.white60 : Colors.grey.shade600),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 6),
+                                                  // Role Badge Pill
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                    decoration: BoxDecoration(
+                                                      color: roleColor.withValues(alpha: 0.12),
+                                                      borderRadius: BorderRadius.circular(6),
+                                                      border: Border.all(color: roleColor.withValues(alpha: 0.3)),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Icon(_roleIcon(role), size: 12, color: roleColor),
+                                                        const SizedBox(width: 5),
+                                                        Text(
+                                                          _roleLabel(role),
+                                                          style: TextStyle(fontSize: 11, color: roleColor, fontWeight: FontWeight.bold),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+
+                                            // Action Popup Menu
+                                            PopupMenuButton<String>(
+                                              icon: const Icon(Icons.more_vert_rounded, size: 20),
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                              onSelected: (val) {
+                                                if (val == 'view') {
+                                                  _showViewSheet(c);
+                                                } else if (val == 'edit') {
+                                                  showDialog<bool>(
+                                                    context: context,
+                                                    builder: (_) => _EditCommitteeDialog(
+                                                      committee: c,
+                                                      electionId: widget.electionId,
+                                                    ),
+                                                  ).then((ok) {
+                                                    if (ok == true) _fetchCommittees();
+                                                  });
+                                                } else if (val == 'delete') {
+                                                  _confirmDelete(c);
+                                                }
+                                              },
+                                              itemBuilder: (_) => [
+                                                const PopupMenuItem(
+                                                  value: 'view',
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(Icons.badge_outlined, size: 18),
+                                                      SizedBox(width: 10),
+                                                      Text('View Member Dossier'),
+                                                    ],
+                                                  ),
+                                                ),
+                                                const PopupMenuItem(
+                                                  value: 'edit',
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(Icons.edit_outlined, size: 18, color: Colors.indigo),
+                                                      SizedBox(width: 10),
+                                                      Text('Edit Role / Signature'),
+                                                    ],
+                                                  ),
+                                                ),
+                                                const PopupMenuItem(
+                                                  value: 'delete',
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
+                                                      SizedBox(width: 10),
+                                                      Text('Remove Member', style: TextStyle(color: Colors.red)),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+
+    if (shouldShowAppBar) {
+      return Scaffold(
+        backgroundColor: isDark ? AppColors.background : const Color(0xFFF8FAFC),
+        appBar: AppBar(
+          title: const Text('Election Committee (निर्वाचन समिति)'),
+          leading: canPop
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                  onPressed: () => Navigator.pop(context),
+                )
+              : null,
         ),
+        body: bodyWidget,
       );
+    }
+
+    return Container(
+      color: isDark ? AppColors.background : const Color(0xFFF8FAFC),
+      child: bodyWidget,
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -419,6 +601,7 @@ class _CommitteeDetailSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final c = committee;
     final signatureUrl = c['chair_signature'] != null
         ? ApiConstants.getFullImageUrl(c['chair_signature'].toString())
@@ -428,11 +611,11 @@ class _CommitteeDetailSheet extends ConsumerWidget {
     Color roleColor(String? r) {
       switch (r) {
         case 'election_officer':
-          return Colors.blue;
+          return const Color(0xFF4F46E5);
         case 'observer':
-          return Colors.orange;
+          return Colors.orange.shade700;
         case 'auditor':
-          return Colors.green;
+          return const Color(0xFF10B981);
         default:
           return Colors.blueGrey;
       }
@@ -441,11 +624,11 @@ class _CommitteeDetailSheet extends ConsumerWidget {
     String roleLabel(String? r) {
       switch (r) {
         case 'election_officer':
-          return 'Election Officer';
+          return 'Election Officer (अधिकृत)';
         case 'observer':
-          return 'Observer';
+          return 'Independent Observer (पर्यवेक्षक)';
         case 'auditor':
-          return 'Auditor';
+          return 'Auditor (लेखापरीक्षक)';
         default:
           return r ?? 'Unknown';
       }
@@ -460,44 +643,42 @@ class _CommitteeDetailSheet extends ConsumerWidget {
     }
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.55,
+      initialChildSize: 0.6,
       minChildSize: 0.4,
       maxChildSize: 0.9,
       builder: (_, ctrl) => Container(
         decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
+          color: isDark ? AppColors.surface : Colors.white,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
           children: [
-            // Handle
+            // Handle Bar
             Container(
-              margin: const EdgeInsets.symmetric(vertical: 10),
+              margin: const EdgeInsets.symmetric(vertical: 12),
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.4),
+                color: isDark ? Colors.white24 : Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
+
             // Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 16, 0),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               child: Row(
                 children: [
-                  const Text('Committee Member Details',
-                      style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text('Committee Member Dossier', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const Spacer(),
-                  TextButton.icon(
+                  FilledButton.tonalIcon(
                     icon: const Icon(Icons.edit_outlined, size: 16),
-                    label: const Text('Edit'),
+                    label: const Text('Edit Role'),
                     onPressed: () {
                       Navigator.pop(context);
                       showDialog<bool>(
                         context: context,
-                        builder: (_) => _EditCommitteeDialog(
-                            committee: c, electionId: electionId),
+                        builder: (_) => _EditCommitteeDialog(committee: c, electionId: electionId),
                       ).then((ok) {
                         if (ok == true) onEdited();
                       });
@@ -506,51 +687,57 @@ class _CommitteeDetailSheet extends ConsumerWidget {
                 ],
               ),
             ),
-            const Divider(),
+            const Divider(height: 1),
+
             Expanded(
               child: ListView(
                 controller: ctrl,
                 padding: const EdgeInsets.all(24),
                 children: [
-                  // Signature image
-                  if (signatureUrl != null) ...[
-                    Center(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.network(signatureUrl,
-                            height: 100, fit: BoxFit.contain),
-                      ),
+                  // Role Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: roleColor(role).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: roleColor(role).withValues(alpha: 0.3)),
                     ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // Role badge
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: roleColor(role).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: roleColor(role).withValues(alpha: 0.3)),
-                      ),
-                      child: Text(
-                        roleLabel(role),
-                        style: TextStyle(
-                            color: roleColor(role),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12),
-                      ),
+                    child: Text(
+                      roleLabel(role),
+                      style: TextStyle(color: roleColor(role), fontWeight: FontWeight.bold, fontSize: 13),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
 
-                  _tile(Icons.person_outline, 'Name', displayName()),
-                  _tile(Icons.email_outlined, 'Email', c['chair_email'] ?? '-'),
+                  _infoTile(context, Icons.person_outline_rounded, 'Full Legal Name', displayName()),
+                  _infoTile(context, Icons.email_outlined, 'Official Email', c['chair_email'] ?? '-'),
                   if ((c['chair_member_code'] ?? '').isNotEmpty)
-                    _tile(Icons.badge_outlined, 'Member Code', '#${c['chair_member_code']}'),
+                    _infoTile(context, Icons.badge_outlined, 'Organization Member Code', '#${c['chair_member_code']}'),
+
+                  const SizedBox(height: 16),
+                  const Text('Official Signature Record', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade300),
+                    ),
+                    child: signatureUrl != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(
+                              signatureUrl,
+                              fit: BoxFit.contain,
+                              errorBuilder: (ctx, err, stack) => const Center(child: Text('Signature Image Unavailable')),
+                            ),
+                          )
+                        : const Center(
+                            child: Text('No digital signature uploaded on file.', style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
+                          ),
+                  ),
                 ],
               ),
             ),
@@ -560,26 +747,32 @@ class _CommitteeDetailSheet extends ConsumerWidget {
     );
   }
 
-  Widget _tile(IconData icon, String label, String value) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Row(
-          children: [
-            Icon(icon, size: 18, color: AppColors.textMuted),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style:
-                        const TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                Text(value,
-                    style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w500)),
-              ],
-            ),
-          ],
-        ),
-      );
+  Widget _infoTile(BuildContext context, IconData icon, String label, String value) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.3) : const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: AppColors.primaryLight),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : AppColors.textMuted)),
+              const SizedBox(height: 2),
+              Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -588,12 +781,10 @@ class _CommitteeDetailSheet extends ConsumerWidget {
 class _EditCommitteeDialog extends ConsumerStatefulWidget {
   final Map<String, dynamic> committee;
   final String electionId;
-  const _EditCommitteeDialog(
-      {required this.committee, required this.electionId});
+  const _EditCommitteeDialog({required this.committee, required this.electionId});
 
   @override
-  ConsumerState<_EditCommitteeDialog> createState() =>
-      _EditCommitteeDialogState();
+  ConsumerState<_EditCommitteeDialog> createState() => _EditCommitteeDialogState();
 }
 
 class _EditCommitteeDialogState extends ConsumerState<_EditCommitteeDialog> {
@@ -653,15 +844,13 @@ class _EditCommitteeDialogState extends ConsumerState<_EditCommitteeDialog> {
           ),
         });
         await dio.patch(
-          ApiConstants.electionUpdateCommittee(
-              widget.electionId, widget.committee['id'].toString()),
+          ApiConstants.electionUpdateCommittee(widget.electionId, widget.committee['id'].toString()),
           data: formData,
           options: Options(contentType: 'multipart/form-data'),
         );
       } else {
         await dio.patch(
-          ApiConstants.electionUpdateCommittee(
-              widget.electionId, widget.committee['id'].toString()),
+          ApiConstants.electionUpdateCommittee(widget.electionId, widget.committee['id'].toString()),
           data: {'role': _selectedRole},
         );
       }
@@ -689,181 +878,151 @@ class _EditCommitteeDialogState extends ConsumerState<_EditCommitteeDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final c = widget.committee;
     final fullName = c['chair_full_name']?.toString() ?? c['chair_email']?.toString() ?? '';
 
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Title
-                Row(
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Row(
+        children: [
+          Icon(Icons.edit_outlined, size: 22, color: AppColors.primaryLight),
+          SizedBox(width: 10),
+          Text('Edit Committee Assignment', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+        ],
+      ),
+      content: SizedBox(
+        width: 500,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Member Info summary card
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                ),
+                child: Row(
                   children: [
-                    const Icon(Icons.edit_outlined, size: 22, color: AppColors.primary),
-                    const SizedBox(width: 10),
-                    const Text('Edit Committee Role & Signature',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
-                    const Spacer(),
-                    IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.of(context).pop(false)),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Member Info summary card
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryLight.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                        color: AppColors.primaryLight.withValues(alpha: 0.2)),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        child: Text(fullName.isNotEmpty ? fullName[0].toUpperCase() : '?'),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(fullName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            Text(c['chair_email'] ?? '', style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                if (_error != null) ...[
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(_error!,
-                        style:
-                            const TextStyle(color: Colors.red, fontSize: 13)),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-
-                // Role Selector
-                const Text('Assigned Role *',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                const SizedBox(height: 6),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedRole,
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.admin_panel_settings_outlined),
-                    border: OutlineInputBorder(),
-                  ),
-                  items: const [
-                    DropdownMenuItem(
-                        value: 'election_officer',
-                        child: Text('Election Officer — manages election')),
-                    DropdownMenuItem(
-                        value: 'observer', child: Text('Observer — read-only view')),
-                    DropdownMenuItem(
-                        value: 'auditor', child: Text('Auditor — audit log access')),
-                  ],
-                  onChanged: (v) =>
-                      setState(() => _selectedRole = v ?? 'election_officer'),
-                ),
-                const SizedBox(height: 16),
-
-                // Signature Upload
-                const Text('Update Signature (Optional)',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                const SizedBox(height: 6),
-                OutlinedButton.icon(
-                  onPressed: _pickSignature,
-                  icon: const Icon(Icons.upload_file_outlined),
-                  label: Text(_newSignatureFileName != null
-                      ? 'Selected: $_newSignatureFileName'
-                      : 'Choose New Signature Image'),
-                ),
-                const SizedBox(height: 24),
-
-                // Actions
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _isSaving
-                            ? null
-                            : () => Navigator.of(context).pop(false),
-                        child: const Text('Cancel'),
-                      ),
+                    CircleAvatar(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      child: Text(fullName.isNotEmpty ? fullName[0].toUpperCase() : '?'),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: ElevatedButton(
-                        onPressed: _isSaving ? null : _submit,
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14)),
-                        child: _isSaving
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white))
-                            : const Text('Save Changes'),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          Text(c['chair_email'] ?? '', style: TextStyle(color: isDark ? Colors.white60 : Colors.grey.shade600, fontSize: 12)),
+                        ],
                       ),
                     ),
                   ],
                 ),
+              ),
+              const SizedBox(height: 16),
+
+              if (_error != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12.5, fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(height: 14),
               ],
-            ),
+
+              // Role Selector
+              const Text('Assigned Role *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedRole,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.admin_panel_settings_outlined),
+                  filled: true,
+                  fillColor: isDark ? AppColors.surfaceVariant : const Color(0xFFF9FAFB),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'election_officer',
+                    child: Text('Election Officer — manages voting & candidates'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'observer',
+                    child: Text('Independent Observer — monitor-only'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'auditor',
+                    child: Text('Auditor — audit logs & hash proofs'),
+                  ),
+                ],
+                onChanged: (v) => setState(() => _selectedRole = v ?? 'election_officer'),
+              ),
+              const SizedBox(height: 16),
+
+              // Signature Upload
+              const Text('Update Signature (Optional)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              const SizedBox(height: 6),
+              OutlinedButton.icon(
+                onPressed: _pickSignature,
+                icon: const Icon(Icons.upload_file_outlined),
+                label: Text(_newSignatureFileName != null ? 'Selected: $_newSignatureFileName' : 'Choose New Signature File'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
           ),
         ),
       ),
+      actions: [
+        TextButton(
+          onPressed: _isSaving ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        LoadingButton(
+          isLoading: _isSaving,
+          label: 'Save Changes',
+          icon: Icons.check_rounded,
+          onPressed: _submit,
+          fullWidth: false,
+        ),
+      ],
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Create Committee Dialog (Search & Select Existing Member)
+// Create Committee Dialog (Search & Select Existing Member OR Create User)
 // ─────────────────────────────────────────────────────────────────────────────
 class _CreateCommitteeDialog extends ConsumerStatefulWidget {
   final String electionId;
   const _CreateCommitteeDialog({required this.electionId});
 
   @override
-  ConsumerState<_CreateCommitteeDialog> createState() =>
-      _CreateCommitteeDialogState();
+  ConsumerState<_CreateCommitteeDialog> createState() => _CreateCommitteeDialogState();
 }
 
-class _CreateCommitteeDialogState
-    extends ConsumerState<_CreateCommitteeDialog> {
+class _CreateCommitteeDialogState extends ConsumerState<_CreateCommitteeDialog> {
   final _formKey = GlobalKey<FormState>();
 
   String _mode = 'existing'; // 'existing' | 'new'
   MemberModel? _selectedMember;
   String _searchQuery = '';
 
-  String _selectedRole = 'election_officer'; // default
+  String _selectedRole = 'election_officer';
   bool _isSaving = false;
   String? _error;
 
@@ -908,7 +1067,7 @@ class _CreateCommitteeDialogState
 
   Future<void> _submit() async {
     if (_mode == 'existing' && _selectedMember == null) {
-      setState(() => _error = 'Please search and select an existing member.');
+      setState(() => _error = 'Please search and select an existing member from the roster.');
       return;
     }
 
@@ -980,48 +1139,27 @@ class _CreateCommitteeDialogState
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final membersAsync = ref.watch(membersProvider);
 
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 540, maxHeight: 720),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // ── Title bar ────────────────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
-              decoration: BoxDecoration(
-                gradient: AppColors.primaryGradient,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(16)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.group_add_outlined,
-                      color: Colors.white, size: 22),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text('Add Election Committee Member',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16)),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
-                    onPressed: () => Navigator.of(context).pop(false),
-                  ),
-                ],
-              ),
-            ),
-
-            // ── Mode Switch Tabs ─────────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              color: Theme.of(context).cardColor,
-              child: Row(
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Row(
+        children: [
+          Icon(Icons.group_add_rounded, color: AppColors.primaryLight, size: 22),
+          SizedBox(width: 10),
+          Text('Add Election Committee Member', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+        ],
+      ),
+      content: SizedBox(
+        width: 580,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Mode Switch Tabs
+              Row(
                 children: [
                   Expanded(
                     child: InkWell(
@@ -1029,37 +1167,28 @@ class _CreateCommitteeDialogState
                         _mode = 'existing';
                         _error = null;
                       }),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(10),
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
-                          color: _mode == 'existing'
-                              ? AppColors.primary.withValues(alpha: 0.1)
-                              : Colors.transparent,
+                          color: _mode == 'existing' ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
                           border: Border.all(
-                            color: _mode == 'existing'
-                                ? AppColors.primary
-                                : Colors.grey.withValues(alpha: 0.3),
+                            color: _mode == 'existing' ? AppColors.primary : (isDark ? Colors.white12 : Colors.grey.shade300),
+                            width: 1.5,
                           ),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.person_search_outlined,
-                                size: 18,
-                                color: _mode == 'existing'
-                                    ? AppColors.primary
-                                    : Colors.grey[700]),
+                            Icon(Icons.person_search_rounded, size: 18, color: _mode == 'existing' ? AppColors.primaryLight : AppColors.textMuted),
                             const SizedBox(width: 6),
                             Text(
-                              'Select Existing Member',
+                              'Select Member',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
-                                color: _mode == 'existing'
-                                    ? AppColors.primary
-                                    : Colors.grey[700],
+                                color: _mode == 'existing' ? AppColors.primaryLight : (isDark ? Colors.white70 : Colors.grey.shade700),
                               ),
                             ),
                           ],
@@ -1074,37 +1203,28 @@ class _CreateCommitteeDialogState
                         _mode = 'new';
                         _error = null;
                       }),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(10),
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10),
                         decoration: BoxDecoration(
-                          color: _mode == 'new'
-                              ? AppColors.primary.withValues(alpha: 0.1)
-                              : Colors.transparent,
+                          color: _mode == 'new' ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
                           border: Border.all(
-                            color: _mode == 'new'
-                                ? AppColors.primary
-                                : Colors.grey.withValues(alpha: 0.3),
+                            color: _mode == 'new' ? AppColors.primary : (isDark ? Colors.white12 : Colors.grey.shade300),
+                            width: 1.5,
                           ),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.person_add_outlined,
-                                size: 18,
-                                color: _mode == 'new'
-                                    ? AppColors.primary
-                                    : Colors.grey[700]),
+                            Icon(Icons.person_add_rounded, size: 18, color: _mode == 'new' ? AppColors.primaryLight : AppColors.textMuted),
                             const SizedBox(width: 6),
                             Text(
                               'Create New User',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
-                                color: _mode == 'new'
-                                    ? AppColors.primary
-                                    : Colors.grey[700],
+                                color: _mode == 'new' ? AppColors.primaryLight : (isDark ? Colors.white70 : Colors.grey.shade700),
                               ),
                             ),
                           ],
@@ -1114,391 +1234,282 @@ class _CreateCommitteeDialogState
                   ),
                 ],
               ),
-            ),
-            const Divider(height: 1),
+              const SizedBox(height: 16),
 
-            // ── Form body ────────────────────────────────────────────────
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              if (_error != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.1),
+                    border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
                     children: [
-                      // Error banner
-                      if (_error != null) ...[
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withValues(alpha: 0.1),
-                            border: Border.all(
-                                color: Colors.red.withValues(alpha: 0.3)),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.error_outline,
-                                  color: Colors.red, size: 18),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                  child: Text(_error!,
-                                      style: const TextStyle(
-                                          color: Colors.red, fontSize: 13))),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                      ],
-
-                      // MODE 1: SELECT EXISTING MEMBER
-                      if (_mode == 'existing') ...[
-                        const Text('Search Organization Member *',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 13)),
-                        const SizedBox(height: 6),
-
-                        if (_selectedMember != null) ...[
-                          // Selected Member Card
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.green.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                  color: Colors.green.withValues(alpha: 0.3)),
-                            ),
-                            child: Row(
-                              children: [
-                                const CircleAvatar(
-                                  backgroundColor: Colors.green,
-                                  foregroundColor: Colors.white,
-                                  child: Icon(Icons.check, size: 20),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        _selectedMember!.fullName,
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '${_selectedMember!.email} • #${_selectedMember!.memberCode}',
-                                        style: TextStyle(
-                                            color: Colors.grey[700],
-                                            fontSize: 12),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: () =>
-                                      setState(() => _selectedMember = null),
-                                  child: const Text('Change'),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                        ] else ...[
-                          // Search Box & Results
-                          membersAsync.when(
-                            loading: () => const Center(
-                                child: Padding(
-                              padding: EdgeInsets.all(16.0),
-                              child: CircularProgressIndicator(),
-                            )),
-                            error: (err, _) => Text(
-                              'Error loading members: $err',
-                              style: const TextStyle(color: Colors.red),
-                            ),
-                            data: (members) {
-                              final filtered = members.where((m) {
-                                if (_searchQuery.trim().isEmpty) return true;
-                                final q = _searchQuery.toLowerCase();
-                                return m.fullName.toLowerCase().contains(q) ||
-                                    m.email.toLowerCase().contains(q) ||
-                                    m.memberCode.toLowerCase().contains(q);
-                              }).toList();
-
-                              return Column(
-                                children: [
-                                  TextFormField(
-                                    decoration: InputDecoration(
-                                      hintText:
-                                          'Type name, email, or member code...',
-                                      prefixIcon:
-                                          const Icon(Icons.search_rounded),
-                                      border: const OutlineInputBorder(),
-                                      suffixIcon: _searchQuery.isNotEmpty
-                                          ? IconButton(
-                                              icon: const Icon(Icons.clear),
-                                              onPressed: () => setState(
-                                                  () => _searchQuery = ''),
-                                            )
-                                          : null,
-                                    ),
-                                    onChanged: (val) =>
-                                        setState(() => _searchQuery = val),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    height: 160,
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                          color: Colors.grey.withValues(alpha: 0.3)),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: filtered.isEmpty
-                                        ? const Center(
-                                            child: Text('No members found.',
-                                                style: TextStyle(
-                                                    color: Colors.grey)))
-                                        : ListView.separated(
-                                            itemCount: filtered.length,
-                                            separatorBuilder: (_, _) =>
-                                                const Divider(height: 1),
-                                            itemBuilder: (context, index) {
-                                              final m = filtered[index];
-                                              return ListTile(
-                                                dense: true,
-                                                leading: CircleAvatar(
-                                                  radius: 14,
-                                                  backgroundColor:
-                                                      AppColors.primary,
-                                                  foregroundColor: Colors.white,
-                                                  child: Text(
-                                                    m.fullName.isNotEmpty
-                                                        ? m.fullName[0]
-                                                            .toUpperCase()
-                                                        : '?',
-                                                    style: const TextStyle(
-                                                        fontSize: 12),
-                                                  ),
-                                                ),
-                                                title: Text(m.fullName,
-                                                    style: const TextStyle(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        fontSize: 13)),
-                                                subtitle: Text(
-                                                    '${m.email} • #${m.memberCode}',
-                                                    style: const TextStyle(
-                                                        fontSize: 11)),
-                                                trailing: const Icon(
-                                                    Icons.chevron_right_rounded,
-                                                    size: 18),
-                                                onTap: () {
-                                                  setState(() {
-                                                    _selectedMember = m;
-                                                    _error = null;
-                                                  });
-                                                },
-                                              );
-                                            },
-                                          ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                ],
-                              );
-                            },
-                          ),
-                        ],
-                      ] else ...[
-                        // MODE 2: CREATE NEW USER
-                        const Text('Email Address *',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 13)),
-                        const SizedBox(height: 6),
-                        TextFormField(
-                          controller: _emailCtrl,
-                          decoration: const InputDecoration(
-                            hintText: 'Enter official email address',
-                            prefixIcon: Icon(Icons.email_outlined),
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: TextInputType.emailAddress,
-                          validator: (v) {
-                            if (v == null || v.trim().isEmpty) {
-                              return 'Required';
-                            }
-                            if (!RegExp(r'^[^@]+@[^@]+\.[^@]+')
-                                .hasMatch(v.trim())) {
-                              return 'Enter a valid email';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 14),
-
-                        const Text('Password *',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 13)),
-                        const SizedBox(height: 6),
-                        TextFormField(
-                          controller: _passwordCtrl,
-                          obscureText: _obscurePassword,
-                          decoration: InputDecoration(
-                            hintText: 'Minimum 8 characters',
-                            prefixIcon: const Icon(Icons.lock_outline),
-                            border: const OutlineInputBorder(),
-                            suffixIcon: IconButton(
-                              icon: Icon(_obscurePassword
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined),
-                              onPressed: () => setState(() =>
-                                  _obscurePassword = !_obscurePassword),
-                            ),
-                          ),
-                          validator: (v) {
-                            if (v == null || v.isEmpty) return 'Required';
-                            if (v.length < 8) return 'Minimum 8 characters';
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 14),
-
-                        const Text('Confirm Password *',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 13)),
-                        const SizedBox(height: 6),
-                        TextFormField(
-                          controller: _confirmCtrl,
-                          obscureText: _obscureConfirm,
-                          decoration: InputDecoration(
-                            hintText: 'Re-enter password',
-                            prefixIcon: const Icon(Icons.lock_outline),
-                            border: const OutlineInputBorder(),
-                            suffixIcon: IconButton(
-                              icon: Icon(_obscureConfirm
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined),
-                              onPressed: () => setState(() =>
-                                  _obscureConfirm = !_obscureConfirm),
-                            ),
-                          ),
-                          validator: (v) =>
-                              (v == null || v.isEmpty) ? 'Required' : null,
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-
-                      // Role assignment
-                      const Text('Assign Role *',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 13)),
-                      const SizedBox(height: 6),
-                      DropdownButtonFormField<String>(
-                        initialValue: _selectedRole,
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.admin_panel_settings_outlined),
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'election_officer',
-                            child: Row(
-                              children: [
-                                Icon(Icons.manage_accounts_outlined,
-                                    size: 18, color: Colors.blue),
-                                SizedBox(width: 8),
-                                Text('Election Officer — manages election'),
-                              ],
-                            ),
-                          ),
-                          DropdownMenuItem(
-                            value: 'observer',
-                            child: Row(
-                              children: [
-                                Icon(Icons.visibility_outlined,
-                                    size: 18, color: Colors.orange),
-                                SizedBox(width: 8),
-                                Text('Observer — read-only view'),
-                              ],
-                            ),
-                          ),
-                          DropdownMenuItem(
-                            value: 'auditor',
-                            child: Row(
-                              children: [
-                                Icon(Icons.verified_user_outlined,
-                                    size: 18, color: Colors.green),
-                                SizedBox(width: 8),
-                                Text('Auditor — audit log access'),
-                              ],
-                            ),
-                          ),
-                        ],
-                        onChanged: (v) => setState(
-                            () => _selectedRole = v ?? 'election_officer'),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Chair Signature upload
-                      const Text('Signature Image (Optional)',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 13)),
-                      const SizedBox(height: 6),
-                      OutlinedButton.icon(
-                        onPressed: _pickSignature,
-                        icon: const Icon(Icons.upload_file_outlined),
-                        label: Text(_signatureFileName != null
-                            ? 'Selected: $_signatureFileName'
-                            : 'Upload Signature Image (PNG/JPG)'),
-                      ),
+                      const Icon(Icons.error_outline_rounded, color: Colors.red, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12.5, fontWeight: FontWeight.bold))),
                     ],
                   ),
                 ),
-              ),
-            ),
+                const SizedBox(height: 14),
+              ],
 
-            // ── Action buttons ───────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _isSaving
-                          ? null
-                          : () => Navigator.of(context).pop(false),
-                      child: const Text('Cancel'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: _isSaving ? null : _submit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
+              Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // MODE 1: SELECT EXISTING MEMBER
+                    if (_mode == 'existing') ...[
+                      const Text('Search Organization Member *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(height: 6),
+
+                      if (_selectedMember != null) ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
+                          ),
+                          child: Row(
+                            children: [
+                              const CircleAvatar(
+                                backgroundColor: Color(0xFF10B981),
+                                foregroundColor: Colors.white,
+                                child: Icon(Icons.check_rounded, size: 20),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(_selectedMember!.fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${_selectedMember!.email} • #${_selectedMember!.memberCode}',
+                                      style: TextStyle(color: isDark ? Colors.white60 : Colors.grey.shade700, fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () => setState(() => _selectedMember = null),
+                                child: const Text('Change'),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ] else ...[
+                        membersAsync.when(
+                          loading: () => const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: CircularProgressIndicator(),
+                            ),
+                          ),
+                          error: (err, _) => Text('Error loading members: $err', style: const TextStyle(color: Colors.red)),
+                          data: (members) {
+                            final filteredMembers = members.where((m) {
+                              if (_searchQuery.trim().isEmpty) return true;
+                              final q = _searchQuery.toLowerCase();
+                              return m.fullName.toLowerCase().contains(q) ||
+                                  m.email.toLowerCase().contains(q) ||
+                                  m.memberCode.toLowerCase().contains(q);
+                            }).toList();
+
+                            return Column(
+                              children: [
+                                TextFormField(
+                                  decoration: InputDecoration(
+                                    hintText: 'Type name, email, or member code...',
+                                    prefixIcon: const Icon(Icons.search_rounded),
+                                    filled: true,
+                                    fillColor: isDark ? AppColors.surfaceVariant : const Color(0xFFF9FAFB),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    suffixIcon: _searchQuery.isNotEmpty
+                                        ? IconButton(
+                                            icon: const Icon(Icons.clear_rounded),
+                                            onPressed: () => setState(() => _searchQuery = ''),
+                                          )
+                                        : null,
+                                  ),
+                                  onChanged: (val) => setState(() => _searchQuery = val),
+                                ),
+                                const SizedBox(height: 8),
+                                Container(
+                                  height: 160,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: isDark ? Colors.white12 : Colors.grey.shade300),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: filteredMembers.isEmpty
+                                      ? const Center(child: Text('No members found.', style: TextStyle(color: AppColors.textMuted)))
+                                      : ListView.separated(
+                                          itemCount: filteredMembers.length,
+                                          separatorBuilder: (_, _) => const Divider(height: 1),
+                                          itemBuilder: (context, index) {
+                                            final m = filteredMembers[index];
+                                            return ListTile(
+                                              dense: true,
+                                              leading: CircleAvatar(
+                                                radius: 14,
+                                                backgroundColor: AppColors.primary,
+                                                foregroundColor: Colors.white,
+                                                child: Text(
+                                                  m.fullName.isNotEmpty ? m.fullName[0].toUpperCase() : '?',
+                                                  style: const TextStyle(fontSize: 12),
+                                                ),
+                                              ),
+                                              title: Text(m.fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                              subtitle: Text('${m.email} • #${m.memberCode}', style: const TextStyle(fontSize: 11)),
+                                              trailing: const Icon(Icons.chevron_right_rounded, size: 18),
+                                              onTap: () {
+                                                setState(() {
+                                                  _selectedMember = m;
+                                                  _error = null;
+                                                });
+                                              },
+                                            );
+                                          },
+                                        ),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+                            );
+                          },
+                        ),
+                      ],
+                    ] else ...[
+                      // MODE 2: CREATE NEW USER
+                      const Text('Official Email Address *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _emailCtrl,
+                        decoration: InputDecoration(
+                          hintText: 'e.g. officer@election.org',
+                          prefixIcon: const Icon(Icons.email_outlined),
+                          filled: true,
+                          fillColor: isDark ? AppColors.surfaceVariant : const Color(0xFFF9FAFB),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return 'Required';
+                          if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(v.trim())) return 'Enter a valid email';
+                          return null;
+                        },
                       ),
-                      child: _isSaving
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ))
-                          : const Text('Assign to Committee'),
+                      const SizedBox(height: 14),
+
+                      const Text('Set Password *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _passwordCtrl,
+                        obscureText: _obscurePassword,
+                        decoration: InputDecoration(
+                          hintText: 'Minimum 8 characters',
+                          prefixIcon: const Icon(Icons.lock_outline_rounded),
+                          filled: true,
+                          fillColor: isDark ? AppColors.surfaceVariant : const Color(0xFFF9FAFB),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          suffixIcon: IconButton(
+                            icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          ),
+                        ),
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return 'Required';
+                          if (v.length < 8) return 'Minimum 8 characters';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 14),
+
+                      const Text('Confirm Password *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _confirmCtrl,
+                        obscureText: _obscureConfirm,
+                        decoration: InputDecoration(
+                          hintText: 'Re-enter password',
+                          prefixIcon: const Icon(Icons.lock_outline_rounded),
+                          filled: true,
+                          fillColor: isDark ? AppColors.surfaceVariant : const Color(0xFFF9FAFB),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                          suffixIcon: IconButton(
+                            icon: Icon(_obscureConfirm ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                            onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                          ),
+                        ),
+                        validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Role assignment
+                    const Text('Assign Role *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<String>(
+                      initialValue: _selectedRole,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: isDark ? AppColors.surfaceVariant : const Color(0xFFF9FAFB),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        prefixIcon: const Icon(Icons.admin_panel_settings_outlined),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'election_officer',
+                          child: Text('Election Officer — manages election'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'observer',
+                          child: Text('Independent Observer — monitor-only'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'auditor',
+                          child: Text('Auditor — audit logs & proofs'),
+                        ),
+                      ],
+                      onChanged: (v) => setState(() => _selectedRole = v ?? 'election_officer'),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+
+                    // Signature upload
+                    const Text('Signature Image (Optional)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 6),
+                    OutlinedButton.icon(
+                      onPressed: _pickSignature,
+                      icon: const Icon(Icons.upload_file_outlined),
+                      label: Text(_signatureFileName != null ? 'Selected: $_signatureFileName' : 'Upload Signature Image (PNG/JPG)'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
+      actions: [
+        TextButton(
+          onPressed: _isSaving ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        LoadingButton(
+          isLoading: _isSaving,
+          label: 'Assign to Committee',
+          icon: Icons.check_rounded,
+          onPressed: _submit,
+          fullWidth: false,
+        ),
+      ],
     );
   }
 }

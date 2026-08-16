@@ -24,6 +24,7 @@ class VotersScreen extends ConsumerWidget {
     final votersAsync = ref.watch(votersProvider(electionId));
     final user = ref.watch(currentUserProvider);
     final isAdmin = user?.canManageElections ?? false;
+    final isObserverOrAuditor = (user?.isObserver ?? false) || (user?.isAuditor ?? false);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -40,6 +41,28 @@ class VotersScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (isObserverOrAuditor)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.visibility_rounded, color: Colors.blue, size: 22),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Observer / Auditor Mode: You have read-only independent monitoring access to the published voter roll.',
+                        style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w600, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -54,7 +77,9 @@ class VotersScreen extends ConsumerWidget {
                     Text(
                       isAdmin
                           ? 'Official registered voter roll with management controls'
-                          : 'Public voter list for verification and scrutiny (दाबी-विरोध)',
+                          : isObserverOrAuditor
+                              ? 'Read-only voter roll for independent audit and monitoring'
+                              : 'Public voter list for verification and scrutiny (दाबी-विरोध)',
                       style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
                     ),
                   ],
@@ -63,7 +88,7 @@ class VotersScreen extends ConsumerWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    if (!isAdmin) ...[
+                    if (!isAdmin && !isObserverOrAuditor) ...[
                       ElevatedButton.icon(
                         onPressed: () {
                           showDialog(
@@ -79,7 +104,7 @@ class VotersScreen extends ConsumerWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         ),
                       ),
-                    ] else ...[
+                    ] else if (isAdmin) ...[
                       ElevatedButton.icon(
                         onPressed: () {
                           showDialog(
@@ -167,7 +192,7 @@ class VotersScreen extends ConsumerWidget {
                             separatorBuilder: (context, index) => const Divider(height: 1),
                             itemBuilder: (context, index) {
                               final voter = voters[index] as Map<String, dynamic>;
-                              return _buildTableRow(context, ref, voter, index + 1, isAdmin);
+                              return _buildTableRow(context, ref, voter, index + 1, isAdmin, isObserverOrAuditor);
                             },
                           );
                         },
@@ -275,7 +300,7 @@ class VotersScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTableRow(BuildContext context, WidgetRef ref, Map<String, dynamic> voter, int sn, bool isAdmin) {
+  Widget _buildTableRow(BuildContext context, WidgetRef ref, Map<String, dynamic> voter, int sn, bool isAdmin, bool isObserverOrAuditor) {
     final fullName = (voter['full_name'] as String?)?.trim() ?? '';
     final initial = fullName.isNotEmpty ? fullName[0].toUpperCase() : 'V';
     final isEligible = voter['is_eligible'] == true;
@@ -349,19 +374,20 @@ class VotersScreen extends ConsumerWidget {
                       );
                     },
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.rate_review_outlined, size: 18, color: Colors.orange),
-                    tooltip: 'File Claim / Correction on this Voter',
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (_) => FileVoterClaimDialog(
-                          electionId: electionId,
-                          initialVoterName: fullName,
-                        ),
-                      );
-                    },
-                  ),
+                  if (!isObserverOrAuditor)
+                    IconButton(
+                      icon: const Icon(Icons.rate_review_outlined, size: 18, color: Colors.orange),
+                      tooltip: 'File Claim / Correction on this Voter',
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => FileVoterClaimDialog(
+                            electionId: electionId,
+                            initialVoterName: fullName,
+                          ),
+                        );
+                      },
+                    ),
                 ],
               ),
             ),

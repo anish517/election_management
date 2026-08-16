@@ -152,6 +152,38 @@ class CandidateViewSet(viewsets.ModelViewSet):
         
         return Response(self.get_serializer(candidate).data)
 
+    @action(detail=True, methods=['post'])
+    def withdraw(self, request, election_pk=None, pk=None):
+        candidate = self.get_object()
+        reason = request.data.get('reason', '')
+
+        user = request.user
+        user_email = user.email.strip().lower() if user.email else ''
+        cand_email = candidate.email.strip().lower() if candidate.email else ''
+        is_owner = bool(cand_email and cand_email == user_email)
+        is_officer = user.role in ['org_admin', 'election_officer', 'super_admin'] or getattr(user, 'is_org_admin', False)
+
+        if not (is_owner or is_officer):
+            raise PermissionDenied('Only the candidate or an election officer can withdraw this nomination.')
+
+        candidate.status = NominationStatus.WITHDRAWN
+        candidate.review_notes = f"Withdrawn: {reason}" if reason else "Candidate nomination withdrawn"
+        candidate.save()
+
+        log_action('candidate.withdrawn', request.user.organization, request.user, {
+            'candidate_id': str(candidate.id),
+            'election_id': str(election_pk),
+            'reason': reason,
+        })
+
+        from apps.notifications.services import NotificationService
+        try:
+            NotificationService.notify_candidate_withdrawn(candidate.election, candidate, reason=reason)
+        except Exception as e:
+            logger.warning(f"Failed to send candidate withdrawal notification: {e}")
+
+        return Response(self.get_serializer(candidate).data)
+
 
 class CandidateObjectionViewSet(viewsets.ModelViewSet):
     """
@@ -179,10 +211,14 @@ class CandidateObjectionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         from django.utils import timezone
         from apps.elections.models import Election
-        from rest_framework.exceptions import ValidationError
+        from rest_framework.exceptions import ValidationError, PermissionDenied
+
+        user = self.request.user
+        if user.role in ['observer', 'auditor']:
+            raise PermissionDenied('Observers and Auditors have read-only monitoring access and cannot file candidate objections.')
 
         election_pk = self.kwargs.get('election_pk')
-        election = Election.objects.get(id=election_pk, organization=self.request.user.organization)
+        election = Election.objects.get(id=election_pk, organization=user.organization)
         now = timezone.now()
 
         # Schedule Gating: Objections open after nomination closes and before candidacy claim deadline

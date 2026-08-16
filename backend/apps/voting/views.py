@@ -580,9 +580,13 @@ class VoterClaimViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         from django.utils import timezone
-        from rest_framework.exceptions import ValidationError
+        from rest_framework.exceptions import ValidationError, PermissionDenied
+        user = self.request.user
+        if user.role in ['observer', 'auditor']:
+            raise PermissionDenied('Observers and Auditors have read-only monitoring access and cannot file voter claims.')
+
         election_pk = self.kwargs.get('election_pk')
-        election = Election.objects.get(id=election_pk, organization=self.request.user.organization)
+        election = Election.objects.get(id=election_pk, organization=user.organization)
         now = timezone.now()
 
         # Schedule Gating
@@ -623,10 +627,27 @@ class VoterClaimViewSet(viewsets.ModelViewSet):
         # Automated side effects if approved
         if new_status == 'approved':
             if claim.claim_type == 'omission':
-                if not VoterRoll.objects.filter(election=claim.election, email__iexact=claim.claimant_email).exists():
+                existing_voter = VoterRoll.objects.filter(election=claim.election, email__iexact=claim.claimant_email).first()
+                if not existing_voter and claim.claimant_phone:
+                    existing_voter = VoterRoll.objects.filter(election=claim.election, phone=claim.claimant_phone).first()
+
+                if existing_voter:
+                    existing_voter.is_eligible = True
+                    existing_voter.ineligibility_reason = ''
+                    if claim.claimant_citizenship_number and not existing_voter.citizenship_number:
+                        existing_voter.citizenship_number = claim.claimant_citizenship_number
+                    existing_voter.save()
+                else:
+                    parts = (claim.claimant_name or '').strip().split()
+                    first_name = parts[0] if parts else ''
+                    middle_name = " ".join(parts[1:-1]) if len(parts) > 2 else ''
+                    last_name = parts[-1] if len(parts) > 1 else ''
+
                     VoterRoll.objects.create(
                         election=claim.election,
-                        first_name=claim.claimant_name,
+                        first_name=first_name,
+                        middle_name=middle_name,
+                        last_name=last_name,
                         email=claim.claimant_email,
                         phone=claim.claimant_phone,
                         citizenship_number=claim.claimant_citizenship_number,
@@ -638,8 +659,18 @@ class VoterClaimViewSet(viewsets.ModelViewSet):
                 claim.voter_roll.save(update_fields=['is_eligible', 'ineligibility_reason'])
             elif claim.claim_type == 'correction' and claim.voter_roll:
                 if claim.target_voter_name:
-                    claim.voter_roll.first_name = claim.target_voter_name
-                    claim.voter_roll.save(update_fields=['first_name'])
+                    parts = claim.target_voter_name.strip().split()
+                    claim.voter_roll.first_name = parts[0] if parts else ''
+                    claim.voter_roll.middle_name = " ".join(parts[1:-1]) if len(parts) > 2 else ''
+                    claim.voter_roll.last_name = parts[-1] if len(parts) > 1 else ''
+                    claim.voter_roll.save(update_fields=['first_name', 'middle_name', 'last_name'])
+
+        # Notify claimant of resolution
+        from apps.notifications.services import NotificationService
+        try:
+            NotificationService.notify_voter_claim_resolved(claim)
+        except Exception as e:
+            logger.warning(f"Failed to send voter claim resolution notification: {e}")
 
         log_action('voter_claim.resolved', claim.election.organization, request.user, {
             'election_id': str(claim.election.id),

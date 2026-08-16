@@ -101,6 +101,8 @@ class ElectionDetailScreen extends ConsumerWidget {
   }
 
   Widget _buildBody(BuildContext context, WidgetRef ref, ElectionModel election, UserModel? user) {
+    final isAuditor = user?.isAuditor ?? false;
+
     return ResponsivePageWrapper(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -109,6 +111,10 @@ class ElectionDetailScreen extends ConsumerWidget {
           children: [
             _buildHeroCard(context, election),
             const SizedBox(height: 20),
+            if (isAuditor) ...[
+              _buildAuditorCard(context, election),
+              const SizedBox(height: 20),
+            ],
             _buildVoterListAndClaimsSection(context, ref, election, user),
             const SizedBox(height: 20),
             _buildActionButtons(context, ref, election, user),
@@ -120,6 +126,54 @@ class ElectionDetailScreen extends ConsumerWidget {
             _buildPositionsSection(context, election, user),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildAuditorCard(BuildContext context, ElectionModel election) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E3A8A).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.verified_user_rounded, color: Color(0xFF3B82F6), size: 24),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Auditor Forensic Suite (लेखापरीक्षक)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1E40AF))),
+                SizedBox(height: 2),
+                Text('Inspect cryptographic hash chains, ballot snapshots, and system audit logs.', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => AuditPortalScreen(
+                  electionId: election.id,
+                  electionTitle: election.title,
+                ),
+              ),
+            ),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E40AF), foregroundColor: Colors.white),
+            icon: const Icon(Icons.shield_rounded, size: 16),
+            label: const Text('Open Audit Portal'),
+          ),
+        ],
       ),
     );
   }
@@ -293,6 +347,7 @@ class ElectionDetailScreen extends ConsumerWidget {
   Widget _buildVoterListAndClaimsSection(BuildContext context, WidgetRef ref, ElectionModel election, UserModel? user) {
     final now = DateTime.now();
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isObserverOrAuditor = (user?.isObserver ?? false) || (user?.isAuditor ?? false);
 
     DateTime? firstListDate = election.firstVoterListDate != null ? DateTime.tryParse(election.firstVoterListDate!) : null;
     DateTime? claimDeadline = election.voterListClaimDate != null ? DateTime.tryParse(election.voterListClaimDate!) : null;
@@ -423,7 +478,7 @@ class ElectionDetailScreen extends ConsumerWidget {
                 icon: const Icon(Icons.people_outline_rounded, size: 18),
                 label: const Text('View Published Voter Roll'),
               ),
-              if (isVoterClaimOpen)
+              if (isVoterClaimOpen && !isObserverOrAuditor)
                 ElevatedButton.icon(
                   onPressed: () {
                     showDialog(
@@ -467,22 +522,24 @@ class ElectionDetailScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      final allCandidates = election.positions.expand((p) => p.candidates).toList();
-                      showDialog(
-                        context: context,
-                        builder: (_) => FileCandidateObjectionDialog(
-                          electionId: election.id,
-                          candidates: allCandidates,
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade800, foregroundColor: Colors.white),
-                    icon: const Icon(Icons.gavel, size: 16),
-                    label: const Text('File Objection'),
-                  ),
+                  if (!isObserverOrAuditor) ...[
+                    const SizedBox(width: 8),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        final allCandidates = election.positions.expand((p) => p.candidates).toList();
+                        showDialog(
+                          context: context,
+                          builder: (_) => FileCandidateObjectionDialog(
+                            electionId: election.id,
+                            candidates: allCandidates,
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade800, foregroundColor: Colors.white),
+                      icon: const Icon(Icons.gavel, size: 16),
+                      label: const Text('File Objection'),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -492,30 +549,7 @@ class ElectionDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildPositionsSection(BuildContext context, ElectionModel election, UserModel? user) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.work_outline_rounded, color: AppColors.primaryLight, size: 18),
-            const SizedBox(width: 8),
-            Text('Positions', style: Theme.of(context).textTheme.titleMedium),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (election.positions.isEmpty)
-          const Center(
-            child: Padding(
-              padding: EdgeInsets.all(20),
-              child: Text('No positions added yet', style: TextStyle(color: AppColors.textMuted)),
-            ),
-          )
-        else
-          ...election.positions.map((p) => _PositionCard(electionId: election.id, position: p, isAdmin: user?.canManageElections ?? false)),
-      ],
-    );
-  }
+
 
   Widget _buildActionButtons(BuildContext context, WidgetRef ref, ElectionModel election, UserModel? user) {
     return Wrap(
@@ -557,7 +591,7 @@ class ElectionDetailScreen extends ConsumerWidget {
             icon: const Icon(Icons.emoji_events_outlined),
             label: const Text('View Results'),
           ),
-        if (election.hasResults)
+        if (election.hasResults || user?.isAuditor == true || user?.canManageElections == true)
           OutlinedButton.icon(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
@@ -922,6 +956,114 @@ class ElectionDetailScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildPositionsSection(BuildContext context, ElectionModel election, UserModel? user) {
+    final isAdmin = user?.canManageElections ?? false;
+    final now = DateTime.now();
+    final candFinalDate = election.candidacyFinalDate != null ? DateTime.tryParse(election.candidacyFinalDate!) : null;
+    final isFinalCandidates = candFinalDate != null && now.isAfter(candFinalDate);
+    final isVotingOrBeyond = election.state == 'voting_open' || election.state == 'voting_closed' || election.state.startsWith('results');
+
+    final isCertifiedFinal = isFinalCandidates || isVotingOrBeyond;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        isCertifiedFinal
+                            ? 'Certified Candidate Roster'
+                            : 'Candidate Nominations & Roster',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      if (isCertifiedFinal)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.green.withValues(alpha: 0.5)),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.verified_rounded, color: Colors.green, size: 13),
+                              SizedBox(width: 4),
+                              Text(
+                                'Certified Final (अन्तिम नामावली)',
+                                style: TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        )
+                      else if (election.state == 'nomination_closed')
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+                          ),
+                          child: const Text(
+                            'Preliminary Scrutiny (दाबी-विरोध जारी)',
+                            style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    isCertifiedFinal
+                        ? 'The certified final candidate list has been officially published. Only verified approved candidates appear on the ballot.'
+                        : 'Review candidates who have filed nominations across all election designations.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        if (election.positions.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(24),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Theme.of(context).brightness == Brightness.dark ? AppColors.surface : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: const Column(
+              children: [
+                Icon(Icons.badge_outlined, size: 36, color: AppColors.textMuted),
+                SizedBox(height: 8),
+                Text('No designations added yet.', style: TextStyle(fontWeight: FontWeight.w600)),
+              ],
+            ),
+          )
+        else
+          ...election.positions.map(
+            (pos) => _PositionCard(
+              electionId: election.id,
+              position: pos,
+              isAdmin: isAdmin,
+              isCertifiedFinal: isCertifiedFinal,
+            ),
+          ),
+      ],
+    );
+  }
+
   Color _stateColor(String state) {
     switch (state) {
       case 'draft': return AppColors.stateDraft;
@@ -939,11 +1081,26 @@ class _PositionCard extends ConsumerWidget {
   final String electionId;
   final PositionModel position;
   final bool isAdmin;
-  const _PositionCard({required this.electionId, required this.position, required this.isAdmin});
+  final bool isCertifiedFinal;
+  const _PositionCard({
+    required this.electionId,
+    required this.position,
+    required this.isAdmin,
+    this.isCertifiedFinal = false,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final activeCandidates = position.candidates.where((c) {
+      if (c.status == 'withdrawn') return false;
+      if (isCertifiedFinal) return c.status == 'approved';
+      return isAdmin || c.status != 'rejected';
+    }).toList();
+
+    final withdrawnCandidates = position.candidates.where((c) => c.status == 'withdrawn').toList();
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -1020,21 +1177,38 @@ class _PositionCard extends ConsumerWidget {
                 ),
             ],
           ),
-          if (position.candidates.isNotEmpty) ...[
-            Builder(
-              builder: (context) {
-                final visibleCandidates = position.candidates.where((c) => isAdmin || c.status == 'approved').toList();
-                if (visibleCandidates.isEmpty) return const SizedBox.shrink();
-                
-                return Column(
-                  children: [
-                    const SizedBox(height: 16),
-                    Divider(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05)),
-                    const SizedBox(height: 8),
-                    ...visibleCandidates.map((c) => _CandidateTile(electionId: electionId, candidate: c, isAdmin: isAdmin)),
-                  ],
-                );
-              },
+          if (activeCandidates.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Divider(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05)),
+            const SizedBox(height: 8),
+            ...activeCandidates.map((c) => _CandidateTile(electionId: electionId, candidate: c, isAdmin: isAdmin)),
+          ],
+          if (withdrawnCandidates.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.person_off_outlined, color: Colors.grey, size: 16),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Withdrawn Candidates (उम्मेदवारी फिर्ता) (${withdrawnCandidates.length})',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ...withdrawnCandidates.map((c) => _CandidateTile(electionId: electionId, candidate: c, isAdmin: isAdmin)),
+                ],
+              ),
             ),
           ],
         ],

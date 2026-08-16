@@ -17,7 +17,7 @@ from apps.voting.views import VotingViewSet, VotingHistoryView, VoterRollViewSet
 from apps.results.views import ElectionResultsViewSet
 from apps.organizations.views import OrganizationView, OrganizationStatsView
 from apps.core.views import FileUploadView
-from apps.audit.views import AuditExportView, AuditVerifyHashView, AuditReceiptLookupView
+from apps.audit.views import AuditExportView, AuditVerifyHashView, AuditReceiptLookupView, AuditLogsView
 
 # Build the main router
 router = routers.SimpleRouter()
@@ -63,4 +63,5 @@ urlpatterns = [
     path('v1/elections/<uuid:election_id>/audit/export/', AuditExportView.as_view(), name='audit-export'),
     path('v1/elections/<uuid:election_id>/audit/verify-hash/', AuditVerifyHashView.as_view(), name='audit-verify-hash'),
     path('v1/elections/<uuid:election_id>/audit/receipt/<str:receipt_hash>/', AuditReceiptLookupView.as_view(), name='audit-receipt-lookup'),
+    path('v1/elections/<uuid:election_id>/audit/logs/', AuditLogsView.as_view(), name='audit-logs'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

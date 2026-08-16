@@ -112,6 +112,7 @@ class ApiConstants {
       '/elections/$eid/audit/verify-hash/';
   static String auditReceiptLookup(String eid, String hash) =>
       '/elections/$eid/audit/receipt/$hash/';
+  static String auditLogs(String eid) => '/elections/$eid/audit/logs/';
 
   // Organization
   static const String organizationProfile = '/organization/';

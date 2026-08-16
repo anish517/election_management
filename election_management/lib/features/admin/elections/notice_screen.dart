@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../shared/widgets/glass_card.dart';
 
 class NoticeScreen extends ConsumerStatefulWidget {
@@ -101,7 +102,15 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return Center(
+    final user = ref.watch(authProvider).user;
+    final canManage = user?.canManageElections ?? false;
+    final canPop = Navigator.of(context).canPop();
+
+    final displayNotices = canManage
+        ? _notices
+        : _notices.where((n) => n['is_published'] == true).toList();
+
+    Widget content = Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 800),
         child: Padding(
@@ -116,31 +125,34 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Election Notices',
+                        'Election Notices (सूचनाहरू)',
                         style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Manage public announcements and notices for this election.',
-                        style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 16),
+                        canManage
+                            ? 'Manage public announcements and notices for this election.'
+                            : 'Official announcements and notices published by the Election Committee.',
+                        style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 15),
                       ),
                     ],
                   ),
-                  ElevatedButton.icon(
-                    onPressed: () => _showNoticeDialog(),
-                    icon: const Icon(Icons.add),
-                    label: const Text('New Notice'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  if (canManage)
+                    ElevatedButton.icon(
+                      onPressed: () => _showNoticeDialog(),
+                      icon: const Icon(Icons.add),
+                      label: const Text('New Notice'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      ),
                     ),
-                  ),
                 ],
               ),
               const SizedBox(height: 32),
               
-              if (_notices.isEmpty)
+              if (displayNotices.isEmpty)
                 const Expanded(
                   child: Center(
                     child: Column(
@@ -148,7 +160,7 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
                       children: [
                         Icon(Icons.campaign_outlined, size: 64, color: Colors.grey),
                         SizedBox(height: 16),
-                        Text('No notices yet.', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                        Text('No notices published yet.', style: TextStyle(fontSize: 18, color: Colors.grey)),
                       ],
                     ),
                   ),
@@ -156,9 +168,9 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
               else
                 Expanded(
                   child: ListView.builder(
-                    itemCount: _notices.length,
+                    itemCount: displayNotices.length,
                     itemBuilder: (context, index) {
-                      final notice = _notices[index];
+                      final notice = displayNotices[index];
                       final createdAt = DateTime.tryParse(notice['created_at'] ?? '');
                       final formattedDate = createdAt != null ? DateFormat.yMMMd().add_jm().format(createdAt) : 'Unknown date';
                       
@@ -178,41 +190,42 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
                                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                                     ),
                                   ),
-                                  Row(
-                                    children: [
-                                      if (notice['is_published'] == true)
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.success.withValues(alpha: 0.1),
-                                            borderRadius: BorderRadius.circular(16),
-                                            border: Border.all(color: AppColors.success.withValues(alpha: 0.5)),
+                                  if (canManage)
+                                    Row(
+                                      children: [
+                                        if (notice['is_published'] == true)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.success.withValues(alpha: 0.1),
+                                              borderRadius: BorderRadius.circular(16),
+                                              border: Border.all(color: AppColors.success.withValues(alpha: 0.5)),
+                                            ),
+                                            child: const Text('Published', style: TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.bold)),
+                                          )
+                                        else
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: Colors.orange.withValues(alpha: 0.1),
+                                              borderRadius: BorderRadius.circular(16),
+                                              border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+                                            ),
+                                            child: const Text('Draft', style: TextStyle(color: Colors.orange, fontSize: 12, fontWeight: FontWeight.bold)),
                                           ),
-                                          child: const Text('Published', style: TextStyle(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.bold)),
-                                        )
-                                      else
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: Colors.orange.withValues(alpha: 0.1),
-                                            borderRadius: BorderRadius.circular(16),
-                                            border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
-                                          ),
-                                          child: const Text('Draft', style: TextStyle(color: Colors.orange, fontSize: 12, fontWeight: FontWeight.bold)),
+                                        const SizedBox(width: 8),
+                                        IconButton(
+                                          icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.primary),
+                                          onPressed: () => _showNoticeDialog(notice: notice),
+                                          tooltip: 'Edit',
                                         ),
-                                      const SizedBox(width: 8),
-                                      IconButton(
-                                        icon: const Icon(Icons.edit_outlined, size: 20, color: AppColors.primary),
-                                        onPressed: () => _showNoticeDialog(notice: notice),
-                                        tooltip: 'Edit',
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete_outline, size: 20, color: AppColors.error),
-                                        onPressed: () => _deleteNotice(notice['id'].toString()),
-                                        tooltip: 'Delete',
-                                      ),
-                                    ],
-                                  ),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline, size: 20, color: AppColors.error),
+                                          onPressed: () => _deleteNotice(notice['id'].toString()),
+                                          tooltip: 'Delete',
+                                        ),
+                                      ],
+                                    ),
                                 ],
                               ),
                               const SizedBox(height: 8),
@@ -237,6 +250,14 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
         ),
       ),
     );
+
+    if (canPop) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Election Notices (सूचनाहरू)')),
+        body: content,
+      );
+    }
+    return content;
   }
 }
 

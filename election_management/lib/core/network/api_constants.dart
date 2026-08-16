@@ -48,6 +48,8 @@ class ApiConstants {
       '/elections/$eid/candidates/$cid/approve/';
   static String rejectCandidate(String eid, String cid) =>
       '/elections/$eid/candidates/$cid/reject/';
+  static String withdrawCandidate(String eid, String cid) =>
+      '/elections/$eid/candidates/$cid/withdraw/';
   static String electionNotices(String id) => '/elections/$id/notices/';
   static String electionNoticeDetail(String eid, String nid) =>
       '/elections/$eid/notices/$nid/';

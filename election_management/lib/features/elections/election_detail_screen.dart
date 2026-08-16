@@ -17,6 +17,8 @@ import '../admin/elections/manage_voter_claims_dialog.dart';
 import '../candidates/dialogs/file_candidate_objection_dialog.dart';
 import '../admin/elections/manage_candidate_objections_dialog.dart';
 import '../admin/elections/voters_screen.dart';
+import '../admin/elections/notice_screen.dart';
+import '../admin/elections/guidelines_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/network/api_constants.dart';
 import '../../core/network/api_client.dart';
@@ -608,6 +610,24 @@ class ElectionDetailScreen extends ConsumerWidget {
               side: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.1)),
             ),
           ),
+        OutlinedButton.icon(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => NoticeScreen(electionId: election.id),
+            ),
+          ),
+          icon: const Icon(Icons.campaign_outlined, size: 18),
+          label: const Text('Notices (सूचना)'),
+        ),
+        OutlinedButton.icon(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => GuidelinesScreen(electionId: election.id),
+            ),
+          ),
+          icon: const Icon(Icons.menu_book_outlined, size: 18),
+          label: const Text('Guidelines (निर्देशिका)'),
+        ),
       ],
     );
   }

@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/network/api_constants.dart';
 import '../../core/network/api_client.dart';
+import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/loading_button.dart';
 import '../../shared/widgets/image_upload_widget.dart';
 import '../candidates/nomination_list_screen.dart';
@@ -209,6 +210,68 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
     );
   }
 
+  Future<void> _handleWithdraw(String candidateId, String positionTitle) async {
+    final reasonCtrl = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: const [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Withdraw Candidacy?'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Are you sure you want to withdraw your nomination for $positionTitle?'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonCtrl,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                labelText: 'Reason for Withdrawal (Optional)',
+                hintText: 'e.g. Personal reasons, health, etc.',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Confirm Withdrawal', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await ref.read(apiClientProvider).post(
+          ApiConstants.withdrawCandidate(widget.electionId, candidateId),
+          data: {'reason': reasonCtrl.text.trim()},
+        );
+        ref.invalidate(candidatesProvider(widget.electionId));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Nomination withdrawn successfully.')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to withdraw nomination: $e')),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final electionAsync = ref.watch(electionProvider(widget.electionId));
@@ -280,28 +343,104 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('My Nominations', style: Theme.of(context).textTheme.headlineSmall),
+                        Row(
+                          children: [
+                            const Icon(Icons.assignment_ind_outlined, color: AppColors.primary, size: 22),
+                            const SizedBox(width: 8),
+                            Text('My Nominations (मेरा उम्मेदवारीहरू)', style: Theme.of(context).textTheme.headlineSmall),
+                          ],
+                        ),
                         const SizedBox(height: 12),
-                        ...myNominations.map((c) => Card(
-                              elevation: 0,
-                              margin: const EdgeInsets.only(bottom: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                side: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+                        ...myNominations.map((c) {
+                          final isWithdrawn = c.status == 'withdrawn';
+                          final isApproved = c.status == 'approved';
+                          final isRejected = c.status == 'rejected';
+
+                          return Card(
+                            elevation: 0,
+                            margin: const EdgeInsets.only(bottom: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                color: isWithdrawn
+                                    ? Colors.grey.shade400
+                                    : isApproved
+                                        ? Colors.green.shade300
+                                        : isRejected
+                                            ? Colors.red.shade300
+                                            : Colors.orange.shade300,
                               ),
-                              child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                title: Text(c.positionTitle ?? 'Position'),
-                                subtitle: Text('Status: ${c.status?.toUpperCase() ?? 'PENDING'}\nManifesto: ${c.manifesto}'),
-                                isThreeLine: true,
-                                trailing: Icon(
-                                  c.status == 'approved' ? Icons.check_circle_rounded :
-                                  c.status == 'rejected' ? Icons.cancel_rounded : Icons.pending_rounded,
-                                  color: c.status == 'approved' ? Colors.green :
-                                         c.status == 'rejected' ? Colors.red : Colors.orange,
-                                ),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          c.positionTitle ?? 'Position',
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: isWithdrawn
+                                              ? Colors.grey.shade200
+                                              : isApproved
+                                                  ? Colors.green.shade50
+                                                  : isRejected
+                                                      ? Colors.red.shade50
+                                                      : Colors.orange.shade50,
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          isWithdrawn
+                                              ? 'WITHDRAWN (फिर्ता)'
+                                              : (c.status?.toUpperCase() ?? 'PENDING'),
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: isWithdrawn
+                                                ? Colors.grey.shade700
+                                                : isApproved
+                                                    ? Colors.green.shade800
+                                                    : isRejected
+                                                        ? Colors.red.shade800
+                                                        : Colors.orange.shade800,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (c.manifesto.isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    Text('Manifesto: ${c.manifesto}', style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
+                                  ],
+                                  if (!isWithdrawn && !isRejected) ...[
+                                    const SizedBox(height: 12),
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: OutlinedButton.icon(
+                                        onPressed: () => _handleWithdraw(c.id, c.positionTitle ?? 'Position'),
+                                        icon: const Icon(Icons.remove_circle_outline, size: 14, color: Colors.red),
+                                        label: const Text('Withdraw Candidacy', style: TextStyle(color: Colors.red, fontSize: 12)),
+                                        style: OutlinedButton.styleFrom(
+                                          side: const BorderSide(color: Colors.red),
+                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                          minimumSize: Size.zero,
+                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
-                            )),
+                            ),
+                          );
+                        }),
                         const SizedBox(height: 32),
                         const Divider(),
                         const SizedBox(height: 32),

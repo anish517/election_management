@@ -11,6 +11,7 @@ import 'notice_screen.dart';
 import 'guidelines_screen.dart';
 import 'election_committee_screen.dart';
 import '../../elections/election_detail_screen.dart';
+import '../../analytics/analytics_screen.dart';
 
 class ElectionDashboardScreen extends ConsumerStatefulWidget {
   final String electionId;
@@ -153,6 +154,8 @@ class _ElectionDashboardScreenState
         return NoticeScreen(electionId: widget.electionId);
       case 7:
         return GuidelinesScreen(electionId: widget.electionId);
+      case 8:
+        return AnalyticsScreen(electionId: widget.electionId, showAppBar: false);
       default:
         return const Center(child: Text('Coming Soon'));
     }

@@ -100,9 +100,19 @@ def log_action(
     """
     target_type = ''
     target_id = None
+    meta = metadata or {}
+
     if target is not None:
-        target_type = type(target).__name__.lower()
-        target_id = getattr(target, 'id', None)
+        if isinstance(target, dict):
+            meta = {**target, **meta}
+            target_id = meta.get('election_id') or meta.get('target_id')
+            target_type = 'election' if 'election_id' in meta else 'custom'
+        else:
+            target_type = type(target).__name__.lower()
+            target_id = getattr(target, 'id', None)
+
+    if not target_id and meta:
+        target_id = meta.get('election_id') or meta.get('target_id')
 
     AuditLog.objects.create(
         organization=organization,
@@ -110,6 +120,6 @@ def log_action(
         action=action,
         target_type=target_type,
         target_id=target_id,
-        metadata=metadata or {},
+        metadata=meta,
         ip_address=ip_address,
     )

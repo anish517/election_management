@@ -229,9 +229,13 @@ class AuditLogsView(APIView):
         if not election:
             return Response({'error': 'Election not found.'}, status=status.HTTP_404_NOT_FOUND)
 
+        from django.db.models import Q
         logs = AuditLog.objects.filter(
-            organization=election.organization,
-            target_id=election.id,
+            organization=election.organization
+        ).filter(
+            Q(target_id=election.id) |
+            Q(target_id__isnull=True) |
+            Q(metadata__election_id=str(election.id))
         ).order_by('-created_at')[:100]
 
         data = [

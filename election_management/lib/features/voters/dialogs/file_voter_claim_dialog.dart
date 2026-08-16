@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/admin_providers.dart';
+import '../../../core/utils/error_helper.dart';
 
 class FileVoterClaimDialog extends ConsumerStatefulWidget {
   final String electionId;
@@ -19,7 +20,7 @@ class FileVoterClaimDialog extends ConsumerStatefulWidget {
 
 class _FileVoterClaimDialogState extends ConsumerState<FileVoterClaimDialog> {
   final _formKey = GlobalKey<FormState>();
-  String _claimType = 'omission';
+  String _claimType = 'omission'; // omission, correction, objection
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -31,7 +32,7 @@ class _FileVoterClaimDialogState extends ConsumerState<FileVoterClaimDialog> {
   @override
   void initState() {
     super.initState();
-    if (widget.initialVoterName != null) {
+    if (widget.initialVoterName != null && widget.initialVoterName!.isNotEmpty) {
       _targetVoterController.text = widget.initialVoterName!;
       _claimType = 'correction';
     }
@@ -74,10 +75,18 @@ class _FileVoterClaimDialogState extends ConsumerState<FileVoterClaimDialog> {
       }
     } catch (e) {
       if (mounted) {
+        final errorMsg = extractApiErrorMessage(e, fallback: 'Failed to submit claim.');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to submit claim: $e'),
-            backgroundColor: Colors.red,
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 10),
+                Expanded(child: Text(errorMsg)),
+              ],
+            ),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }

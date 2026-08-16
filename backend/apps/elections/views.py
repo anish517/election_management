@@ -91,8 +91,26 @@ def _advance_due_elections(organization=None):
     for el in nom_close_due:
         try:
             el.transition_to(ElectionState.NOMINATION_CLOSED)
+            NotificationService.notify_candidacy_claim_published(el)
         except Exception as e:
             logger.warning(f"[AutoAdvance] NOMINATION_CLOSED failed for {el.id}: {e}")
+
+    # 3a. Nominations closed -> Notify Preliminary Candidate List & Scrutiny/Objections open
+    cand_claims_due = qs.filter(
+        state=ElectionState.NOMINATION_CLOSED,
+        nomination_close_at__isnull=False,
+        nomination_close_at__lte=now,
+    )
+    for el in cand_claims_due:
+        already_sent = EmailBroadcastLog.objects.filter(
+            election=el,
+            subject__icontains='Candidate List Published (Claims Open)'
+        ).exists()
+        if not already_sent:
+            try:
+                NotificationService.notify_candidacy_claim_published(el)
+            except Exception as e:
+                logger.warning(f"[AutoAdvance] Candidacy claims notify failed for {el.id}: {e}")
 
     # 3b. Final Candidate List Date passed -> Notify Final Approved Candidates
     final_cand_due = qs.filter(

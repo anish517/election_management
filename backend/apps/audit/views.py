@@ -215,3 +215,34 @@ class AuditReceiptLookupView(APIView):
             'election_title': election.title,
             'checked_at': timezone.now().isoformat(),
         })
+
+
+class AuditLogsView(APIView):
+    """
+    GET /v1/elections/{election_id}/audit/logs/
+    Returns real-time forensic audit log entries for this election.
+    """
+    permission_classes = [IsAuthenticated, BelongsToOrganization]
+
+    def get(self, request, election_id):
+        election = _get_election_for_audit(election_id, request.user.organization)
+        if not election:
+            return Response({'error': 'Election not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        logs = AuditLog.objects.filter(
+            organization=election.organization,
+            target_id=election.id,
+        ).order_by('-created_at')[:100]
+
+        data = [
+            {
+                'id': str(log.id),
+                'action': log.action,
+                'actor_email': log.actor.email if log.actor else 'system',
+                'ip_address': log.ip_address or '-',
+                'metadata': log.metadata or {},
+                'created_at': log.created_at.isoformat(),
+            }
+            for log in logs
+        ]
+        return Response({'results': data, 'count': len(data)})

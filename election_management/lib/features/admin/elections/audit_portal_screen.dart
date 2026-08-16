@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_helper.dart';
 
 class AuditPortalScreen extends ConsumerStatefulWidget {
   final String electionId;
@@ -20,7 +21,9 @@ class AuditPortalScreen extends ConsumerStatefulWidget {
   ConsumerState<AuditPortalScreen> createState() => _AuditPortalScreenState();
 }
 
-class _AuditPortalScreenState extends ConsumerState<AuditPortalScreen> {
+class _AuditPortalScreenState extends ConsumerState<AuditPortalScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
   // Verification state
   bool _isVerifying = false;
   Map<String, dynamic>? _verifyResult;
@@ -31,11 +34,25 @@ class _AuditPortalScreenState extends ConsumerState<AuditPortalScreen> {
   bool _isLookingUp = false;
   Map<String, dynamic>? _receiptResult;
 
+  // Audit logs state
+  bool _isLoadingLogs = false;
+  List<dynamic> _auditLogs = [];
+  String? _logsError;
+
   // Download state
   bool _isDownloading = false;
 
   @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+    _verifyHash();
+    _loadAuditLogs();
+  }
+
+  @override
   void dispose() {
+    _tabController.dispose();
     _receiptController.dispose();
     super.dispose();
   }
@@ -51,9 +68,30 @@ class _AuditPortalScreenState extends ConsumerState<AuditPortalScreen> {
       final resp = await dio.get(ApiConstants.auditVerifyHash(widget.electionId));
       setState(() => _verifyResult = resp.data);
     } catch (e) {
-      setState(() => _verifyError = e.toString());
+      setState(() => _verifyError = extractApiErrorMessage(e));
     } finally {
       setState(() => _isVerifying = false);
+    }
+  }
+
+  Future<void> _loadAuditLogs() async {
+    setState(() {
+      _isLoadingLogs = true;
+      _logsError = null;
+    });
+    try {
+      final dio = ref.read(apiClientProvider);
+      final resp = await dio.get(ApiConstants.auditLogs(widget.electionId));
+      final data = resp.data;
+      if (data is Map && data.containsKey('results')) {
+        setState(() => _auditLogs = data['results'] as List<dynamic>);
+      } else if (data is List) {
+        setState(() => _auditLogs = data);
+      }
+    } catch (e) {
+      setState(() => _logsError = extractApiErrorMessage(e));
+    } finally {
+      setState(() => _isLoadingLogs = false);
     }
   }
 
@@ -70,7 +108,8 @@ class _AuditPortalScreenState extends ConsumerState<AuditPortalScreen> {
       setState(() => _receiptResult = resp.data);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lookup failed: $e')));
+        final err = extractApiErrorMessage(e);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err), backgroundColor: Colors.red));
       }
     } finally {
       setState(() => _isLookingUp = false);
@@ -100,12 +139,21 @@ class _AuditPortalScreenState extends ConsumerState<AuditPortalScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: isDark ? AppColors.background : const Color(0xFFF8F9FA),
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Audit Portal', style: TextStyle(fontSize: 16)),
+            const Row(
+              children: [
+                Icon(Icons.verified_user_rounded, color: Colors.blueAccent, size: 20),
+                SizedBox(width: 8),
+                Text('Auditor Verification Portal (लेखापरीक्षक पोर्टल)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ],
+            ),
             Text(
               widget.electionTitle,
               style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
@@ -113,101 +161,76 @@ class _AuditPortalScreenState extends ConsumerState<AuditPortalScreen> {
             ),
           ],
         ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInfoBanner(),
-            const SizedBox(height: 20),
-            _buildVerifySection(),
-            const SizedBox(height: 20),
-            _buildReceiptSection(),
-            const SizedBox(height: 20),
-            _buildDownloadSection(),
+        bottom: TabBar(
+          controller: _tabController,
+          isScrollable: true,
+          labelColor: AppColors.primary,
+          unselectedLabelColor: AppColors.textMuted,
+          indicatorColor: AppColors.primary,
+          tabs: const [
+            Tab(icon: Icon(Icons.security_rounded, size: 18), text: 'Cryptographic Hashes'),
+            Tab(icon: Icon(Icons.receipt_long_rounded, size: 18), text: 'Receipt Validator'),
+            Tab(icon: Icon(Icons.history_edu_rounded, size: 18), text: 'System Audit Trail'),
+            Tab(icon: Icon(Icons.file_download_outlined, size: 18), text: 'Compliance Export'),
           ],
         ),
       ),
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Info Banner
-  // ---------------------------------------------------------------------------
-  Widget _buildInfoBanner() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.primaryDark, AppColors.primary.withValues(alpha: 0.7)],
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: TabBarView(
+        controller: _tabController,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.verified_user_rounded, color: Colors.white, size: 20),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'Election Integrity Verification',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'This portal allows anyone to independently verify that votes were counted correctly and that no data was tampered with after voting closed.',
-            style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.5),
-          ),
+          _buildHashTab(),
+          _buildReceiptTab(),
+          _buildAuditTrailTab(),
+          _buildExportTab(),
         ],
       ),
     );
   }
 
   // ---------------------------------------------------------------------------
-  // Section 1: Live Hash Verification
+  // Tab 1: Cryptographic Hashes
   // ---------------------------------------------------------------------------
-  Widget _buildVerifySection() {
-    return _buildCard(
-      icon: Icons.security_rounded,
-      iconColor: AppColors.primaryLight,
-      title: 'Live Integrity Check',
-      subtitle: 'Recompute and verify cryptographic hashes in real time',
+  Widget _buildHashTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _isVerifying ? null : _verifyHash,
-              icon: _isVerifying
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.refresh_rounded),
-              label: Text(_isVerifying ? 'Verifying...' : 'Run Verification Now'),
+          _buildBanner(
+            title: 'Election Cryptographic Integrity Check',
+            description: 'Mathematically verifies that stored ballot records have not been altered, deleted, or inserted out-of-order since voting was initialized.',
+            icon: Icons.shield_rounded,
+          ),
+          const SizedBox(height: 20),
+          _buildCard(
+            icon: Icons.refresh_rounded,
+            iconColor: AppColors.primaryLight,
+            title: 'Live Hash Consistency Check',
+            subtitle: 'Recomputes SHA-256 ledger checksum in real time',
+            child: Column(
+              children: [
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _isVerifying ? null : _verifyHash,
+                    icon: _isVerifying
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.refresh_rounded),
+                    label: Text(_isVerifying ? 'Verifying...' : 'Re-Run Verification'),
+                  ),
+                ),
+                if (_verifyError != null) ...[
+                  const SizedBox(height: 12),
+                  _buildResultBox(isSuccess: false, message: _verifyError!),
+                ],
+                if (_verifyResult != null) ...[
+                  const SizedBox(height: 16),
+                  _buildVerifyResultCard(_verifyResult!),
+                ],
+              ],
             ),
           ),
-          if (_verifyError != null) ...[
-            const SizedBox(height: 12),
-            _buildResultBox(isSuccess: false, message: 'Error: $_verifyError'),
-          ],
-          if (_verifyResult != null) ...[
-            const SizedBox(height: 16),
-            _buildVerifyResultCard(_verifyResult!),
-          ],
         ],
       ),
     );
@@ -218,145 +241,84 @@ class _AuditPortalScreenState extends ConsumerState<AuditPortalScreen> {
     final totalVoted = r['total_ballots_cast'] ?? 0;
     final totalRecords = r['total_vote_records_in_db'] ?? 0;
     final eligible = r['total_eligible_voters'] ?? 0;
-    final turnout = eligible > 0 ? (totalVoted / eligible * 100).toStringAsFixed(1) : '0.0';
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildResultBox(
           isSuccess: isConsistent,
           message: isConsistent
-              ? '✅ VERIFIED — Vote counts are consistent ($totalVoted cast, $totalRecords in DB). No discrepancies detected.'
-              : '❌ MISMATCH — Vote record counts do not match participation records!',
+              ? '✅ Cryptographic integrity verified. Ballot count matches voter participation exactly.'
+              : '⚠️ Discrepancy detected: Cast ballot count does not match database vote records.',
         ),
-        const SizedBox(height: 12),
-        // Stats grid
-        Row(
-          children: [
-            Expanded(child: _buildStatTile('Eligible', '$eligible', AppColors.textSecondary)),
-            const SizedBox(width: 8),
-            Expanded(child: _buildStatTile('Voted', '$totalVoted', AppColors.success)),
-            const SizedBox(width: 8),
-            Expanded(child: _buildStatTile('Turnout', '$turnout%', AppColors.accent)),
-          ],
-        ),
-        const SizedBox(height: 12),
-        // Live votes hash
-        _buildHashRow('Live Votes Hash', r['live_votes_hash'] ?? '—'),
-        const SizedBox(height: 8),
-        _buildHashRow('Ballot Snapshot Hash', r['ballot_snapshot_hash'] ?? '(not generated)'),
+        const SizedBox(height: 16),
+        _buildStatGrid([
+          _StatItem('Eligible Voters', eligible.toString(), Icons.people_alt_outlined),
+          _StatItem('Ballots Cast', totalVoted.toString(), Icons.how_to_vote_outlined),
+          _StatItem('Database Records', totalRecords.toString(), Icons.storage_rounded),
+          _StatItem('Ledger Status', isConsistent ? 'MATCH' : 'MISMATCH', Icons.check_circle_outline,
+              highlightColor: isConsistent ? Colors.green : Colors.red),
+        ]),
+        const SizedBox(height: 16),
+        _buildHashField('Ballot Snapshot Hash (Pre-Voting Lock)', r['ballot_snapshot_hash'] ?? 'Not generated'),
+        const SizedBox(height: 10),
+        _buildHashField('Live Votes Merkle/Ledger Hash', r['live_votes_hash'] ?? 'No votes cast yet'),
       ],
     );
   }
 
-  Widget _buildStatTile(String label, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        children: [
-          Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
-          const SizedBox(height: 2),
-          Text(label, style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHashRow(String label, String hash) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surface : Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05)),
-      ),
+  // ---------------------------------------------------------------------------
+  // Tab 2: Receipt Validator
+  // ---------------------------------------------------------------------------
+  Widget _buildReceiptTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(label, style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
-              GestureDetector(
-                onTap: () {
-                  Clipboard.setData(ClipboardData(text: hash));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Hash copied!'), duration: Duration(seconds: 1)),
-                  );
-                },
-                child: const Icon(Icons.copy_rounded, size: 14, color: AppColors.textMuted),
-              ),
-            ],
+          _buildBanner(
+            title: 'Individual Ballot Receipt Lookup',
+            description: 'Voters and auditors can check if a 64-character SHA-256 cryptographic receipt exists in the official election database without exposing secret vote selections.',
+            icon: Icons.qr_code_2_rounded,
           ),
-          const SizedBox(height: 4),
-          Text(
-            hash,
-            style: const TextStyle(
-              fontFamily: 'monospace',
-              fontSize: 11,
-              color: AppColors.primaryLight,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // Section 2: Receipt Lookup
-  // ---------------------------------------------------------------------------
-  Widget _buildReceiptSection() {
-    return _buildCard(
-      icon: Icons.receipt_long_rounded,
-      iconColor: AppColors.accent,
-      title: 'Verify Your Vote',
-      subtitle: 'Enter your receipt hash to confirm your ballot was counted',
-      child: Column(
-        children: [
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
+          const SizedBox(height: 20),
+          _buildCard(
+            icon: Icons.search_rounded,
+            iconColor: AppColors.primary,
+            title: 'Verify Receipt Hash',
+            subtitle: 'Paste any 64-character receipt hash below',
+            child: Column(
+              children: [
+                const SizedBox(height: 16),
+                TextField(
                   controller: _receiptController,
-                  decoration: const InputDecoration(
-                    hintText: 'Paste your 64-character receipt hash here...',
-                    prefixIcon: Icon(Icons.key_rounded, size: 18),
+                  decoration: InputDecoration(
+                    labelText: '64-character Receipt Hash',
+                    hintText: 'e.g. 3a7f8b9c1d2e4f5a...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    prefixIcon: const Icon(Icons.fingerprint_rounded),
                   ),
-                  style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
-                  maxLines: 2,
                 ),
-              ),
-              const SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: _isLookingUp ? null : _lookupReceipt,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  backgroundColor: AppColors.accent,
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _isLookingUp ? null : _lookupReceipt,
+                    icon: _isLookingUp
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.search_rounded),
+                    label: Text(_isLookingUp ? 'Searching...' : 'Check Receipt'),
+                  ),
                 ),
-                child: _isLookingUp
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.search_rounded),
-              ),
-            ],
-          ),
-          if (_receiptResult != null) ...[
-            const SizedBox(height: 12),
-            _buildResultBox(
-              isSuccess: _receiptResult!['found'] == true,
-              message: _receiptResult!['message'] ?? '',
+                if (_receiptResult != null) ...[
+                  const SizedBox(height: 16),
+                  _buildResultBox(
+                    isSuccess: _receiptResult!['found'] == true,
+                    message: _receiptResult!['message']?.toString() ?? '',
+                  ),
+                ],
+              ],
             ),
-          ],
-          const SizedBox(height: 8),
-          Text(
-            'Your receipt hash was shown on screen after you voted and also on your vote confirmation page.',
-            style: TextStyle(color: AppColors.textMuted, fontSize: 11),
           ),
         ],
       ),
@@ -364,36 +326,140 @@ class _AuditPortalScreenState extends ConsumerState<AuditPortalScreen> {
   }
 
   // ---------------------------------------------------------------------------
-  // Section 3: Download Audit Package
+  // Tab 3: System Audit Trail
   // ---------------------------------------------------------------------------
-  Widget _buildDownloadSection() {
-    return _buildCard(
-      icon: Icons.download_rounded,
-      iconColor: AppColors.success,
-      title: 'Download Audit Package',
-      subtitle: 'Full cryptographic audit trail as a JSON file',
+  Widget _buildAuditTrailTab() {
+    if (_isLoadingLogs) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_logsError != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline_rounded, color: Colors.red, size: 40),
+            const SizedBox(height: 12),
+            Text(_logsError!, style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 12),
+            ElevatedButton(onPressed: _loadAuditLogs, child: const Text('Retry')),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadAuditLogs,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(20),
+        itemCount: _auditLogs.length + 1,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildBanner(
+                  title: 'Forensic System Audit Trail',
+                  description: 'Live immutable record of administrative actions, voter roll updates, candidate qualifications, and system milestones.',
+                  icon: Icons.history_edu_rounded,
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Recorded Audit Events (${_auditLogs.length})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    IconButton(icon: const Icon(Icons.refresh), onPressed: _loadAuditLogs, tooltip: 'Refresh Logs'),
+                  ],
+                ),
+                const SizedBox(height: 10),
+              ],
+            );
+          }
+
+          final log = _auditLogs[index - 1] as Map<String, dynamic>;
+          final action = log['action']?.toString() ?? 'unknown_action';
+          final actor = log['actor_email']?.toString() ?? 'system';
+          final ip = log['ip_address']?.toString() ?? '-';
+          final timestamp = log['created_at']?.toString() ?? '';
+          final metadata = log['metadata'];
+
+          return Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          action.replaceAll('.', ' · ').toUpperCase(),
+                          style: const TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(timestamp.replaceFirst('T', ' ').substring(0, 19), style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text('Actor: $actor', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  Text('IP Address: $ip', style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                  if (metadata != null && metadata.toString() != '{}') ...[
+                    const SizedBox(height: 6),
+                    Text('Details: $metadata', style: const TextStyle(fontSize: 12, color: Colors.blueGrey)),
+                  ],
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tab 4: Compliance Export
+  // ---------------------------------------------------------------------------
+  Widget _buildExportTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 12),
-          _buildInfoItem('📋', 'All anonymized ballot receipt hashes'),
-          _buildInfoItem('🔐', 'Election cryptographic hash (ballot snapshot)'),
-          _buildInfoItem('📜', 'Complete state transition history'),
-          _buildInfoItem('🔍', 'Full audit log of every system action'),
-          _buildInfoItem('🚫', 'Does NOT contain voter identities or vote choices'),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: _isDownloading ? null : _downloadAuditPackage,
-              icon: _isDownloading
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.download_rounded),
-              label: Text(_isDownloading ? 'Preparing...' : 'Download audit_package.json'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.success,
-                padding: const EdgeInsets.symmetric(vertical: 13),
-              ),
+          _buildBanner(
+            title: 'Audit Package Export & Regulatory Filing',
+            description: 'Download the complete cryptographically signed audit manifest containing anonymized hashes, participation stats, and state transition histories for compliance archival.',
+            icon: Icons.archive_rounded,
+          ),
+          const SizedBox(height: 20),
+          _buildCard(
+            icon: Icons.file_download_outlined,
+            iconColor: Colors.green,
+            title: 'Export Official Audit Package',
+            subtitle: 'Generates signed JSON file with embedded SHA-256 package hash',
+            child: Column(
+              children: [
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _isDownloading ? null : _downloadAuditPackage,
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                    icon: _isDownloading
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.download_rounded),
+                    label: Text(_isDownloading ? 'Generating Package...' : 'Download Audit Package (.json)'),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -401,22 +467,45 @@ class _AuditPortalScreenState extends ConsumerState<AuditPortalScreen> {
     );
   }
 
-  Widget _buildInfoItem(String icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+  // ---------------------------------------------------------------------------
+  // UI Helpers
+  // ---------------------------------------------------------------------------
+  Widget _buildBanner({required String title, required String description, required IconData icon}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.primaryDark, AppColors.primary.withValues(alpha: 0.7)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(icon, style: const TextStyle(fontSize: 14)),
-          const SizedBox(width: 8),
-          Expanded(child: Text(text, style: TextStyle(color: AppColors.textSecondary, fontSize: 12))),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: Colors.white, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(description, style: const TextStyle(color: Colors.white70, fontSize: 12, height: 1.4)),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Shared Widgets
-  // ---------------------------------------------------------------------------
   Widget _buildCard({
     required IconData icon,
     required Color iconColor,
@@ -426,40 +515,25 @@ class _AuditPortalScreenState extends ConsumerState<AuditPortalScreen> {
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: isDark ? AppColors.surface : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05)),
-        boxShadow: [
-          if (!isDark)
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-        ],
+        border: Border.all(color: isDark ? AppColors.surfaceVariant : Colors.grey.shade200),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: iconColor, size: 18),
-              ),
-              const SizedBox(width: 12),
+              Icon(icon, color: iconColor, size: 20),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                    Text(subtitle, style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                    Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
                   ],
                 ),
               ),
@@ -472,19 +546,121 @@ class _AuditPortalScreenState extends ConsumerState<AuditPortalScreen> {
   }
 
   Widget _buildResultBox({required bool isSuccess, required String message}) {
-    final color = isSuccess ? AppColors.success : AppColors.error;
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: (isSuccess ? Colors.green : Colors.red).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: (isSuccess ? Colors.green : Colors.red).withValues(alpha: 0.4)),
       ),
-      child: Text(
-        message,
-        style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w600),
+      child: Row(
+        children: [
+          Icon(isSuccess ? Icons.check_circle_rounded : Icons.error_rounded,
+              color: isSuccess ? Colors.green : Colors.red, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: isSuccess ? Colors.green.shade800 : Colors.red.shade800,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
+
+  Widget _buildStatGrid(List<_StatItem> stats) {
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 10,
+      mainAxisSpacing: 10,
+      childAspectRatio: 2.3,
+      children: stats.map((s) => _buildStatTile(s)).toList(),
+    );
+  }
+
+  Widget _buildStatTile(_StatItem s) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(s.icon, color: s.highlightColor ?? AppColors.primary, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(s.label, style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                Text(
+                  s.value,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: s.highlightColor ?? AppColors.primary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHashField(String label, String hash) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textMuted)),
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.grey.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  hash,
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.copy_rounded, size: 16),
+                tooltip: 'Copy Hash',
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: hash));
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hash copied to clipboard')));
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatItem {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color? highlightColor;
+
+  _StatItem(this.label, this.value, this.icon, {this.highlightColor});
 }

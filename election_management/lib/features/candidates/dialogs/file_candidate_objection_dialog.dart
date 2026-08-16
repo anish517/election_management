@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/admin_providers.dart';
 import '../../../shared/models/models.dart';
+import '../../../core/utils/error_helper.dart';
 
 class FileCandidateObjectionDialog extends ConsumerStatefulWidget {
   final String electionId;
@@ -33,8 +34,7 @@ class _FileCandidateObjectionDialogState extends ConsumerState<FileCandidateObje
   @override
   void initState() {
     super.initState();
-    _selectedCandidateId = widget.preselectedCandidateId ??
-        (widget.candidates.isNotEmpty ? widget.candidates.first.id : null);
+    _selectedCandidateId = widget.preselectedCandidateId;
   }
 
   @override
@@ -78,8 +78,19 @@ class _FileCandidateObjectionDialogState extends ConsumerState<FileCandidateObje
       }
     } catch (e) {
       if (mounted) {
+        final errorMsg = extractApiErrorMessage(e, fallback: 'Failed to submit candidate objection.');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 10),
+                Expanded(child: Text(errorMsg)),
+              ],
+            ),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } finally {

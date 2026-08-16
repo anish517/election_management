@@ -311,6 +311,48 @@ class NotificationService:
         )
 
     @staticmethod
+    def notify_candidacy_claim_published(election):
+        """Nominations closed — preliminary candidate list published and scrutiny/claims window open."""
+        recipients = NotificationService._get_member_emails(election)
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+        election_url = f"{frontend_url}/elections/{election.id}"
+
+        tz = getattr(election.organization, 'timezone', None)
+        claim_deadline = _format_bs(election.candidacy_claim_date, tz) if election.candidacy_claim_date else "Scheduled Deadline"
+
+        from apps.candidates.models import Candidate
+        candidate_count = Candidate.objects.filter(election=election).exclude(status='withdrawn').count()
+
+        body = f'''
+        <p style="color:#94A3B8;font-size:15px;margin:0 0 20px;line-height:1.6;">
+          Nominations have closed for <strong style="color:#E2E8F0;">{election.title}</strong>.
+          The preliminary candidate roster is published and the candidate scrutiny & objection window is now open.
+        </p>
+        {_election_info_block(election)}
+        {_info_row("👤", f"Preliminary Candidates: <strong style='color:#60A5FA;'>{candidate_count} nominations</strong>")}
+        {_info_row("⚖️", f"Objection / Scrutiny Deadline: <strong style='color:#F59E0B;'>{claim_deadline}</strong>")}
+        {_info_row("🔍", "Review the preliminary candidate list and submit eligibility objections if needed.")}
+        '''
+
+        html = _base_email(
+            header_color='#D97706',
+            icon='⚖️',
+            title='Preliminary Candidate List Published — Objections Open',
+            subtitle=election.title,
+            body_html=body,
+            cta_url=election_url,
+            cta_label='Review Candidate Scrutiny →',
+        )
+
+        NotificationService._send_bulk(
+            subject=f'⚖️ Candidate List Published (Claims Open) — {election.title}',
+            plain_text=f"Preliminary candidate list for '{election.title}' is published ({candidate_count} nominations). Scrutiny/Objection deadline: {claim_deadline}. Visit {election_url}",
+            html_body=html,
+            recipients=recipients,
+            election=election,
+        )
+
+    @staticmethod
     def notify_voting_open(election):
         """Voting is now open — send 'Go Vote!' blast to all members."""
         recipients = NotificationService._get_member_emails(election)
@@ -467,6 +509,110 @@ class NotificationService:
             logger.info(f"[Notify] Candidate approval sent to {email}")
         except Exception as e:
             logger.error(f"[Notify] Failed to send candidate approval to {email}: {e}")
+
+    @staticmethod
+    def notify_candidate_withdrawn(election, candidate, reason=''):
+        """Notify a candidate that their nomination was officially withdrawn."""
+        email = getattr(candidate, 'email', None) or (getattr(candidate.member, 'email', None) if getattr(candidate, 'member', None) else None)
+        if not email or '@' not in email:
+            logger.warning(f"[Notify] No email for candidate {candidate.id} — skipping withdrawal notification.")
+            return
+
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+        election_url = f"{frontend_url}/elections/{election.id}"
+
+        body = f'''
+        <p style="color:#94A3B8;font-size:15px;margin:0 0 20px;line-height:1.6;">
+          Your nomination for <strong style="color:#E2E8F0;">{candidate.position.title}</strong>
+          in <strong style="color:#E2E8F0;">{election.title}</strong> has been
+          <span style="color:#EF4444;font-weight:700;">withdrawn</span>.
+        </p>
+        {_election_info_block(election)}
+        {_info_row("👤", f"Position: <strong style='color:#E2E8F0;'>{candidate.position.title}</strong>")}
+        {_info_row("📝", f"Withdrawal Reason: <em>{reason}</em>") if reason else ""}
+        {_info_row("ℹ️", "You will not appear on the final ballot for this position.")}
+        '''
+
+        html = _base_email(
+            header_color='#DC2626',
+            icon='🚫',
+            title='Nomination Withdrawn',
+            subtitle=f'Candidate for {candidate.position.title}',
+            body_html=body,
+            cta_url=election_url,
+            cta_label='View Election Details →',
+        )
+
+        try:
+            msg = EmailMultiAlternatives(
+                subject=f'🚫 Nomination Withdrawn — {election.title}',
+                body=f"Your nomination for {candidate.position.title} in '{election.title}' has been withdrawn.",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[email],
+            )
+            msg.attach_alternative(html, 'text/html')
+            msg.send(fail_silently=False)
+            logger.info(f"[Notify] Candidate withdrawal sent to {email}")
+        except Exception as e:
+            logger.error(f"[Notify] Failed to send candidate withdrawal to {email}: {e}")
+
+    @staticmethod
+    def notify_voter_claim_resolved(claim):
+        """Notify the claimant when their voter roll claim is approved or rejected."""
+        email = claim.claimant_email
+        if not email or '@' not in email:
+            return
+
+        election = claim.election
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+        election_url = f"{frontend_url}/elections/{election.id}"
+
+        is_approved = claim.status == 'approved'
+        header_color = '#059669' if is_approved else '#DC2626'
+        icon = '✅' if is_approved else '❌'
+        title = 'Voter Claim Approved' if is_approved else 'Voter Claim Decision'
+
+        action_desc = {
+            'omission': 'Your claim for omission has been approved. You are now officially enrolled in the voter roll.',
+            'correction': 'Your requested voter detail corrections have been approved and updated.',
+            'objection': 'Your objection on the voter roll has been reviewed and resolved.',
+        }.get(claim.claim_type, 'Your voter roll claim has been resolved.')
+
+        if not is_approved:
+            action_desc = 'Your claim on the voter roll was reviewed by the Election Committee and rejected.'
+
+        body = f'''
+        <p style="color:#94A3B8;font-size:15px;margin:0 0 20px;line-height:1.6;">
+          {action_desc}
+        </p>
+        {_election_info_block(election)}
+        {_info_row("📋", f"Claim Type: <strong style='color:#E2E8F0;'>{claim.get_claim_type_display()}</strong>")}
+        {_info_row("⚖️", f"Decision: <strong style='color:{'#34D399' if is_approved else '#EF4444'};'>{claim.get_status_display()}</strong>")}
+        {_info_row("📝", f"Committee Notes: <em>{claim.resolution_notes}</em>") if claim.resolution_notes else ""}
+        '''
+
+        html = _base_email(
+            header_color=header_color,
+            icon=icon,
+            title=title,
+            subtitle=election.title,
+            body_html=body,
+            cta_url=election_url,
+            cta_label='View Voter Roll →',
+        )
+
+        try:
+            msg = EmailMultiAlternatives(
+                subject=f'{icon} Voter Claim {claim.get_status_display()} — {election.title}',
+                body=f"Your voter claim for '{election.title}' has been {claim.get_status_display()}.",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[email],
+            )
+            msg.attach_alternative(html, 'text/html')
+            msg.send(fail_silently=False)
+            logger.info(f"[Notify] Voter claim resolution sent to {email}")
+        except Exception as e:
+            logger.error(f"[Notify] Failed to send claim resolution to {email}: {e}")
 
     @staticmethod
     def notify_voter_list_published(election):

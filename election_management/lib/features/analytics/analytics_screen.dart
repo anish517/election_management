@@ -10,7 +10,8 @@ import '../../core/theme/app_theme.dart';
 
 class AnalyticsScreen extends ConsumerWidget {
   final String electionId;
-  const AnalyticsScreen({super.key, required this.electionId});
+  final bool showAppBar;
+  const AnalyticsScreen({super.key, required this.electionId, this.showAppBar = true});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -23,7 +24,7 @@ class AnalyticsScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.background : const Color(0xFFF5F7FA),
-      appBar: AppBar(
+      appBar: !showAppBar ? null : AppBar(
         backgroundColor: isDark ? AppColors.surface : Colors.white,
         elevation: 0,
         leading: IconButton(

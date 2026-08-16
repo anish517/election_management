@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../shared/widgets/glass_card.dart';
 
 class GuidelinesScreen extends ConsumerStatefulWidget {
@@ -80,7 +81,12 @@ class _GuidelinesScreenState extends ConsumerState<GuidelinesScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return Center(
+    final user = ref.watch(authProvider).user;
+    final canManage = user?.canManageElections ?? false;
+    final canPop = Navigator.of(context).canPop();
+    final guidelinesText = _guidelinesController.text.trim();
+
+    Widget content = Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 800),
         child: Padding(
@@ -89,51 +95,78 @@ class _GuidelinesScreenState extends ConsumerState<GuidelinesScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Election Guidelines',
+                'Election Guidelines (निर्देशिका तथा आचारसंहिता)',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text(
-                'Provide the rules, terms, and guidelines for this election.',
+                canManage
+                    ? 'Provide the rules, terms, and guidelines for this election.'
+                    : 'Official rules, voting regulations, and code of conduct for this election.',
                 style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 16),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               
               Expanded(
                 child: GlassCard(
                   padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _guidelinesController,
-                          maxLines: null,
-                          expands: true,
-                          textAlignVertical: TextAlignVertical.top,
-                          decoration: const InputDecoration(
-                            labelText: 'Guidelines (Markdown supported)',
-                            border: OutlineInputBorder(),
-                            alignLabelWithHint: true,
-                          ),
+                  child: canManage
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _guidelinesController,
+                                maxLines: null,
+                                expands: true,
+                                textAlignVertical: TextAlignVertical.top,
+                                decoration: const InputDecoration(
+                                  labelText: 'Guidelines (Markdown supported)',
+                                  border: OutlineInputBorder(),
+                                  alignLabelWithHint: true,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: ElevatedButton.icon(
+                                onPressed: _isSaving ? null : _saveGuidelines,
+                                icon: _isSaving
+                                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                    : const Icon(Icons.save_rounded),
+                                label: Text(_isSaving ? 'Saving...' : 'Save Guidelines'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : SingleChildScrollView(
+                          child: guidelinesText.isEmpty
+                              ? const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 40),
+                                  child: Center(
+                                    child: Column(
+                                      children: [
+                                        Icon(Icons.menu_book_outlined, size: 48, color: Colors.grey),
+                                        SizedBox(height: 12),
+                                        Text(
+                                          'No guidelines published yet for this election.',
+                                          style: TextStyle(color: Colors.grey, fontSize: 15),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              : SelectableText(
+                                  guidelinesText,
+                                  style: const TextStyle(fontSize: 15, height: 1.6),
+                                ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton.icon(
-                          onPressed: _isSaving ? null : _saveGuidelines,
-                          icon: _isSaving ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.save_rounded),
-                          label: Text(_isSaving ? 'Saving...' : 'Save Guidelines'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
             ],
@@ -141,5 +174,13 @@ class _GuidelinesScreenState extends ConsumerState<GuidelinesScreen> {
         ),
       ),
     );
+
+    if (canPop) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Election Guidelines (निर्देशिका)')),
+        body: content,
+      );
+    }
+    return content;
   }
 }

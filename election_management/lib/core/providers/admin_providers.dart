@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import '../network/api_client.dart';
 import '../network/api_constants.dart';
 import '../../shared/models/models.dart';
+import '../../shared/models/claim_models.dart';
 import 'app_providers.dart';
 
 // ─── Election Management ──────────────────────────────────────────────────
@@ -475,5 +476,91 @@ class AddMemberNotifier extends AsyncNotifier<void> {
 
 final addMemberProvider = AsyncNotifierProvider<AddMemberNotifier, void>(
   () => AddMemberNotifier(),
+);
+
+// ─── Claims & Objections Providers ──────────────────────────────────────────
+
+final voterClaimsProvider = FutureProvider.family<List<VoterClaimModel>, String>((ref, electionId) async {
+  final dio = ref.watch(apiClientProvider);
+  final response = await dio.get(ApiConstants.electionVoterClaims(electionId));
+  final List data = response.data is List ? response.data : (response.data['results'] ?? []);
+  return data.map((json) => VoterClaimModel.fromJson(json)).toList();
+});
+
+final candidateObjectionsProvider = FutureProvider.family<List<CandidateObjectionModel>, String>((ref, electionId) async {
+  final dio = ref.watch(apiClientProvider);
+  final response = await dio.get(ApiConstants.electionCandidateObjections(electionId));
+  final List data = response.data is List ? response.data : (response.data['results'] ?? []);
+  return data.map((json) => CandidateObjectionModel.fromJson(json)).toList();
+});
+
+class ClaimsActionNotifier extends AsyncNotifier<void> {
+  @override
+  FutureOr<void> build() {}
+
+  Future<void> fileVoterClaim(String electionId, Map<String, dynamic> data) async {
+    state = const AsyncValue.loading();
+    try {
+      final dio = ref.read(apiClientProvider);
+      await dio.post(ApiConstants.electionVoterClaims(electionId), data: data);
+      ref.invalidate(voterClaimsProvider(electionId));
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> resolveVoterClaim(String electionId, String claimId, String status, String notes) async {
+    state = const AsyncValue.loading();
+    try {
+      final dio = ref.read(apiClientProvider);
+      await dio.post(
+        ApiConstants.resolveVoterClaim(electionId, claimId),
+        data: {'status': status, 'resolution_notes': notes},
+      );
+      ref.invalidate(voterClaimsProvider(electionId));
+      ref.invalidate(votersProvider(electionId));
+      ref.invalidate(electionProvider(electionId));
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> fileCandidateObjection(String electionId, Map<String, dynamic> data) async {
+    state = const AsyncValue.loading();
+    try {
+      final dio = ref.read(apiClientProvider);
+      await dio.post(ApiConstants.electionCandidateObjections(electionId), data: data);
+      ref.invalidate(candidateObjectionsProvider(electionId));
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> resolveCandidateObjection(String electionId, String objectionId, String status, String notes) async {
+    state = const AsyncValue.loading();
+    try {
+      final dio = ref.read(apiClientProvider);
+      await dio.post(
+        ApiConstants.resolveCandidateObjection(electionId, objectionId),
+        data: {'status': status, 'resolution_notes': notes},
+      );
+      ref.invalidate(candidateObjectionsProvider(electionId));
+      ref.invalidate(electionProvider(electionId));
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+}
+
+final claimsActionProvider = AsyncNotifierProvider<ClaimsActionNotifier, void>(
+  () => ClaimsActionNotifier(),
 );
 

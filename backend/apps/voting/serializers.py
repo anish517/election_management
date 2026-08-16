@@ -46,6 +46,25 @@ class VoterRollSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'election', 'full_name', 'has_voted', 'voted_at', 'voted_ip_address', 'voted_mac_address']
 
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            user = request.user
+            is_admin_or_officer = (
+                user.role in ['org_admin', 'election_officer', 'super_admin']
+                or getattr(user, 'is_org_admin', False)
+            )
+            if not is_admin_or_officer:
+                # Privacy protection: regular voters/candidates only see Name & Voter ID
+                ret['email'] = ''
+                ret['phone'] = ''
+                ret['council_number'] = ''
+                ret['citizenship_number'] = ''
+                ret['voted_ip_address'] = None
+                ret['voted_mac_address'] = ''
+        return ret
+
 
 class CastVoteSerializer(serializers.Serializer):
     """
@@ -72,30 +91,38 @@ class CastVoteSerializer(serializers.Serializer):
             if pos_id not in positions:
                 raise serializers.ValidationError(f"Invalid position ID: {pos_id}")
             
-            position = positions[pos_id]
+            pos = positions[pos_id]
             
             if not isinstance(cand_ids, list):
-                raise serializers.ValidationError(f"Payload for position {pos_id} must be a list of candidate IDs.")
-            
-            # Allow empty list (abstain) or boycott
-            if not cand_ids:
-                continue
-
-            if len(cand_ids) == 1 and cand_ids[0] in ['__BOYCOTT__', '__NO_VOTE__', 'NOTA']:
-                if not getattr(election, 'allow_boycott', True):
-                    raise serializers.ValidationError("Boycott / No Vote option is disabled for this election.")
-                continue
-
-            # Validate number of choices based on voting method
-            if position.voting_method not in ['approval', 'ranked_choice']:
-                if len(cand_ids) > position.seats_available:
-                    raise serializers.ValidationError(f"Too many candidates selected for position {position.title}.")
-            
-            # Check candidate validity
+                raise serializers.ValidationError(f"Candidate IDs for {pos.title} must be a list.")
+                
+            if len(cand_ids) > pos.max_votes_per_voter:
+                raise serializers.ValidationError(
+                    f"Too many selections for {pos.title}. Max allowed: {pos.max_votes_per_voter}"
+                )
+                
             for cand_id in cand_ids:
                 if cand_id in ['__BOYCOTT__', '__NO_VOTE__', 'NOTA']:
                     continue
-                if not Candidate.objects.filter(id=cand_id, position=position, status=NominationStatus.APPROVED).exists():
+                if not Candidate.objects.filter(id=cand_id, position=pos, status=NominationStatus.APPROVED).exists():
                     raise serializers.ValidationError(f"Invalid or unapproved candidate {cand_id} for position {pos_id}.")
 
         return attrs
+
+
+class VoterClaimSerializer(serializers.ModelSerializer):
+    claim_type_display = serializers.CharField(source='get_claim_type_display', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    resolved_by_email = serializers.EmailField(source='resolved_by.email', read_only=True)
+
+    class Meta:
+        from apps.voting.models import VoterClaim
+        model = VoterClaim
+        fields = [
+            'id', 'election', 'claim_type', 'claim_type_display',
+            'claimant_name', 'claimant_email', 'claimant_phone', 'claimant_citizenship_number',
+            'voter_roll', 'target_voter_name', 'description', 'evidence_file',
+            'status', 'status_display', 'resolution_notes',
+            'resolved_by', 'resolved_by_email', 'resolved_at', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'election', 'status', 'status_display', 'resolution_notes', 'resolved_by', 'resolved_by_email', 'resolved_at', 'created_at', 'updated_at']

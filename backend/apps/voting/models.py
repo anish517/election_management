@@ -108,4 +108,61 @@ class Vote(TimestampedModel):
         # No updates/deletes allowed at DB level in production
 
     def __str__(self):
-        return f"Vote {self.receipt_hash[:8]} for {self.election.title}"
+        return f"Vote {self.id} for {self.election.title}"
+
+
+class VoterClaimType(models.TextChoices):
+    OMISSION = 'omission', 'Omission (Missing Name in Voter Roll)'
+    CORRECTION = 'correction', 'Correction (Wrong Name/Details in Voter Roll)'
+    OBJECTION = 'objection', 'Objection (Ineligible Voter in Voter Roll)'
+
+
+class VoterClaimStatus(models.TextChoices):
+    PENDING = 'pending', 'Pending Review'
+    APPROVED = 'approved', 'Approved'
+    REJECTED = 'rejected', 'Rejected'
+
+
+class VoterClaim(TimestampedModel):
+    """
+    Claims and objections filed on the published voter roll during the claim window.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    election = models.ForeignKey(
+        'elections.Election', on_delete=models.CASCADE, related_name='voter_claims'
+    )
+    claim_type = models.CharField(
+        max_length=20, choices=VoterClaimType.choices, default=VoterClaimType.OMISSION
+    )
+    # Claimant details
+    claimant_name = models.CharField(max_length=255)
+    claimant_email = models.EmailField(max_length=255)
+    claimant_phone = models.CharField(max_length=50, blank=True, default='')
+    claimant_citizenship_number = models.CharField(max_length=100, blank=True, default='')
+
+    # Optional target voter roll entry if objecting or correcting
+    voter_roll = models.ForeignKey(
+        VoterRoll, on_delete=models.SET_NULL, null=True, blank=True, related_name='claims'
+    )
+    target_voter_name = models.CharField(max_length=255, blank=True, default='')
+    
+    # Claim description / proposed corrected details
+    description = models.TextField()
+    evidence_file = models.FileField(upload_to='voter_claims/', null=True, blank=True)
+
+    # Resolution
+    status = models.CharField(
+        max_length=20, choices=VoterClaimStatus.choices, default=VoterClaimStatus.PENDING, db_index=True
+    )
+    resolution_notes = models.TextField(blank=True, default='')
+    resolved_by = models.ForeignKey(
+        'users.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='resolved_voter_claims'
+    )
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'voter_claims'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.get_claim_type_display()} by {self.claimant_name} ({self.status})"

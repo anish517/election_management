@@ -11,6 +11,155 @@ from apps.core.permissions import IsOrgAdmin
 from apps.elections.permissions import IsElectionOfficer, IsObserver
 from apps.audit.models import log_action
 
+def _advance_due_elections(organization=None):
+    """
+    Evaluates due schedule dates and transitions election states + sends emails.
+    Runs on API access to guarantee real-time lifecycle progression even if Celery worker is offline.
+    """
+    from django.utils import timezone
+    from apps.elections.models import Election, ElectionState
+    from apps.notifications.services import NotificationService
+    from apps.notifications.models import EmailBroadcastLog
+    import logging
+    logger = logging.getLogger(__name__)
+
+    now = timezone.now()
+    qs = Election.objects.all()
+    if organization:
+        qs = qs.filter(organization=organization)
+
+    # 1. First Voter List Date passed -> Notify First Voter Roll Published
+    # Strictly ONLY when in PUBLISHED state and BEFORE final list / nominations
+    voter_list_due = qs.filter(
+        state=ElectionState.PUBLISHED,
+        first_voter_list_date__isnull=False,
+        first_voter_list_date__lte=now,
+    ).exclude(
+        nomination_open_at__isnull=False,
+        nomination_open_at__lte=now,
+    )
+    for el in voter_list_due:
+        already_sent = EmailBroadcastLog.objects.filter(
+            election=el,
+            subject__icontains='First Voter List Published'
+        ).exists() or EmailBroadcastLog.objects.filter(
+            election=el,
+            subject__icontains='Voter List Published'
+        ).exists()
+        if not already_sent:
+            try:
+                NotificationService.notify_voter_list_published(el)
+            except Exception as e:
+                logger.warning(f"[AutoAdvance] Voter list notify failed for {el.id}: {e}")
+
+    # 1b. Final Voter List Date passed -> Notify Final Certified Voter Roll
+    final_voter_list_due = qs.filter(
+        state__in=[ElectionState.PUBLISHED, ElectionState.NOMINATION_OPEN],
+        final_voter_list_date__isnull=False,
+        final_voter_list_date__lte=now,
+    )
+    for el in final_voter_list_due:
+        already_sent = EmailBroadcastLog.objects.filter(
+            election=el,
+            subject__icontains='Final Voter List Published'
+        ).exists()
+        if not already_sent:
+            try:
+                NotificationService.notify_final_voter_list_published(el)
+            except Exception as e:
+                logger.warning(f"[AutoAdvance] Final voter list notify failed for {el.id}: {e}")
+
+    # 2. PUBLISHED -> NOMINATION_OPEN
+    nom_open_due = qs.filter(
+        state=ElectionState.PUBLISHED,
+        nomination_open_at__isnull=False,
+        nomination_open_at__lte=now,
+    )
+    for el in nom_open_due:
+        try:
+            el.transition_to(ElectionState.NOMINATION_OPEN)
+            NotificationService.notify_nomination_open(el)
+        except Exception as e:
+            logger.warning(f"[AutoAdvance] NOMINATION_OPEN failed for {el.id}: {e}")
+
+    # 3. NOMINATION_OPEN -> NOMINATION_CLOSED
+    nom_close_due = qs.filter(
+        state=ElectionState.NOMINATION_OPEN,
+        nomination_close_at__isnull=False,
+        nomination_close_at__lte=now,
+    )
+    for el in nom_close_due:
+        try:
+            el.transition_to(ElectionState.NOMINATION_CLOSED)
+        except Exception as e:
+            logger.warning(f"[AutoAdvance] NOMINATION_CLOSED failed for {el.id}: {e}")
+
+    # 3b. Final Candidate List Date passed -> Notify Final Approved Candidates
+    final_cand_due = qs.filter(
+        state__in=[ElectionState.NOMINATION_CLOSED, ElectionState.VOTING_OPEN],
+        candidacy_final_date__isnull=False,
+        candidacy_final_date__lte=now,
+    )
+    for el in final_cand_due:
+        already_sent = EmailBroadcastLog.objects.filter(
+            election=el,
+            subject__icontains='Final Candidate List Published'
+        ).exists()
+        if not already_sent:
+            try:
+                NotificationService.notify_final_candidates_published(el)
+            except Exception as e:
+                logger.warning(f"[AutoAdvance] Final candidate list notify failed for {el.id}: {e}")
+
+    # 4. NOMINATION_CLOSED -> VOTING_OPEN
+    voting_open_due = qs.filter(
+        state=ElectionState.NOMINATION_CLOSED,
+        voting_start_at__isnull=False,
+        voting_start_at__lte=now,
+    )
+    for el in voting_open_due:
+        try:
+            el.transition_to(ElectionState.VOTING_OPEN)
+            NotificationService.notify_voting_open(el)
+        except Exception as e:
+            logger.warning(f"[AutoAdvance] VOTING_OPEN failed for {el.id}: {e}")
+
+    # 5. VOTING_OPEN -> VOTING_CLOSED -> AUTO PROVISIONAL TALLY
+    voting_close_due = qs.filter(
+        state=ElectionState.VOTING_OPEN,
+        voting_end_at__isnull=False,
+        voting_end_at__lte=now,
+    )
+    for el in voting_close_due:
+        try:
+            el.transition_to(ElectionState.VOTING_CLOSED)
+            NotificationService.notify_voting_closed(el)
+            from apps.results.services import TallyService
+            TallyService.tally_election(el)
+            el.transition_to(ElectionState.RESULTS_PROVISIONAL)
+        except Exception as e:
+            logger.warning(f"[AutoAdvance] VOTING_CLOSED failed for {el.id}: {e}")
+
+    # 6. RESULTS_PROVISIONAL -> RESULTS_FINAL
+    # Automatically finalizes and publishes official results when contest deadline passes or voting ends
+    res_final_due = qs.filter(
+        state=ElectionState.RESULTS_PROVISIONAL,
+    )
+    for el in res_final_due:
+        should_finalize = False
+        if el.result_contest_deadline and el.result_contest_deadline <= now:
+            should_finalize = True
+        elif not el.result_contest_deadline and el.voting_end_at and el.voting_end_at <= now:
+            should_finalize = True
+
+        if should_finalize:
+            try:
+                el.transition_to(ElectionState.RESULTS_FINAL)
+                NotificationService.notify_results_published(el)
+            except Exception as e:
+                logger.warning(f"[AutoAdvance] RESULTS_FINAL failed for {el.id}: {e}")
+
+
 class ElectionViewSet(viewsets.ModelViewSet):
     """
     Manage elections for the organization.
@@ -34,8 +183,11 @@ class ElectionViewSet(viewsets.ModelViewSet):
         return [IsObserver()]
 
     def get_queryset(self):
-        # Always scope to the user's organization
-        return Election.objects.filter(organization=self.request.user.organization)
+        # Auto advance any due election milestones for this organization
+        if self.request.user and self.request.user.is_authenticated and self.request.user.organization:
+            _advance_due_elections(self.request.user.organization)
+            return Election.objects.filter(organization=self.request.user.organization)
+        return Election.objects.none()
 
     def perform_create(self, serializer):
         election = serializer.save(
@@ -54,7 +206,7 @@ class ElectionViewSet(viewsets.ModelViewSet):
             'title': election.title
         })
 
-        # If schedule dates were updated, trigger background schedule announcement notification
+        # If schedule dates were updated on a published election, broadcast timetable email
         schedule_fields = [
             'first_voter_list_date', 'voter_list_claim_date', 'final_voter_list_date',
             'nomination_open_at', 'nomination_close_at', 'candidacy_claim_date',
@@ -69,6 +221,9 @@ class ElectionViewSet(viewsets.ModelViewSet):
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).warning(f"[Notify] Schedule update email broadcast failed: {e}")
+
+        # Check and advance if any new dates are already due
+        _advance_due_elections(self.request.user.organization)
 
     @action(detail=True, methods=['post'])
     def publish(self, request, pk=None):
@@ -88,6 +243,9 @@ class ElectionViewSet(viewsets.ModelViewSet):
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).warning(f"[Notify] Publish email broadcast failed: {e}")
+
+            # Check if any milestones are already due immediately upon publish
+            _advance_due_elections(request.user.organization)
 
             return Response(self.get_serializer(election).data)
         except ValueError as e:

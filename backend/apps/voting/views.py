@@ -554,3 +554,97 @@ class VotingHistoryView(viewsets.ViewSet):
                 'receipt': 'Hidden for MVP' # You can add receipt_hash if we store it on VoterRoll, but we don't.
             })
         return Response(history)
+
+
+class VoterClaimViewSet(viewsets.ModelViewSet):
+    """
+    CRUD and review for Voter Roll Claims and Objections.
+    """
+    permission_classes = [IsAuthenticated]
+    from apps.voting.serializers import VoterClaimSerializer
+    serializer_class = VoterClaimSerializer
+
+    def get_queryset(self):
+        from apps.voting.models import VoterClaim
+        election_pk = self.kwargs.get('election_pk')
+        user = self.request.user
+        qs = VoterClaim.objects.filter(election_id=election_pk, election__organization=user.organization)
+        
+        is_officer = (
+            user.role in ['org_admin', 'election_officer', 'super_admin']
+            or getattr(user, 'is_org_admin', False)
+        )
+        if not is_officer:
+            qs = qs.filter(claimant_email__iexact=user.email.strip().lower())
+        return qs.order_by('-created_at')
+
+    def perform_create(self, serializer):
+        from django.utils import timezone
+        from rest_framework.exceptions import ValidationError
+        election_pk = self.kwargs.get('election_pk')
+        election = Election.objects.get(id=election_pk, organization=self.request.user.organization)
+        now = timezone.now()
+
+        # Schedule Gating
+        if election.first_voter_list_date and now < election.first_voter_list_date:
+            raise ValidationError({'detail': 'Voter roll claim period has not started yet.'})
+        if election.voter_list_claim_date and now > election.voter_list_claim_date:
+            raise ValidationError({'detail': 'Voter roll claim deadline has passed.'})
+
+        serializer.save(
+            election=election,
+            claimant_name=serializer.validated_data.get('claimant_name') or self.request.user.full_name or self.request.user.email,
+            claimant_email=serializer.validated_data.get('claimant_email') or self.request.user.email,
+        )
+
+    @action(detail=True, methods=['post'])
+    def resolve(self, request, election_pk=None, pk=None):
+        """
+        Election Officer / Org Admin resolves a voter claim (Approve / Reject).
+        """
+        from apps.elections.permissions import IsElectionOfficer
+        from django.utils import timezone
+        from apps.voting.serializers import VoterClaimSerializer
+        if not IsElectionOfficer().has_permission(request, self):
+            return Response({'detail': 'Permission denied.'}, status=status.HTTP_403_FORBIDDEN)
+
+        claim = self.get_object()
+        new_status = request.data.get('status')
+        if new_status not in ['approved', 'rejected']:
+            return Response({'detail': "Status must be 'approved' or 'rejected'."}, status=status.HTTP_400_BAD_REQUEST)
+
+        notes = request.data.get('resolution_notes', '')
+        claim.status = new_status
+        claim.resolution_notes = notes
+        claim.resolved_by = request.user
+        claim.resolved_at = timezone.now()
+        claim.save()
+
+        # Automated side effects if approved
+        if new_status == 'approved':
+            if claim.claim_type == 'omission':
+                if not VoterRoll.objects.filter(election=claim.election, email__iexact=claim.claimant_email).exists():
+                    VoterRoll.objects.create(
+                        election=claim.election,
+                        first_name=claim.claimant_name,
+                        email=claim.claimant_email,
+                        phone=claim.claimant_phone,
+                        citizenship_number=claim.claimant_citizenship_number,
+                        is_eligible=True,
+                    )
+            elif claim.claim_type == 'objection' and claim.voter_roll:
+                claim.voter_roll.is_eligible = False
+                claim.voter_roll.ineligibility_reason = f"Objection upheld: {notes or claim.description}"
+                claim.voter_roll.save(update_fields=['is_eligible', 'ineligibility_reason'])
+            elif claim.claim_type == 'correction' and claim.voter_roll:
+                if claim.target_voter_name:
+                    claim.voter_roll.first_name = claim.target_voter_name
+                    claim.voter_roll.save(update_fields=['first_name'])
+
+        log_action('voter_claim.resolved', claim.election.organization, request.user, {
+            'election_id': str(claim.election.id),
+            'claim_id': str(claim.id),
+            'status': claim.status,
+            'claim_type': claim.claim_type
+        })
+        return Response(VoterClaimSerializer(claim).data)

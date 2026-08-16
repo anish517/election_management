@@ -12,8 +12,8 @@ from apps.users.views import RegisterView, LoginView, MeView, OTPRequestView, OT
 from rest_framework_simplejwt.views import TokenRefreshView
 from apps.elections.views import ElectionViewSet, PositionViewSet, PositionQuotaViewSet, ElectionNoticeViewSet
 from apps.members.views import MemberViewSet
-from apps.candidates.views import CandidateViewSet
-from apps.voting.views import VotingViewSet, VotingHistoryView, VoterRollViewSet
+from apps.candidates.views import CandidateViewSet, CandidateObjectionViewSet
+from apps.voting.views import VotingViewSet, VotingHistoryView, VoterRollViewSet, VoterClaimViewSet
 from apps.results.views import ElectionResultsViewSet
 from apps.organizations.views import OrganizationView, OrganizationStatsView
 from apps.core.views import FileUploadView
@@ -34,6 +34,8 @@ election_router.register(r'voting', VotingViewSet, basename='election-voting')
 election_router.register(r'results', ElectionResultsViewSet, basename='election-results')
 election_router.register(r'voters', VoterRollViewSet, basename='election-voters')
 election_router.register(r'notices', ElectionNoticeViewSet, basename='election-notices')
+election_router.register(r'voter-claims', VoterClaimViewSet, basename='election-voter-claims')
+election_router.register(r'candidate-objections', CandidateObjectionViewSet, basename='election-candidate-objections')
 
 urlpatterns = [
     # Django admin (Super Admin support tool)

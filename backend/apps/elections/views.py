@@ -46,7 +46,30 @@ class ElectionViewSet(viewsets.ModelViewSet):
             'election_id': str(election.id),
             'title': election.title
         })
-        
+
+    def perform_update(self, serializer):
+        election = serializer.save()
+        log_action('election.updated', self.request.user.organization, self.request.user, {
+            'election_id': str(election.id),
+            'title': election.title
+        })
+
+        # If schedule dates were updated, trigger background schedule announcement notification
+        schedule_fields = [
+            'first_voter_list_date', 'voter_list_claim_date', 'final_voter_list_date',
+            'nomination_open_at', 'nomination_close_at', 'candidacy_claim_date',
+            'candidacy_final_date', 'voting_start_at', 'voting_end_at'
+        ]
+        has_schedule_change = any(f in serializer.validated_data for f in schedule_fields)
+
+        if has_schedule_change and election.state != ElectionState.DRAFT:
+            try:
+                from apps.notifications.services import NotificationService
+                NotificationService.notify_schedule_announcement(election)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"[Notify] Schedule update email broadcast failed: {e}")
+
     @action(detail=True, methods=['post'])
     def publish(self, request, pk=None):
         """Transition election from DRAFT to PUBLISHED."""
@@ -57,6 +80,15 @@ class ElectionViewSet(viewsets.ModelViewSet):
             log_action('election.published', request.user.organization, request.user, {
                 'election_id': str(election.id)
             })
+
+            # Broadcast schedule announcement to all voters and members
+            try:
+                from apps.notifications.services import NotificationService
+                NotificationService.notify_schedule_announcement(election)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"[Notify] Publish email broadcast failed: {e}")
+
             return Response(self.get_serializer(election).data)
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

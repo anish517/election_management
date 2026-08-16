@@ -105,16 +105,44 @@ class NotificationService:
 
     @staticmethod
     def _get_member_emails(election):
-        """Return list of active member emails for the election's organization."""
+        """Return unified deduplicated list of active members, registered voters, and org users."""
         from apps.members.models import Member
-        emails = list(
-            Member.objects.filter(
-                organization=election.organization,
-                membership_status='active',
-                email__contains='@',
-            ).values_list('email', flat=True)
-        )
-        logger.info(f"[Notify] Sending to {len(emails)} members for election '{election.title}'")
+        from apps.voting.models import VoterRoll
+        from apps.users.models import User
+
+        recipient_set = set()
+
+        # 1. Active Members
+        member_emails = Member.objects.filter(
+            organization=election.organization,
+            membership_status='active',
+            email__contains='@',
+        ).values_list('email', flat=True)
+        for e in member_emails:
+            if e and e.strip():
+                recipient_set.add(e.strip().lower())
+
+        # 2. Eligible VoterRoll entries for this election
+        voter_emails = VoterRoll.objects.filter(
+            election=election,
+            is_eligible=True,
+            email__contains='@',
+        ).values_list('email', flat=True)
+        for e in voter_emails:
+            if e and e.strip():
+                recipient_set.add(e.strip().lower())
+
+        # 3. Organization users
+        user_emails = User.objects.filter(
+            organization=election.organization,
+            email__contains='@',
+        ).values_list('email', flat=True)
+        for e in user_emails:
+            if e and e.strip():
+                recipient_set.add(e.strip().lower())
+
+        emails = list(recipient_set)
+        logger.info(f"[Notify] Sending to {len(emails)} unified recipients for election '{election.title}'")
         return emails
 
     @staticmethod

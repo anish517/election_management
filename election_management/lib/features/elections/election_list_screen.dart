@@ -9,25 +9,33 @@ import '../../shared/widgets/admin_drawer.dart';
 import '../../shared/widgets/shimmer_loaders.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/responsive_layout.dart';
-import '../../shared/widgets/glass_card.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
-class ElectionListScreen extends ConsumerWidget {
+class ElectionListScreen extends ConsumerStatefulWidget {
   const ElectionListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ElectionListScreen> createState() => _ElectionListScreenState();
+}
+
+class _ElectionListScreenState extends ConsumerState<ElectionListScreen> {
+  String _searchQuery = '';
+  String _selectedFilter = 'all';
+
+  @override
+  Widget build(BuildContext context) {
     final electionsAsync = ref.watch(electionsProvider);
     final user = ref.watch(currentUserProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final isOrgAdmin = user != null && (user.isOrgAdmin || user.role == 'super_admin');
-    final isAdmin = user != null && user.canManageElections; // org_admin + election_officer
-    final isVoterLike = !isAdmin; // voter, candidate, observer, auditor
+    final isAdmin = user != null && user.canManageElections;
+    final isVoterLike = !isAdmin;
 
     return Scaffold(
       drawer: isAdmin ? const AdminDrawer() : null,
       appBar: AppBar(
-        title: const Text('Elections'),
-        // Only org_admin gets the back arrow to dashboard
+        title: const Text('Elections Directory'),
         leading: isOrgAdmin
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_ios_rounded),
@@ -39,17 +47,15 @@ class ElectionListScreen extends ConsumerWidget {
                   }
                 },
               )
-            : null, // election_officer, voters, observers have no back destination
+            : null,
         actions: [
-          // Voters & candidates: History + Logout
-          if (isVoterLike) ...[ 
+          if (isVoterLike) ...[
             IconButton(
               icon: const Icon(Icons.history_rounded),
               tooltip: 'Voting History',
               onPressed: () => context.pushNamed('voting-history'),
             ),
           ],
-          // All non-org-admin roles get a logout button
           if (!isOrgAdmin)
             IconButton(
               icon: const Icon(Icons.logout_rounded),
@@ -59,6 +65,7 @@ class ElectionListScreen extends ConsumerWidget {
               },
             ),
           IconButton(
+            tooltip: 'Refresh',
             icon: const Icon(Icons.refresh_rounded),
             onPressed: () => ref.invalidate(electionsProvider),
           ),
@@ -87,21 +94,159 @@ class ElectionListScreen extends ConsumerWidget {
               return EmptyStateWidget(
                 icon: Icons.ballot_outlined,
                 title: 'No Elections Yet',
-                subtitle: 'Elections created by your admin will appear here.',
+                subtitle: isOrgAdmin
+                    ? 'Create your first election to get started.'
+                    : 'No elections have been scheduled for your organization.',
               );
             }
+
+            // Filter logic
+            final filtered = elections.where((e) {
+              final query = _searchQuery.toLowerCase().trim();
+              final matchesQuery = query.isEmpty ||
+                  e.title.toLowerCase().contains(query) ||
+                  e.prefix.toLowerCase().contains(query);
+
+              if (!matchesQuery) return false;
+
+              if (_selectedFilter == 'all') return true;
+              if (_selectedFilter == 'voting_open') return e.state == 'voting_open';
+              if (_selectedFilter == 'nominations') {
+                return e.state == 'nominations_open' || e.state == 'nominations_closed';
+              }
+              if (_selectedFilter == 'results') {
+                return e.state == 'results_provisional' || e.state == 'results_final' || e.state == 'voting_closed';
+              }
+              if (_selectedFilter == 'draft') return e.state == 'draft' || e.state == 'published';
+              return true;
+            }).toList();
+
             return RefreshIndicator(
               onRefresh: () async => ref.invalidate(electionsProvider),
-              child: ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: elections.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 10),
-                itemBuilder: (context, i) => _ElectionListTile(election: elections[i], user: user),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+                children: [
+                  // Search & Filter Header
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.surface : Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade200,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      decoration: const InputDecoration(
+                        hintText: 'Search elections by title or prefix...',
+                        prefixIcon: Icon(Icons.search_rounded, size: 20),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onChanged: (val) => setState(() => _searchQuery = val),
+                    ),
+                  ),
+
+                  // Filter Chips
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Row(
+                      children: [
+                        _buildFilterChip('all', 'All Elections (${elections.length})'),
+                        const SizedBox(width: 8),
+                        _buildFilterChip('voting_open', '🗳️ Voting Active'),
+                        const SizedBox(width: 8),
+                        _buildFilterChip('nominations', '📝 Nominations'),
+                        const SizedBox(width: 8),
+                        _buildFilterChip('results', '🏆 Results Ready'),
+                        if (isAdmin) ...[
+                          const SizedBox(width: 8),
+                          _buildFilterChip('draft', '📋 Draft / Published'),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  if (filtered.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 40),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Icon(Icons.search_off_rounded, size: 48, color: Colors.grey.shade400),
+                            const SizedBox(height: 12),
+                            const Text('No elections match your filter.', style: TextStyle(color: Colors.grey, fontSize: 15)),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    ...filtered.asMap().entries.map(
+                          (entry) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _ElectionListTile(
+                              election: entry.value,
+                              user: user,
+                              isDark: isDark,
+                            )
+                            .animate()
+                            .fade(delay: Duration(milliseconds: 40 * entry.key))
+                            .slideY(begin: 0.08, end: 0, curve: Curves.easeOutQuad),
+                          ),
+                        ),
+                ],
               ),
             );
           },
         ),
       ),
+      floatingActionButton: (user != null && user.isOrgAdmin)
+          ? FloatingActionButton.extended(
+              onPressed: () => context.push('/elections/new'),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('New Election', style: TextStyle(fontWeight: FontWeight.bold)),
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 4,
+            )
+          : null,
+    );
+  }
+
+  Widget _buildFilterChip(String key, String label) {
+    final isSelected = _selectedFilter == key;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return FilterChip(
+      selected: isSelected,
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected
+              ? Colors.white
+              : (isDark ? Colors.white70 : Colors.grey.shade800),
+        ),
+      ),
+      selectedColor: AppColors.primary,
+      backgroundColor: isDark ? AppColors.surface : Colors.white,
+      side: BorderSide(
+        color: isSelected
+            ? AppColors.primary
+            : (isDark ? Colors.white12 : Colors.grey.shade300),
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      onSelected: (_) => setState(() => _selectedFilter = key),
     );
   }
 }
@@ -109,132 +254,200 @@ class ElectionListScreen extends ConsumerWidget {
 class _ElectionListTile extends StatelessWidget {
   final ElectionModel election;
   final UserModel? user;
-  const _ElectionListTile({required this.election, this.user});
+  final bool isDark;
+
+  const _ElectionListTile({
+    required this.election,
+    this.user,
+    required this.isDark,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final stateColor = _stateColor(election.state, isDark);
 
-    return GlassCard(
-      padding: EdgeInsets.zero,
-      onTap: () => context.pushNamed('election-detail',
-          pathParameters: {'electionId': election.id}),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surface : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade200,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => context.pushNamed(
+            'election-detail',
+            pathParameters: {'electionId': election.id},
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (election.logoUrl.isNotEmpty) ...[
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Theme.of(context).dividerColor),
-                      image: DecorationImage(
-                        image: NetworkImage(election.logoUrl),
-                        fit: BoxFit.contain,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (election.logoUrl.isNotEmpty) ...[
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isDark ? Colors.white12 : Colors.grey.shade300,
+                          ),
+                          image: DecorationImage(
+                            image: NetworkImage(election.logoUrl),
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                    ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              if (election.prefix.isNotEmpty) ...[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    election.prefix,
+                                    style: const TextStyle(
+                                      color: AppColors.primaryLight,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              Expanded(
+                                child: Text(
+                                  election.title,
+                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: -0.2,
+                                      ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (election.contactNumber.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(Icons.phone_outlined, size: 12, color: AppColors.textMuted),
+                                const SizedBox(width: 4),
+                                Text(
+                                  election.contactNumber,
+                                  style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    _StateBadge(state: election.state, color: stateColor),
+                  ],
+                ),
+                if (election.description.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    election.description,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? Colors.white70 : Colors.grey.shade700,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    _InfoChip(
+                      icon: Icons.work_outline_rounded,
+                      label: '${election.positions.length} Position(s)',
+                    ),
+                    const SizedBox(width: 8),
+                    if (election.isSecretBallot)
+                      const _InfoChip(
+                        icon: Icons.lock_outline_rounded,
+                        label: 'Secret Ballot',
+                      ),
+                    if (election.isPaidCandidacy) ...[
+                      const SizedBox(width: 8),
+                      _InfoChip(
+                        icon: Icons.payments_outlined,
+                        label: 'Fee: NPR ${election.nomineeCharge.toStringAsFixed(0)}',
+                      ),
+                    ],
+                  ],
+                ),
+
+                // Active Buttons
+                if (election.isVotingActive) ...[
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => context.pushNamed(
+                        'ballot',
+                        pathParameters: {'electionId': election.id},
+                      ),
+                      icon: const Icon(Icons.how_to_vote_rounded, size: 18),
+                      label: const Text('Vote Now (मतदान गर्नुहोस्)', style: TextStyle(fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.stateVoting,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
                 ],
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          if (election.prefix.isNotEmpty) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                election.prefix,
-                                style: const TextStyle(
-                                  color: AppColors.primaryLight,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                          ],
-                          Expanded(
-                            child: Text(
-                              election.title,
-                              style: Theme.of(context).textTheme.titleMedium,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                if (election.hasResults) ...[
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => context.pushNamed(
+                        'results',
+                        pathParameters: {'electionId': election.id},
                       ),
-                      if (election.contactNumber.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(Icons.phone_outlined, size: 12, color: AppColors.textMuted),
-                            const SizedBox(width: 4),
-                            Text(
-                              election.contactNumber,
-                              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ],
+                      icon: const Icon(Icons.emoji_events_outlined, size: 18),
+                      label: const Text('View Results (नतिजा हेर्नुहोस्)', style: TextStyle(fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                _StateBadge(state: election.state, color: stateColor),
+                ],
               ],
             ),
-            if (election.description.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(election.description,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                  maxLines: 2, overflow: TextOverflow.ellipsis),
-            ],
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _InfoChip(icon: Icons.work_outline_rounded,
-                    label: '${election.positions.length} Position(s)'),
-                const SizedBox(width: 8),
-                if (election.isSecretBallot)
-                  const _InfoChip(icon: Icons.lock_outline_rounded, label: 'Secret Ballot'),
-              ],
-            ),
-            // Voting active — show CTA
-            if (election.isVotingActive) ...[
-              const SizedBox(height: 14),
-              ElevatedButton.icon(
-                onPressed: () => context.pushNamed('ballot',
-                    pathParameters: {'electionId': election.id}),
-                icon: const Icon(Icons.how_to_vote_rounded, size: 18),
-                label: const Text('Vote Now'),
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateVoting),
-              ),
-            ],
-            if (election.hasResults) ...[
-              const SizedBox(height: 14),
-              OutlinedButton.icon(
-                onPressed: () => context.pushNamed('results',
-                    pathParameters: {'electionId': election.id}),
-                icon: const Icon(Icons.emoji_events_outlined, size: 18),
-                label: const Text('View Results'),
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );
@@ -242,13 +455,22 @@ class _ElectionListTile extends StatelessWidget {
 
   Color _stateColor(String state, bool isDark) {
     switch (state) {
-      case 'draft': return isDark ? AppColors.stateDraft : AppColors.textMutedLightMode;
-      case 'published': return AppColors.statePublished;
-      case 'nominations_open': case 'nominations_closed': return AppColors.stateNominations;
-      case 'voting_open': return AppColors.stateVoting;
-      case 'voting_closed': return AppColors.stateClosed;
-      case 'results_provisional': case 'results_final': return AppColors.stateResults;
-      default: return isDark ? AppColors.textMuted : AppColors.textMutedLightMode;
+      case 'draft':
+        return isDark ? AppColors.stateDraft : AppColors.textMutedLightMode;
+      case 'published':
+        return AppColors.statePublished;
+      case 'nominations_open':
+      case 'nominations_closed':
+        return AppColors.stateNominations;
+      case 'voting_open':
+        return AppColors.stateVoting;
+      case 'voting_closed':
+        return AppColors.stateClosed;
+      case 'results_provisional':
+      case 'results_final':
+        return AppColors.stateResults;
+      default:
+        return isDark ? AppColors.textMuted : AppColors.textMutedLightMode;
     }
   }
 }
@@ -269,7 +491,7 @@ class _StateBadge extends StatelessWidget {
       ),
       child: Text(
         state.replaceAll('_', ' ').toUpperCase(),
-        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w700),
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w800),
       ),
     );
   }
@@ -297,7 +519,7 @@ class _InfoChip extends StatelessWidget {
         children: [
           Icon(icon, size: 13, color: textColor),
           const SizedBox(width: 4),
-          Text(label, style: TextStyle(color: textColor, fontSize: 12)),
+          Text(label, style: TextStyle(color: textColor, fontSize: 11, fontWeight: FontWeight.w600)),
         ],
       ),
     );

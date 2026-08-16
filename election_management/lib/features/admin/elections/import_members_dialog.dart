@@ -359,7 +359,7 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
                   ),
                   child: ListView.separated(
                     itemCount: filteredMembers.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (ctx, idx) {
                       final m = filteredMembers[idx];
                       final isSelected = _selectedMemberIds.contains(m.id);
@@ -587,7 +587,7 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
               ),
               child: ListView.separated(
                 itemCount: _apiPreviewRecords.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
+                separatorBuilder: (_, _) => const Divider(height: 1),
                 itemBuilder: (ctx, idx) {
                   final r = _apiPreviewRecords[idx];
                   return ListTile(

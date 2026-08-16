@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/org_providers.dart';
 import '../../../core/network/api_client.dart';
@@ -12,9 +13,10 @@ import '../../../shared/models/models.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/admin_drawer.dart';
 import '../../../shared/widgets/shimmer_loaders.dart';
+import '../../../shared/widgets/responsive_layout.dart';
 
 // ---------------------------------------------------------------------------
-// Type-specific metadata field descriptors (mirrored from register_screen)
+// Type-specific metadata field descriptors
 // ---------------------------------------------------------------------------
 const Map<String, List<Map<String, String>>> _typeMetaFields = {
   'cooperative': [
@@ -90,8 +92,11 @@ class _ImageTileState extends State<_ImageTile> {
     setState(() => _uploading = true);
     final url = await widget.onUpload(result.files.first.bytes!, result.files.first.name);
     if (mounted) {
-      setState(() { _uploading = false; if (url != null) { _url = url; } });
-      if (url != null) { widget.onUploaded(url); }
+      setState(() {
+        _uploading = false;
+        if (url != null) _url = url;
+      });
+      if (url != null) widget.onUploaded(url);
     }
   }
 
@@ -112,8 +117,11 @@ class _ImageTileState extends State<_ImageTile> {
             width: double.infinity,
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7), width: 1.5),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isDark ? Colors.white12 : Colors.grey.shade300,
+                width: 1.5,
+              ),
               image: hasImg ? DecorationImage(image: NetworkImage(_url!), fit: BoxFit.cover) : null,
             ),
             child: _uploading
@@ -122,9 +130,15 @@ class _ImageTileState extends State<_ImageTile> {
                     ? Align(
                         alignment: Alignment.bottomRight,
                         child: Container(
-                          margin: const EdgeInsets.all(8),
-                          padding: const EdgeInsets.all(6),
-                          decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                          margin: const EdgeInsets.all(10),
+                          padding: const EdgeInsets.all(8),
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
+                            ],
+                          ),
                           child: const Icon(Icons.edit, color: Colors.white, size: 14),
                         ),
                       )
@@ -133,9 +147,9 @@ class _ImageTileState extends State<_ImageTile> {
                         children: [
                           Icon(widget.icon, color: AppColors.textMuted, size: 30),
                           const SizedBox(height: 8),
-                          Text('Tap to upload', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                          const Text('Tap to upload', style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600)),
                           const SizedBox(height: 2),
-                          Text('Max 2MB · jpeg, png, jpg, gif, svg', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                          const Text('Max 2MB · jpeg, png, jpg, gif, svg', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
                         ],
                       ),
           ),
@@ -190,12 +204,19 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
   @override
   void dispose() {
     for (final c in [
-      _nameCtrl, _prefixCtrl, _councilCtrl, _orgEmailCtrl, _orgPhoneCtrl,
-      _websiteCtrl, _addressCtrl,
+      _nameCtrl,
+      _prefixCtrl,
+      _councilCtrl,
+      _orgEmailCtrl,
+      _orgPhoneCtrl,
+      _websiteCtrl,
+      _addressCtrl,
     ]) {
       c.dispose();
     }
-    for (final c in _metaCtrls.values) { c.dispose(); }
+    for (final c in _metaCtrls.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -204,6 +225,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
     _nameCtrl.text = org.name;
     _prefixCtrl.text = org.prefix;
     _councilCtrl.text = org.councilNumber;
+    _orgEmailCtrl.text = org.email;
     _orgPhoneCtrl.text = org.phone;
     _websiteCtrl.text = org.website;
     _addressCtrl.text = org.address;
@@ -243,7 +265,9 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
 
   void _onTypeChanged(String? val) {
     if (val == null) return;
-    for (final c in _metaCtrls.values) { c.dispose(); }
+    for (final c in _metaCtrls.values) {
+      c.dispose();
+    }
     _metaCtrls.clear();
     final fields = _typeMetaFields[val] ?? [];
     for (final f in fields) {
@@ -256,7 +280,9 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
     if (!_formKey.currentState!.validate()) return;
     final meta = <String, dynamic>{};
     for (final entry in _metaCtrls.entries) {
-      if (entry.value.text.isNotEmpty) { meta[entry.key] = entry.value.text.trim(); }
+      if (entry.value.text.isNotEmpty) {
+        meta[entry.key] = entry.value.text.trim();
+      }
     }
     try {
       await ref.read(updateOrgSettingsProvider.notifier).updateSettings({
@@ -277,9 +303,9 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
           content: const Row(children: [
             Icon(Icons.check_circle, color: Colors.white),
             SizedBox(width: 12),
-            Text('Settings saved!', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('Organization settings saved successfully!', style: TextStyle(fontWeight: FontWeight.bold)),
           ]),
-          backgroundColor: Colors.green.shade600,
+          backgroundColor: Colors.green.shade700,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           margin: const EdgeInsets.all(24),
@@ -293,7 +319,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
             const SizedBox(width: 12),
             Expanded(child: Text('Error: $e')),
           ]),
-          backgroundColor: Colors.red.shade600,
+          backgroundColor: Colors.red.shade700,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           margin: const EdgeInsets.all(24),
@@ -304,8 +330,10 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
 
   // --- Shared section card builder ---
   Widget _section({required String title, required String subtitle, required IconData icon, required List<Widget> children}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 28),
+      padding: const EdgeInsets.only(bottom: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -314,7 +342,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
+                  color: AppColors.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
                 ),
@@ -325,26 +353,22 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                  Text(subtitle, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
+                  Text(subtitle, style: TextStyle(color: isDark ? Colors.white60 : Colors.grey.shade600, fontSize: 12)),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Card(
-            elevation: 0,
-            margin: EdgeInsets.zero,
-            color: Theme.of(context).brightness == Brightness.dark
-                ? AppColors.surfaceVariant.withValues(alpha: 0.5)
-                : Colors.white,
+          const SizedBox(height: 14),
+          Material(
+            color: isDark ? AppColors.surface : Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.black.withValues(alpha: 0.05),
+                color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade200,
               ),
             ),
+            elevation: isDark ? 0 : 1,
+            shadowColor: Colors.black.withValues(alpha: 0.04),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
@@ -359,26 +383,26 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
         labelText: label,
         hintText: hint,
         prefixIcon: prefix,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       );
 
-  // ===========================================================================
-  // TAB 1 — Organization Profile
-  // ===========================================================================
   Widget _buildProfileTab() {
     final metaFields = _typeMetaFields[_selectedOrgType] ?? [];
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 100),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
       children: [
-        // Preview banner
-        _buildPreviewBanner(),
-        const SizedBox(height: 28),
+        // Live Preview banner
+        _buildPreviewBanner()
+            .animate()
+            .fade(duration: 300.ms)
+            .slideY(begin: -0.05, end: 0),
+        const SizedBox(height: 24),
 
         // Basic Info
         _section(
-          title: 'Basic Information',
-          subtitle: 'Your organization identity and contact details',
+          title: 'Organization Identity',
+          subtitle: 'Core brand metadata and registered tenant details',
           icon: Icons.business_rounded,
           children: [
             Row(
@@ -388,7 +412,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
                   flex: 3,
                   child: TextFormField(
                     controller: _nameCtrl,
-                    decoration: _dec('Organization Name', hint: 'Enter organization name', prefix: const Icon(Icons.badge_outlined)),
+                    decoration: _dec('Organization Name *', hint: 'Enter organization name', prefix: const Icon(Icons.badge_outlined)),
                     validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
                   ),
                 ),
@@ -396,7 +420,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
                 Expanded(
                   child: TextFormField(
                     controller: _prefixCtrl,
-                    decoration: _dec('Prefix', hint: 'e.g. SOC'),
+                    decoration: _dec('Prefix Tag', hint: 'e.g. SOC'),
                     textCapitalization: TextCapitalization.characters,
                     maxLength: 10,
                     buildCounter: (_, {required currentLength, required isFocused, required maxLength}) => null,
@@ -407,21 +431,21 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
               initialValue: _selectedOrgType,
-              decoration: _dec('Organization Type', prefix: const Icon(Icons.category_outlined)),
+              decoration: _dec('Organization Type *', prefix: const Icon(Icons.category_outlined)),
               items: const [
-                DropdownMenuItem(value: 'cooperative', child: Text('Cooperative / SACCO')),
-                DropdownMenuItem(value: 'college', child: Text('College / University')),
-                DropdownMenuItem(value: 'educational', child: Text('Educational Institution')),
-                DropdownMenuItem(value: 'association', child: Text('Professional Association')),
-                DropdownMenuItem(value: 'club', child: Text('Club / Community')),
-                DropdownMenuItem(value: 'housing_society', child: Text('Housing Society')),
-                DropdownMenuItem(value: 'union', child: Text('Trade Union')),
-                DropdownMenuItem(value: 'ngo', child: Text('NGO / INGO')),
-                DropdownMenuItem(value: 'corporate', child: Text('Corporate')),
-                DropdownMenuItem(value: 'religious', child: Text('Religious Organization')),
-                DropdownMenuItem(value: 'political_party', child: Text('Political Party (Internal)')),
-                DropdownMenuItem(value: 'government', child: Text('Government / Public Body')),
-                DropdownMenuItem(value: 'other', child: Text('Other')),
+                DropdownMenuItem(value: 'cooperative', child: Text('Cooperative / SACCO (सहकारी)')),
+                DropdownMenuItem(value: 'college', child: Text('College / University (क्याम्पस)')),
+                DropdownMenuItem(value: 'educational', child: Text('Educational Institution (शैक्षिक संस्था)')),
+                DropdownMenuItem(value: 'association', child: Text('Professional Association (संघ / महासंघ)')),
+                DropdownMenuItem(value: 'club', child: Text('Club / Community (क्लब / समाज)')),
+                DropdownMenuItem(value: 'housing_society', child: Text('Housing Society (आवास समाज)')),
+                DropdownMenuItem(value: 'union', child: Text('Trade Union (ट्रेड युनियन)')),
+                DropdownMenuItem(value: 'ngo', child: Text('NGO / INGO (गैर सरकारी संस्था)')),
+                DropdownMenuItem(value: 'corporate', child: Text('Corporate / Private Ltd.')),
+                DropdownMenuItem(value: 'religious', child: Text('Religious / Trust Organization')),
+                DropdownMenuItem(value: 'political_party', child: Text('Political Party (राजनीतिक दल)')),
+                DropdownMenuItem(value: 'government', child: Text('Government / Public Body (सरकारी निकाय)')),
+                DropdownMenuItem(value: 'other', child: Text('Other Enterprise')),
               ],
               onChanged: _onTypeChanged,
             ),
@@ -437,7 +461,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
                 Expanded(
                   child: TextFormField(
                     controller: _orgEmailCtrl,
-                    decoration: _dec('Organization Email', hint: 'org@example.com', prefix: const Icon(Icons.email_outlined)),
+                    decoration: _dec('Official Email', hint: 'contact@org.org.np', prefix: const Icon(Icons.email_outlined)),
                     keyboardType: TextInputType.emailAddress,
                   ),
                 ),
@@ -445,7 +469,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
                 Expanded(
                   child: TextFormField(
                     controller: _orgPhoneCtrl,
-                    decoration: _dec('Phone', hint: '9876543210', prefix: const Icon(Icons.phone_outlined)),
+                    decoration: _dec('Helpline Phone', hint: '+977-9800000000', prefix: const Icon(Icons.phone_outlined)),
                     keyboardType: TextInputType.phone,
                   ),
                 ),
@@ -454,22 +478,22 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
             const SizedBox(height: 16),
             TextFormField(
               controller: _websiteCtrl,
-              decoration: _dec('Website', hint: 'https://example.com', prefix: const Icon(Icons.language_outlined)),
+              decoration: _dec('Official Website', hint: 'https://example.org.np', prefix: const Icon(Icons.language_outlined)),
               keyboardType: TextInputType.url,
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _addressCtrl,
-              decoration: _dec('Address', hint: 'Enter full address', prefix: const Icon(Icons.location_on_outlined)),
-              maxLines: 3,
+              decoration: _dec('Headquarters Address', hint: 'Street, Ward, City, District', prefix: const Icon(Icons.location_on_outlined)),
+              maxLines: 2,
             ),
           ],
         ),
 
         // Branding
         _section(
-          title: 'Branding',
-          subtitle: 'Logo and cover image for your organization',
+          title: 'Branding & Assets',
+          subtitle: 'Official emblem and cover banner displayed on election portal',
           icon: Icons.palette_rounded,
           children: [
             Row(
@@ -477,7 +501,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
               children: [
                 Expanded(
                   child: _ImageTile(
-                    label: 'Logo',
+                    label: 'Emblem / Logo',
                     initialUrl: _logoUrl.isEmpty ? null : _logoUrl,
                     icon: Icons.image_outlined,
                     height: 130,
@@ -488,7 +512,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
                 const SizedBox(width: 14),
                 Expanded(
                   child: _ImageTile(
-                    label: 'Cover Image',
+                    label: 'Cover Banner',
                     initialUrl: _coverUrl.isEmpty ? null : _coverUrl,
                     icon: Icons.wallpaper_outlined,
                     height: 130,
@@ -504,45 +528,59 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
         // Type-specific metadata
         if (metaFields.isNotEmpty)
           _section(
-            title: '${_orgTypeLabel(_selectedOrgType)} Details',
-            subtitle: 'Additional details specific to your organization type',
+            title: '${_orgTypeLabel(_selectedOrgType)} Compliance',
+            subtitle: 'Statutory parameters specific to your organizational charter',
             icon: Icons.tune_rounded,
-            children: metaFields.map((f) => Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: TextFormField(
-                controller: _metaCtrls[f['key']!],
-                decoration: _dec(f['label']!, hint: f['hint']),
-              ),
-            )).toList(),
+            children: metaFields
+                .map((f) => Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: TextFormField(
+                        controller: _metaCtrls[f['key']!],
+                        decoration: _dec(f['label']!, hint: f['hint']),
+                      ),
+                    ))
+                .toList(),
           ),
 
         // Election Rules Shortcut Card
         Container(
           margin: const EdgeInsets.only(bottom: 24),
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: AppColors.primary.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
           ),
           child: Row(
             children: [
-              const Icon(Icons.gavel_rounded, color: AppColors.primary, size: 24),
-              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.gavel_rounded, color: AppColors.primary, size: 24),
+              ),
+              const SizedBox(width: 14),
               const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Election Rules & Default Policies', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    Text('Election Rules & Governance Policies', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                     SizedBox(height: 2),
-                    Text('Manage default nomination/voting phases, silence periods, and publishing permissions.', style: TextStyle(fontSize: 12)),
+                    Text('Manage default nomination/voting phases, silence periods, and ballot publication controls.', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                   ],
                 ),
               ),
-              OutlinedButton.icon(
+              const SizedBox(width: 10),
+              ElevatedButton.icon(
                 onPressed: () => context.pushNamed('election-rules'),
-                icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                icon: const Icon(Icons.tune_rounded, size: 16),
                 label: const Text('Manage Rules'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
               ),
             ],
           ),
@@ -553,27 +591,52 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
 
   Widget _buildPreviewBanner() {
     return AnimatedBuilder(
-      animation: _nameCtrl,
+      animation: Listenable.merge([_nameCtrl, _prefixCtrl]),
       builder: (context, _) {
         return Container(
-          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+          padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
           decoration: BoxDecoration(
-            gradient: _coverUrl.isEmpty ? LinearGradient(colors: [AppColors.primary, AppColors.primaryDark], begin: Alignment.topLeft, end: Alignment.bottomRight) : null,
-            image: _coverUrl.isNotEmpty ? DecorationImage(image: NetworkImage(ApiConstants.getFullImageUrl(_coverUrl)!), fit: BoxFit.cover, colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.6), BlendMode.darken)) : null,
+            gradient: _coverUrl.isEmpty
+                ? const LinearGradient(
+                    colors: [AppColors.primary, AppColors.primaryDark],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+            image: _coverUrl.isNotEmpty
+                ? DecorationImage(
+                    image: NetworkImage(ApiConstants.getFullImageUrl(_coverUrl)!),
+                    fit: BoxFit.cover,
+                    colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.6), BlendMode.darken),
+                  )
+                : null,
             borderRadius: BorderRadius.circular(20),
-            boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
           child: Row(
             children: [
               Container(
-                width: 72, height: 72,
+                width: 72,
+                height: 72,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.white.withValues(alpha: 0.2),
-                  image: _logoUrl.isNotEmpty ? DecorationImage(image: NetworkImage(ApiConstants.getFullImageUrl(_logoUrl)!), fit: BoxFit.cover) : null,
+                  border: Border.all(color: Colors.white30, width: 2),
+                  image: _logoUrl.isNotEmpty
+                      ? DecorationImage(
+                          image: NetworkImage(ApiConstants.getFullImageUrl(_logoUrl)!),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
                 ),
                 child: _logoUrl.isEmpty
-                    ? const Icon(Icons.business, color: Colors.white, size: 36)
+                    ? const Icon(Icons.business_rounded, color: Colors.white, size: 36)
                     : null,
               ),
               const SizedBox(width: 20),
@@ -581,17 +644,44 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _nameCtrl.text.isEmpty ? 'Your Organization' : _nameCtrl.text,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
+                    Row(
+                      children: [
+                        if (_prefixCtrl.text.isNotEmpty) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              _prefixCtrl.text,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            _orgTypeLabel(_selectedOrgType),
+                            style: const TextStyle(color: Colors.white, fontSize: 11),
+                          ),
+                        ),
+                      ],
                     ),
-                    if (_prefixCtrl.text.isNotEmpty || _selectedOrgType.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        '${_prefixCtrl.text.isNotEmpty ? "${_prefixCtrl.text} • " : ""}${_orgTypeLabel(_selectedOrgType)}',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
-                      ),
-                    ],
+                    const SizedBox(height: 6),
+                    Text(
+                      _nameCtrl.text.isEmpty ? 'Your Organization Name' : _nameCtrl.text,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.2,
+                          ),
+                    ),
                   ],
                 ),
               ),
@@ -607,10 +697,16 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
       'cooperative': 'Cooperative',
       'college': 'College / University',
       'educational': 'Educational Institute',
-      'social_org': 'Social Organization',
+      'association': 'Professional Association',
+      'club': 'Club / Community',
+      'housing_society': 'Housing Society',
+      'union': 'Trade Union',
+      'ngo': 'NGO / INGO',
+      'corporate': 'Corporate Enterprise',
+      'religious': 'Religious Organization',
       'political_party': 'Political Party',
       'government': 'Government / Public Body',
-      'other': 'Other',
+      'other': 'Organization',
     };
     return labels[type] ?? type;
   }
@@ -624,8 +720,6 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
       drawer: const AdminDrawer(),
       appBar: AppBar(
         title: const Text('Organization Settings'),
-        elevation: 0,
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
@@ -639,22 +733,25 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
           ),
         ],
       ),
-      body: orgAsync.when(
-        loading: () => const ListSkeleton(count: 5),
-        error: (err, _) => Center(child: Text('Error: $err')),
-        data: (org) {
-          _populateForm(org);
-          return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 800),
-              child: Form(
-                key: _formKey,
-                child: _buildProfileTab(),
+      body: ResponsivePageWrapper(
+        child: orgAsync.when(
+          loading: () => const ListSkeleton(count: 5),
+          error: (err, _) => Center(child: Text('Error: $err')),
+          data: (org) {
+            _populateForm(org);
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 860),
+                child: Form(
+                  key: _formKey,
+                  child: _buildProfileTab(),
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
 }
+

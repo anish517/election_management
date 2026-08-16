@@ -220,7 +220,7 @@ class _ManageVoterClaimsDialogState extends ConsumerState<ManageVoterClaimsDialo
 
     return ListView.separated(
       itemCount: list.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (ctx, i) {
         final claim = list[i];
         final isPending = claim.status == 'pending';
@@ -272,7 +272,7 @@ class _ManageVoterClaimsDialogState extends ConsumerState<ManageVoterClaimsDialo
                     ),
                     if (claim.createdAt != null)
                       Text(
-                        '${claim.createdAt!.toLocal().toString().split('.')[0]}',
+                        claim.createdAt!.toLocal().toString().split('.')[0],
                         style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
                       ),
                   ],

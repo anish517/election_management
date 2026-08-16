@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/providers/admin_providers.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/image_upload_widget.dart';
+import '../../../shared/widgets/loading_button.dart';
 
 class CreateCandidateScreen extends ConsumerStatefulWidget {
   final String electionId;
@@ -17,22 +19,23 @@ class CreateCandidateScreen extends ConsumerStatefulWidget {
 
 class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   String? _selectedVoterId;
   String? _selectedPositionId;
   String? _selectedQuotaId;
-  
+
   final _firstNameController = TextEditingController();
   final _middleNameController = TextEditingController();
   final _lastNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _contactController = TextEditingController();
-  String? _selectedGender;
+  String _selectedGender = 'Male';
   final _dobController = TextEditingController();
   final _addressController = TextEditingController();
-  
+  final _slateNameController = TextEditingController();
+
   String _candidateImageUrl = '';
-  
+
   final _personalDescriptionController = TextEditingController();
   final _manifestoController = TextEditingController();
 
@@ -61,6 +64,7 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
     _contactController.dispose();
     _dobController.dispose();
     _addressController.dispose();
+    _slateNameController.dispose();
     _personalDescriptionController.dispose();
     _manifestoController.dispose();
     _proposerNameCtrl.dispose();
@@ -75,16 +79,34 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
   }
 
   void _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please complete all required fields.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     if (_selectedPositionId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a designation')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a designation.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return;
     }
     if (_selectedVoterId == null && _emailController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a voter from the voter list')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a voter from the registered voter list.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return;
     }
-    
+
     setState(() => _isSubmitting = true);
 
     final endorsements = <Map<String, dynamic>>[];
@@ -111,32 +133,57 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
 
     try {
       final dio = ref.read(apiClientProvider);
-      await dio.post(ApiConstants.electionCandidates(widget.electionId), data: {
-        'election': widget.electionId,
-        'position': _selectedPositionId,
-        if (_selectedQuotaId != null && _selectedQuotaId!.isNotEmpty) 'quota': _selectedQuotaId,
-        'first_name': _firstNameController.text.trim(),
-        'middle_name': _middleNameController.text.trim(),
-        'last_name': _lastNameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'contact_number': _contactController.text.trim(),
-        'gender': _selectedGender ?? 'Other',
-        'date_of_birth': _dobController.text.trim().isNotEmpty ? _dobController.text.trim() : null,
-        'address': _addressController.text.trim(),
-        'candidate_image': _candidateImageUrl,
-        'personal_description': _personalDescriptionController.text.trim(),
-        'manifesto': _manifestoController.text.trim(),
-        'status': 'approved', // Auto approve for admin creation
-        if (endorsements.isNotEmpty) 'endorsements': endorsements,
-      });
+      await dio.post(
+        ApiConstants.electionCandidates(widget.electionId),
+        data: {
+          'election': widget.electionId,
+          'position': _selectedPositionId,
+          if (_selectedQuotaId != null && _selectedQuotaId!.isNotEmpty) 'quota': _selectedQuotaId,
+          'first_name': _firstNameController.text.trim(),
+          'middle_name': _middleNameController.text.trim(),
+          'last_name': _lastNameController.text.trim(),
+          'email': _emailController.text.trim(),
+          'contact_number': _contactController.text.trim(),
+          'gender': _selectedGender,
+          'date_of_birth': _dobController.text.trim().isNotEmpty ? _dobController.text.trim() : null,
+          'address': _addressController.text.trim(),
+          'slate_name': _slateNameController.text.trim(),
+          'candidate_image': _candidateImageUrl,
+          'photo_url': _candidateImageUrl,
+          'personal_description': _personalDescriptionController.text.trim(),
+          'manifesto': _manifestoController.text.trim(),
+          'status': 'approved', // Auto approve for admin creation
+          if (endorsements.isNotEmpty) 'endorsements': endorsements,
+        },
+      );
 
       ref.invalidate(electionProvider(widget.electionId));
       if (mounted) {
-        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white),
+                const SizedBox(width: 10),
+                Text('Candidate "${_firstNameController.text.trim()} ${_lastNameController.text.trim()}" enrolled successfully!'),
+              ],
+            ),
+            backgroundColor: Colors.green.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+        context.pop();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to create candidate: $e'),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -152,78 +199,102 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
         return Consumer(
           builder: (context, ref, _) {
             final membersAsync = ref.watch(membersProvider);
-            return DraggableScrollableSheet(
-              initialChildSize: 0.6,
-              minChildSize: 0.4,
-              maxChildSize: 0.85,
-              expand: false,
-              builder: (ctx, scrollCtrl) {
-                return Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Select from Member Roster',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () => Navigator.pop(ctx),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: membersAsync.when(
-                          loading: () => const Center(child: CircularProgressIndicator()),
-                          error: (e, _) => Center(child: Text('Error loading members: $e')),
-                          data: (members) {
-                            if (members.isEmpty) {
-                              return const Center(child: Text('No members found in organization.'));
-                            }
-                            return ListView.separated(
-                              controller: scrollCtrl,
-                              itemCount: members.length,
-                              separatorBuilder: (_, __) => const Divider(height: 1),
-                              itemBuilder: (ctx, idx) {
-                                final m = members[idx];
-                                return ListTile(
-                                  leading: CircleAvatar(
-                                    child: Text(m.fullName.isNotEmpty ? m.fullName[0].toUpperCase() : '?'),
+            return Container(
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surface : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: DraggableScrollableSheet(
+                initialChildSize: 0.65,
+                minChildSize: 0.4,
+                maxChildSize: 0.9,
+                expand: false,
+                builder: (ctx, scrollCtrl) {
+                  return Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
-                                  title: Text(m.fullName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                                  subtitle: Text('${m.email} • #${m.memberCode}'),
-                                  trailing: const Icon(Icons.check_circle_outline, size: 20),
-                                  onTap: () {
-                                    nameCtrl.text = m.fullName;
-                                    phoneCtrl.text = m.phone;
-                                    memIdCtrl.text = m.memberCode;
-                                    if (m.citizenshipNumber.isNotEmpty) {
-                                      citizenCtrl.text = m.citizenshipNumber;
-                                    }
-                                    Navigator.pop(ctx);
-                                  },
-                                );
-                              },
-                            );
-                          },
+                                  child: const Icon(Icons.people_outline_rounded, color: AppColors.primaryLight, size: 20),
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Select Endorser from Member Roster',
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded),
+                              onPressed: () => Navigator.pop(ctx),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
-                );
-              },
+                        const SizedBox(height: 12),
+                        const Divider(height: 1),
+                        const SizedBox(height: 12),
+                        Expanded(
+                          child: membersAsync.when(
+                            loading: () => const Center(child: CircularProgressIndicator()),
+                            error: (e, _) => Center(child: Text('Error loading members: $e', style: const TextStyle(color: Colors.red))),
+                            data: (members) {
+                              if (members.isEmpty) {
+                                return const Center(child: Text('No members found in organization roster.'));
+                              }
+                              return ListView.separated(
+                                controller: scrollCtrl,
+                                itemCount: members.length,
+                                separatorBuilder: (_, _) => const Divider(height: 1),
+                                itemBuilder: (ctx, idx) {
+                                  final m = members[idx];
+                                  return ListTile(
+                                    leading: CircleAvatar(
+                                      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                                      child: Text(
+                                        m.fullName.isNotEmpty ? m.fullName[0].toUpperCase() : '?',
+                                        style: const TextStyle(color: AppColors.primaryLight, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                    title: Text(m.fullName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                                    subtitle: Text('${m.email} • Code: #${m.memberCode.isNotEmpty ? m.memberCode : "N/A"}', style: const TextStyle(fontSize: 12)),
+                                    trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
+                                    onTap: () {
+                                      nameCtrl.text = m.fullName;
+                                      phoneCtrl.text = m.phone;
+                                      memIdCtrl.text = m.memberCode;
+                                      if (m.citizenshipNumber.isNotEmpty) {
+                                        citizenCtrl.text = m.citizenshipNumber;
+                                      }
+                                      Navigator.pop(ctx);
+                                    },
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             );
           },
         );
@@ -231,105 +302,246 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
     );
   }
 
+  InputDecoration _dec(
+    String label, {
+    String? hint,
+    Widget? prefix,
+    String? helper,
+    bool isDark = false,
+    bool readOnly = false,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      helperText: helper,
+      prefixIcon: prefix,
+      filled: true,
+      fillColor: readOnly
+          ? (isDark ? Colors.white10 : Colors.grey.shade100)
+          : (isDark ? AppColors.surfaceVariant.withValues(alpha: 0.5) : const Color(0xFFF9FAFB)),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(
+          color: isDark ? Colors.white12 : Colors.grey.shade300,
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final electionAsync = ref.watch(electionProvider(widget.electionId));
     final votersAsync = ref.watch(votersProvider(widget.electionId));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create New Candidate'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Nominate Candidate', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text('उम्मेदवार मनोनयन तथा दर्ता', style: TextStyle(fontSize: 11, color: Colors.white70)),
+          ],
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_rounded),
+          onPressed: () => context.pop(),
+        ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Election Admin > Candidates > Create New Candidate',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey),
-              ),
-              const SizedBox(height: 24),
-              Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: Theme.of(context).dividerColor),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(32.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 960),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Hero Header Banner
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isDark
+                            ? [const Color(0xFF1E1B4B), const Color(0xFF312E81)]
+                            : [const Color(0xFF4F46E5), const Color(0xFF6366F1)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF4F46E5).withValues(alpha: 0.25),
+                          blurRadius: 16,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(Icons.how_to_reg_rounded, color: Colors.white, size: 32),
+                        ),
+                        const SizedBox(width: 18),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Candidate Nomination & Scrutiny Filing',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Enroll an elector from the verified voter roll into contested designations and affirmative action quotas.',
+                                style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // ════════════════════════════════════════════════════════
+                  // 1. VOTER ROLL AUTO-FILL SELECTION
+                  // ════════════════════════════════════════════════════════
+                  _buildSectionCard(
+                    context,
+                    title: '1. Electoral Roll & Voter Selection (मतदाता छनोट) *',
+                    subtitle: 'Candidate must originate from the approved preliminary voter list',
+                    icon: Icons.person_search_rounded,
+                    isDark: isDark,
                     children: [
-                      Text('Voter Selection', style: Theme.of(context).textTheme.titleLarge),
-                      const SizedBox(height: 16),
                       votersAsync.when(
                         loading: () => const LinearProgressIndicator(),
-                        error: (e, _) => Text('Error loading voters: $e', style: const TextStyle(color: Colors.red)),
-                        data: (voters) => DropdownButtonFormField<String>(
-                          initialValue: _selectedVoterId,
-                          decoration: const InputDecoration(
-                            labelText: 'Select Voter (Candidate must originate from voter list) *',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.person_search_rounded),
-                          ),
-                          items: voters.map((v) => DropdownMenuItem(
-                            value: v['id'].toString(),
-                            child: Text('${v['full_name'] ?? '${v['first_name']} ${v['last_name']}'} (${v['email']}) — ${v['voter_id']}'),
-                          )).toList(),
-                          onChanged: (val) {
-                            setState(() {
-                              _selectedVoterId = val;
-                              final v = voters.firstWhere((item) => item['id'].toString() == val);
-                              _firstNameController.text = v['first_name'] ?? '';
-                              _middleNameController.text = v['middle_name'] ?? '';
-                              _lastNameController.text = v['last_name'] ?? '';
-                              _emailController.text = v['email'] ?? '';
-                              _contactController.text = v['phone'] ?? '';
-                              _addressController.text = v['address'] ?? '';
-                            });
-                          },
-                          validator: (v) => v == null ? 'Voter selection is required' : null,
-                        ),
+                        error: (e, _) => Text('Error loading voters: $e', style: const TextStyle(color: Colors.red, fontSize: 12)),
+                        data: (voters) {
+                          if (voters.isEmpty) {
+                            return Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: isDark ? AppColors.surfaceVariant : const Color(0xFFF4F4F5),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Text('No registered voters found for this election. Please enroll voters first.', style: TextStyle(fontSize: 12)),
+                            );
+                          }
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              DropdownButtonFormField<String>(
+                                initialValue: _selectedVoterId,
+                                isExpanded: true,
+                                decoration: _dec(
+                                  'Select Qualified Voter *',
+                                  prefix: const Icon(Icons.how_to_vote_outlined),
+                                  isDark: isDark,
+                                ),
+                                items: voters.map((v) {
+                                  final fullName = v['full_name'] ?? '${v['first_name']} ${v['last_name']}';
+                                  final email = v['email'] ?? '';
+                                  final voterId = v['voter_id'] ?? v['id'];
+                                  return DropdownMenuItem(
+                                    value: v['id'].toString(),
+                                    child: Text('$fullName ($email) • ID: $voterId', style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
+                                  );
+                                }).toList(),
+                                onChanged: (val) {
+                                  setState(() {
+                                    _selectedVoterId = val;
+                                    final v = voters.firstWhere((item) => item['id'].toString() == val);
+                                    _firstNameController.text = v['first_name'] ?? '';
+                                    _middleNameController.text = v['middle_name'] ?? '';
+                                    _lastNameController.text = v['last_name'] ?? '';
+                                    _emailController.text = v['email'] ?? '';
+                                    _contactController.text = v['phone'] ?? '';
+                                    _addressController.text = v['address'] ?? '';
+                                  });
+                                },
+                                validator: (v) => v == null ? 'Voter selection is required' : null,
+                              ),
+                              if (_selectedVoterId != null) ...[
+                                const SizedBox(height: 10),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.check_circle_rounded, size: 14, color: Colors.green),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'Candidate identity credentials synchronized from official voter roll.',
+                                        style: TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.w600),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          );
+                        },
                       ),
-                      const SizedBox(height: 32),
-                      Text('Candidate Profile Information', style: Theme.of(context).textTheme.titleLarge),
-                      const SizedBox(height: 24),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ════════════════════════════════════════════════════════
+                  // 2. CONTESTED POSITION & QUOTA ALLOCATION
+                  // ════════════════════════════════════════════════════════
+                  _buildSectionCard(
+                    context,
+                    title: '2. Contested Office & Quota Allocation (पद तथा कोटा विवरण)',
+                    subtitle: 'Electoral designation, affirmative action quota, and slate affiliation',
+                    icon: Icons.military_tech_rounded,
+                    isDark: isDark,
+                    children: [
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(child: _buildTextField('First Name *', _firstNameController, 'Enter first name')),
-                          const SizedBox(width: 24),
-                          Expanded(child: _buildTextField('Middle Name', _middleNameController, 'Enter middle name', required: false)),
-                          const SizedBox(width: 24),
-                          Expanded(child: _buildTextField('Last Name *', _lastNameController, 'Enter last name')),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        children: [
+                          // Designation Dropdown
                           Expanded(
                             child: electionAsync.when(
-                              loading: () => const CircularProgressIndicator(),
-                              error: (_, _) => const Text('Error loading designations'),
-                              data: (election) => _buildDropdown(
-                                'Designation *',
-                                _selectedPositionId,
-                                election.positions.map((p) => DropdownMenuItem(value: p.id, child: Text(p.title))).toList(),
-                                (val) {
+                              loading: () => const LinearProgressIndicator(),
+                              error: (_, _) => const Text('Error loading designations', style: TextStyle(color: Colors.red)),
+                              data: (election) => DropdownButtonFormField<String>(
+                                initialValue: _selectedPositionId,
+                                isExpanded: true,
+                                decoration: _dec('Contested Designation *', prefix: const Icon(Icons.badge_outlined), isDark: isDark),
+                                items: election.positions.map((p) => DropdownMenuItem(
+                                  value: p.id,
+                                  child: Text('${p.title} (${p.seatsAvailable} seat${p.seatsAvailable > 1 ? "s" : ""})', style: const TextStyle(fontSize: 13)),
+                                )).toList(),
+                                onChanged: (val) {
                                   setState(() {
                                     _selectedPositionId = val;
                                     _selectedQuotaId = null;
                                   });
                                 },
-                                'Select Designation',
+                                validator: (v) => v == null ? 'Designation is required' : null,
                               ),
                             ),
                           ),
+                          // Dynamic Quota Dropdown
                           if (_selectedPositionId != null) ...[
                             ...electionAsync.maybeWhen(
                               data: (election) {
@@ -338,20 +550,20 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
                                   final activeQuotas = selectedPos.quotas.where((q) => q.isActive).toList();
                                   if (activeQuotas.isNotEmpty) {
                                     return [
-                                      const SizedBox(width: 24),
+                                      const SizedBox(width: 14),
                                       Expanded(
-                                        child: _buildDropdown(
-                                          'Quota Category',
-                                          _selectedQuotaId,
-                                          [
+                                        child: DropdownButtonFormField<String?>(
+                                          initialValue: _selectedQuotaId,
+                                          isExpanded: true,
+                                          decoration: _dec('Quota Category', prefix: const Icon(Icons.category_outlined), isDark: isDark),
+                                          items: [
                                             const DropdownMenuItem<String?>(value: null, child: Text('Open / General (No Quota)')),
                                             ...activeQuotas.map((q) => DropdownMenuItem<String?>(
                                               value: q.id,
-                                              child: Text('${q.name} (${q.seats} seat(s))'),
+                                              child: Text('${q.name} (${q.seats} seat(s))', style: const TextStyle(fontSize: 13)),
                                             )),
                                           ],
-                                          (val) => setState(() => _selectedQuotaId = val),
-                                          'Select Quota',
+                                          onChanged: (val) => setState(() => _selectedQuotaId = val),
                                         ),
                                       ),
                                     ];
@@ -362,67 +574,196 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
                               orElse: () => <Widget>[],
                             ),
                           ],
-                          const SizedBox(width: 24),
-                          Expanded(child: _buildTextField('Email (From Voter List) *', _emailController, 'Auto-filled from voter list', readOnly: true)),
-                          const SizedBox(width: 24),
-                          Expanded(child: _buildTextField('Contact Number *', _contactController, 'Enter contact number')),
                         ],
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 16),
+
+                      // Slate / Panel Affiliation
+                      TextFormField(
+                        controller: _slateNameController,
+                        decoration: _dec(
+                          'Slate / Panel Affiliation (Optional)',
+                          hint: 'e.g. Democratic Alliance, Progressive Front',
+                          prefix: const Icon(Icons.groups_outlined),
+                          isDark: isDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ════════════════════════════════════════════════════════
+                  // 3. CANDIDATE PROFILE & PORTRAIT
+                  // ════════════════════════════════════════════════════════
+                  _buildSectionCard(
+                    context,
+                    title: '3. Candidate Profile & Portrait (उम्मेदवार परिचय र फोटो)',
+                    subtitle: 'Full legal nomenclature, contact channels, and official ballot photo',
+                    icon: Icons.person_outline_rounded,
+                    isDark: isDark,
+                    children: [
+                      // Name Row
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(
-                            child: _buildDropdown(
-                              'Gender *',
-                              _selectedGender,
-                              const [
+                            child: TextFormField(
+                              controller: _firstNameController,
+                              decoration: _dec('First Name *', hint: 'e.g. Ramesh', prefix: const Icon(Icons.person_outline_rounded), isDark: isDark),
+                              validator: (v) => (v == null || v.trim().isEmpty) ? 'First name is required' : null,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _middleNameController,
+                              decoration: _dec('Middle Name', hint: 'e.g. Prasad', isDark: isDark),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _lastNameController,
+                              decoration: _dec('Last Name *', hint: 'e.g. Shrestha', isDark: isDark),
+                              validator: (v) => (v == null || v.trim().isEmpty) ? 'Last name is required' : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Email & Phone
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _emailController,
+                              readOnly: true,
+                              decoration: _dec('Email Address (Voter Roll) *', prefix: const Icon(Icons.email_outlined), readOnly: true, isDark: isDark),
+                              validator: (v) => (v == null || v.trim().isEmpty) ? 'Email is required' : null,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _contactController,
+                              decoration: _dec('Contact Mobile Number *', hint: 'e.g. 98XXXXXXXX', prefix: const Icon(Icons.phone_outlined), isDark: isDark),
+                              keyboardType: TextInputType.phone,
+                              validator: (v) => (v == null || v.trim().isEmpty) ? 'Phone number is required' : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Gender, DOB, Address
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              initialValue: _selectedGender,
+                              decoration: _dec('Gender *', prefix: const Icon(Icons.wc_rounded), isDark: isDark),
+                              items: const [
                                 DropdownMenuItem(value: 'Male', child: Text('Male')),
                                 DropdownMenuItem(value: 'Female', child: Text('Female')),
                                 DropdownMenuItem(value: 'Other', child: Text('Other')),
                               ],
-                              (val) => setState(() => _selectedGender = val),
-                              'Select Gender',
+                              onChanged: (val) {
+                                if (val != null) setState(() => _selectedGender = val);
+                              },
                             ),
                           ),
-                          const SizedBox(width: 24),
-                          Expanded(child: _buildTextField('Date of Birth', _dobController, 'YYYY-MM-DD', required: false)),
-                          const SizedBox(width: 24),
-                          Expanded(child: _buildTextField('Address', _addressController, 'Enter address', required: false)),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Candidate Photo (Upload Manually)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                          const SizedBox(height: 8),
-                          ImageUploadWidget(
-                            initialImageUrl: _candidateImageUrl,
-                            onImageUploaded: (url) => setState(() => _candidateImageUrl = url),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _dobController,
+                              decoration: _dec('Date of Birth', hint: 'YYYY-MM-DD', prefix: const Icon(Icons.cake_outlined), isDark: isDark),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _addressController,
+                              decoration: _dec('Address / Municipality', hint: 'e.g. Kathmandu-4', prefix: const Icon(Icons.location_on_outlined), isDark: isDark),
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 24),
-                      Text('Nomination Manifesto', style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 16),
-                      _buildTextField('Manifesto / Statement *', _manifestoController, 'Enter candidate manifesto', maxLines: 4, required: true),
-                      const SizedBox(height: 24),
-                      Text('Additional Details', style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 16),
-                      _buildTextField('Personal Description', _personalDescriptionController, 'Enter personal description', maxLines: 4, required: false),
+                      const SizedBox(height: 20),
 
-                      const SizedBox(height: 32),
-                      const Divider(),
-                      const SizedBox(height: 24),
-                      Text('Proposer & Supporter Details (Optional)', style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Optionally assign or manually record official Proposer and Supporter endorsements for this candidate.',
-                        style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+                      // Official Portrait Uploader
+                      Center(
+                        child: Column(
+                          children: [
+                            Text(
+                              'Candidate Official Portrait (उम्मेदवार फोटो)',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : Colors.grey.shade700),
+                            ),
+                            const SizedBox(height: 10),
+                            ImageUploadWidget(
+                              initialImageUrl: _candidateImageUrl,
+                              placeholderText: _firstNameController.text.isNotEmpty
+                                  ? _firstNameController.text[0].toUpperCase()
+                                  : 'C',
+                              radius: 40,
+                              onImageUploaded: (url) => setState(() => _candidateImageUrl = url),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ════════════════════════════════════════════════════════
+                  // 4. PLATFORM, MANIFESTO & VISION
+                  // ════════════════════════════════════════════════════════
+                  _buildSectionCard(
+                    context,
+                    title: '4. Platform, Vision & Manifesto (घोषणापत्र र विवरण)',
+                    subtitle: 'Biographical summary and election platform agenda',
+                    icon: Icons.menu_book_rounded,
+                    isDark: isDark,
+                    children: [
+                      TextFormField(
+                        controller: _personalDescriptionController,
+                        decoration: _dec(
+                          'Personal Description & Qualifications',
+                          hint: 'Biographical summary, expertise, and service history...',
+                          prefix: const Icon(Icons.description_outlined),
+                          isDark: isDark,
+                        ),
+                        maxLines: 2,
                       ),
                       const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _manifestoController,
+                        decoration: _dec(
+                          'Nomination Manifesto / Platform Agenda *',
+                          hint: 'Key commitments and proposed organizational initiatives...',
+                          prefix: const Icon(Icons.menu_book_rounded),
+                          isDark: isDark,
+                        ),
+                        maxLines: 4,
+                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Manifesto is required' : null,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
 
-                      // Proposer Card (प्रस्तावक)
+                  // ════════════════════════════════════════════════════════
+                  // 5. STATUTORY NOMINATORS & ENDORSEMENTS
+                  // ════════════════════════════════════════════════════════
+                  _buildSectionCard(
+                    context,
+                    title: '5. Nominators & Endorsements (प्रस्तावक र समर्थक)',
+                    subtitle: 'Official proposer and seconder endorsements supporting this candidacy',
+                    icon: Icons.draw_rounded,
+                    isDark: isDark,
+                    children: [
+                      // Proposer (प्रस्तावक)
                       _buildEndorsementCard(
                         roleTitle: 'PROPOSER (प्रस्तावक) — Endorser 1',
                         roleSubtitle: 'Primary member who nominates and proposes the candidate',
@@ -433,6 +774,7 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
                         citizenCtrl: _proposerCitizenshipCtrl,
                         voterIdCtrl: _proposerMemIdCtrl,
                         signatureUrl: _proposerSignatureUrl,
+                        isDark: isDark,
                         onPickRoster: () => _pickMemberForEndorsement(
                           nameCtrl: _proposerNameCtrl,
                           phoneCtrl: _proposerPhoneCtrl,
@@ -441,9 +783,9 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
                         ),
                         onSignatureUploaded: (url) => setState(() => _proposerSignatureUrl = url),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
 
-                      // Supporter Card (समर्थक)
+                      // Supporter (समर्थक)
                       _buildEndorsementCard(
                         roleTitle: 'SUPPORTER (समर्थक) — Endorser 2',
                         roleSubtitle: 'Secondary member who seconds and backs the nomination',
@@ -454,6 +796,7 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
                         citizenCtrl: _supporterCitizenshipCtrl,
                         voterIdCtrl: _supporterMemIdCtrl,
                         signatureUrl: _supporterSignatureUrl,
+                        isDark: isDark,
                         onPickRoster: () => _pickMemberForEndorsement(
                           nameCtrl: _supporterNameCtrl,
                           phoneCtrl: _supporterPhoneCtrl,
@@ -462,38 +805,85 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
                         ),
                         onSignatureUploaded: (url) => setState(() => _supporterSignatureUrl = url),
                       ),
-                      
-                      const SizedBox(height: 48),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: TextButton.styleFrom(
-                              backgroundColor: Colors.grey.shade600,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                            ),
-                            child: const Text('Cancel'),
-                          ),
-                          const SizedBox(width: 16),
-                          ElevatedButton(
-                            onPressed: _isSubmitting ? null : _submit,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                            ),
-                            child: _isSubmitting ? const CircularProgressIndicator(color: Colors.white) : const Text('Create'),
-                          ),
-                        ],
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Bottom Action Toolbar
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      OutlinedButton(
+                        onPressed: _isSubmitting ? null : () => context.pop(),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('Cancel'),
+                      ),
+                      const SizedBox(width: 16),
+                      LoadingButton(
+                        isLoading: _isSubmitting,
+                        label: 'Enroll Candidate',
+                        icon: Icons.how_to_reg_rounded,
+                        onPressed: _submit,
+                        fullWidth: false,
                       ),
                     ],
                   ),
-                ),
+                  const SizedBox(height: 40),
+                ],
               ),
-            ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionCard(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool isDark,
+    required List<Widget> children,
+  }) {
+    return Material(
+      color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.3) : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade200,
+        ),
+      ),
+      elevation: isDark ? 0 : 2,
+      shadowColor: Colors.black.withValues(alpha: 0.04),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: AppColors.primaryLight, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      Text(subtitle, style: TextStyle(color: isDark ? Colors.white60 : Colors.grey.shade600, fontSize: 11)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(height: 1),
+            const SizedBox(height: 16),
+            ...children,
+          ],
         ),
       ),
     );
@@ -509,21 +899,15 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
     required TextEditingController citizenCtrl,
     required TextEditingController voterIdCtrl,
     required String signatureUrl,
+    required bool isDark,
     required VoidCallback onPickRoster,
     required Function(String) onSignatureUploaded,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: primaryColor.withValues(alpha: 0.25), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: primaryColor.withValues(alpha: 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.4) : const Color(0xFFFAFAFA),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: primaryColor.withValues(alpha: 0.3), width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -532,7 +916,7 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
               color: primaryColor.withValues(alpha: 0.08),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
               border: Border(bottom: BorderSide(color: primaryColor.withValues(alpha: 0.15))),
             ),
             child: Row(
@@ -543,21 +927,15 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        roleTitle,
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: primaryColor),
-                      ),
-                      Text(
-                        roleSubtitle,
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                      ),
+                      Text(roleTitle, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: primaryColor)),
+                      Text(roleSubtitle, style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : Colors.grey.shade600)),
                     ],
                   ),
                 ),
                 OutlinedButton.icon(
                   onPressed: onPickRoster,
                   icon: const Icon(Icons.people_outline, size: 14),
-                  label: const Text('Pick Member', style: TextStyle(fontSize: 12)),
+                  label: const Text('Pick from Roster', style: TextStyle(fontSize: 11)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: primaryColor,
                     side: BorderSide(color: primaryColor.withValues(alpha: 0.4)),
@@ -574,29 +952,48 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
             child: Column(
               children: [
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: _buildTextField('Full Name', nameCtrl, 'Enter full name', required: false),
+                      child: TextFormField(
+                        controller: nameCtrl,
+                        decoration: _dec('Full Legal Name', hint: 'e.g. Ram Bahadur', isDark: isDark),
+                      ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 14),
                     Expanded(
-                      child: _buildTextField('Phone Number', phoneCtrl, 'Enter phone number', required: false),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildTextField('Voter ID / Member Code', voterIdCtrl, 'Enter member code', required: false),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildTextField('Citizenship / Council No', citizenCtrl, 'Enter citizenship or council no', required: false),
+                      child: TextFormField(
+                        controller: phoneCtrl,
+                        decoration: _dec('Contact Phone', hint: '98XXXXXXXX', isDark: isDark),
+                        keyboardType: TextInputType.phone,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: voterIdCtrl,
+                        decoration: _dec('Voter ID / Member Code', hint: 'e.g. MEM-101', isDark: isDark),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: TextFormField(
+                        controller: citizenCtrl,
+                        decoration: _dec('Citizenship / Council No', hint: 'e.g. 27-01-76-12345', isDark: isDark),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
                 Row(
                   children: [
-                    const Text('Official Signature: ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                    const SizedBox(width: 12),
+                    Text('Endorsement Signature: ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: isDark ? Colors.white70 : Colors.grey.shade700)),
+                    const SizedBox(width: 14),
                     ImageUploadWidget(
                       initialImageUrl: signatureUrl,
                       placeholderText: 'Upload Sign',
@@ -610,48 +1007,6 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildTextField(String label, TextEditingController controller, String hint, {bool required = true, int maxLines = 1, bool readOnly = false}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          maxLines: maxLines,
-          readOnly: readOnly,
-          decoration: InputDecoration(
-            hintText: hint,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          ),
-          validator: required ? (val) => (val == null || val.isEmpty) ? 'Required' : null : null,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDropdown<T>(String label, T? value, List<DropdownMenuItem<T>> items, ValueChanged<T?> onChanged, String hint) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<T>(
-          initialValue: value,
-          items: items,
-          onChanged: onChanged,
-          decoration: InputDecoration(
-            hintText: hint,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          ),
-          validator: (val) => val == null ? 'Required' : null,
-        ),
-      ],
     );
   }
 }

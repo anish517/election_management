@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/auth_provider.dart';
-import '../../core/theme/app_theme.dart';
 import '../../core/providers/admin_providers.dart';
 import '../admin/elections/add_position_dialog.dart';
 import '../admin/elections/add_candidate_dialog.dart';
@@ -39,7 +40,7 @@ class ElectionDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Election Details'),
+        title: const Text('Election Overview'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_rounded),
           onPressed: () => context.pop(),
@@ -85,8 +86,8 @@ class ElectionDetailScreen extends ConsumerWidget {
                   }
                 },
                 itemBuilder: (context) => [
-                  const PopupMenuItem(value: 'edit', child: Text('Edit Election')),
-                  const PopupMenuItem(value: 'delete', child: Text('Delete Election', style: TextStyle(color: AppColors.error))),
+                  const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit_outlined, size: 18), SizedBox(width: 10), Text('Edit Election')])),
+                  const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error), SizedBox(width: 10), Text('Delete Election', style: TextStyle(color: AppColors.error))])),
                 ],
               ),
               loading: () => const SizedBox.shrink(),
@@ -107,7 +108,7 @@ class ElectionDetailScreen extends ConsumerWidget {
 
     return ResponsivePageWrapper(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -123,7 +124,7 @@ class ElectionDetailScreen extends ConsumerWidget {
             const SizedBox(height: 20),
             if (user != null && user.canManageElections) ...[
               _buildAdminControls(context, ref, election),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
             ],
             _buildPositionsSection(context, election, user),
           ],
@@ -133,10 +134,12 @@ class ElectionDetailScreen extends ConsumerWidget {
   }
 
   Widget _buildAuditorCard(BuildContext context, ElectionModel election) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E3A8A).withValues(alpha: 0.08),
+        color: isDark ? const Color(0xFF1E3A8A).withValues(alpha: 0.18) : const Color(0xFFEFF6FF),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.3)),
       ),
@@ -151,13 +154,13 @@ class ElectionDetailScreen extends ConsumerWidget {
             child: const Icon(Icons.verified_user_rounded, color: Color(0xFF3B82F6), size: 24),
           ),
           const SizedBox(width: 14),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Auditor Forensic Suite (लेखापरीक्षक)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1E40AF))),
-                SizedBox(height: 2),
-                Text('Inspect cryptographic hash chains, ballot snapshots, and system audit logs.', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                Text('Auditor Forensic Suite (लेखापरीक्षक)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1E40AF))),
+                const SizedBox(height: 2),
+                Text('Inspect cryptographic hash chains, ballot snapshots, and system audit logs.', style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54)),
               ],
             ),
           ),
@@ -193,26 +196,24 @@ class ElectionDetailScreen extends ConsumerWidget {
     final stateColor = _stateColor(election.state);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
-    // Determine colors
     final primaryBg = _hexToColor(election.primaryColor, isDark ? AppColors.surface : Colors.white);
     final isCustomBg = election.primaryColor.isNotEmpty && election.primaryColor != '#6C5CE7';
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: isCustomBg ? primaryBg.withValues(alpha: isDark ? 0.2 : 0.05) : (isDark ? AppColors.surface : Colors.white),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isCustomBg ? primaryBg.withValues(alpha: 0.3) : (isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05))
+          color: isCustomBg ? primaryBg.withValues(alpha: 0.3) : (isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade200),
         ),
         boxShadow: [
-          if (!isDark && !isCustomBg)
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
@@ -223,11 +224,11 @@ class ElectionDetailScreen extends ConsumerWidget {
             children: [
               if (election.logoUrl.isNotEmpty) ...[
                 Container(
-                  width: 54, height: 54,
+                  width: 58, height: 58,
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF27272A) : Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Theme.of(context).dividerColor),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: isDark ? Colors.white12 : Colors.grey.shade300),
                     image: DecorationImage(
                       image: NetworkImage(election.logoUrl),
                       fit: BoxFit.contain,
@@ -246,18 +247,18 @@ class ElectionDetailScreen extends ConsumerWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.1),
+                              color: AppColors.primary.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              election.prefix,
+                              '#${election.prefix}',
                               style: const TextStyle(color: AppColors.primaryLight, fontSize: 11, fontWeight: FontWeight.w700),
                             ),
                           ),
                           const SizedBox(width: 8),
                         ],
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
                           decoration: BoxDecoration(
                             color: stateColor.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(6),
@@ -271,7 +272,7 @@ class ElectionDetailScreen extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    Text(election.title, style: Theme.of(context).textTheme.headlineMedium),
+                    Text(election.title, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
@@ -280,56 +281,57 @@ class ElectionDetailScreen extends ConsumerWidget {
           
           if (election.description.isNotEmpty) ...[
             const SizedBox(height: 12),
-            Text(election.description,
-                style: TextStyle(color: isDark ? Colors.white70 : AppColors.textSecondaryLightMode, fontSize: 14)),
+            Text(
+              election.description,
+              style: TextStyle(color: isDark ? Colors.white70 : Colors.grey.shade700, fontSize: 14, height: 1.4),
+            ),
           ],
           const SizedBox(height: 16),
           Wrap(
-            spacing: 16,
+            spacing: 14,
             runSpacing: 10,
             children: [
               _MetaItem(icon: Icons.how_to_vote_outlined,
-                  label: election.isSecretBallot ? 'Secret Ballot' : 'Open Ballot'),
+                  label: election.isSecretBallot ? 'Secret Ballot (गोप्य मतदान)' : 'Open Ballot (खुला मतदान)'),
               _MetaItem(icon: Icons.bar_chart_rounded,
-                  label: '${election.positions.length} Position(s)'),
+                  label: '${election.positions.length} Designation(s)'),
               if (election.contactNumber.isNotEmpty)
-                _MetaItem(icon: Icons.phone_outlined, label: election.contactNumber),
+                _MetaItem(icon: Icons.phone_outlined, label: 'Helpline: ${election.contactNumber}'),
               if (election.isPaidCandidacy)
-                _MetaItem(icon: Icons.monetization_on_outlined, label: 'Paid Candidacy: Rs. ${election.nomineeCharge.toStringAsFixed(0)}'),
+                _MetaItem(icon: Icons.monetization_on_outlined, label: 'Nomination Fee: Rs. ${election.nomineeCharge.toStringAsFixed(0)}'),
             ],
           ),
           
           const Divider(height: 32),
           
-          // Displaying schedules if available
           Wrap(
             spacing: 24,
             runSpacing: 16,
             children: [
               if (election.firstVoterListDate != null || election.finalVoterListDate != null)
                 _SingleMilestoneBlock(
-                  title: '1. Voter Roll Schedule',
+                  title: '1. Voter Roll Scrutiny Schedule',
                   icon: Icons.people_alt_outlined,
                   milestones: [
                     if (election.firstVoterListDate != null) 'First List: ${_formatIsoDate(election.firstVoterListDate!)}',
                     if (election.voterListClaimDate != null) 'Claims Due: ${_formatIsoDate(election.voterListClaimDate!)}',
-                    if (election.finalVoterListDate != null) 'Final Roll: ${_formatIsoDate(election.finalVoterListDate!)}',
+                    if (election.finalVoterListDate != null) 'Final Certified Roll: ${_formatIsoDate(election.finalVoterListDate!)}',
                   ],
                 ),
               if (election.nominationOpenAt != null || election.candidacyFinalDate != null)
                 if (election.nominationOpenAt != null && election.nominationCloseAt != null)
-                  _ScheduleBlock(title: '2. Nomination Phase', start: election.nominationOpenAt!, end: election.nominationCloseAt!, icon: Icons.assignment_ind_outlined)
+                  _ScheduleBlock(title: '2. Candidate Nominations', start: election.nominationOpenAt!, end: election.nominationCloseAt!, icon: Icons.assignment_ind_outlined)
                 else if (election.candidacyClaimDate != null || election.candidacyFinalDate != null)
                   _SingleMilestoneBlock(
-                    title: '2. Candidacy Milestones',
+                    title: '2. Candidacy Scrutiny Milestones',
                     icon: Icons.verified_user_outlined,
                     milestones: [
-                      if (election.candidacyClaimDate != null) 'Claims Due: ${_formatIsoDate(election.candidacyClaimDate!)}',
-                      if (election.candidacyFinalDate != null) 'Final List: ${_formatIsoDate(election.candidacyFinalDate!)}',
+                      if (election.candidacyClaimDate != null) 'Objections Due: ${_formatIsoDate(election.candidacyClaimDate!)}',
+                      if (election.candidacyFinalDate != null) 'Final Candidate List: ${_formatIsoDate(election.candidacyFinalDate!)}',
                     ],
                   ),
               if (election.votingStartAt != null && election.votingEndAt != null)
-                _ScheduleBlock(title: '3. Voting Period', start: election.votingStartAt!, end: election.votingEndAt!, icon: Icons.how_to_vote_rounded),
+                _ScheduleBlock(title: '3. Official Polling Period', start: election.votingStartAt!, end: election.votingEndAt!, icon: Icons.how_to_vote_rounded),
             ],
           ),
         ],
@@ -358,7 +360,6 @@ class ElectionDetailScreen extends ConsumerWidget {
     DateTime? nomClose = election.nominationCloseAt != null ? DateTime.tryParse(election.nominationCloseAt!) : null;
     DateTime? candClaimDeadline = election.candidacyClaimDate != null ? DateTime.tryParse(election.candidacyClaimDate!) : null;
 
-    // Check if voter claims are active
     bool isVoterClaimOpen = false;
     if (firstListDate != null && now.isAfter(firstListDate)) {
       if (claimDeadline == null || now.isBefore(claimDeadline)) {
@@ -368,7 +369,6 @@ class ElectionDetailScreen extends ConsumerWidget {
 
     bool isFinalVoterList = finalListDate != null && now.isAfter(finalListDate);
 
-    // Check if candidate objections are active
     bool isCandObjectionOpen = false;
     if (nomClose != null && now.isAfter(nomClose)) {
       if (candClaimDeadline == null || now.isBefore(candClaimDeadline)) {
@@ -376,7 +376,6 @@ class ElectionDetailScreen extends ConsumerWidget {
       }
     }
 
-    // Only render if election is published or beyond
     if (election.state == 'draft') return const SizedBox.shrink();
 
     String voterBadgeText;
@@ -405,18 +404,17 @@ class ElectionDetailScreen extends ConsumerWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: isDark ? AppColors.surface : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05)),
+        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade200),
         boxShadow: [
-          if (!isDark)
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
@@ -425,14 +423,14 @@ class ElectionDetailScreen extends ConsumerWidget {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.badge_outlined, color: AppColors.primary, size: 20),
+                child: const Icon(Icons.badge_outlined, color: AppColors.primaryLight, size: 22),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -442,7 +440,7 @@ class ElectionDetailScreen extends ConsumerWidget {
                       runSpacing: 4,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Text('Voter Roll & Scrutiny', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        Text('Voter Roll & Scrutiny Status', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
@@ -457,16 +455,16 @@ class ElectionDetailScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(voterDescription, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted)),
+                    const SizedBox(height: 3),
+                    Text(voterDescription, style: TextStyle(color: isDark ? Colors.white60 : Colors.grey.shade600, fontSize: 12)),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Wrap(
-            spacing: 10,
+            spacing: 12,
             runSpacing: 10,
             children: [
               OutlinedButton.icon(
@@ -497,7 +495,7 @@ class ElectionDetailScreen extends ConsumerWidget {
           if (isCandObjectionOpen) ...[
             const Divider(height: 24),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: Colors.orange.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(12),
@@ -515,11 +513,12 @@ class ElectionDetailScreen extends ConsumerWidget {
                           'Candidate Scrutiny & Objection Window (उम्मेदवार दाबी-विरोध)',
                           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.orange),
                         ),
+                        const SizedBox(height: 2),
                         Text(
                           candClaimDeadline != null
                               ? 'Nominations are closed. You may file eligibility objections against any candidate before ${_formatIsoDate(election.candidacyClaimDate!)}.'
                               : 'Nominations are closed. You may file formal eligibility objections against candidates.',
-                          style: const TextStyle(fontSize: 12),
+                          style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87),
                         ),
                       ],
                     ),
@@ -551,14 +550,11 @@ class ElectionDetailScreen extends ConsumerWidget {
     );
   }
 
-
-
   Widget _buildActionButtons(BuildContext context, WidgetRef ref, ElectionModel election, UserModel? user) {
     return Wrap(
       spacing: 12,
       runSpacing: 12,
       children: [
-        // Only eligible voters/members can self-nominate. Officers, Observers, and Auditors are restricted due to conflict of interest.
         if (election.state == 'nomination_open' &&
             user != null &&
             !user.canManageElections &&
@@ -569,6 +565,7 @@ class ElectionDetailScreen extends ConsumerWidget {
                 pathParameters: {'electionId': electionId}),
             icon: const Icon(Icons.person_add_alt_1_rounded),
             label: const Text('Nominate Myself'),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
           ),
         if (election.state == 'nomination_open' && user?.canManageElections == true)
           ElevatedButton.icon(
@@ -576,22 +573,25 @@ class ElectionDetailScreen extends ConsumerWidget {
                 pathParameters: {'electionId': electionId}),
             icon: const Icon(Icons.rate_review_rounded),
             label: const Text('Review Nominations'),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateNominations),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateNominations, foregroundColor: Colors.white),
           ),
         if (election.isVotingActive)
           ElevatedButton.icon(
             onPressed: () => context.pushNamed('ballot',
                 pathParameters: {'electionId': electionId}),
             icon: const Icon(Icons.how_to_vote_rounded),
-            label: const Text('Vote Now'),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateVoting),
-          ),
+            label: const Text('Vote Now (मतदान गर्नुहोस्)'),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateVoting, foregroundColor: Colors.white),
+          )
+          .animate(onPlay: (controller) => controller.repeat(reverse: true))
+          .scale(begin: const Offset(1, 1), end: const Offset(1.03, 1.03), duration: 800.ms),
         if (election.hasResults || election.state == 'voting_closed' || (election.state == 'voting_open' && user?.canManageElections == true))
-          OutlinedButton.icon(
+          ElevatedButton.icon(
             onPressed: () => context.pushNamed('results',
                 pathParameters: {'electionId': electionId}),
             icon: const Icon(Icons.emoji_events_outlined),
-            label: const Text('View Results'),
+            label: const Text('View Results (नतिजा)'),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateResults, foregroundColor: Colors.white),
           ),
         if (election.hasResults || user?.isAuditor == true || user?.canManageElections == true)
           OutlinedButton.icon(
@@ -605,10 +605,6 @@ class ElectionDetailScreen extends ConsumerWidget {
             ),
             icon: const Icon(Icons.verified_user_rounded),
             label: const Text('Auditor Verification Portal'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Theme.of(context).brightness == Brightness.dark ? AppColors.textMuted : AppColors.textSecondaryLightMode,
-              side: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.1)),
-            ),
           ),
         OutlinedButton.icon(
           onPressed: () => Navigator.of(context).push(
@@ -687,19 +683,20 @@ class ElectionDetailScreen extends ConsumerWidget {
   }
 
   Widget _buildAdminControls(BuildContext context, WidgetRef ref, ElectionModel election) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.primaryLight.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
+        color: isDark ? AppColors.surface : Colors.white,
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.primaryLight.withValues(alpha: 0.3)),
         boxShadow: [
-          if (Theme.of(context).brightness == Brightness.light)
-            BoxShadow(
-              color: AppColors.primaryLight.withValues(alpha: 0.05),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
+          BoxShadow(
+            color: AppColors.primaryLight.withValues(alpha: isDark ? 0.15 : 0.05),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
@@ -707,12 +704,27 @@ class ElectionDetailScreen extends ConsumerWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.admin_panel_settings_rounded, color: AppColors.primaryLight),
-              const SizedBox(width: 8),
-              Text('Admin Controls', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.primaryLight)),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.admin_panel_settings_rounded, color: AppColors.primaryLight, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Election Operations & Governance Hub', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    Text('Advance lifecycle phases and manage candidates, claims, and officers.', style: TextStyle(color: isDark ? Colors.white60 : Colors.grey.shade600, fontSize: 12)),
+                  ],
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Wrap(
             spacing: 12,
             runSpacing: 12,
@@ -741,7 +753,7 @@ class ElectionDetailScreen extends ConsumerWidget {
                     ),
                     icon: const Icon(Icons.campaign_rounded),
                     label: const Text('Publish Election'),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
                   ),
                 if (election.state == 'published')
                   ElevatedButton.icon(
@@ -754,7 +766,7 @@ class ElectionDetailScreen extends ConsumerWidget {
                     ),
                     icon: const Icon(Icons.play_arrow_rounded),
                     label: const Text('Open Nominations'),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateNominations),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateNominations, foregroundColor: Colors.white),
                   ),
                 if (election.state == 'nomination_open')
                   ElevatedButton.icon(
@@ -767,7 +779,7 @@ class ElectionDetailScreen extends ConsumerWidget {
                     ),
                     icon: const Icon(Icons.stop_rounded),
                     label: const Text('Close Nominations'),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateNominations),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateNominations, foregroundColor: Colors.white),
                   ),
                 if (election.state == 'nomination_closed')
                   ElevatedButton.icon(
@@ -780,7 +792,7 @@ class ElectionDetailScreen extends ConsumerWidget {
                     ),
                     icon: const Icon(Icons.play_arrow_rounded),
                     label: const Text('Start Voting'),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateVoting),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateVoting, foregroundColor: Colors.white),
                   ),
                 if (election.state == 'voting_open')
                   ElevatedButton.icon(
@@ -793,7 +805,7 @@ class ElectionDetailScreen extends ConsumerWidget {
                     ),
                     icon: const Icon(Icons.stop_rounded),
                     label: const Text('Close Voting'),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateClosed),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateClosed, foregroundColor: Colors.white),
                   ),
                 if (election.state == 'voting_closed') ...[
                   ElevatedButton.icon(
@@ -806,7 +818,7 @@ class ElectionDetailScreen extends ConsumerWidget {
                     ),
                     icon: const Icon(Icons.rate_review_outlined),
                     label: const Text('Publish Provisional Results'),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade700),
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade700, foregroundColor: Colors.white),
                   ),
                   ElevatedButton.icon(
                     onPressed: () => _advanceStateWithConfirm(
@@ -818,7 +830,7 @@ class ElectionDetailScreen extends ConsumerWidget {
                     ),
                     icon: const Icon(Icons.verified_rounded),
                     label: const Text('Publish Final Results'),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateResults),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateResults, foregroundColor: Colors.white),
                   ),
                 ],
                 if (election.state == 'results_provisional')
@@ -832,7 +844,7 @@ class ElectionDetailScreen extends ConsumerWidget {
                     ),
                     icon: const Icon(Icons.verified_rounded),
                     label: const Text('Finalize & Publish Official Results'),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateResults),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateResults, foregroundColor: Colors.white),
                   ),
                 if (election.state == 'results_final')
                   Container(
@@ -847,14 +859,16 @@ class ElectionDetailScreen extends ConsumerWidget {
                       children: [
                         Icon(Icons.check_circle_rounded, color: AppColors.success, size: 18),
                         SizedBox(width: 8),
-                        Text('Final Results Published', style: TextStyle(color: AppColors.success, fontWeight: FontWeight.bold)),
+                        Text('Final Results Certified & Published', style: TextStyle(color: AppColors.success, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
               ],
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
+          Divider(color: isDark ? Colors.white12 : Colors.grey.shade200),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
@@ -901,7 +915,62 @@ class ElectionDetailScreen extends ConsumerWidget {
                     builder: (_) => ManageCandidateObjectionsDialog(electionId: election.id),
                   ),
                   icon: const Icon(Icons.gavel_rounded, size: 18, color: Colors.orange),
-                  label: const Text('Review Candidate Objections'),
+                  label: const Text('Candidate Objections'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => context.pushNamed('election-turnout',
+                      pathParameters: {'electionId': election.id}),
+                  icon: const Icon(Icons.people_alt_outlined, size: 18),
+                  label: const Text('Live Turnout'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => context.pushNamed('review_nominations',
+                      pathParameters: {'electionId': election.id}),
+                  icon: const Icon(Icons.fact_check_outlined, size: 18),
+                  label: const Text('Review Nominations'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final token = await JwtInterceptor.getAccessToken();
+                    final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.elections}${election.id}/export_voter_roll/?token=$token');
+                    if (await canLaunchUrl(url)) {
+                      await launchUrl(url, mode: LaunchMode.externalApplication);
+                    } else {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch export URL')));
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.download_rounded, size: 18),
+                  label: const Text('Export Roll (CSV)'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => showDialog(
+                    context: context,
+                    builder: (_) => AssignOfficerDialog(electionId: election.id),
+                  ),
+                  icon: const Icon(Icons.admin_panel_settings_outlined, size: 18),
+                  label: const Text('Assign Roles'),
                 ),
               ),
             ],
@@ -910,61 +979,10 @@ class ElectionDetailScreen extends ConsumerWidget {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: () => context.pushNamed('election-turnout',
-                  pathParameters: {'electionId': election.id}),
-              icon: const Icon(Icons.people_alt_outlined, size: 18),
-              label: const Text('View Voter Turnout'),
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => context.pushNamed('review_nominations',
-                  pathParameters: {'electionId': election.id}),
-              icon: const Icon(Icons.fact_check_outlined, size: 18),
-              label: const Text('Review Nominations'),
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () async {
-                final token = await JwtInterceptor.getAccessToken();
-                final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.elections}${election.id}/export_voter_roll/?token=$token');
-                if (await canLaunchUrl(url)) {
-                  await launchUrl(url, mode: LaunchMode.externalApplication);
-                } else {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch export URL')));
-                  }
-                }
-              },
-              icon: const Icon(Icons.download_rounded, size: 18),
-              label: const Text('Export Voter Roll (CSV)'),
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => showDialog(
-                context: context,
-                builder: (_) => AssignOfficerDialog(electionId: election.id),
-              ),
-              icon: const Icon(Icons.admin_panel_settings_outlined, size: 18),
-              label: const Text('Assign Roles'),
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
               onPressed: () => context.pushNamed('analytics',
                   pathParameters: {'electionId': election.id}),
               icon: const Icon(Icons.bar_chart_rounded, size: 18),
-              label: const Text('Live Analytics Dashboard'),
+              label: const Text('Live Analytics & Telemetry Dashboard'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.primaryLight,
                 side: BorderSide(color: AppColors.primaryLight.withValues(alpha: 0.5)),
@@ -1088,7 +1106,7 @@ class ElectionDetailScreen extends ConsumerWidget {
     switch (state) {
       case 'draft': return AppColors.stateDraft;
       case 'published': return AppColors.statePublished;
-      case 'nominations_open': case 'nominations_closed': return AppColors.stateNominations;
+      case 'nomination_open': case 'nomination_closed': return AppColors.stateNominations;
       case 'voting_open': return AppColors.stateVoting;
       case 'voting_closed': return AppColors.stateClosed;
       case 'results_provisional': case 'results_final': return AppColors.stateResults;
@@ -1127,14 +1145,13 @@ class _PositionCard extends ConsumerWidget {
       decoration: BoxDecoration(
         color: isDark ? AppColors.surface : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05)),
+        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade200),
         boxShadow: [
-          if (!isDark)
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
@@ -1142,12 +1159,12 @@ class _PositionCard extends ConsumerWidget {
           Row(
             children: [
               Container(
-                width: 40, height: 40,
+                width: 42, height: 42,
                 decoration: BoxDecoration(
                   color: AppColors.primaryLight.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.star_border_rounded, color: AppColors.primaryLight, size: 20),
+                child: const Icon(Icons.star_border_rounded, color: AppColors.primaryLight, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1155,10 +1172,10 @@ class _PositionCard extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(position.title,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 15)),
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 15, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 2),
                     Text('${position.seatsAvailable} seat(s) · ${position.votingMethod.toUpperCase()}',
-                        style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                        style: TextStyle(color: isDark ? Colors.white60 : Colors.grey.shade600, fontSize: 12)),
                   ],
                 ),
               ),
@@ -1191,15 +1208,15 @@ class _PositionCard extends ConsumerWidget {
                     }
                   },
                   itemBuilder: (context) => [
-                    const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                    const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: AppColors.error))),
+                    const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit_outlined, size: 16), SizedBox(width: 8), Text('Edit')])),
+                    const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline_rounded, size: 16, color: AppColors.error), SizedBox(width: 8), Text('Delete', style: TextStyle(color: AppColors.error))])),
                   ],
                 ),
             ],
           ),
           if (activeCandidates.isNotEmpty) ...[
             const SizedBox(height: 16),
-            Divider(color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05)),
+            Divider(color: isDark ? Colors.white12 : Colors.grey.shade200),
             const SizedBox(height: 8),
             ...activeCandidates.map((c) => _CandidateTile(electionId: electionId, candidate: c, isAdmin: isAdmin)),
           ],
@@ -1261,25 +1278,23 @@ class _CandidateTile extends ConsumerWidget {
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.background : Colors.white,
+              color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.4) : Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isDark
-                    ? AppColors.surfaceVariant
-                    : Colors.black.withValues(alpha: 0.06),
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.grey.shade200,
               ),
               boxShadow: [
-                if (!isDark)
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.02),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
               ],
             ),
             child: Row(
               children: [
-                // ── Avatar with gradient ring ──
                 Hero(
                   tag: 'candidate_avatar_${candidate.id}',
                   child: Container(
@@ -1314,7 +1329,6 @@ class _CandidateTile extends ConsumerWidget {
                 ),
                 const SizedBox(width: 12),
 
-                // ── Name + position + manifesto snippet ──
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1328,7 +1342,6 @@ class _CandidateTile extends ConsumerWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          // Status badge
                           if (candidate.status != null)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -1347,14 +1360,15 @@ class _CandidateTile extends ConsumerWidget {
                             ),
                         ],
                       ),
-                      if (candidate.manifesto.isNotEmpty) ...[const SizedBox(height: 4),
+                      if (candidate.manifesto.isNotEmpty) ...[
+                        const SizedBox(height: 4),
                         Text(
                           candidate.manifesto,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 12,
-                            color: isDark ? AppColors.textMuted : AppColors.textSecondaryLightMode,
+                            color: isDark ? Colors.white60 : Colors.grey.shade600,
                             height: 1.4,
                           ),
                         ),
@@ -1364,7 +1378,6 @@ class _CandidateTile extends ConsumerWidget {
                 ),
                 const SizedBox(width: 8),
 
-                // ── Tap indicator + admin menu ──
                 Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -1400,8 +1413,8 @@ class _CandidateTile extends ConsumerWidget {
                         },
                         itemBuilder: (context) => [
                           const PopupMenuItem(value: 'view_profile', child: Row(children: [Icon(Icons.person_rounded, size: 16), SizedBox(width: 8), Text('View Profile')])),
-                          const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                          const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: AppColors.error))),
+                          const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit_outlined, size: 16), SizedBox(width: 8), Text('Edit')])),
+                          const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete_outline_rounded, size: 16, color: AppColors.error), SizedBox(width: 8), Text('Delete', style: TextStyle(color: AppColors.error))])),
                         ],
                       )
                     else
@@ -1441,13 +1454,24 @@ class _MetaItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: Colors.white60, size: 15),
-        const SizedBox(width: 5),
-        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 12)),
-      ],
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = isDark ? Colors.white70 : Colors.black87;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade300),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 15),
+          const SizedBox(width: 6),
+          Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
 }
@@ -1482,15 +1506,22 @@ class _ScheduleBlock extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 20, color: isDark ? Colors.white70 : Colors.black54),
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 18, color: AppColors.primaryLight),
+        ),
         const SizedBox(width: 10),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? Colors.white : Colors.black87)),
             const SizedBox(height: 4),
-            Text('Starts: ${_format(start)}', style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.black54)),
-            Text('Ends: ${_format(end)}', style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.black54)),
+            Text('Starts: ${_format(start)} (BS)', style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.grey.shade600)),
+            Text('Ends: ${_format(end)} (BS)', style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.grey.shade600)),
           ],
         ),
       ],
@@ -1517,7 +1548,14 @@ class _SingleMilestoneBlock extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 20, color: isDark ? Colors.white70 : Colors.black54),
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 18, color: AppColors.primaryLight),
+        ),
         const SizedBox(width: 10),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1526,7 +1564,7 @@ class _SingleMilestoneBlock extends StatelessWidget {
             const SizedBox(height: 4),
             ...milestones.map((m) => Padding(
               padding: const EdgeInsets.only(bottom: 2),
-              child: Text(m, style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.black54)),
+              child: Text(m, style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.grey.shade600)),
             )),
           ],
         ),

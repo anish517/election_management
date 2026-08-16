@@ -221,7 +221,7 @@ class _ManageCandidateObjectionsDialogState extends ConsumerState<ManageCandidat
 
     return ListView.separated(
       itemCount: list.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (ctx, i) {
         final obj = list[i];
         final isPending = obj.status == 'pending';
@@ -273,7 +273,7 @@ class _ManageCandidateObjectionsDialogState extends ConsumerState<ManageCandidat
                     ),
                     if (obj.createdAt != null)
                       Text(
-                        '${obj.createdAt!.toLocal().toString().split('.')[0]}',
+                        obj.createdAt!.toLocal().toString().split('.')[0],
                         style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
                       ),
                   ],

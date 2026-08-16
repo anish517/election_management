@@ -104,16 +104,34 @@ class PublishElectionNotifier extends AsyncNotifier<void> {
   }
 
   Future<void> advanceElectionState(String electionId, String targetState) async {
-    if (state.isLoading) return;
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
+    try {
       final dio = ref.read(apiClientProvider);
-      await dio.post(ApiConstants.electionAdvanceState(electionId), data: {'state': targetState});
+      await dio.post(
+        ApiConstants.electionAdvanceState(electionId),
+        data: {'state': targetState},
+      );
       ref.invalidate(electionProvider(electionId));
       ref.invalidate(electionsProvider);
-    });
-    if (state.hasError) {
-      throw state.error!;
+      ref.invalidate(resultsProvider(electionId));
+      state = const AsyncValue.data(null);
+    } on DioException catch (e) {
+      String msg = 'Failed to transition election state.';
+      if (e.response?.data is Map) {
+        final d = e.response!.data as Map;
+        if (d['error'] is String) {
+          msg = d['error'];
+        } else if (d['error'] is Map && d['error']['message'] != null) {
+          msg = d['error']['message'].toString();
+        } else if (d['detail'] is String) {
+          msg = d['detail'];
+        }
+      }
+      state = AsyncValue.error(msg, StackTrace.current);
+      throw msg;
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
     }
   }
 

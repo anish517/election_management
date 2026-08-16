@@ -30,18 +30,29 @@ class CandidateViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
-        from apps.elections.models import Election
+        from apps.elections.models import Election, ElectionCommittee, ElectionRoleAssignment
+        from rest_framework.exceptions import PermissionDenied, ValidationError
+        from django.db import IntegrityError
+        from apps.voting.models import VoterRoll
+        from apps.members.models import Member
+
         election = Election.objects.get(
             id=self.kwargs['election_pk'],
             organization=self.request.user.organization
         )
+
+        user_email = self.request.user.email.strip().lower()
+        payload_email = (self.request.data.get('email') or '').strip().lower()
         
-        is_admin_or_officer = (
-            self.request.user.role in ['org_admin', 'election_officer', 'super_admin']
-            or getattr(self.request.user, 'is_org_admin', False)
+        # Check if this is an Admin creating a candidate for someone else via Admin Panel
+        is_admin_manual_create = (
+            (self.request.user.role in ['org_admin', 'super_admin'] or getattr(self.request.user, 'is_org_admin', False))
+            and payload_email
+            and payload_email != user_email
+            and 'first_name' in self.request.data
         )
-        
-        if is_admin_or_officer:
+
+        if is_admin_manual_create:
             status_val = serializer.validated_data.get('status', NominationStatus.APPROVED)
             serializer.save(
                 election=election,
@@ -50,36 +61,49 @@ class CandidateViewSet(viewsets.ModelViewSet):
                 reviewed_at=timezone.now() if status_val == NominationStatus.APPROVED else None,
                 review_notes="Admin created" if status_val == NominationStatus.APPROVED else ""
             )
-        else:
-            from django.db import IntegrityError
-            try:
-                from apps.voting.models import VoterRoll
-                from apps.members.models import Member
+            return
 
-                user_email = self.request.user.email.strip().lower()
-                voter = VoterRoll.objects.filter(election=election, email__iexact=user_email).first()
-                if not voter and self.request.user.phone:
-                    voter = VoterRoll.objects.filter(election=election, phone=self.request.user.phone).first()
+        # Conflict of Interest Check for Self-Nomination:
+        # Election Officers, Observers, Auditors, Committee Members, and Org Admins CANNOT run as candidates
+        is_restricted_role = (
+            self.request.user.role in ['election_officer', 'observer', 'auditor', 'org_admin', 'super_admin']
+            or ElectionRoleAssignment.objects.filter(
+                user=self.request.user, election=election,
+                role__in=['election_officer', 'observer', 'auditor']
+            ).exists()
+            or ElectionCommittee.objects.filter(
+                election=election, chair_email__iexact=user_email
+            ).exists()
+        )
 
-                member = Member.objects.filter(organization=election.organization, email__iexact=user_email).first()
+        if is_restricted_role:
+            raise PermissionDenied(
+                "Conflict of Interest: Election Officers, Observers, Auditors, and Election Committee members are not eligible to run as candidates or submit nominations in this election."
+            )
 
-                first_name = voter.first_name if voter else (member.first_name if member else '')
-                middle_name = voter.middle_name if voter else ''
-                last_name = voter.last_name if voter else (member.last_name if member else '')
-                phone = voter.phone if voter else (member.phone if member else self.request.user.phone)
+        try:
+            voter = VoterRoll.objects.filter(election=election, email__iexact=user_email).first()
+            if not voter and self.request.user.phone:
+                voter = VoterRoll.objects.filter(election=election, phone=self.request.user.phone).first()
 
-                serializer.save(
-                    election=election,
-                    status=NominationStatus.SUBMITTED,
-                    email=user_email,
-                    first_name=first_name,
-                    middle_name=middle_name,
-                    last_name=last_name,
-                    contact_number=phone or '',
-                )
-            except IntegrityError:
-                from rest_framework.exceptions import ValidationError
-                raise ValidationError({'error': 'You have already submitted a nomination for this position.'})
+            member = Member.objects.filter(organization=election.organization, email__iexact=user_email).first()
+
+            first_name = voter.first_name if voter else (member.first_name if member else '')
+            middle_name = voter.middle_name if voter else ''
+            last_name = voter.last_name if voter else (member.last_name if member else '')
+            phone = voter.phone if voter else (member.phone if member else self.request.user.phone)
+
+            serializer.save(
+                election=election,
+                status=NominationStatus.SUBMITTED,
+                email=user_email,
+                first_name=first_name,
+                middle_name=middle_name,
+                last_name=last_name,
+                contact_number=phone or '',
+            )
+        except IntegrityError:
+            raise ValidationError({'error': 'You have already submitted a nomination for this position.'})
 
     @action(detail=True, methods=['post'])
     def approve(self, request, election_pk=None, pk=None):

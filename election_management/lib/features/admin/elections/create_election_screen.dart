@@ -545,27 +545,10 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
                 ),
 
                 // ══════════════════════════════════════════════════════════
-                // 2. ELECTION SCHEDULE
+                // 2. VOTER LIST SCHEDULE (Step 1 of Election System)
                 // ══════════════════════════════════════════════════════════
                 _sectionCard(context,
-                  title: 'Election Schedule',
-                  subtitle: 'Voting start and end dates (required)',
-                  icon: Icons.schedule_rounded,
-                  children: [
-                    _dateRow(
-                      context,
-                      'Election Start Date *', _votingStart, () => _pick(_votingStart, (d) => _votingStart = d),
-                      'Election End Date *', _votingEnd, () => _pick(_votingEnd, (d) => _votingEnd = d),
-                      reqA: true, reqB: true,
-                    ),
-                  ],
-                ),
-
-                // ══════════════════════════════════════════════════════════
-                // 3. VOTER LIST SCHEDULE
-                // ══════════════════════════════════════════════════════════
-                _sectionCard(context,
-                  title: 'Voter List Schedule',
+                  title: '1. Voter List Schedule',
                   subtitle: 'Dates for voter list publication, claims, and finalization',
                   icon: Icons.people_rounded,
                   children: [
@@ -584,10 +567,10 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
                 ),
 
                 // ══════════════════════════════════════════════════════════
-                // 4. CANDIDACY SCHEDULE
+                // 3. CANDIDACY SCHEDULE (Step 2 of Election System)
                 // ══════════════════════════════════════════════════════════
                 _sectionCard(context,
-                  title: 'Candidacy Schedule',
+                  title: '2. Candidacy Schedule',
                   subtitle: 'Nomination, claim, and finalization dates',
                   icon: Icons.assignment_ind_rounded,
                   children: [
@@ -601,6 +584,23 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
                       context,
                       'Candidacy Claim', _candidacyClaim, () => _pick(_candidacyClaim, (d) => _candidacyClaim = d),
                       'Candidacy Final', _candidacyFinal, () => _pick(_candidacyFinal, (d) => _candidacyFinal = d),
+                    ),
+                  ],
+                ),
+
+                // ══════════════════════════════════════════════════════════
+                // 4. VOTING SCHEDULE (Step 3 of Election System)
+                // ══════════════════════════════════════════════════════════
+                _sectionCard(context,
+                  title: '3. Voting & Polling Schedule',
+                  subtitle: 'Voting start and end dates (required)',
+                  icon: Icons.how_to_vote_rounded,
+                  children: [
+                    _dateRow(
+                      context,
+                      'Election Start Date *', _votingStart, () => _pick(_votingStart, (d) => _votingStart = d),
+                      'Election End Date *', _votingEnd, () => _pick(_votingEnd, (d) => _votingEnd = d),
+                      reqA: true, reqB: true,
                     ),
                   ],
                 ),

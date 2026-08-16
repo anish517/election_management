@@ -212,31 +212,8 @@ class _EditElectionDialogState extends ConsumerState<EditElectionDialog> {
                         const SizedBox(height: 20),
 
                         // Section 1: Election Schedule (Voting)
-                        _buildSectionHeader('🗳️ Election Schedule (Voting)'),
-                        const SizedBox(height: 8),
-                        _buildDateRow(
-                          icon: Icons.how_to_vote_rounded,
-                          color: AppColors.stateVoting,
-                          label: 'Voting Start Date',
-                          subtitle: 'State → voting_open 🗳️',
-                          value: _votingStartAt,
-                          onTap: () => _pickDateTime('Voting Opens', _votingStartAt, (d) => setState(() => _votingStartAt = d)),
-                          onClear: () => setState(() => _votingStartAt = null),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildDateRow(
-                          icon: Icons.lock_outline_rounded,
-                          color: AppColors.error,
-                          label: 'Voting End Date',
-                          subtitle: 'State → voting_closed 🔒 + auto-tally',
-                          value: _votingEndAt,
-                          onTap: () => _pickDateTime('Voting Closes', _votingEndAt, (d) => setState(() => _votingEndAt = d)),
-                          onClear: () => setState(() => _votingEndAt = null),
-                        ),
-                        const SizedBox(height: 18),
-
-                        // Section 2: Voter List Schedule
-                        _buildSectionHeader('👥 Voter List Schedule'),
+                        // Section 1: Voter List Schedule (Step 1)
+                        _buildSectionHeader('👥 1. Voter List Schedule'),
                         const SizedBox(height: 8),
                         _buildDateRow(
                           icon: Icons.people_outline_rounded,
@@ -269,8 +246,8 @@ class _EditElectionDialogState extends ConsumerState<EditElectionDialog> {
                         ),
                         const SizedBox(height: 18),
 
-                        // Section 3: Candidacy Schedule
-                        _buildSectionHeader('📋 Candidacy Schedule'),
+                        // Section 2: Candidacy Schedule (Step 2)
+                        _buildSectionHeader('📋 2. Candidacy Schedule'),
                         const SizedBox(height: 8),
                         _buildDateRow(
                           icon: Icons.person_add_alt_1_outlined,
@@ -310,6 +287,30 @@ class _EditElectionDialogState extends ConsumerState<EditElectionDialog> {
                           value: _candidacyFinalDate,
                           onTap: () => _pickDateTime('Final Candidate List', _candidacyFinalDate, (d) => setState(() => _candidacyFinalDate = d)),
                           onClear: () => setState(() => _candidacyFinalDate = null),
+                        ),
+                        const SizedBox(height: 18),
+
+                        // Section 3: Voting & Polling Schedule (Step 3)
+                        _buildSectionHeader('🗳️ 3. Voting & Polling Schedule'),
+                        const SizedBox(height: 8),
+                        _buildDateRow(
+                          icon: Icons.how_to_vote_rounded,
+                          color: AppColors.stateVoting,
+                          label: 'Voting Start Date',
+                          subtitle: 'State → voting_open 🗳️',
+                          value: _votingStartAt,
+                          onTap: () => _pickDateTime('Voting Opens', _votingStartAt, (d) => setState(() => _votingStartAt = d)),
+                          onClear: () => setState(() => _votingStartAt = null),
+                        ),
+                        const SizedBox(height: 8),
+                        _buildDateRow(
+                          icon: Icons.lock_outline_rounded,
+                          color: AppColors.error,
+                          label: 'Voting End Date',
+                          subtitle: 'State → voting_closed 🔒 + auto-tally',
+                          value: _votingEndAt,
+                          onTap: () => _pickDateTime('Voting Closes', _votingEndAt, (d) => setState(() => _votingEndAt = d)),
+                          onClear: () => setState(() => _votingEndAt = null),
                         ),
                         const SizedBox(height: 16),
                       ],

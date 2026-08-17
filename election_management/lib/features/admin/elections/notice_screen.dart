@@ -1479,19 +1479,7 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
           ),
           const SizedBox(height: 18),
           if (committeeList.isEmpty) ...[
-            const Text(
-              'Chief Election Officer:',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Color(0xFF0F172A)),
-            ),
-            const SizedBox(height: 2),
-            const Text('Prof. Dr. Pranay Ratna Shakya', style: TextStyle(fontSize: 11.5, color: Color(0xFF334155))),
-            const SizedBox(height: 16),
-            const Text(
-              'Election Officer:',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Color(0xFF0F172A)),
-            ),
-            const SizedBox(height: 2),
-            const Text('Advocate Baburam Aryal', style: TextStyle(fontSize: 11.5, color: Color(0xFF334155))),
+            const SizedBox.shrink(),
           ] else ...[
             ...committeeList.map((m) {
               final name = m['name'] ?? m['chair_full_name'] ?? m['committee_name'] ?? m['chair_email'] ?? 'Officer';

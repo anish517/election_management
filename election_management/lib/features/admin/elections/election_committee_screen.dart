@@ -1055,7 +1055,7 @@ class _EditCommitteeDialogState extends ConsumerState<_EditCommitteeDialog> {
                 TextFormField(
                   controller: _nameCtrl,
                   decoration: InputDecoration(
-                    hintText: 'e.g. Prof. Dr. Pranay Ratna Shakya',
+                    hintText: 'Enter member full name',
                     prefixIcon: const Icon(Icons.person_outline_rounded),
                     filled: true,
                     fillColor: isDark ? AppColors.surfaceVariant : const Color(0xFFF9FAFB),
@@ -1614,7 +1614,7 @@ class _CreateCommitteeDialogState extends ConsumerState<_CreateCommitteeDialog> 
                       TextFormField(
                         controller: _nameCtrl,
                         decoration: InputDecoration(
-                          hintText: 'e.g. Prof. Dr. Pranay Ratna Shakya',
+                          hintText: 'Enter member full name',
                           prefixIcon: const Icon(Icons.person_outline_rounded),
                           filled: true,
                           fillColor: isDark ? AppColors.surfaceVariant : const Color(0xFFF9FAFB),

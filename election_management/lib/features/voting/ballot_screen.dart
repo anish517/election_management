@@ -809,19 +809,6 @@ class _CandidateTile extends StatelessWidget {
                                   style: const TextStyle(color: Colors.purple, fontSize: 10.5, fontWeight: FontWeight.bold),
                                 ),
                               ),
-                            if (candidate.slateName.isNotEmpty)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
-                                ),
-                                child: Text(
-                                  candidate.slateName,
-                                  style: const TextStyle(color: Colors.blue, fontSize: 10.5, fontWeight: FontWeight.bold),
-                                ),
-                              ),
                           ],
                         ),
 

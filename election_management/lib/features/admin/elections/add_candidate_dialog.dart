@@ -36,7 +36,6 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
   final _addressController = TextEditingController();
   final _citizenshipController = TextEditingController();
   final _membershipIdController = TextEditingController();
-  final _slateNameController = TextEditingController();
 
   final _personalDescController = TextEditingController();
   final _contributionController = TextEditingController();
@@ -71,7 +70,6 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
     _addressController.dispose();
     _citizenshipController.dispose();
     _membershipIdController.dispose();
-    _slateNameController.dispose();
     _personalDescController.dispose();
     _contributionController.dispose();
     _manifestoController.dispose();
@@ -139,7 +137,6 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
           'election': widget.election.id,
           'position': _selectedPositionId,
           if (_selectedQuotaId != null && _selectedQuotaId!.isNotEmpty) 'quota': _selectedQuotaId,
-          'slate_name': _slateNameController.text.trim(),
           'first_name': _firstNameController.text.trim(),
           'middle_name': _middleNameController.text.trim(),
           'last_name': _lastNameController.text.trim(),
@@ -386,18 +383,6 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
                                 ),
                               ],
                             ],
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Slate / Panel Name
-                          TextFormField(
-                            controller: _slateNameController,
-                            decoration: _dec(
-                              'Slate / Panel Affiliation (Optional)',
-                              hint: 'e.g. Democratic Alliance, Progressive Front',
-                              prefix: const Icon(Icons.groups_outlined),
-                              isDark: isDark,
-                            ),
                           ),
                         ],
                       ),

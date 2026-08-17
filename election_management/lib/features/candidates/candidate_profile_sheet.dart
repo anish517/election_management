@@ -265,22 +265,6 @@ class _HeroHeader extends StatelessWidget {
                           ],
                         ),
                       ).animate().fadeIn(duration: 350.ms, delay: 250.ms),
-
-                    if (candidate.slateName.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
-                        ),
-                        child: Text(
-                          candidate.slateName,
-                          style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Colors.blue),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ],
@@ -540,14 +524,6 @@ class _AboutTab extends StatelessWidget {
               value: candidate.address!,
               isDark: isDark,
             ).animate().fadeIn(delay: 210.ms).slideX(begin: 0.1),
-
-          if (candidate.slateName.isNotEmpty)
-            _InfoRow(
-              icon: Icons.groups_rounded,
-              label: 'Slate / Panel Affiliation',
-              value: candidate.slateName,
-              isDark: isDark,
-            ).animate().fadeIn(delay: 230.ms).slideX(begin: 0.1),
 
           if (candidate.status != null)
             _InfoRow(

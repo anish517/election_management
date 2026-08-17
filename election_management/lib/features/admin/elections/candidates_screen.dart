@@ -199,7 +199,7 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'उम्मेदवार नामावली तथा छानबिन — Review nomination filings, scrutinize eligibility criteria, check panel/slate affiliations, and verify publication readiness.',
+                  'उम्मेदवार नामावली तथा छानबिन — Review nomination filings, scrutinize eligibility criteria, and verify publication readiness.',
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 13, height: 1.4),
                 ),
                 const SizedBox(height: 20),
@@ -379,7 +379,7 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
               child: TextField(
                 controller: _searchCtrl,
                 decoration: InputDecoration(
-                  hintText: 'Search candidate / slate...',
+                  hintText: 'Search candidate...',
                   prefixIcon: const Icon(Icons.search_rounded, size: 18),
                   suffixIcon: _searchCtrl.text.isNotEmpty
                       ? IconButton(
@@ -482,7 +482,6 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
         final c = entry['candidate'] as CandidateModel;
         final p = entry['position'] as PositionModel;
         return c.name.toLowerCase().contains(query) ||
-            c.slateName.toLowerCase().contains(query) ||
             (c.quotaName ?? '').toLowerCase().contains(query) ||
             p.title.toLowerCase().contains(query);
       }).toList();
@@ -604,28 +603,9 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        cand.name,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                      ),
-                      if (cand.slateName.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
-                          ),
-                          child: Text(
-                            cand.slateName,
-                            style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 11),
-                          ),
-                        ),
-                      ],
-                    ],
+                  Text(
+                    cand.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                   ),
                   const SizedBox(height: 6),
 

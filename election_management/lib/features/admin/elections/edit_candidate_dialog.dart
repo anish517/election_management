@@ -23,7 +23,6 @@ class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
   late TextEditingController _manifestoController;
   late TextEditingController _personalDescController;
   late TextEditingController _contributionController;
-  late TextEditingController _slateNameController;
   late String _status;
   String _photoUrl = '';
   bool _isLoading = false;
@@ -34,7 +33,6 @@ class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
     _manifestoController = TextEditingController(text: widget.candidate.manifesto);
     _personalDescController = TextEditingController(text: widget.candidate.personalDescription);
     _contributionController = TextEditingController(text: widget.candidate.contributionToOrg);
-    _slateNameController = TextEditingController(text: widget.candidate.slateName);
     _status = widget.candidate.status ?? 'pending';
     _photoUrl = widget.candidate.photoUrl ?? (widget.candidate.candidateImage ?? '');
   }
@@ -44,7 +42,6 @@ class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
     _manifestoController.dispose();
     _personalDescController.dispose();
     _contributionController.dispose();
-    _slateNameController.dispose();
     super.dispose();
   }
 
@@ -90,7 +87,6 @@ class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
           'manifesto': _manifestoController.text.trim(),
           'personal_description': _personalDescController.text.trim(),
           'contribution_to_org': _contributionController.text.trim(),
-          'slate_name': _slateNameController.text.trim(),
           'status': _status,
           'photo_url': _photoUrl,
           'candidate_image': _photoUrl,
@@ -337,18 +333,6 @@ class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
                             },
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Slate / Panel Affiliation
-                      TextFormField(
-                        controller: _slateNameController,
-                        decoration: _dec(
-                          'Slate / Panel Affiliation',
-                          hint: 'e.g. Democratic Alliance, Progressive Panel',
-                          prefix: const Icon(Icons.groups_outlined),
-                          isDark: isDark,
-                        ),
                       ),
                       const SizedBox(height: 16),
 

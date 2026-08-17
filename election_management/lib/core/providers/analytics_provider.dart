@@ -103,7 +103,7 @@ final analyticsProvider =
               candidateId: candMap['candidate_id'] as String? ?? '',
               name: candMap['name'] as String? ?? '',
               score: (candMap['score'] as num?)?.toDouble() ?? 0.0,
-              isWinner: winners.contains(candMap['candidate_id']),
+              isWinner: winners.contains(candMap['candidate_id']) && ((candMap['score'] as num?)?.toDouble() ?? 0.0) > 0,
               positionTitle: posTitle,
             ));
           }

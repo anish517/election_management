@@ -24,6 +24,10 @@ class TallyService:
         standard_methods = ['fptp', 'multi_choice', 'approval', 'weighted', 'proxy', 'yes_no']
         boycott_score = 0.0
 
+        # Calculate official winners ONLY when election state is results_provisional or results_final
+        # and at least one ballot has been cast with score > 0
+        is_result_state = position.election.state in ['results_provisional', 'results_final']
+
         if position.voting_method in standard_methods:
             candidate_scores = {cand_id: 0.0 for cand_id in candidates_map}
             for vote in votes:
@@ -38,8 +42,8 @@ class TallyService:
                             candidate_scores[cand_id] += weight
                         
             sorted_scores = sorted(candidate_scores.items(), key=lambda x: x[1], reverse=True)
-            if sorted_scores:
-                winners = [item[0] for item in sorted_scores[:seats]]
+            if is_result_state and total_valid_ballots > 0:
+                winners = [item[0] for item in sorted_scores[:seats] if item[1] > 0]
                 
         # RANKED CHOICE (Instant Runoff Voting)
         elif position.voting_method == 'ranked_choice':
@@ -88,7 +92,8 @@ class TallyService:
                         break
             
             sorted_scores = sorted(final_scores.items(), key=lambda x: x[1], reverse=True)
-            winners = [item[0] for item in sorted_scores[:seats]]
+            if is_result_state and total_valid_ballots > 0:
+                winners = [item[0] for item in sorted_scores[:seats] if item[1] > 0]
             
         else:
             sorted_scores = []

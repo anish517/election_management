@@ -236,7 +236,17 @@ class _ElectionDashboardScreenState extends ConsumerState<ElectionDashboardScree
                   ),
                 ),
               ),
-              child: _buildSidebarContent(context, electionAsync, isDark, isCollapsed: _sidebarCollapsed),
+              child: ClipRect(
+                child: OverflowBox(
+                  minWidth: _sidebarCollapsed ? 76 : 270,
+                  maxWidth: _sidebarCollapsed ? 76 : 270,
+                  alignment: Alignment.topLeft,
+                  child: SizedBox(
+                    width: _sidebarCollapsed ? 76 : 270,
+                    child: _buildSidebarContent(context, electionAsync, isDark, isCollapsed: _sidebarCollapsed),
+                  ),
+                ),
+              ),
             ),
 
           // Main View Body
@@ -365,57 +375,59 @@ class _ElectionDashboardScreenState extends ConsumerState<ElectionDashboardScree
                                         : (isDark ? Colors.white70 : Colors.grey.shade700),
                                   ),
                                 )
-                              : Row(
-                                  children: [
-                                    Icon(
-                                      icon,
-                                      size: 20,
-                                      color: isSelected
-                                          ? AppColors.primaryLight
-                                          : (isDark ? Colors.white70 : Colors.grey.shade700),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            title,
-                                            style: TextStyle(
-                                              color: isSelected
-                                                  ? AppColors.primaryLight
-                                                  : (isDark ? Colors.white : Colors.black87),
-                                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                              fontSize: 13,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          Text(
-                                            subtitle,
-                                            style: TextStyle(
-                                              color: isSelected
-                                                  ? AppColors.primaryLight.withValues(alpha: 0.8)
-                                                  : (isDark ? Colors.white38 : Colors.grey.shade500),
-                                              fontSize: 10,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
+                              : ClipRect(
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        icon,
+                                        size: 20,
+                                        color: isSelected
+                                            ? AppColors.primaryLight
+                                            : (isDark ? Colors.white70 : Colors.grey.shade700),
                                       ),
-                                    ),
-                                    if (isSelected)
-                                      Container(
-                                        width: 6,
-                                        height: 6,
-                                        decoration: const BoxDecoration(
-                                          color: AppColors.primaryLight,
-                                          shape: BoxShape.circle,
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              title,
+                                              style: TextStyle(
+                                                color: isSelected
+                                                    ? AppColors.primaryLight
+                                                    : (isDark ? Colors.white : Colors.black87),
+                                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                                fontSize: 13,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            Text(
+                                              subtitle,
+                                              style: TextStyle(
+                                                color: isSelected
+                                                    ? AppColors.primaryLight.withValues(alpha: 0.8)
+                                                    : (isDark ? Colors.white38 : Colors.grey.shade500),
+                                                fontSize: 10,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                  ],
+                                      if (isSelected)
+                                        Container(
+                                          width: 6,
+                                          height: 6,
+                                          decoration: const BoxDecoration(
+                                            color: AppColors.primaryLight,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
                                 ),
                         ),
                       ),

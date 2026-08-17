@@ -19,6 +19,17 @@ class UserProfileScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Profile'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          tooltip: 'Back',
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/dashboard');
+            }
+          },
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout_rounded, color: AppColors.error),

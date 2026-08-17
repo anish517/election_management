@@ -208,10 +208,15 @@ class ElectionViewSet(viewsets.ModelViewSet):
         return Election.objects.none()
 
     def perform_create(self, serializer):
-        election = serializer.save(
-            organization=self.request.user.organization,
-            created_by=self.request.user
-        )
+        org = self.request.user.organization
+        kwargs = {
+            'organization': org,
+            'created_by': self.request.user,
+        }
+        if 'results_visibility' not in serializer.validated_data and org and getattr(org, 'default_result_visibility', None):
+            kwargs['results_visibility'] = org.default_result_visibility
+
+        election = serializer.save(**kwargs)
         log_action('election.created', self.request.user.organization, self.request.user, {
             'election_id': str(election.id),
             'title': election.title
@@ -278,6 +283,14 @@ class ElectionViewSet(viewsets.ModelViewSet):
         if not target_state:
             return Response({'error': 'State is required'}, status=status.HTTP_400_BAD_REQUEST)
             
+        # Enforce Organization Governance Policy: Check if Election Officers can publish results
+        if target_state in ['results_provisional', 'results_final']:
+            if not getattr(request.user, 'is_org_admin', False) and getattr(request.user, 'role', '') != 'org_admin':
+                if not getattr(request.user.organization, 'election_officers_can_publish', False):
+                    return Response({
+                        'error': 'Organization policy requires Organization Admin approval to publish election results.'
+                    }, status=status.HTTP_403_FORBIDDEN)
+
         try:
             election.transition_to(target_state, triggered_by=request.user)
             log_action(f'election.state_changed', request.user.organization, request.user, {

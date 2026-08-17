@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 import 'package:nepali_date_picker/nepali_date_picker.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_constants.dart';
@@ -221,12 +222,17 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
               Text('आधिकारिक सार्वजनिक सूचना पाटी', style: TextStyle(fontSize: 11, color: Colors.white70)),
             ],
           ),
-          leading: canPop
-              ? IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                  onPressed: () => Navigator.pop(context),
-                )
-              : null,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            tooltip: 'Back',
+            onPressed: () {
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              } else {
+                context.go('/dashboard');
+              }
+            },
+          ),
         ),
         body: bodyWidget,
       );

@@ -48,35 +48,7 @@ class DashboardScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Top Organization Hero Banner (if cover image present)
-                          if (user != null && user.organizationCoverImageUrl.isNotEmpty) ...[
-                            Container(
-                              width: double.infinity,
-                              margin: const EdgeInsets.only(bottom: 24),
-                              constraints: const BoxConstraints(maxHeight: 220),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(18),
-                                color: Theme.of(context).cardTheme.color,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.06),
-                                    blurRadius: 16,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(18),
-                                child: Image.network(
-                                  ApiConstants.getFullImageUrl(user.organizationCoverImageUrl)!,
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                ),
-                              ),
-                            ),
-                          ],
-
-                          // Greeting Banner
+                          // Executive Greeting & Organization Hero Banner
                           _buildGreetingBanner(context, user, isDark),
                           const SizedBox(height: 24),
 
@@ -197,79 +169,158 @@ class DashboardScreen extends ConsumerWidget {
             ? 'Election Officer'
             : (user?.role == 'auditor'
                 ? 'Auditor'
-                : (user?.role == 'observer' ? 'Observer' : 'Verified Voter')));
+                : (user?.role == 'observer' ? 'Observer' : 'Verified Elector')));
+
+    final hasCover = user != null && user.organizationCoverImageUrl.isNotEmpty;
+    final coverUrl = hasCover ? ApiConstants.getFullImageUrl(user.organizationCoverImageUrl) : null;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 110),
       decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
           colors: isDark
               ? [const Color(0xFF1E1B4B), const Color(0xFF312E81)]
-              : [AppColors.primary, const Color(0xFF4F46E5)],
+              : [const Color(0xFF4338CA), const Color(0xFF6366F1)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(18),
+        image: coverUrl != null
+            ? DecorationImage(
+                image: NetworkImage(coverUrl),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withValues(alpha: isDark ? 0.78 : 0.68),
+                  BlendMode.darken,
+                ),
+              )
+            : null,
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.25),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
+            color: (isDark ? Colors.black : const Color(0xFF4338CA)).withValues(alpha: 0.22),
+            blurRadius: 16,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
-      child: Row(
+      child: Stack(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(Icons.how_to_vote_rounded, color: Colors.white, size: 30),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      'Welcome back, $name',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        roleLabel,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
+          if (coverUrl == null)
+            Positioned(
+              right: -20,
+              top: -30,
+              child: Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.05),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'Manage elections, monitor live ballots, and oversee electoral verifiability securely.',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.85),
-                    fontSize: 12,
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(13),
+                    child: (user?.organizationLogoUrl.isNotEmpty == true)
+                        ? Image.network(
+                            ApiConstants.getFullImageUrl(user!.organizationLogoUrl)!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (ctx, err, stack) => const Icon(Icons.how_to_vote_rounded, color: Colors.white, size: 26),
+                          )
+                        : const Icon(Icons.how_to_vote_rounded, color: Colors.white, size: 26),
                   ),
                 ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 10,
+                        runSpacing: 4,
+                        children: [
+                          Text(
+                            'Welcome back, $name',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.22),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+                            ),
+                            child: Text(
+                              roleLabel,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        'Manage elections, monitor live ballots, and oversee electoral verifiability securely.',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.88),
+                          fontSize: 12.5,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (user?.organizationName.isNotEmpty == true) ...[
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white24),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 14),
+                        const SizedBox(width: 6),
+                        Text(
+                          user!.organizationName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11.5,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

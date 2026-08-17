@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/org_providers.dart';
 import '../../../shared/models/models.dart';
@@ -186,6 +187,17 @@ class _ElectionRulesScreenState extends ConsumerState<ElectionRulesScreen> {
       drawer: const AdminDrawer(),
       appBar: AppBar(
         title: const Text('Election Rules & Policies'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          tooltip: 'Back',
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/dashboard');
+            }
+          },
+        ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16, top: 8, bottom: 8),

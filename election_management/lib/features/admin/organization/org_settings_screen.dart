@@ -720,6 +720,17 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
       drawer: const AdminDrawer(),
       appBar: AppBar(
         title: const Text('Organization Settings'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          tooltip: 'Back',
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/dashboard');
+            }
+          },
+        ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16, top: 8, bottom: 8),

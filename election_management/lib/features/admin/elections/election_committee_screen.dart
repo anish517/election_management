@@ -468,25 +468,54 @@ class _ElectionCommitteeScreenState extends ConsumerState<ElectionCommitteeScree
                                                     ],
                                                   ),
                                                   const SizedBox(height: 6),
-                                                  // Role Badge Pill
-                                                  Container(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                                    decoration: BoxDecoration(
-                                                      color: roleColor.withValues(alpha: 0.12),
-                                                      borderRadius: BorderRadius.circular(6),
-                                                      border: Border.all(color: roleColor.withValues(alpha: 0.3)),
-                                                    ),
-                                                    child: Row(
-                                                      mainAxisSize: MainAxisSize.min,
-                                                      children: [
-                                                        Icon(_roleIcon(role), size: 12, color: roleColor),
-                                                        const SizedBox(width: 5),
-                                                        Text(
-                                                          _roleLabel(role),
-                                                          style: TextStyle(fontSize: 11, color: roleColor, fontWeight: FontWeight.bold),
+                                                  // Designation & Role Badges
+                                                  Wrap(
+                                                    spacing: 8,
+                                                    runSpacing: 4,
+                                                    children: [
+                                                      // Designation Badge
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                        decoration: BoxDecoration(
+                                                          color: const Color(0xFF0284C7).withValues(alpha: 0.12),
+                                                          borderRadius: BorderRadius.circular(6),
+                                                          border: Border.all(color: const Color(0xFF0284C7).withValues(alpha: 0.3)),
                                                         ),
-                                                      ],
-                                                    ),
+                                                        child: Row(
+                                                          mainAxisSize: MainAxisSize.min,
+                                                          children: [
+                                                            const Icon(Icons.workspace_premium_rounded, size: 12, color: Color(0xFF0284C7)),
+                                                            const SizedBox(width: 5),
+                                                            Text(
+                                                              (c['chair_designation']?.toString().isNotEmpty == true)
+                                                                  ? c['chair_designation'].toString()
+                                                                  : 'Committee Member',
+                                                              style: const TextStyle(fontSize: 11, color: Color(0xFF0284C7), fontWeight: FontWeight.bold),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      // System Role Badge Pill
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                        decoration: BoxDecoration(
+                                                          color: roleColor.withValues(alpha: 0.12),
+                                                          borderRadius: BorderRadius.circular(6),
+                                                          border: Border.all(color: roleColor.withValues(alpha: 0.3)),
+                                                        ),
+                                                        child: Row(
+                                                          mainAxisSize: MainAxisSize.min,
+                                                          children: [
+                                                            Icon(_roleIcon(role), size: 12, color: roleColor),
+                                                            const SizedBox(width: 5),
+                                                            Text(
+                                                              _roleLabel(role),
+                                                              style: TextStyle(fontSize: 11, color: roleColor, fontWeight: FontWeight.bold),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
                                                 ],
                                               ),
@@ -700,23 +729,52 @@ class _CommitteeDetailSheet extends ConsumerWidget {
                 controller: ctrl,
                 padding: const EdgeInsets.all(24),
                 children: [
-                  // Role Badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: roleColor(role).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: roleColor(role).withValues(alpha: 0.3)),
-                    ),
-                    child: Text(
-                      roleLabel(role),
-                      style: TextStyle(color: roleColor(role), fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
+                  // Designation & Role Badges
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0284C7).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF0284C7).withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.workspace_premium_rounded, size: 14, color: Color(0xFF0284C7)),
+                            const SizedBox(width: 6),
+                            Text(
+                              (c['chair_designation']?.toString().isNotEmpty == true)
+                                  ? c['chair_designation'].toString()
+                                  : 'Committee Member',
+                              style: const TextStyle(color: Color(0xFF0284C7), fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: roleColor(role).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: roleColor(role).withValues(alpha: 0.3)),
+                        ),
+                        child: Text(
+                          roleLabel(role),
+                          style: TextStyle(color: roleColor(role), fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 18),
 
+                  _infoTile(context, Icons.workspace_premium_rounded, 'Committee Designation (समिति पद)', (c['chair_designation']?.toString().isNotEmpty == true) ? c['chair_designation'].toString() : 'Committee Member'),
                   _infoTile(context, Icons.person_outline_rounded, 'Full Legal Name', displayName()),
                   _infoTile(context, Icons.email_outlined, 'Official Email', c['chair_email'] ?? '-'),
+                  if ((c['chair_contact']?.toString() ?? '').isNotEmpty)
+                    _infoTile(context, Icons.phone_outlined, 'Contact Phone Number', c['chair_contact'].toString()),
                   if ((c['chair_member_code'] ?? '').isNotEmpty)
                     _infoTile(context, Icons.badge_outlined, 'Organization Member Code', '#${c['chair_member_code']}'),
 
@@ -796,6 +854,8 @@ class _EditCommitteeDialog extends ConsumerStatefulWidget {
 class _EditCommitteeDialogState extends ConsumerState<_EditCommitteeDialog> {
   final _formKey = GlobalKey<FormState>();
   late String _selectedRole;
+  late TextEditingController _designationCtrl;
+  late TextEditingController _contactCtrl;
   bool _isSaving = false;
   String? _error;
 
@@ -811,6 +871,21 @@ class _EditCommitteeDialogState extends ConsumerState<_EditCommitteeDialog> {
     if (!['election_officer', 'observer', 'auditor'].contains(_selectedRole)) {
       _selectedRole = 'election_officer';
     }
+    _designationCtrl = TextEditingController(
+      text: (c['chair_designation']?.toString().isNotEmpty == true)
+          ? c['chair_designation'].toString()
+          : 'Committee Member',
+    );
+    _contactCtrl = TextEditingController(
+      text: c['chair_contact']?.toString() ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _designationCtrl.dispose();
+    _contactCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _pickSignature() async {
@@ -840,10 +915,15 @@ class _EditCommitteeDialogState extends ConsumerState<_EditCommitteeDialog> {
     });
     try {
       final dio = ref.read(apiClientProvider);
+      final patchData = <String, dynamic>{
+        'role': _selectedRole,
+        'chair_designation': _designationCtrl.text.trim(),
+        'chair_contact': _contactCtrl.text.trim(),
+      };
 
       if (_newSignatureBytes != null) {
         final formData = FormData.fromMap({
-          'role': _selectedRole,
+          ...patchData,
           'chair_signature': MultipartFile.fromBytes(
             _newSignatureBytes!,
             filename: _newSignatureFileName ?? 'signature.png',
@@ -857,7 +937,7 @@ class _EditCommitteeDialogState extends ConsumerState<_EditCommitteeDialog> {
       } else {
         await dio.patch(
           ApiConstants.electionUpdateCommittee(widget.electionId, widget.committee['id'].toString()),
-          data: {'role': _selectedRole},
+          data: patchData,
         );
       }
 
@@ -898,98 +978,150 @@ class _EditCommitteeDialogState extends ConsumerState<_EditCommitteeDialog> {
         ],
       ),
       content: SizedBox(
-        width: 500,
+        width: 520,
         child: Form(
           key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Member Info summary card
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-                ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      child: Text(fullName.isNotEmpty ? fullName[0].toUpperCase() : '?'),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                          Text(c['chair_email'] ?? '', style: TextStyle(color: isDark ? Colors.white60 : Colors.grey.shade600, fontSize: 12)),
-                        ],
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Member Info summary card
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        child: Text(fullName.isNotEmpty ? fullName[0].toUpperCase() : '?'),
                       ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                            Text(c['chair_email'] ?? '', style: TextStyle(color: isDark ? Colors.white60 : Colors.grey.shade600, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                if (_error != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                    ),
+                    child: Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12.5, fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(height: 14),
+                ],
+
+                // Committee Designation Field
+                const Text('Committee Designation / पद *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _designationCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Chairperson, Secretary, Member',
+                    prefixIcon: const Icon(Icons.workspace_premium_outlined),
+                    filled: true,
+                    fillColor: isDark ? AppColors.surfaceVariant : const Color(0xFFF9FAFB),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Designation is required' : null,
+                ),
+                const SizedBox(height: 8),
+
+                // Quick Suggestion Chips for Designation
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _quickChip('Chairperson (अध्यक्ष)', isDark),
+                      const SizedBox(width: 6),
+                      _quickChip('Secretary (सदस्य सचिव)', isDark),
+                      const SizedBox(width: 6),
+                      _quickChip('Senior Officer (वरिष्ठ अधिकृत)', isDark),
+                      const SizedBox(width: 6),
+                      _quickChip('Member (सदस्य)', isDark),
+                      const SizedBox(width: 6),
+                      _quickChip('Legal Advisor (कानुनी सल्लाहकार)', isDark),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Contact Phone Field
+                const Text('Contact Phone (Optional)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _contactCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. 98XXXXXXXX',
+                    prefixIcon: const Icon(Icons.phone_outlined),
+                    filled: true,
+                    fillColor: isDark ? AppColors.surfaceVariant : const Color(0xFFF9FAFB),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Role Selector
+                const Text('Assigned System Role *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 6),
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedRole,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.admin_panel_settings_outlined),
+                    filled: true,
+                    fillColor: isDark ? AppColors.surfaceVariant : const Color(0xFFF9FAFB),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'election_officer',
+                      child: Text('Election Officer — manages voting & candidates'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'observer',
+                      child: Text('Independent Observer — monitor-only'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'auditor',
+                      child: Text('Auditor — audit logs & hash proofs'),
                     ),
                   ],
+                  onChanged: (v) => setState(() => _selectedRole = v ?? 'election_officer'),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              if (_error != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                // Signature Upload
+                const Text('Update Signature (Optional)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 6),
+                OutlinedButton.icon(
+                  onPressed: _pickSignature,
+                  icon: const Icon(Icons.upload_file_outlined),
+                  label: Text(_newSignatureFileName != null ? 'Selected: $_newSignatureFileName' : 'Choose New Signature File'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  child: Text(_error!, style: const TextStyle(color: Colors.red, fontSize: 12.5, fontWeight: FontWeight.bold)),
                 ),
-                const SizedBox(height: 14),
               ],
-
-              // Role Selector
-              const Text('Assigned Role *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              const SizedBox(height: 6),
-              DropdownButtonFormField<String>(
-                initialValue: _selectedRole,
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.admin_panel_settings_outlined),
-                  filled: true,
-                  fillColor: isDark ? AppColors.surfaceVariant : const Color(0xFFF9FAFB),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                items: const [
-                  DropdownMenuItem(
-                    value: 'election_officer',
-                    child: Text('Election Officer — manages voting & candidates'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'observer',
-                    child: Text('Independent Observer — monitor-only'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'auditor',
-                    child: Text('Auditor — audit logs & hash proofs'),
-                  ),
-                ],
-                onChanged: (v) => setState(() => _selectedRole = v ?? 'election_officer'),
-              ),
-              const SizedBox(height: 16),
-
-              // Signature Upload
-              const Text('Update Signature (Optional)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              const SizedBox(height: 6),
-              OutlinedButton.icon(
-                onPressed: _pickSignature,
-                icon: const Icon(Icons.upload_file_outlined),
-                label: Text(_newSignatureFileName != null ? 'Selected: $_newSignatureFileName' : 'Choose New Signature File'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -1006,6 +1138,19 @@ class _EditCommitteeDialogState extends ConsumerState<_EditCommitteeDialog> {
           fullWidth: false,
         ),
       ],
+    );
+  }
+
+  Widget _quickChip(String label, bool isDark) {
+    return ActionChip(
+      label: Text(label, style: const TextStyle(fontSize: 11)),
+      backgroundColor: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
+      side: BorderSide(color: isDark ? Colors.white24 : Colors.grey.shade300),
+      onPressed: () {
+        setState(() {
+          _designationCtrl.text = label.split(' (')[0];
+        });
+      },
     );
   }
 }
@@ -1029,6 +1174,8 @@ class _CreateCommitteeDialogState extends ConsumerState<_CreateCommitteeDialog> 
   String _searchQuery = '';
 
   String _selectedRole = 'election_officer';
+  final _designationCtrl = TextEditingController(text: 'Committee Member');
+  final _contactCtrl = TextEditingController();
   bool _isSaving = false;
   String? _error;
 
@@ -1046,6 +1193,8 @@ class _CreateCommitteeDialogState extends ConsumerState<_CreateCommitteeDialog> 
 
   @override
   void dispose() {
+    _designationCtrl.dispose();
+    _contactCtrl.dispose();
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmCtrl.dispose();
@@ -1094,6 +1243,10 @@ class _CreateCommitteeDialogState extends ConsumerState<_CreateCommitteeDialog> 
 
       final Map<String, dynamic> mapData = {
         'role': _selectedRole,
+        'chair_designation': _designationCtrl.text.trim().isNotEmpty
+            ? _designationCtrl.text.trim()
+            : 'Committee Member',
+        'chair_contact': _contactCtrl.text.trim(),
       };
 
       if (_mode == 'existing' && _selectedMember != null) {
@@ -1357,28 +1510,34 @@ class _CreateCommitteeDialogState extends ConsumerState<_CreateCommitteeDialog> 
                                           itemCount: filteredMembers.length,
                                           separatorBuilder: (_, _) => const Divider(height: 1),
                                           itemBuilder: (context, index) {
-                                            final m = filteredMembers[index];
-                                            return ListTile(
-                                              dense: true,
-                                              leading: CircleAvatar(
-                                                radius: 14,
-                                                backgroundColor: AppColors.primary,
-                                                foregroundColor: Colors.white,
-                                                child: Text(
-                                                  m.fullName.isNotEmpty ? m.fullName[0].toUpperCase() : '?',
-                                                  style: const TextStyle(fontSize: 12),
+                                              final m = filteredMembers[index];
+                                              return ListTile(
+                                                dense: true,
+                                                leading: CircleAvatar(
+                                                  radius: 14,
+                                                  backgroundColor: AppColors.primary,
+                                                  foregroundColor: Colors.white,
+                                                  child: Text(
+                                                    m.fullName.isNotEmpty ? m.fullName[0].toUpperCase() : '?',
+                                                    style: const TextStyle(fontSize: 12),
+                                                  ),
                                                 ),
-                                              ),
-                                              title: Text(m.fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                              subtitle: Text('${m.email} • #${m.memberCode}', style: const TextStyle(fontSize: 11)),
-                                              trailing: const Icon(Icons.chevron_right_rounded, size: 18),
-                                              onTap: () {
-                                                setState(() {
-                                                  _selectedMember = m;
-                                                  _error = null;
-                                                });
-                                              },
-                                            );
+                                                title: Text(m.fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                                subtitle: Text('${m.email} • #${m.memberCode}', style: const TextStyle(fontSize: 11)),
+                                                trailing: const Icon(Icons.chevron_right_rounded, size: 18),
+                                                onTap: () {
+                                                  setState(() {
+                                                    _selectedMember = m;
+                                                    if (m.positionTitle.isNotEmpty) {
+                                                      _designationCtrl.text = m.positionTitle;
+                                                    }
+                                                    if (m.phone.isNotEmpty) {
+                                                      _contactCtrl.text = m.phone;
+                                                    }
+                                                    _error = null;
+                                                  });
+                                                },
+                                              );
                                           },
                                         ),
                                 ),
@@ -1455,8 +1614,62 @@ class _CreateCommitteeDialogState extends ConsumerState<_CreateCommitteeDialog> 
                       const SizedBox(height: 16),
                     ],
 
+                    // Committee Designation Field
+                    const Text('Committee Designation / पद *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _designationCtrl,
+                      decoration: InputDecoration(
+                        hintText: 'e.g. Chairperson, Secretary, Member',
+                        prefixIcon: const Icon(Icons.workspace_premium_outlined),
+                        filled: true,
+                        fillColor: isDark ? AppColors.surfaceVariant : const Color(0xFFF9FAFB),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Designation is required' : null,
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Quick Suggestion Chips for Designation
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _quickChip('Chairperson (अध्यक्ष)', isDark),
+                          const SizedBox(width: 6),
+                          _quickChip('Secretary (सदस्य सचिव)', isDark),
+                          const SizedBox(width: 6),
+                          _quickChip('Senior Officer (वरिष्ठ अधिकृत)', isDark),
+                          const SizedBox(width: 6),
+                          _quickChip('Member (सदस्य)', isDark),
+                          const SizedBox(width: 6),
+                          _quickChip('Legal Advisor (कानुनी सल्लाहकार)', isDark),
+                          const SizedBox(width: 6),
+                          _quickChip('Observer (पर्यवेक्षक)', isDark),
+                          const SizedBox(width: 6),
+                          _quickChip('Auditor (लेखापरीक्षक)', isDark),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Contact Phone Field
+                    const Text('Contact Phone (Optional)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 6),
+                    TextFormField(
+                      controller: _contactCtrl,
+                      decoration: InputDecoration(
+                        hintText: 'e.g. 98XXXXXXXX',
+                        prefixIcon: const Icon(Icons.phone_outlined),
+                        filled: true,
+                        fillColor: isDark ? AppColors.surfaceVariant : const Color(0xFFF9FAFB),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
                     // Role assignment
-                    const Text('Assign Role *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const Text('Assign System Role *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(height: 6),
                     DropdownButtonFormField<String>(
                       initialValue: _selectedRole,
@@ -1516,6 +1729,19 @@ class _CreateCommitteeDialogState extends ConsumerState<_CreateCommitteeDialog> 
           fullWidth: false,
         ),
       ],
+    );
+  }
+
+  Widget _quickChip(String label, bool isDark) {
+    return ActionChip(
+      label: Text(label, style: const TextStyle(fontSize: 11)),
+      backgroundColor: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
+      side: BorderSide(color: isDark ? Colors.white24 : Colors.grey.shade300),
+      onPressed: () {
+        setState(() {
+          _designationCtrl.text = label.split(' (')[0];
+        });
+      },
     );
   }
 }

@@ -475,13 +475,10 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                                   c.name,
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                 ),
-                                if (c.slateName.isNotEmpty || (c.quotaName != null && c.quotaName!.isNotEmpty)) ...[
+                                if (c.quotaName != null && c.quotaName!.isNotEmpty) ...[
                                   const SizedBox(height: 2),
                                   Text(
-                                    [
-                                      if (c.quotaName != null && c.quotaName!.isNotEmpty) 'Quota: ${c.quotaName}',
-                                      if (c.slateName.isNotEmpty) c.slateName,
-                                    ].join(' • '),
+                                    'Quota: ${c.quotaName}',
                                     style: TextStyle(fontSize: 11, color: isDark ? Colors.white54 : Colors.grey.shade600),
                                   ),
                                 ],

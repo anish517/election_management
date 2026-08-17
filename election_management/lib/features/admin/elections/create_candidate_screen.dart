@@ -32,7 +32,6 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
   String _selectedGender = 'Male';
   final _dobController = TextEditingController();
   final _addressController = TextEditingController();
-  final _slateNameController = TextEditingController();
 
   String _candidateImageUrl = '';
 
@@ -64,7 +63,6 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
     _contactController.dispose();
     _dobController.dispose();
     _addressController.dispose();
-    _slateNameController.dispose();
     _personalDescriptionController.dispose();
     _manifestoController.dispose();
     _proposerNameCtrl.dispose();
@@ -147,7 +145,6 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
           'gender': _selectedGender,
           'date_of_birth': _dobController.text.trim().isNotEmpty ? _dobController.text.trim() : null,
           'address': _addressController.text.trim(),
-          'slate_name': _slateNameController.text.trim(),
           'candidate_image': _candidateImageUrl,
           'photo_url': _candidateImageUrl,
           'personal_description': _personalDescriptionController.text.trim(),
@@ -511,7 +508,7 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
                   _buildSectionCard(
                     context,
                     title: '2. Contested Office & Quota Allocation (पद तथा कोटा विवरण)',
-                    subtitle: 'Electoral designation, affirmative action quota, and slate affiliation',
+                    subtitle: 'Electoral designation and affirmative action quota allocation',
                     icon: Icons.military_tech_rounded,
                     isDark: isDark,
                     children: [
@@ -575,18 +572,6 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
                             ),
                           ],
                         ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Slate / Panel Affiliation
-                      TextFormField(
-                        controller: _slateNameController,
-                        decoration: _dec(
-                          'Slate / Panel Affiliation (Optional)',
-                          hint: 'e.g. Democratic Alliance, Progressive Front',
-                          prefix: const Icon(Icons.groups_outlined),
-                          isDark: isDark,
-                        ),
                       ),
                     ],
                   ),

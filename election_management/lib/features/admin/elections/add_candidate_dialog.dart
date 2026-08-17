@@ -10,6 +10,48 @@ import '../../../shared/models/models.dart';
 import '../../../shared/widgets/image_upload_widget.dart';
 import '../../../shared/widgets/loading_button.dart';
 
+class _EndorsementItem {
+  final String endorsementType;
+  final TextEditingController nameCtrl = TextEditingController();
+  final TextEditingController phoneCtrl = TextEditingController();
+  final TextEditingController citizenCtrl = TextEditingController();
+  final TextEditingController memIdCtrl = TextEditingController();
+  String signatureUrl = '';
+
+  _EndorsementItem({
+    required this.endorsementType,
+    String name = '',
+    String phone = '',
+    String citizen = '',
+    String memId = '',
+    String signature = '',
+  }) {
+    nameCtrl.text = name;
+    phoneCtrl.text = phone;
+    citizenCtrl.text = citizen;
+    memIdCtrl.text = memId;
+    signatureUrl = signature;
+  }
+
+  void dispose() {
+    nameCtrl.dispose();
+    phoneCtrl.dispose();
+    citizenCtrl.dispose();
+    memIdCtrl.dispose();
+  }
+
+  bool get isNotEmpty => nameCtrl.text.trim().isNotEmpty;
+
+  Map<String, dynamic> toMap() => {
+        'endorsement_type': endorsementType,
+        'name': nameCtrl.text.trim(),
+        'citizenship_number': citizenCtrl.text.trim(),
+        'phone': phoneCtrl.text.trim(),
+        'membership_id': memIdCtrl.text.trim(),
+        'signature_url': signatureUrl,
+      };
+}
+
 class AddCandidateDialog extends ConsumerStatefulWidget {
   final ElectionModel election;
   const AddCandidateDialog({super.key, required this.election});
@@ -42,21 +84,18 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
   final _manifestoController = TextEditingController();
   String _candidateImage = '';
 
-  // Proposer
-  final _proposerNameController = TextEditingController();
-  final _proposerCitizenshipController = TextEditingController();
-  final _proposerPhoneController = TextEditingController();
-  final _proposerMemIdController = TextEditingController();
-  String _proposerSignature = '';
-
-  // Supporter
-  final _supporterNameController = TextEditingController();
-  final _supporterCitizenshipController = TextEditingController();
-  final _supporterPhoneController = TextEditingController();
-  final _supporterMemIdController = TextEditingController();
-  String _supporterSignature = '';
+  // Dynamic Multi-Proposers & Multi-Supporters
+  late List<_EndorsementItem> _proposers;
+  late List<_EndorsementItem> _supporters;
 
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _proposers = [_EndorsementItem(endorsementType: 'proposer')];
+    _supporters = [_EndorsementItem(endorsementType: 'supporter')];
+  }
 
   @override
   void dispose() {
@@ -73,14 +112,12 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
     _personalDescController.dispose();
     _contributionController.dispose();
     _manifestoController.dispose();
-    _proposerNameController.dispose();
-    _proposerCitizenshipController.dispose();
-    _proposerPhoneController.dispose();
-    _proposerMemIdController.dispose();
-    _supporterNameController.dispose();
-    _supporterCitizenshipController.dispose();
-    _supporterPhoneController.dispose();
-    _supporterMemIdController.dispose();
+    for (final p in _proposers) {
+      p.dispose();
+    }
+    for (final s in _supporters) {
+      s.dispose();
+    }
     super.dispose();
   }
 
@@ -108,25 +145,15 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
     setState(() => _isLoading = true);
 
     final endorsements = <Map<String, dynamic>>[];
-    if (_proposerNameController.text.trim().isNotEmpty) {
-      endorsements.add({
-        'endorsement_type': 'proposer',
-        'name': _proposerNameController.text.trim(),
-        'citizenship_number': _proposerCitizenshipController.text.trim(),
-        'phone': _proposerPhoneController.text.trim(),
-        'membership_id': _proposerMemIdController.text.trim(),
-        'signature_url': _proposerSignature,
-      });
+    for (final p in _proposers) {
+      if (p.isNotEmpty) {
+        endorsements.add(p.toMap());
+      }
     }
-    if (_supporterNameController.text.trim().isNotEmpty) {
-      endorsements.add({
-        'endorsement_type': 'supporter',
-        'name': _supporterNameController.text.trim(),
-        'citizenship_number': _supporterCitizenshipController.text.trim(),
-        'phone': _supporterPhoneController.text.trim(),
-        'membership_id': _supporterMemIdController.text.trim(),
-        'signature_url': _supporterSignature,
-      });
+    for (final s in _supporters) {
+      if (s.isNotEmpty) {
+        endorsements.add(s.toMap());
+      }
     }
 
     try {
@@ -578,94 +605,166 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
                         icon: Icons.draw_rounded,
                         isDark: isDark,
                         children: [
-                          // Proposer (प्रस्तावक)
-                          Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.4) : const Color(0xFFF4F4F5),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Proposer #1 (प्रस्तावक)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    Expanded(child: TextFormField(controller: _proposerNameController, decoration: _dec('Proposer Full Name', isDark: isDark))),
-                                    const SizedBox(width: 12),
-                                    Expanded(child: TextFormField(controller: _proposerCitizenshipController, decoration: _dec('Citizenship Number', isDark: isDark))),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    Expanded(child: TextFormField(controller: _proposerPhoneController, decoration: _dec('Phone Number', isDark: isDark))),
-                                    const SizedBox(width: 12),
-                                    Expanded(child: TextFormField(controller: _proposerMemIdController, decoration: _dec('Membership ID', isDark: isDark))),
-                                  ],
-                                ),
-                                const SizedBox(height: 14),
-                                Row(
-                                  children: [
-                                    Text('Proposer Signature:', style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.grey.shade700)),
-                                    const SizedBox(width: 14),
-                                    ImageUploadWidget(
-                                      initialImageUrl: _proposerSignature,
-                                      placeholderText: 'Upload Sign',
-                                      radius: 28,
-                                      onImageUploaded: (url) => setState(() => _proposerSignature = url),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                          // Proposers Header
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'PROPOSERS (प्रस्तावक) — ${_proposers.length}',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: isDark ? Colors.blue.shade300 : const Color(0xFF2563EB)),
+                              ),
+                              TextButton.icon(
+                                onPressed: () => setState(() => _proposers.add(_EndorsementItem(endorsementType: 'proposer'))),
+                                icon: const Icon(Icons.add, size: 16),
+                                label: const Text('Add Proposer', style: TextStyle(fontSize: 12)),
+                              ),
+                            ],
                           ),
+                          const SizedBox(height: 8),
+                          ..._proposers.asMap().entries.map((entry) {
+                            final idx = entry.key;
+                            final item = entry.value;
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.4) : const Color(0xFFF4F4F5),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.blue.withValues(alpha: isDark ? 0.3 : 0.2)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text('Proposer #${idx + 1} (प्रस्तावक)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF2563EB))),
+                                      if (_proposers.length > 1)
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                                          visualDensity: VisualDensity.compact,
+                                          onPressed: () => setState(() {
+                                            item.dispose();
+                                            _proposers.removeAt(idx);
+                                          }),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      Expanded(child: TextFormField(controller: item.nameCtrl, decoration: _dec('Proposer Full Name', isDark: isDark))),
+                                      const SizedBox(width: 12),
+                                      Expanded(child: TextFormField(controller: item.citizenCtrl, decoration: _dec('Citizenship Number', isDark: isDark))),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      Expanded(child: TextFormField(controller: item.phoneCtrl, decoration: _dec('Phone Number', isDark: isDark))),
+                                      const SizedBox(width: 12),
+                                      Expanded(child: TextFormField(controller: item.memIdCtrl, decoration: _dec('Membership ID', isDark: isDark))),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Text('Proposer Signature:', style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.grey.shade700)),
+                                      const SizedBox(width: 14),
+                                      ImageUploadWidget(
+                                        initialImageUrl: item.signatureUrl,
+                                        placeholderText: 'Upload Sign',
+                                        radius: 28,
+                                        onImageUploaded: (url) => setState(() => item.signatureUrl = url),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                          const SizedBox(height: 16),
+                          const Divider(height: 1),
                           const SizedBox(height: 16),
 
-                          // Supporter (समर्थक)
-                          Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.4) : const Color(0xFFF4F4F5),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Supporter #1 (समर्थक)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    Expanded(child: TextFormField(controller: _supporterNameController, decoration: _dec('Supporter Full Name', isDark: isDark))),
-                                    const SizedBox(width: 12),
-                                    Expanded(child: TextFormField(controller: _supporterCitizenshipController, decoration: _dec('Citizenship Number', isDark: isDark))),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    Expanded(child: TextFormField(controller: _supporterPhoneController, decoration: _dec('Phone Number', isDark: isDark))),
-                                    const SizedBox(width: 12),
-                                    Expanded(child: TextFormField(controller: _supporterMemIdController, decoration: _dec('Membership ID', isDark: isDark))),
-                                  ],
-                                ),
-                                const SizedBox(height: 14),
-                                Row(
-                                  children: [
-                                    Text('Supporter Signature:', style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.grey.shade700)),
-                                    const SizedBox(width: 14),
-                                    ImageUploadWidget(
-                                      initialImageUrl: _supporterSignature,
-                                      placeholderText: 'Upload Sign',
-                                      radius: 28,
-                                      onImageUploaded: (url) => setState(() => _supporterSignature = url),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                          // Supporters Header
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'SUPPORTERS (समर्थक) — ${_supporters.length}',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: isDark ? Colors.green.shade300 : const Color(0xFF059669)),
+                              ),
+                              TextButton.icon(
+                                onPressed: () => setState(() => _supporters.add(_EndorsementItem(endorsementType: 'supporter'))),
+                                icon: const Icon(Icons.add, size: 16),
+                                label: const Text('Add Supporter', style: TextStyle(fontSize: 12)),
+                              ),
+                            ],
                           ),
+                          const SizedBox(height: 8),
+                          ..._supporters.asMap().entries.map((entry) {
+                            final idx = entry.key;
+                            final item = entry.value;
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.4) : const Color(0xFFF4F4F5),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.green.withValues(alpha: isDark ? 0.3 : 0.2)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text('Supporter #${idx + 1} (समर्थक)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF059669))),
+                                      if (_supporters.length > 1)
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                                          visualDensity: VisualDensity.compact,
+                                          onPressed: () => setState(() {
+                                            item.dispose();
+                                            _supporters.removeAt(idx);
+                                          }),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      Expanded(child: TextFormField(controller: item.nameCtrl, decoration: _dec('Supporter Full Name', isDark: isDark))),
+                                      const SizedBox(width: 12),
+                                      Expanded(child: TextFormField(controller: item.citizenCtrl, decoration: _dec('Citizenship Number', isDark: isDark))),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      Expanded(child: TextFormField(controller: item.phoneCtrl, decoration: _dec('Phone Number', isDark: isDark))),
+                                      const SizedBox(width: 12),
+                                      Expanded(child: TextFormField(controller: item.memIdCtrl, decoration: _dec('Membership ID', isDark: isDark))),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Text('Supporter Signature:', style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.grey.shade700)),
+                                      const SizedBox(width: 14),
+                                      ImageUploadWidget(
+                                        initialImageUrl: item.signatureUrl,
+                                        placeholderText: 'Upload Sign',
+                                        radius: 28,
+                                        onImageUploaded: (url) => setState(() => item.signatureUrl = url),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
                         ],
                       ),
                     ],

@@ -314,30 +314,35 @@ class _NominationListScreenState extends ConsumerState<NominationListScreen> wit
                             Wrap(
                               spacing: 8,
                               runSpacing: 4,
-                              children: c.endorsements.map((e) {
-                                final isProp = e.endorsementType.toLowerCase() == 'proposer';
-                                final col = isProp ? const Color(0xFF2563EB) : const Color(0xFF059669);
-                                final label = isProp ? 'Proposer (प्रस्तावक)' : 'Supporter (समर्थक)';
-                                return Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: col.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(color: col.withValues(alpha: 0.3)),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(isProp ? Icons.how_to_reg_rounded : Icons.verified_user_rounded, size: 12, color: col),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        '$label: ${e.name}${e.membershipId.isNotEmpty ? " (#${e.membershipId})" : ""}',
-                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: col),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
+                              children: () {
+                                int pIdx = 0;
+                                int sIdx = 0;
+                                return c.endorsements.map((e) {
+                                  final isProp = e.endorsementType.toLowerCase() == 'proposer';
+                                  final idx = isProp ? ++pIdx : ++sIdx;
+                                  final col = isProp ? const Color(0xFF2563EB) : const Color(0xFF059669);
+                                  final label = isProp ? 'Proposer #$idx' : 'Supporter #$idx';
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: col.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: col.withValues(alpha: 0.3)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(isProp ? Icons.how_to_reg_rounded : Icons.verified_user_rounded, size: 12, color: col),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '$label: ${e.name}${e.membershipId.isNotEmpty ? " (#${e.membershipId})" : ""}',
+                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: col),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList();
+                              }(),
                             ),
                           ],
                         ],

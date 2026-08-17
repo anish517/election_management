@@ -624,16 +624,24 @@ class _EndorsementsTab extends StatelessWidget {
                   ],
                 ).animate().fadeIn(delay: 50.ms),
                 const SizedBox(height: 16),
-                ...endorsements.map((e) => _buildEndorsementCard(e, isDark)),
+                ...() {
+                  int pCount = 0;
+                  int sCount = 0;
+                  return endorsements.map((e) {
+                    final isP = e.endorsementType.toLowerCase() == 'proposer';
+                    final idx = isP ? ++pCount : ++sCount;
+                    return _buildEndorsementCard(e, idx, isDark);
+                  });
+                }(),
               ],
             ),
     );
   }
 
-  Widget _buildEndorsementCard(CandidateEndorsementModel e, bool isDark) {
+  Widget _buildEndorsementCard(CandidateEndorsementModel e, int index, bool isDark) {
     final isProposer = e.endorsementType.toLowerCase() == 'proposer';
     final primaryColor = isProposer ? const Color(0xFF2563EB) : const Color(0xFF059669);
-    final roleTitle = isProposer ? 'PROPOSER / प्रस्तावक (Endorser 1)' : 'SUPPORTER / समर्थक (Endorser 2)';
+    final roleTitle = isProposer ? 'PROPOSER / प्रस्तावक #$index' : 'SUPPORTER / समर्थक #$index';
     final roleIcon = isProposer ? Icons.how_to_reg_rounded : Icons.verified_user_rounded;
 
     return Container(

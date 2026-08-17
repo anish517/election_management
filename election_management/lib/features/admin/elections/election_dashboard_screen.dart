@@ -261,159 +261,172 @@ class _ElectionDashboardScreenState extends ConsumerState<ElectionDashboardScree
     bool isCollapsed = false,
     bool isDrawer = false,
   }) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-      children: [
-        if (isDrawer) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
-            child: Column(
+    return ClipRect(
+      child: ListView(
+        padding: EdgeInsets.symmetric(vertical: 16, horizontal: isCollapsed ? 4 : 8),
+        children: [
+          if (isDrawer) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.how_to_vote_rounded, color: AppColors.primaryLight, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Election Control',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(height: 1),
+                ],
+              ),
+            ),
+          ],
+
+          ..._navItems.map((group) {
+            final groupTitle = group['group'] as String;
+            final items = group['items'] as List<Map<String, dynamic>>;
+
+            return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.how_to_vote_rounded, color: AppColors.primaryLight, size: 22),
-                    ),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        'Election Control',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                if (!isCollapsed)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 16, 14, 6),
+                    child: Text(
+                      groupTitle,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.1,
+                        color: isDark ? Colors.white38 : Colors.grey.shade500,
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const Divider(height: 1),
-              ],
-            ),
-          ),
-        ],
-
-        ..._navItems.map((group) {
-          final groupTitle = group['group'] as String;
-          final items = group['items'] as List<Map<String, dynamic>>;
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (!isCollapsed)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 16, 14, 6),
-                  child: Text(
-                    groupTitle,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.1,
-                      color: isDark ? Colors.white38 : Colors.grey.shade500,
-                    ),
+                  )
+                else
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 6),
+                    child: Divider(height: 1),
                   ),
-                )
-              else
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 6),
-                  child: Divider(height: 1),
-                ),
-              ...items.map((item) {
-                final idx = item['index'] as int;
-                final title = item['title'] as String;
-                final subtitle = item['subtitle'] as String;
-                final icon = item['icon'] as IconData;
-                final isSelected = _selectedIndex == idx;
+                ...items.map((item) {
+                  final idx = item['index'] as int;
+                  final title = item['title'] as String;
+                  final subtitle = item['subtitle'] as String;
+                  final icon = item['icon'] as IconData;
+                  final isSelected = _selectedIndex == idx;
 
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Tooltip(
-                    message: isCollapsed ? '$title ($subtitle)' : '',
-                    child: InkWell(
-                      onTap: () {
-                        setState(() => _selectedIndex = idx);
-                        if (isDrawer) Navigator.of(context).pop();
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: isCollapsed ? 12 : 14,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.primary.withValues(alpha: 0.12)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: isSelected
-                                ? AppColors.primary.withValues(alpha: 0.3)
-                                : Colors.transparent,
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Tooltip(
+                      message: isCollapsed ? '$title ($subtitle)' : '',
+                      child: InkWell(
+                        onTap: () {
+                          setState(() => _selectedIndex = idx);
+                          if (isDrawer) Navigator.of(context).pop();
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isCollapsed ? 8 : 14,
+                            vertical: 10,
                           ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: isCollapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
-                          children: [
-                            Icon(
-                              icon,
-                              size: 20,
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppColors.primary.withValues(alpha: 0.12)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
                               color: isSelected
-                                  ? AppColors.primaryLight
-                                  : (isDark ? Colors.white70 : Colors.grey.shade700),
+                                  ? AppColors.primary.withValues(alpha: 0.3)
+                                  : Colors.transparent,
                             ),
-                            if (!isCollapsed) ...[
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
+                          ),
+                          child: isCollapsed
+                              ? Center(
+                                  child: Icon(
+                                    icon,
+                                    size: 20,
+                                    color: isSelected
+                                        ? AppColors.primaryLight
+                                        : (isDark ? Colors.white70 : Colors.grey.shade700),
+                                  ),
+                                )
+                              : Row(
                                   children: [
-                                    Text(
-                                      title,
-                                      style: TextStyle(
-                                        color: isSelected
-                                            ? AppColors.primaryLight
-                                            : (isDark ? Colors.white : Colors.black87),
-                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                        fontSize: 13,
+                                    Icon(
+                                      icon,
+                                      size: 20,
+                                      color: isSelected
+                                          ? AppColors.primaryLight
+                                          : (isDark ? Colors.white70 : Colors.grey.shade700),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            title,
+                                            style: TextStyle(
+                                              color: isSelected
+                                                  ? AppColors.primaryLight
+                                                  : (isDark ? Colors.white : Colors.black87),
+                                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                                              fontSize: 13,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          Text(
+                                            subtitle,
+                                            style: TextStyle(
+                                              color: isSelected
+                                                  ? AppColors.primaryLight.withValues(alpha: 0.8)
+                                                  : (isDark ? Colors.white38 : Colors.grey.shade500),
+                                              fontSize: 10,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    Text(
-                                      subtitle,
-                                      style: TextStyle(
-                                        color: isSelected
-                                            ? AppColors.primaryLight.withValues(alpha: 0.8)
-                                            : (isDark ? Colors.white38 : Colors.grey.shade500),
-                                        fontSize: 10,
+                                    if (isSelected)
+                                      Container(
+                                        width: 6,
+                                        height: 6,
+                                        decoration: const BoxDecoration(
+                                          color: AppColors.primaryLight,
+                                          shape: BoxShape.circle,
+                                        ),
                                       ),
-                                    ),
                                   ],
                                 ),
-                              ),
-                              if (isSelected)
-                                Container(
-                                  width: 6,
-                                  height: 6,
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.primaryLight,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                            ],
-                          ],
                         ),
                       ),
                     ),
-                  ),
-                );
-              }),
-            ],
-          );
-        }),
-      ],
+                  );
+                }),
+              ],
+            );
+          }),
+        ],
+      ),
     );
   }
 

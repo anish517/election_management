@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 import 'package:nepali_date_picker/nepali_date_picker.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_constants.dart';
@@ -825,12 +826,17 @@ class _EmailScreenState extends ConsumerState<EmailScreen> {
         backgroundColor: isDark ? AppColors.background : const Color(0xFFF8FAFC),
         appBar: AppBar(
           title: const Text('Email Broadcast Dispatcher (इमेल प्रसारण)'),
-          leading: canPop
-              ? IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                  onPressed: () => Navigator.pop(context),
-                )
-              : null,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            tooltip: 'Back',
+            onPressed: () {
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              } else {
+                context.go('/dashboard');
+              }
+            },
+          ),
         ),
         body: bodyContent,
       );

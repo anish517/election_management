@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
@@ -565,12 +566,17 @@ class _ElectionCommitteeScreenState extends ConsumerState<ElectionCommitteeScree
         backgroundColor: isDark ? AppColors.background : const Color(0xFFF8FAFC),
         appBar: AppBar(
           title: const Text('Election Committee (निर्वाचन समिति)'),
-          leading: canPop
-              ? IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                  onPressed: () => Navigator.pop(context),
-                )
-              : null,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            tooltip: 'Back',
+            onPressed: () {
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              } else {
+                context.go('/dashboard');
+              }
+            },
+          ),
         ),
         body: bodyWidget,
       );

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -159,6 +158,7 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
     showDialog(
       context: context,
       builder: (context) => _NoticeLetterheadDialog(
+        electionId: widget.electionId,
         notice: notice,
         electionData: _electionData,
         committees: _committees,
@@ -909,7 +909,6 @@ class _NoticeDialogState extends ConsumerState<_NoticeDialog> {
                       const Divider(height: 1),
                       InkWell(
                         onTap: () => setState(() => _stampMode = 'manual'),
-                        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           child: Row(
@@ -927,6 +926,34 @@ class _NoticeDialogState extends ConsumerState<_NoticeDialog> {
                                     Text('Manual Wet Stamp (म्यानुअल मसी छाप)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
                                     SizedBox(height: 2),
                                     Text('Leaves designated blank space for physical ink wet stamping after printing.', style: TextStyle(fontSize: 11.5)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      InkWell(
+                        onTap: () => setState(() => _stampMode = 'both'),
+                        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _stampMode == 'both' ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+                                color: _stampMode == 'both' ? const Color(0xFF4F46E5) : Colors.grey,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Both Digital & Manual (डिजिटल + म्यानुअल दुवै)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                                    SizedBox(height: 2),
+                                    Text('Displays both the official digital committee seal AND the physical ink wet stamp space side-by-side.', style: TextStyle(fontSize: 11.5)),
                                   ],
                                 ),
                               ),
@@ -980,11 +1007,13 @@ class _NoticeDialogState extends ConsumerState<_NoticeDialog> {
 // OFFICIAL NOTICE LETTERHEAD & PRINT GENERATOR
 // ─────────────────────────────────────────────────────────────────────────────
 class _NoticeLetterheadDialog extends StatefulWidget {
+  final String electionId;
   final Map<String, dynamic> notice;
   final Map<String, dynamic>? electionData;
   final List<dynamic> committees;
 
   const _NoticeLetterheadDialog({
+    required this.electionId,
     required this.notice,
     this.electionData,
     required this.committees,
@@ -1040,295 +1069,37 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
   }
 
   Future<void> _printNotice() async {
-    final notice = widget.notice;
-    final election = widget.electionData;
-
-    final orgName = notice['org_name'] ?? election?['organization']?['name'] ?? 'Nepal Association / संस्था';
-    final orgAddress = notice['org_address'] ?? election?['organization']?['address'] ?? 'Kathmandu, Nepal';
-    final orgPhone = notice['org_phone'] ?? election?['organization']?['phone'] ?? election?['contact_number'] ?? '+977-1-4XXXXXX';
-    final orgEmail = notice['org_email'] ?? election?['organization']?['email'] ?? 'election@org.np';
-    final rawLogo = notice['org_logo_url'] ?? election?['organization']?['logo_url'] ?? election?['logo_url'] ?? '';
-    final orgLogo = ApiConstants.getFullImageUrl(rawLogo.toString()) ?? '';
-    final rawStamp = notice['election_stamp_image'] ?? election?['stamp_image'];
-    final stampImageUrl = ApiConstants.getFullImageUrl(rawStamp?.toString());
-    final electionYear = _extractElectionYear();
-    final noticeNumber = notice['notice_number'] ?? '$electionYear/01';
-    final dateIso = notice['created_at'];
-
-    List<dynamic> signatories = [];
-    if (notice['signatories'] is List && (notice['signatories'] as List).isNotEmpty) {
-      signatories = notice['signatories'];
-    } else {
-      signatories = widget.committees.where((c) => c['include_in_letterhead'] != false).toList();
-    }
-
-    final signatoriesHtml = signatories.map((s) {
-      final name = s['name'] ?? s['chair_full_name'] ?? s['committee_name'] ?? 'Election Officer';
-      final designation = s['designation'] ?? s['chair_designation'] ?? 'Committee Member';
-      final rawSig = s['signature_url'] ?? s['chair_signature'];
-      final fullSigUrl = ApiConstants.getFullImageUrl(rawSig?.toString());
-
-      final sigContent = (fullSigUrl != null && fullSigUrl.isNotEmpty)
-          ? '<img src="$fullSigUrl" class="sig-img" alt="Signature">'
-          : '<div style="height:36px;"></div>';
-
-      return '''
-        <div class="signatory-card">
-          $sigContent
-          <div class="sig-line"></div>
-          <div class="sig-name">( $name )</div>
-          <div class="sig-desig">$designation</div>
-          <div class="sig-comm">निर्वाचन समिति</div>
-        </div>
-      ''';
-    }).join('\n');
-
-    final stampHtml = _currentStampMode == 'digital'
-        ? (stampImageUrl != null && stampImageUrl.isNotEmpty
-            ? '<img src="$stampImageUrl" style="width:110px; height:110px; border-radius:50%; border:2px solid #DC2626; object-fit:contain;" alt="Stamp">'
-            : '<div class="stamp-digital"><div>★ निर्वाचन समिति ★</div><div style="font-size:18px; margin:2px 0;">🛡️</div><div>आधिकारिक छाप</div><div style="font-size:7px;">OFFICIAL SEAL</div></div>')
-        : '<div class="stamp-manual"><div>[ आधिकारिक छाप ]</div><div style="font-size:7.5px;">OFFICIAL SEAL</div><div style="font-size:7px; color:#94A3B8;">(स्थान)</div></div>';
-
-    final noticeContent = (notice['content'] ?? '').toString().replaceAll('\n', '<br>');
-
-    final html = '''
-<!DOCTYPE html>
-<html lang="ne">
-<head>
-  <meta charset="UTF-8">
-  <title>${notice['title'] ?? 'Official Election Notice'}</title>
-  <style>
-    @page {
-      size: A4 portrait;
-      margin: 15mm 15mm 15mm 15mm;
-    }
-    @media print {
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    }
-    body {
-      font-family: 'Segoe UI', 'Noto Sans Devanagari', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
-      color: #1E293B;
-      background: #FFFFFF;
-      margin: 0;
-      padding: 24px;
-    }
-    .letterhead {
-      max-width: 800px;
-      margin: 0 auto;
-    }
-    .header-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 12px;
-    }
-    .header-logo {
-      width: 80px;
-      height: 80px;
-      object-fit: contain;
-      border-radius: 50%;
-    }
-    .org-title {
-      font-size: 21px;
-      font-weight: 900;
-      color: #1E3A8A;
-      text-align: center;
-      margin: 0 0 4px 0;
-      letter-spacing: 0.3px;
-    }
-    .committee-title {
-      font-size: 15px;
-      font-weight: bold;
-      color: #DC2626;
-      text-align: center;
-      margin: 0 0 2px 0;
-    }
-    .committee-sub {
-      font-size: 11px;
-      font-style: italic;
-      color: #475569;
-      text-align: center;
-      margin: 0 0 4px 0;
-    }
-    .org-meta {
-      font-size: 11px;
-      color: #334155;
-      text-align: center;
-      margin: 2px 0;
-    }
-    .divider-thick {
-      height: 3px;
-      background: #1E3A8A;
-      margin-top: 10px;
-      margin-bottom: 2px;
-    }
-    .divider-thin {
-      height: 1.5px;
-      background: #DC2626;
-      margin-bottom: 16px;
-    }
-    .meta-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 11.5px;
-      font-weight: 600;
-      margin-bottom: 24px;
-    }
-    .subject-box {
-      text-align: center;
-      font-size: 15.5px;
-      font-weight: 900;
-      color: #0F172A;
-      text-decoration: underline;
-      text-underline-offset: 6px;
-      margin: 24px 0 20px 0;
-    }
-    .content-body {
-      font-size: 13.5px;
-      line-height: 1.8;
-      text-align: justify;
-      color: #1E293B;
-      min-height: 240px;
-    }
-    .footer-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      margin-top: 40px;
-      page-break-inside: avoid;
-    }
-    .stamp-digital {
-      width: 110px;
-      height: 110px;
-      border: 2.5px solid #DC2626;
-      border-radius: 50%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: #DC2626;
-      text-align: center;
-      font-size: 8.5px;
-      font-weight: bold;
-    }
-    .stamp-manual {
-      width: 115px;
-      height: 115px;
-      border: 1.5px dashed #94A3B8;
-      border-radius: 50%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: #64748B;
-      text-align: center;
-      font-size: 8.5px;
-    }
-    .signatories-block {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 24px;
-      justify-content: flex-end;
-    }
-    .signatory-card {
-      text-align: center;
-      width: 140px;
-    }
-    .sig-img {
-      height: 48px;
-      max-width: 130px;
-      object-fit: contain;
-      margin-bottom: 2px;
-    }
-    .sig-line {
-      width: 140px;
-      border-bottom: 1.5px solid #1E293B;
-      margin: 0 auto 4px auto;
-    }
-    .sig-name {
-      font-weight: bold;
-      font-size: 11.5px;
-    }
-    .sig-desig {
-      font-size: 10.5px;
-      font-weight: 600;
-      color: #1E3A8A;
-    }
-    .sig-comm {
-      font-size: 9.5px;
-      color: #64748B;
-    }
-  </style>
-</head>
-<body>
-  <div class="letterhead">
-    <table class="header-table">
-      <tr>
-        <td style="width: 80px; vertical-align: top;">
-          ${orgLogo.isNotEmpty ? '<img src="$orgLogo" class="header-logo" alt="Logo">' : '<div class="header-logo" style="background:#EEF2FF; border:1px solid #C7D2FE; display:flex; align-items:center; justify-content:center; font-size:28px;">🏛️</div>'}
-        </td>
-        <td style="text-align: center;">
-          <div class="org-title">$orgName</div>
-          <div class="committee-title">केन्द्रीय निर्वाचन समिति — $electionYear</div>
-          <div class="committee-sub">(Central Election Committee, $electionYear BS)</div>
-          <div class="org-meta">$orgAddress</div>
-          <div class="org-meta">फोन: $orgPhone | इमेल: $orgEmail</div>
-        </td>
-        <td style="width: 80px; text-align: right; vertical-align: top;">
-          <div style="width: 72px; height: 72px; border-radius: 50%; background: #EEF2FF; border: 1px solid #4F46E5; display: inline-flex; align-items: center; justify-content: center; color: #4F46E5; font-size: 24px;">⚖️</div>
-        </td>
-      </tr>
-    </table>
-
-    <div class="divider-thick"></div>
-    <div class="divider-thin"></div>
-
-    <div class="meta-row">
-      <div>
-        <div>पत्र संख्या (Dispatch No.): $electionYear/${(int.tryParse(electionYear) ?? 2083) + 1}</div>
-        <div>चलानी नं. (Ref No.): $noticeNumber</div>
-      </div>
-      <div style="text-align: right;">
-        <div>मिति (Date): ${_formatNepaliDate(dateIso)}</div>
-        <div style="font-size: 10.5px; color: #64748B;">${_formatEnglishDate(dateIso)}</div>
-      </div>
-    </div>
-
-    <div class="subject-box">
-      विषय: ${notice['title'] ?? 'सूचना'}
-    </div>
-
-    <div class="content-body">
-      $noticeContent
-    </div>
-
-    <div class="footer-row">
-      <div>
-        $stampHtml
-      </div>
-
-      <div class="signatories-block">
-        $signatoriesHtml
-      </div>
-    </div>
-
-    <div style="text-align: center; font-size: 9.5px; color: #94A3B8; font-style: italic; margin-top: 36px;">
-      यस आधिकारिक सूचना निर्वाचन समितिको निर्णय अनुसार प्रमाणित गरिएको छ।
-    </div>
-  </div>
-
-  <script>
-    window.onload = function() {
-      setTimeout(function() {
-        window.print();
-      }, 400);
-    };
-  </script>
-</body>
-</html>
-''';
-
-    final uri = Uri.dataFromString(html, mimeType: 'text/html', encoding: utf8);
+    final noticeId = widget.notice['id']?.toString() ?? '';
+    final base = ApiConstants.baseUrl.startsWith('http')
+        ? ApiConstants.baseUrl
+        : 'http://localhost:8000${ApiConstants.baseUrl}';
+    final url = '$base/elections/${widget.electionId}/notices/$noticeId/print_letterhead/?stamp_mode=$_currentStampMode';
+    final uri = Uri.parse(url);
     await launchUrl(uri, webOnlyWindowName: '_blank');
+  }
+
+  void _cycleStampMode() {
+    setState(() {
+      if (_currentStampMode == 'digital') {
+        _currentStampMode = 'manual';
+      } else if (_currentStampMode == 'manual') {
+        _currentStampMode = 'both';
+      } else {
+        _currentStampMode = 'digital';
+      }
+    });
+  }
+
+  String _stampModeLabel() {
+    if (_currentStampMode == 'digital') return 'Mode: Digital Stamp (डिजिटल)';
+    if (_currentStampMode == 'manual') return 'Mode: Manual Stamp (म्यानुअल)';
+    return 'Mode: Both (डिजिटल + म्यानुअल)';
+  }
+
+  IconData _stampModeIcon() {
+    if (_currentStampMode == 'digital') return Icons.verified_rounded;
+    if (_currentStampMode == 'manual') return Icons.crop_free_rounded;
+    return Icons.all_inclusive_rounded;
   }
 
   void _copyNoticeText() {
@@ -1402,18 +1173,15 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
                   ),
                   Row(
                     children: [
-                      // Toggle Stamp Mode live in preview
+                      // Toggle Stamp Mode live in preview (Digital -> Manual -> Both)
                       OutlinedButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            _currentStampMode = _currentStampMode == 'digital' ? 'manual' : 'digital';
-                          });
-                        },
+                        onPressed: _cycleStampMode,
                         icon: Icon(
-                          _currentStampMode == 'digital' ? Icons.brush_outlined : Icons.circle_outlined,
+                          _stampModeIcon(),
                           size: 15,
+                          color: _currentStampMode == 'both' ? const Color(0xFF7C3AED) : const Color(0xFF4F46E5),
                         ),
-                        label: Text(_currentStampMode == 'digital' ? 'Mode: Digital Stamp' : 'Mode: Manual Stamp'),
+                        label: Text(_stampModeLabel()),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           textStyle: const TextStyle(fontSize: 12),
@@ -1656,9 +1424,15 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
                             children: [
                               // Left: STAMP AREA
                               _buildStampArea(stampImageUrl),
+                              const SizedBox(width: 16),
 
                               // Right: SIGNATORIES BLOCK (Only include_in_letterhead == true)
-                              _buildSignatoriesBlock(signatories, orgName),
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.bottomRight,
+                                  child: _buildSignatoriesBlock(signatories, orgName),
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 20),
@@ -1692,78 +1466,95 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
     );
   }
 
-  // Stamp Section (Digital Stamp vs Manual Wet Stamp)
+  // Stamp Section (Digital Stamp vs Manual Wet Stamp vs Both)
   Widget _buildStampArea(String? stampImageUrl) {
-    if (_currentStampMode == 'digital') {
-      if (stampImageUrl != null && stampImageUrl.isNotEmpty) {
-        return Container(
-          width: 110,
-          height: 110,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: const Color(0xFFDC2626).withValues(alpha: 0.85), width: 2),
-          ),
-          child: ClipOval(
-            child: Image.network(
-              stampImageUrl,
-              fit: BoxFit.contain,
-              errorBuilder: (_, _, _) => _defaultDigitalSeal(),
-            ),
-          ),
-        );
-      }
-      return _defaultDigitalSeal();
+    if (_currentStampMode == 'both') {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          _buildDigitalSeal(stampImageUrl),
+          const SizedBox(width: 12),
+          _buildManualSeal(),
+        ],
+      );
+    } else if (_currentStampMode == 'manual') {
+      return _buildManualSeal();
     } else {
-      // Manual Wet Stamp blank box
+      return _buildDigitalSeal(stampImageUrl);
+    }
+  }
+
+  Widget _buildDigitalSeal(String? stampImageUrl) {
+    if (stampImageUrl != null && stampImageUrl.isNotEmpty) {
       return Container(
-        width: 115,
-        height: 115,
+        width: 105,
+        height: 105,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(
-            color: Colors.grey.shade400,
-            width: 1.5,
-          ),
+          border: Border.all(color: const Color(0xFFDC2626).withValues(alpha: 0.85), width: 2),
         ),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.crop_free_rounded, size: 20, color: Colors.grey.shade400),
-                const SizedBox(height: 2),
-                Text(
-                  '[ आधिकारिक छाप ]\nOFFICIAL SEAL',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 8.5,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade500,
-                  ),
-                ),
-                Text(
-                  '(स्थान)',
-                  style: TextStyle(fontSize: 7.5, color: Colors.grey.shade400),
-                ),
-              ],
-            ),
+        child: ClipOval(
+          child: Image.network(
+            stampImageUrl,
+            fit: BoxFit.contain,
+            errorBuilder: (_, _, _) => _defaultDigitalSeal(),
           ),
         ),
       );
     }
+    return _defaultDigitalSeal();
+  }
+
+  Widget _buildManualSeal() {
+    return Container(
+      width: 105,
+      height: 105,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: Colors.grey.shade400,
+          width: 1.5,
+        ),
+      ),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(6.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.crop_free_rounded, size: 18, color: Colors.grey.shade400),
+              const SizedBox(height: 2),
+              Text(
+                '[ आधिकारिक छाप ]\nOFFICIAL SEAL',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 8.0,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade500,
+                ),
+              ),
+              Text(
+                '(स्थान)',
+                style: TextStyle(fontSize: 7.0, color: Colors.grey.shade400),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _defaultDigitalSeal() {
     return Container(
-      width: 110,
-      height: 110,
+      width: 105,
+      height: 105,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFDC2626).withValues(alpha: 0.85), width: 2.5),
+        border: Border.all(color: const Color(0xFFDC2626).withValues(alpha: 0.85), width: 2.2),
       ),
       child: Container(
-        margin: const EdgeInsets.all(3.5),
+        margin: const EdgeInsets.all(3.0),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           border: Border.all(color: const Color(0xFFDC2626).withValues(alpha: 0.65), width: 1.2),
@@ -1771,10 +1562,10 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('★ निर्वाचन समिति ★', style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
-            const Icon(Icons.verified_rounded, size: 24, color: Color(0xFFDC2626)),
-            const Text('आधिकारिक छाप', style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
-            Text('OFFICIAL SEAL', style: TextStyle(fontSize: 7, color: const Color(0xFFDC2626).withValues(alpha: 0.8))),
+            const Text('★ निर्वाचन समिति ★', style: TextStyle(fontSize: 8.0, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+            const Icon(Icons.verified_rounded, size: 22, color: Color(0xFFDC2626)),
+            const Text('आधिकारिक छाप', style: TextStyle(fontSize: 8.0, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+            Text('OFFICIAL SEAL', style: TextStyle(fontSize: 6.5, color: const Color(0xFFDC2626).withValues(alpha: 0.8))),
           ],
         ),
       ),
@@ -1800,9 +1591,10 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
     }
 
     return Wrap(
-      spacing: 24,
-      runSpacing: 20,
+      spacing: 16,
+      runSpacing: 16,
       alignment: WrapAlignment.end,
+      crossAxisAlignment: WrapCrossAlignment.end,
       children: signatories.map((s) {
         final name = s['name'] ?? s['chair_full_name'] ?? s['committee_name'] ?? 'Election Officer';
         final designation = s['designation'] ?? s['chair_designation'] ?? 'Committee Member';

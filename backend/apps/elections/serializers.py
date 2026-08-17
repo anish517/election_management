@@ -98,6 +98,7 @@ class ElectionSerializer(serializers.ModelSerializer):
             'id', 'title', 'description', 'guidelines',
             # Branding
             'prefix', 'logo_url', 'contact_number', 'primary_color', 'secondary_color',
+            'stamp_image', 'stamp_mode',
             # State
             'state',
             # Voter roll
@@ -139,11 +140,97 @@ class ElectionStateTransitionSerializer(serializers.ModelSerializer):
         model = ElectionStateTransition
         fields = '__all__'
 
+
 class ElectionNoticeSerializer(serializers.ModelSerializer):
+    election_title = serializers.CharField(source='election.title', read_only=True)
+    org_name = serializers.CharField(source='election.organization.name', read_only=True)
+    org_address = serializers.CharField(source='election.organization.address', read_only=True)
+    org_phone = serializers.CharField(source='election.organization.phone', read_only=True)
+    org_email = serializers.CharField(source='election.organization.email', read_only=True)
+    org_logo_url = serializers.CharField(source='election.organization.logo_url', read_only=True)
+    election_logo_url = serializers.CharField(source='election.logo_url', read_only=True)
+    election_stamp_image = serializers.SerializerMethodField()
+    election_stamp_mode = serializers.CharField(source='election.stamp_mode', read_only=True)
+    election_year = serializers.SerializerMethodField()
+    signatories = serializers.SerializerMethodField()
+
     class Meta:
         model = ElectionNotice
-        fields = ['id', 'election', 'title', 'content', 'is_published', 'created_at']
-        read_only_fields = ['id', 'election', 'created_at']
+        fields = [
+            'id', 'election', 'title', 'content', 'is_published',
+            'notice_number', 'stamp_mode',
+            # Letterhead fields
+            'election_title', 'org_name', 'org_address', 'org_phone', 'org_email',
+            'org_logo_url', 'election_logo_url', 'election_stamp_image', 'election_stamp_mode',
+            'election_year', 'signatories',
+            'created_at'
+        ]
+        read_only_fields = [
+            'id', 'election', 'election_title', 'org_name', 'org_address', 'org_phone',
+            'org_email', 'org_logo_url', 'election_logo_url', 'election_stamp_image',
+            'election_stamp_mode', 'election_year', 'signatories', 'created_at'
+        ]
+
+    def get_election_stamp_image(self, obj):
+        if obj.election and obj.election.stamp_image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.election.stamp_image.url)
+            return obj.election.stamp_image.url
+        return ''
+
+    def get_election_year(self, obj):
+        import re
+        if obj.election:
+            # Check title for a 4-digit year (e.g., 2081, 2082, 2083, 2026)
+            match = re.search(r'\b(20[0-9]{2})\b', obj.election.title)
+            if match:
+                return match.group(1)
+            # Fallback to election created_at or voting_start_at converted to BS
+            try:
+                import nepali_datetime
+                dt = obj.election.voting_start_at or obj.election.created_at
+                if dt:
+                    ndt = nepali_datetime.date.from_datetime_date(dt.date())
+                    return str(ndt.year)
+            except Exception:
+                pass
+            if obj.election.created_at:
+                return str(obj.election.created_at.year)
+        return '2083'
+
+    def get_signatories(self, obj):
+        if not obj.election:
+            return []
+        request = self.context.get('request')
+        # Return committee members who have include_in_letterhead=True
+        signatories = []
+        for c in obj.election.committees.filter(include_in_letterhead=True):
+            full_name = ''
+            if c.chair_user and hasattr(c.chair_user, 'memberships') and c.chair_user.memberships.exists():
+                full_name = c.chair_user.memberships.first().full_name
+            elif c.committee_name:
+                full_name = c.committee_name
+            else:
+                full_name = c.chair_email
+
+            sig_url = None
+            if c.chair_signature:
+                if request:
+                    sig_url = request.build_absolute_uri(c.chair_signature.url)
+                else:
+                    sig_url = c.chair_signature.url
+
+            signatories.append({
+                'id': str(c.id),
+                'name': full_name,
+                'designation': c.chair_designation or 'Committee Member',
+                'email': c.chair_email,
+                'contact': c.chair_contact,
+                'role': c.role,
+                'signature_url': sig_url,
+            })
+        return signatories
 
 
 class ElectionCommitteeSerializer(serializers.ModelSerializer):
@@ -156,7 +243,8 @@ class ElectionCommitteeSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'election', 'committee_type', 'committee_name',
             'chair_designation', 'chair_contact', 'chair_email',
-            'chair_signature', 'chair_user', 'chair_user_email',
+            'chair_signature', 'include_in_letterhead',
+            'chair_user', 'chair_user_email',
             'chair_full_name', 'chair_member_code',
             'role', 'created_at'
         ]

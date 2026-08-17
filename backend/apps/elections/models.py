@@ -58,6 +58,11 @@ class Election(TimestampedModel):
     contact_number = models.CharField(max_length=30, blank=True, default='')
     primary_color = models.CharField(max_length=7, blank=True, default='#6C5CE7')
     secondary_color = models.CharField(max_length=7, blank=True, default='#A29BFE')
+    stamp_image = models.ImageField(upload_to='election_stamps/', null=True, blank=True)
+    stamp_mode = models.CharField(
+        max_length=20, default='digital',
+        choices=[('digital', 'Digital Stamp'), ('manual', 'Manual Wet Stamp')]
+    )
     
     # Guidelines
     guidelines = models.TextField(blank=True, default='')
@@ -304,6 +309,11 @@ class ElectionNotice(TimestampedModel):
     title = models.CharField(max_length=255)
     content = models.TextField()
     is_published = models.BooleanField(default=True)
+    notice_number = models.CharField(max_length=100, blank=True, default='')
+    stamp_mode = models.CharField(
+        max_length=20, default='digital',
+        choices=[('digital', 'Digital Stamp'), ('manual', 'Manual Wet Stamp')]
+    )
 
     class Meta:
         db_table = 'election_notices'
@@ -339,6 +349,10 @@ class ElectionCommittee(TimestampedModel):
     chair_email = models.EmailField()
     chair_signature = models.ImageField(
         upload_to='committee_signatures/', null=True, blank=True
+    )
+    include_in_letterhead = models.BooleanField(
+        default=True,
+        help_text='Whether this committee member appears in the official letterhead signature block.'
     )
     # Populated after the chair user account is created/looked up
     chair_user = models.ForeignKey(

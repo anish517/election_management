@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -449,6 +449,11 @@ class ElectionViewSet(viewsets.ModelViewSet):
         chair_email = data.get('chair_email', '').strip().lower()
         password = data.get('password', '')
         chair_signature = request.FILES.get('chair_signature')
+        include_in_letterhead_raw = data.get('include_in_letterhead', True)
+        if isinstance(include_in_letterhead_raw, str):
+            include_in_letterhead = include_in_letterhead_raw.lower() in ['true', '1', 'yes']
+        else:
+            include_in_letterhead = bool(include_in_letterhead_raw)
 
         # Role for the committee member — defaults to election_officer
         VALID_ROLES = ['election_officer', 'observer', 'auditor']
@@ -538,6 +543,7 @@ class ElectionViewSet(viewsets.ModelViewSet):
             chair_contact=chair_contact,
             chair_email=chair_email,
             chair_signature=chair_signature,
+            include_in_letterhead=include_in_letterhead,
             chair_user=chair_user,
             role=assigned_role,
             created_by=request.user,
@@ -556,6 +562,7 @@ class ElectionViewSet(viewsets.ModelViewSet):
             'committee_name': committee_name,
             'chair_email': chair_email,
             'role': assigned_role,
+            'include_in_letterhead': include_in_letterhead,
         })
 
         serializer = ElectionCommitteeSerializer(committee)
@@ -576,6 +583,12 @@ class ElectionViewSet(viewsets.ModelViewSet):
         for field in updatable:
             if field in request.data:
                 setattr(committee, field, request.data[field])
+
+        if 'include_in_letterhead' in request.data:
+            val = request.data['include_in_letterhead']
+            if isinstance(val, str):
+                val = val.lower() in ['true', '1', 'yes']
+            committee.include_in_letterhead = bool(val)
 
         if 'chair_signature' in request.FILES:
             committee.chair_signature = request.FILES['chair_signature']
@@ -844,8 +857,10 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
     serializer_class = ElectionNoticeSerializer
     
     def get_permissions(self):
+        if self.action == 'print_letterhead':
+            return [permissions.AllowAny()]
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsOrgAdmin()]
+            return [IsElectionOfficer()]
         return [IsObserver()]
 
     def get_queryset(self):
@@ -853,8 +868,15 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
             election__organization=self.request.user.organization,
             election_id=self.kwargs['election_pk']
         )
-        if not self.request.user.is_org_admin:
-            qs = qs.filter(is_published=True)
+        if not (self.request.user.is_org_admin or self.request.user.is_superuser):
+            from apps.elections.models import ElectionRoleAssignment
+            is_officer = ElectionRoleAssignment.objects.filter(
+                user=self.request.user,
+                election_id=self.kwargs['election_pk'],
+                role='election_officer'
+            ).exists()
+            if not is_officer:
+                qs = qs.filter(is_published=True)
         return qs.order_by('-created_at')
 
     def perform_create(self, serializer):
@@ -863,6 +885,358 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
             organization=self.request.user.organization
         )
         serializer.save(election=election)
+
+    @action(detail=True, methods=['get'], permission_classes=[permissions.AllowAny])
+    def print_letterhead(self, request, election_pk=None, pk=None):
+        from django.shortcuts import get_object_or_404
+        from django.http import HttpResponse
+
+        notice = get_object_or_404(ElectionNotice, pk=pk, election_id=election_pk)
+        election = notice.election
+        org = election.organization if election else None
+
+        serializer = ElectionNoticeSerializer(notice, context={'request': request})
+        data = serializer.data
+
+        org_name = data.get('org_name') or (org.name if org else 'Nepal Association / संस्था')
+        org_address = data.get('org_address') or (org.address if org else 'Kathmandu, Nepal')
+        org_phone = data.get('org_phone') or (org.phone if org else '+977-1-4XXXXXX')
+        org_email = data.get('org_email') or (org.email if org else 'election@org.np')
+        org_logo = data.get('org_logo_url') or ''
+        election_year = data.get('election_year') or '2083'
+        notice_number = data.get('notice_number') or f'{election_year}/01'
+        stamp_mode = request.GET.get('stamp_mode') or notice.stamp_mode or (election.stamp_mode if election else 'digital') or 'digital'
+        stamp_image = data.get('election_stamp_image') or ''
+        signatories = data.get('signatories') or []
+
+        # Format Nepali date
+        nepali_date = ''
+        english_date = ''
+        if notice.created_at:
+            try:
+                import nepali_datetime
+                ndt = nepali_datetime.date.from_datetime_date(notice.created_at.date())
+                nepali_date = f"{ndt.year}/{ndt.month:02d}/{ndt.day:02d} ({ndt.strftime('%K %N')})"
+                english_date = notice.created_at.strftime('%B %d, %Y')
+            except Exception:
+                nepali_date = str(notice.created_at.date())
+                english_date = notice.created_at.strftime('%B %d, %Y')
+
+        # Signatories HTML
+        signatories_html = ""
+        for s in signatories:
+            name = s.get('name') or 'Election Officer'
+            desig = s.get('designation') or 'Committee Member'
+            sig_url = s.get('signature_url') or ''
+
+            sig_content = f'<img src="{sig_url}" class="sig-img" alt="Signature">' if sig_url else '<div style="height:40px;"></div>'
+            signatories_html += f"""
+            <div class="signatory-card">
+              {sig_content}
+              <div class="sig-line"></div>
+              <div class="sig-name">( {name} )</div>
+              <div class="sig-desig">{desig}</div>
+              <div class="sig-comm">निर्वाचन समिति</div>
+            </div>
+            """
+
+        digital_seal_html = f'<img src="{stamp_image}" style="width:105px; height:105px; border-radius:50%; border:2px solid #DC2626; object-fit:contain;" alt="Official Stamp">' if stamp_image else '''
+        <div class="stamp-digital">
+          <div>★ निर्वाचन समिति ★</div>
+          <div style="font-size:18px; margin:2px 0;">🛡️</div>
+          <div>आधिकारिक छाप</div>
+          <div style="font-size:7px;">OFFICIAL SEAL</div>
+        </div>
+        '''
+
+        manual_seal_html = '''
+        <div class="stamp-manual">
+          <div>[ आधिकारिक छाप ]</div>
+          <div style="font-size:7.5px;">OFFICIAL SEAL</div>
+          <div style="font-size:7px; color:#94A3B8;">(स्थान)</div>
+        </div>
+        '''
+
+        if stamp_mode == 'both':
+            stamp_html = f'''
+            <div style="display: flex; align-items: center; gap: 14px;">
+              {digital_seal_html}
+              {manual_seal_html}
+            </div>
+            '''
+        elif stamp_mode == 'manual':
+            stamp_html = manual_seal_html
+        else:
+            stamp_html = digital_seal_html
+
+        notice_content = (notice.content or '').replace('\n', '<br>')
+        next_year = int(election_year) + 1 if election_year.isdigit() else 2084
+
+        logo_html = f'<img src="{org_logo}" class="header-logo" alt="Logo">' if org_logo else '<div class="header-logo" style="background:#EEF2FF; border:1px solid #C7D2FE; display:flex; align-items:center; justify-content:center; font-size:28px;">🏛️</div>'
+
+        html = f"""<!DOCTYPE html>
+<html lang="ne">
+<head>
+  <meta charset="UTF-8">
+  <title>{notice.title} - Official Election Notice Letterhead</title>
+  <style>
+    @page {{
+      size: A4 portrait;
+      margin: 15mm 15mm 15mm 15mm;
+    }}
+    @media print {{
+      body {{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
+      .no-print {{ display: none !important; }}
+    }}
+    body {{
+      font-family: 'Segoe UI', 'Noto Sans Devanagari', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+      color: #1E293B;
+      background: #F8FAFC;
+      margin: 0;
+      padding: 24px;
+    }}
+    .action-bar {{
+      max-width: 800px;
+      margin: 0 auto 16px auto;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }}
+    .btn {{
+      background: #4F46E5;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }}
+    .btn:hover {{ background: #4338CA; }}
+    .letterhead {{
+      max-width: 800px;
+      margin: 0 auto;
+      background: #FFFFFF;
+      padding: 40px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      border-radius: 4px;
+    }}
+    .header-table {{
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 12px;
+    }}
+    .header-logo {{
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      border-radius: 50%;
+    }}
+    .org-title {{
+      font-size: 21px;
+      font-weight: 900;
+      color: #1E3A8A;
+      text-align: center;
+      margin: 0 0 4px 0;
+      letter-spacing: 0.3px;
+    }}
+    .committee-title {{
+      font-size: 15px;
+      font-weight: bold;
+      color: #DC2626;
+      text-align: center;
+      margin: 0 0 2px 0;
+    }}
+    .committee-sub {{
+      font-size: 11px;
+      font-style: italic;
+      color: #475569;
+      text-align: center;
+      margin: 0 0 4px 0;
+    }}
+    .org-meta {{
+      font-size: 11px;
+      color: #334155;
+      text-align: center;
+      margin: 2px 0;
+    }}
+    .divider-thick {{
+      height: 3px;
+      background: #1E3A8A;
+      margin-top: 10px;
+      margin-bottom: 2px;
+    }}
+    .divider-thin {{
+      height: 1.5px;
+      background: #DC2626;
+      margin-bottom: 16px;
+    }}
+    .meta-row {{
+      display: flex;
+      justify-content: space-between;
+      font-size: 11.5px;
+      font-weight: 600;
+      margin-bottom: 24px;
+    }}
+    .subject-box {{
+      text-align: center;
+      font-size: 15.5px;
+      font-weight: 900;
+      color: #0F172A;
+      text-decoration: underline;
+      text-underline-offset: 6px;
+      margin: 24px 0 20px 0;
+    }}
+    .content-body {{
+      font-size: 13.5px;
+      line-height: 1.8;
+      text-align: justify;
+      color: #1E293B;
+      min-height: 240px;
+    }}
+    .footer-row {{
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: 40px;
+      page-break-inside: avoid;
+    }}
+    .stamp-digital {{
+      width: 110px;
+      height: 110px;
+      border: 2.5px solid #DC2626;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #DC2626;
+      text-align: center;
+      font-size: 8.5px;
+      font-weight: bold;
+    }}
+    .stamp-manual {{
+      width: 115px;
+      height: 115px;
+      border: 1.5px dashed #94A3B8;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #64748B;
+      text-align: center;
+      font-size: 8.5px;
+    }}
+    .signatories-block {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      justify-content: flex-end;
+    }}
+    .signatory-card {{
+      text-align: center;
+      width: 140px;
+    }}
+    .sig-img {{
+      height: 48px;
+      max-width: 130px;
+      object-fit: contain;
+      margin-bottom: 2px;
+    }}
+    .sig-line {{
+      width: 140px;
+      border-bottom: 1.5px solid #1E293B;
+      margin: 0 auto 4px auto;
+    }}
+    .sig-name {{
+      font-weight: bold;
+      font-size: 11.5px;
+    }}
+    .sig-desig {{
+      font-size: 10.5px;
+      font-weight: 600;
+      color: #1E3A8A;
+    }}
+    .sig-comm {{
+      font-size: 9.5px;
+      color: #64748B;
+    }}
+  </style>
+</head>
+<body>
+  <div class="action-bar no-print">
+    <button class="btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+  </div>
+  <div class="letterhead">
+    <table class="header-table">
+      <tr>
+        <td style="width: 80px; vertical-align: top;">
+          {logo_html}
+        </td>
+        <td style="text-align: center;">
+          <div class="org-title">{org_name}</div>
+          <div class="committee-title">केन्द्रीय निर्वाचन समिति — {election_year}</div>
+          <div class="committee-sub">(Central Election Committee, {election_year} BS)</div>
+          <div class="org-meta">{org_address}</div>
+          <div class="org-meta">फोन: {org_phone} | इमेल: {org_email}</div>
+        </td>
+        <td style="width: 80px; text-align: right; vertical-align: top;">
+          <div style="width: 72px; height: 72px; border-radius: 50%; background: #EEF2FF; border: 1px solid #4F46E5; display: inline-flex; align-items: center; justify-content: center; color: #4F46E5; font-size: 24px;">⚖️</div>
+        </td>
+      </tr>
+    </table>
+
+    <div class="divider-thick"></div>
+    <div class="divider-thin"></div>
+
+    <div class="meta-row">
+      <div>
+        <div>पत्र संख्या (Dispatch No.): {election_year}/{next_year}</div>
+        <div>चलानी नं. (Ref No.): {notice_number}</div>
+      </div>
+      <div style="text-align: right;">
+        <div>मिति (Date): {nepali_date}</div>
+        <div style="font-size: 10.5px; color: #64748B;">{english_date}</div>
+      </div>
+    </div>
+
+    <div class="subject-box">
+      विषय: {notice.title}
+    </div>
+
+    <div class="content-body">
+      {notice_content}
+    </div>
+
+    <div class="footer-row">
+      <div>
+        {stamp_html}
+      </div>
+
+      <div class="signatories-block">
+        {signatories_html}
+      </div>
+    </div>
+
+    <div style="text-align: center; font-size: 9.5px; color: #94A3B8; font-style: italic; margin-top: 36px;">
+      यस आधिकारिक सूचना निर्वाचन समितिको निर्णय अनुसार प्रमाणित गरिएको छ।
+    </div>
+  </div>
+
+  <script>
+    window.onload = function() {{
+      setTimeout(function() {{
+        window.print();
+      }}, 500);
+    }};
+  </script>
+</body>
+</html>"""
+        return HttpResponse(html, content_type='text/html; charset=utf-8')
 
 
 class PositionViewSet(viewsets.ModelViewSet):

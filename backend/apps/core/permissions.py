@@ -49,6 +49,8 @@ class BelongsToOrganization(BasePermission):
         # Object must belong to the same organization as the user
         obj_org_id = getattr(obj, 'organization_id', None)
         if obj_org_id is None:
+            obj_org_id = getattr(getattr(obj, 'election', None), 'organization_id', None)
+        if obj_org_id is None:
             # Try to get it from a nested relationship
             obj_org_id = getattr(getattr(obj, 'organization', None), 'id', None)
         return str(obj_org_id) == str(request.user.organization_id)
@@ -72,6 +74,10 @@ class IsOrgAdmin(BasePermission):
         if request.user.role != UserRole.ORG_ADMIN:
             return False
         obj_org_id = getattr(obj, 'organization_id', None)
+        if obj_org_id is None:
+            obj_org_id = getattr(getattr(obj, 'election', None), 'organization_id', None)
+        if obj_org_id is None:
+            obj_org_id = getattr(getattr(obj, 'organization', None), 'id', None)
         return str(obj_org_id) == str(request.user.organization_id)
 
 

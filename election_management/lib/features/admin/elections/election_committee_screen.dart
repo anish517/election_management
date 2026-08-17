@@ -775,6 +775,14 @@ class _CommitteeDetailSheet extends ConsumerWidget {
                   _infoTile(context, Icons.email_outlined, 'Official Email', c['chair_email'] ?? '-'),
                   if ((c['chair_contact']?.toString() ?? '').isNotEmpty)
                     _infoTile(context, Icons.phone_outlined, 'Contact Phone Number', c['chair_contact'].toString()),
+                  _infoTile(
+                    context,
+                    Icons.draw_outlined,
+                    'Notice Letterhead Signature Block',
+                    (c['include_in_letterhead'] == false)
+                        ? 'Excluded from official notice signature block ✕'
+                        : 'Included in official notice signature block ✅',
+                  ),
                   if ((c['chair_member_code'] ?? '').isNotEmpty)
                     _infoTile(context, Icons.badge_outlined, 'Organization Member Code', '#${c['chair_member_code']}'),
 
@@ -856,6 +864,7 @@ class _EditCommitteeDialogState extends ConsumerState<_EditCommitteeDialog> {
   late String _selectedRole;
   late TextEditingController _designationCtrl;
   late TextEditingController _contactCtrl;
+  bool _includeInLetterhead = true;
   bool _isSaving = false;
   String? _error;
 
@@ -871,6 +880,7 @@ class _EditCommitteeDialogState extends ConsumerState<_EditCommitteeDialog> {
     if (!['election_officer', 'observer', 'auditor'].contains(_selectedRole)) {
       _selectedRole = 'election_officer';
     }
+    _includeInLetterhead = c['include_in_letterhead'] ?? true;
     _designationCtrl = TextEditingController(
       text: (c['chair_designation']?.toString().isNotEmpty == true)
           ? c['chair_designation'].toString()
@@ -919,6 +929,7 @@ class _EditCommitteeDialogState extends ConsumerState<_EditCommitteeDialog> {
         'role': _selectedRole,
         'chair_designation': _designationCtrl.text.trim(),
         'chair_contact': _contactCtrl.text.trim(),
+        'include_in_letterhead': _includeInLetterhead,
       };
 
       if (_newSignatureBytes != null) {
@@ -1120,6 +1131,23 @@ class _EditCommitteeDialogState extends ConsumerState<_EditCommitteeDialog> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
+                const SizedBox(height: 16),
+
+                // Include in Notice Letterhead Signature Block Toggle
+                Material(
+                  color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.3) : const Color(0xFFF8FAFC),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: isDark ? Colors.white10 : Colors.grey.shade300),
+                  ),
+                  child: SwitchListTile(
+                    title: const Text('Include in Notice Letterhead (हस्ताक्षर समावेश)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                    subtitle: const Text('Display this member\'s designation & signature on official notices.', style: TextStyle(fontSize: 11.5)),
+                    value: _includeInLetterhead,
+                    activeThumbColor: const Color(0xFF10B981),
+                    onChanged: (v) => setState(() => _includeInLetterhead = v),
+                  ),
+                ),
               ],
             ),
           ),
@@ -1176,6 +1204,7 @@ class _CreateCommitteeDialogState extends ConsumerState<_CreateCommitteeDialog> 
   String _selectedRole = 'election_officer';
   final _designationCtrl = TextEditingController(text: 'Committee Member');
   final _contactCtrl = TextEditingController();
+  bool _includeInLetterhead = true;
   bool _isSaving = false;
   String? _error;
 
@@ -1247,6 +1276,7 @@ class _CreateCommitteeDialogState extends ConsumerState<_CreateCommitteeDialog> 
             ? _designationCtrl.text.trim()
             : 'Committee Member',
         'chair_contact': _contactCtrl.text.trim(),
+        'include_in_letterhead': _includeInLetterhead,
       };
 
       if (_mode == 'existing' && _selectedMember != null) {
@@ -1707,6 +1737,23 @@ class _CreateCommitteeDialogState extends ConsumerState<_CreateCommitteeDialog> 
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Include in Notice Letterhead Signature Block Toggle
+                    Material(
+                      color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.3) : const Color(0xFFF8FAFC),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: isDark ? Colors.white10 : Colors.grey.shade300),
+                      ),
+                      child: SwitchListTile(
+                        title: const Text('Include in Notice Letterhead (हस्ताक्षर समावेश)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                        subtitle: const Text('Display this member\'s designation & signature on official notices.', style: TextStyle(fontSize: 11.5)),
+                        value: _includeInLetterhead,
+                        activeThumbColor: const Color(0xFF10B981),
+                        onChanged: (v) => setState(() => _includeInLetterhead = v),
                       ),
                     ),
                   ],

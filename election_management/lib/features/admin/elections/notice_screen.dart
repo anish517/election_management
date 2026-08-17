@@ -1043,16 +1043,6 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
     }
   }
 
-  String _formatEnglishDate(String? iso) {
-    if (iso == null || iso.isEmpty) return '';
-    try {
-      final dt = DateTime.parse(iso).toLocal();
-      return DateFormat('MMMM d, yyyy').format(dt);
-    } catch (_) {
-      return '';
-    }
-  }
-
   String _extractElectionYear() {
     // 1. From serialized notice
     if (widget.notice['election_year'] != null && widget.notice['election_year'].toString().isNotEmpty) {
@@ -1234,206 +1224,198 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // ─────────────────────────────────────────────────────────────
-                          // LETTERHEAD TOP HEADER (Requirement #4)
+                          // LETTERHEAD TOP HEADER (Nepal Medical Association Standard)
                           // ─────────────────────────────────────────────────────────────
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          Stack(
+                            clipBehavior: Clip.none,
                             children: [
-                              // Left: Logo
-                              Container(
-                                width: 72,
-                                height: 72,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: const Color(0xFF0F172A).withValues(alpha: 0.15), width: 1.5),
-                                ),
-                                child: ClipOval(
-                                  child: orgLogo.isNotEmpty
-                                      ? Image.network(
-                                          orgLogo,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (_, _, _) => _defaultLogoBadge(),
-                                        )
-                                      : _defaultLogoBadge(),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-
-                              // Center: Organization Name, Dynamic Year, Address, Contacts
-                              Expanded(
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      orgName,
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontSize: 19,
-                                        fontWeight: FontWeight.w900,
-                                        color: Color(0xFF1E3A8A), // Navy/Royal Blue
-                                        letterSpacing: 0.3,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      'केन्द्रीय निर्वाचन समिति — $electionYear',
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontSize: 14.5,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFFDC2626), // Official Crimson Red
-                                        letterSpacing: 0.2,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      '(Central Election Committee, $electionYear BS)',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontStyle: FontStyle.italic,
-                                        color: Colors.grey.shade700,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      orgAddress,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(fontSize: 11.5, color: Colors.grey.shade800, fontWeight: FontWeight.w500),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      'फोन: $orgPhone  |  इमेल: $orgEmail',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(fontSize: 10.5, color: Colors.grey.shade700),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-
-                              // Right: Official Seal Emblem
-                              Container(
-                                width: 72,
-                                height: 72,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: const Color(0xFFEEF2FF),
-                                  border: Border.all(color: const Color(0xFF4F46E5).withValues(alpha: 0.3)),
-                                ),
-                                child: const Center(
-                                  child: Icon(Icons.how_to_vote_rounded, size: 36, color: Color(0xFF4F46E5)),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Double Letterhead Statutory Divider Line
-                          Column(
-                            children: [
-                              Container(height: 2.5, color: const Color(0xFF1E3A8A)),
-                              const SizedBox(height: 1.5),
-                              Container(height: 1.0, color: const Color(0xFFDC2626)),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-
-                          // ─────────────────────────────────────────────────────────────
-                          // DISPATCH & DATE METADATA ROW
-                          // ─────────────────────────────────────────────────────────────
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
+                              Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    'पत्र संख्या (Dispatch No.): $electionYear/${(int.tryParse(electionYear) ?? 2083) + 1}',
-                                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'चलानी नं. (Ref No.): $noticeNumber',
-                                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
-                                  ),
-                                ],
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    'मिति (Date): ${_formatNepaliDate(dateIso)}',
-                                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
-                                  ),
-                                  if (_formatEnglishDate(dateIso).isNotEmpty)
-                                    Text(
-                                      _formatEnglishDate(dateIso),
-                                      style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600),
+                                  // Left: Logo
+                                  Container(
+                                    width: 80,
+                                    height: 80,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: const Color(0xFF0F172A).withValues(alpha: 0.15), width: 1.5),
                                     ),
+                                    child: ClipOval(
+                                      child: orgLogo.isNotEmpty
+                                          ? Image.network(
+                                              orgLogo,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, _, _) => _defaultLogoBadge(),
+                                            )
+                                          : _defaultLogoBadge(),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+
+                                  // Center: Organization Name (Nepali & English), Election Committee, Tenure, Contacts
+                                  Expanded(
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          orgName,
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w900,
+                                            color: Color(0xFF0F172A),
+                                          ),
+                                        ),
+                                        Text(
+                                          orgName.toUpperCase(),
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            fontSize: 13.5,
+                                            fontWeight: FontWeight.w800,
+                                            color: Color(0xFF1E293B),
+                                            letterSpacing: 0.4,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        const Text(
+                                          'ELECTION COMMITTEE',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF0F172A),
+                                            letterSpacing: 0.2,
+                                          ),
+                                        ),
+                                        Text(
+                                          '($electionYear-${(int.tryParse(electionYear) ?? 2083) + 3})',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.grey.shade800,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '$orgAddress. Telephone no. $orgPhone. Email: $orgEmail',
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(fontSize: 10, color: Color(0xFF475569), height: 1.3),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+
+                                  // Right: Registration / Dispatch Regd No.
+                                  SizedBox(
+                                    width: 120,
+                                    child: Text(
+                                      'Regd. No. $noticeNumber',
+                                      textAlign: TextAlign.right,
+                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                                    ),
+                                  ),
                                 ],
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
 
-                          // ─────────────────────────────────────────────────────────────
-                          // SUBJECT (विषय)
-                          // ─────────────────────────────────────────────────────────────
-                          Center(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                              decoration: const BoxDecoration(
-                                border: Border(
-                                  bottom: BorderSide(color: Color(0xFF1E293B), width: 1.5),
-                                ),
-                              ),
-                              child: Text(
-                                'विषय: ${notice['title'] ?? 'सूचना'}',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 15.5,
-                                  fontWeight: FontWeight.w900,
-                                  color: Color(0xFF0F172A),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 22),
-
-                          // ─────────────────────────────────────────────────────────────
-                          // NOTICE STATEMENT BODY
-                          // ─────────────────────────────────────────────────────────────
-                          Text(
-                            notice['content'] ?? '',
-                            textAlign: TextAlign.justify,
-                            style: const TextStyle(
-                              fontSize: 13.5,
-                              height: 1.8,
-                              color: Color(0xFF1E293B),
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                          const SizedBox(height: 48),
-
-                          // ─────────────────────────────────────────────────────────────
-                          // BOTTOM SECTION: STAMP (Requirement #5) & SIGNATURE BLOCK (Requirement #4)
-                          // ─────────────────────────────────────────────────────────────
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              // Left: STAMP AREA
-                              _buildStampArea(stampImageUrl),
-                              const SizedBox(width: 16),
-
-                              // Right: SIGNATORIES BLOCK (Only include_in_letterhead == true)
-                              Expanded(
-                                child: Align(
-                                  alignment: Alignment.bottomRight,
-                                  child: _buildSignatoriesBlock(signatories, orgName),
-                                ),
+                              // Overlapping Stamp Seal
+                              Positioned(
+                                right: 180,
+                                bottom: -28,
+                                child: _buildStampArea(stampImageUrl),
                               ),
                             ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Solid Full-Width Letterhead Divider Line
+                          Container(height: 1.5, color: const Color(0xFF0F172A)),
+                          const SizedBox(height: 8),
+
+                          // ─────────────────────────────────────────────────────────────
+                          // TWO-COLUMN STATUTORY DOCUMENT BODY
+                          // ─────────────────────────────────────────────────────────────
+                          IntrinsicHeight(
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // LEFT COLUMN: Election Committee Officers Roster
+                                _buildLeftCommitteeSidebar(
+                                  (notice['committee_members'] is List && (notice['committee_members'] as List).isNotEmpty)
+                                      ? (notice['committee_members'] as List)
+                                      : widget.committees,
+                                  '($electionYear-${(int.tryParse(electionYear) ?? 2083) + 3})',
+                                ),
+
+                                // RIGHT COLUMN: Notice Main Body & Signatories
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(left: 20, top: 6),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        // Top Right: Nepali Date
+                                        Align(
+                                          alignment: Alignment.topRight,
+                                          child: Text(
+                                            'मिति : ${_formatNepaliDate(dateIso)}',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF0F172A),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+
+                                        // Centered Main Notice Header: सूचना !
+                                        const Center(
+                                          child: Text(
+                                            'सूचना !',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w900,
+                                              color: Color(0xFF0F172A),
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                        ),
+                                        if ((notice['title'] ?? '').isNotEmpty && notice['title'] != 'सूचना' && notice['title'] != 'सूचना !') ...[
+                                          const SizedBox(height: 6),
+                                          Center(
+                                            child: Text(
+                                              'विषय: ${notice['title']}',
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                        ],
+                                        const SizedBox(height: 14),
+
+                                        // Notice Content Body
+                                        Text(
+                                          notice['content'] ?? '',
+                                          textAlign: TextAlign.justify,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            height: 1.85,
+                                            color: Color(0xFF1E293B),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 40),
+
+                                        // Bottom Right Signatories Block
+                                        Align(
+                                          alignment: Alignment.bottomRight,
+                                          child: _buildSignatoriesBlock(signatories, orgName),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 20),
 
@@ -1462,6 +1444,86 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
       color: const Color(0xFFEFF6FF),
       child: const Center(
         child: Icon(Icons.account_balance_rounded, color: Color(0xFF1E3A8A), size: 36),
+      ),
+    );
+  }
+
+  Widget _buildLeftCommitteeSidebar(List<dynamic> committeeList, String tenureRange) {
+    return Container(
+      width: 190,
+      padding: const EdgeInsets.only(right: 14, top: 6),
+      decoration: const BoxDecoration(
+        border: Border(
+          right: BorderSide(color: Color(0xFF0F172A), width: 1.5),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'ELECTION COMMITTEE',
+            style: TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 11.5,
+              color: Color(0xFF0F172A),
+              letterSpacing: 0.2,
+            ),
+          ),
+          Text(
+            tenureRange,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 11,
+              color: Colors.grey.shade800,
+            ),
+          ),
+          const SizedBox(height: 18),
+          if (committeeList.isEmpty) ...[
+            const Text(
+              'Chief Election Officer:',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Color(0xFF0F172A)),
+            ),
+            const SizedBox(height: 2),
+            const Text('Prof. Dr. Pranay Ratna Shakya', style: TextStyle(fontSize: 11.5, color: Color(0xFF334155))),
+            const SizedBox(height: 16),
+            const Text(
+              'Election Officer:',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Color(0xFF0F172A)),
+            ),
+            const SizedBox(height: 2),
+            const Text('Advocate Baburam Aryal', style: TextStyle(fontSize: 11.5, color: Color(0xFF334155))),
+          ] else ...[
+            ...committeeList.map((m) {
+              final name = m['name'] ?? m['chair_full_name'] ?? m['committee_name'] ?? m['chair_email'] ?? 'Officer';
+              final designation = m['designation'] ?? m['chair_designation'] ?? 'Election Officer';
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '$designation:',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11.5,
+                        color: Color(0xFF0F172A),
+                        height: 1.25,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      name.toString(),
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: Color(0xFF334155),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ],
       ),
     );
   }

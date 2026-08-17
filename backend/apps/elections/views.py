@@ -940,10 +940,39 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
             </div>
             """
 
-        digital_seal_html = f'<img src="{stamp_image}" style="width:105px; height:105px; border-radius:50%; border:2px solid #DC2626; object-fit:contain;" alt="Official Stamp">' if stamp_image else '''
+        committee_members = data.get('committee_members') or []
+        if not committee_members and election:
+            for c in election.committees.all():
+                full_name = ''
+                if c.chair_user and hasattr(c.chair_user, 'memberships') and c.chair_user.memberships.exists():
+                    full_name = c.chair_user.memberships.first().full_name
+                elif c.committee_name:
+                    full_name = c.committee_name
+                else:
+                    full_name = c.chair_email
+                committee_members.append({
+                    'name': full_name,
+                    'designation': c.chair_designation or 'Election Officer',
+                    'role': c.role,
+                })
+
+        # Build Left Committee Roster Sidebar HTML
+        tenure_range = f"({election_year}-{int(election_year)+3})" if election_year.isdigit() else f"({election_year})"
+        committee_sidebar_html = ""
+        for m in committee_members:
+            m_name = m.get('name') or 'Election Officer'
+            m_desig = m.get('designation') or 'Election Officer'
+            committee_sidebar_html += f"""
+            <div style="margin-bottom: 20px;">
+              <div style="font-weight: bold; font-size: 11.5px; color: #0F172A; line-height: 1.3;">{m_desig}:</div>
+              <div style="font-size: 11.5px; color: #334155; margin-top: 2px;">{m_name}</div>
+            </div>
+            """
+
+        digital_seal_html = f'<img src="{stamp_image}" style="width:100px; height:100px; border-radius:50%; border:2px solid #DC2626; object-fit:contain;" alt="Official Stamp">' if stamp_image else '''
         <div class="stamp-digital">
           <div>★ निर्वाचन समिति ★</div>
-          <div style="font-size:18px; margin:2px 0;">🛡️</div>
+          <div style="font-size:16px; margin:2px 0;">🛡️</div>
           <div>आधिकारिक छाप</div>
           <div style="font-size:7px;">OFFICIAL SEAL</div>
         </div>
@@ -959,7 +988,7 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
 
         if stamp_mode == 'both':
             stamp_html = f'''
-            <div style="display: flex; align-items: center; gap: 14px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
               {digital_seal_html}
               {manual_seal_html}
             </div>
@@ -970,8 +999,6 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
             stamp_html = digital_seal_html
 
         notice_content = (notice.content or '').replace('\n', '<br>')
-        next_year = int(election_year) + 1 if election_year.isdigit() else 2084
-
         logo_html = f'<img src="{org_logo}" class="header-logo" alt="Logo">' if org_logo else '<div class="header-logo" style="background:#EEF2FF; border:1px solid #C7D2FE; display:flex; align-items:center; justify-content:center; font-size:28px;">🏛️</div>'
 
         html = f"""<!DOCTYPE html>
@@ -982,7 +1009,7 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
   <style>
     @page {{
       size: A4 portrait;
-      margin: 15mm 15mm 15mm 15mm;
+      margin: 12mm 12mm 12mm 12mm;
     }}
     @media print {{
       body {{ -webkit-print-color-adjust: exact; print-color-adjust: exact; }}
@@ -993,10 +1020,10 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
       color: #1E293B;
       background: #F8FAFC;
       margin: 0;
-      padding: 24px;
+      padding: 20px;
     }}
     .action-bar {{
-      max-width: 800px;
+      max-width: 820px;
       margin: 0 auto 16px auto;
       display: flex;
       justify-content: flex-end;
@@ -1017,97 +1044,112 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
     }}
     .btn:hover {{ background: #4338CA; }}
     .letterhead {{
-      max-width: 800px;
+      max-width: 820px;
       margin: 0 auto;
       background: #FFFFFF;
-      padding: 40px;
+      padding: 32px 36px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-      border-radius: 4px;
+      border: 1px solid #CBD5E1;
+      position: relative;
     }}
     .header-table {{
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 12px;
+      margin-bottom: 6px;
     }}
     .header-logo {{
-      width: 80px;
-      height: 80px;
+      width: 85px;
+      height: 85px;
       object-fit: contain;
       border-radius: 50%;
     }}
-    .org-title {{
-      font-size: 21px;
+    .org-title-ne {{
+      font-size: 20px;
       font-weight: 900;
-      color: #1E3A8A;
-      text-align: center;
-      margin: 0 0 4px 0;
-      letter-spacing: 0.3px;
-    }}
-    .committee-title {{
-      font-size: 15px;
-      font-weight: bold;
-      color: #DC2626;
+      color: #0F172A;
       text-align: center;
       margin: 0 0 2px 0;
     }}
-    .committee-sub {{
-      font-size: 11px;
-      font-style: italic;
-      color: #475569;
+    .org-title-en {{
+      font-size: 14px;
+      font-weight: 800;
+      color: #1E293B;
+      text-align: center;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      margin: 0 0 2px 0;
+    }}
+    .committee-title {{
+      font-size: 13.5px;
+      font-weight: bold;
+      color: #0F172A;
+      text-align: center;
+      letter-spacing: 0.2px;
+      margin: 0 0 2px 0;
+    }}
+    .tenure-sub {{
+      font-size: 12px;
+      font-weight: bold;
+      color: #334155;
       text-align: center;
       margin: 0 0 4px 0;
     }}
     .org-meta {{
-      font-size: 11px;
-      color: #334155;
+      font-size: 10px;
+      color: #475569;
       text-align: center;
+      line-height: 1.4;
       margin: 2px 0;
     }}
-    .divider-thick {{
-      height: 3px;
-      background: #1E3A8A;
-      margin-top: 10px;
-      margin-bottom: 2px;
-    }}
-    .divider-thin {{
+    .divider-solid {{
       height: 1.5px;
-      background: #DC2626;
-      margin-bottom: 16px;
+      background: #0F172A;
+      width: 100%;
+      margin-top: 10px;
     }}
-    .meta-row {{
+    .main-grid {{
+      display: grid;
+      grid-template-columns: 215px 1fr;
+      margin-top: 12px;
+      min-height: 580px;
+    }}
+    .left-sidebar {{
+      border-right: 1.5px solid #0F172A;
+      padding-right: 16px;
+      padding-top: 8px;
+    }}
+    .right-content {{
+      padding-left: 24px;
+      padding-top: 8px;
       display: flex;
+      flex-direction: column;
       justify-content: space-between;
-      font-size: 11.5px;
-      font-weight: 600;
-      margin-bottom: 24px;
     }}
-    .subject-box {{
+    .date-text {{
+      text-align: right;
+      font-weight: bold;
+      font-size: 12px;
+      color: #0F172A;
+      margin-bottom: 12px;
+    }}
+    .notice-title-box {{
       text-align: center;
-      font-size: 15.5px;
+      font-size: 18px;
       font-weight: 900;
       color: #0F172A;
-      text-decoration: underline;
-      text-underline-offset: 6px;
-      margin: 24px 0 20px 0;
+      margin: 10px 0 16px 0;
+      letter-spacing: 0.5px;
     }}
     .content-body {{
-      font-size: 13.5px;
-      line-height: 1.8;
+      font-size: 13px;
+      line-height: 1.85;
       text-align: justify;
       color: #1E293B;
-      min-height: 240px;
-    }}
-    .footer-row {{
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      margin-top: 40px;
-      page-break-inside: avoid;
     }}
     .stamp-digital {{
-      width: 110px;
-      height: 110px;
-      border: 2.5px solid #DC2626;
+      width: 95px;
+      height: 95px;
+      border: 2px solid #DC2626;
       border-radius: 50%;
       display: flex;
       flex-direction: column;
@@ -1115,12 +1157,12 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
       justify-content: center;
       color: #DC2626;
       text-align: center;
-      font-size: 8.5px;
+      font-size: 8px;
       font-weight: bold;
     }}
     .stamp-manual {{
-      width: 115px;
-      height: 115px;
+      width: 95px;
+      height: 95px;
       border: 1.5px dashed #94A3B8;
       border-radius: 50%;
       display: flex;
@@ -1129,12 +1171,12 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
       justify-content: center;
       color: #64748B;
       text-align: center;
-      font-size: 8.5px;
+      font-size: 8px;
     }}
     .signatories-block {{
       display: flex;
       flex-wrap: wrap;
-      gap: 24px;
+      gap: 20px;
       justify-content: flex-end;
     }}
     .signatory-card {{
@@ -1142,28 +1184,25 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
       width: 140px;
     }}
     .sig-img {{
-      height: 48px;
+      height: 46px;
       max-width: 130px;
       object-fit: contain;
       margin-bottom: 2px;
     }}
     .sig-line {{
       width: 140px;
-      border-bottom: 1.5px solid #1E293B;
-      margin: 0 auto 4px auto;
+      border-bottom: 1.2px solid #1E293B;
+      margin: 0 auto 3px auto;
     }}
     .sig-name {{
       font-weight: bold;
       font-size: 11.5px;
+      color: #0F172A;
     }}
     .sig-desig {{
       font-size: 10.5px;
       font-weight: 600;
-      color: #1E3A8A;
-    }}
-    .sig-comm {{
-      font-size: 9.5px;
-      color: #64748B;
+      color: #334155;
     }}
   </style>
 </head>
@@ -1172,58 +1211,77 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
     <button class="btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
   </div>
   <div class="letterhead">
+    <!-- Header Section -->
     <table class="header-table">
       <tr>
-        <td style="width: 80px; vertical-align: top;">
+        <td style="width: 90px; vertical-align: top;">
           {logo_html}
         </td>
-        <td style="text-align: center;">
-          <div class="org-title">{org_name}</div>
-          <div class="committee-title">केन्द्रीय निर्वाचन समिति — {election_year}</div>
-          <div class="committee-sub">(Central Election Committee, {election_year} BS)</div>
-          <div class="org-meta">{org_address}</div>
-          <div class="org-meta">फोन: {org_phone} | इमेल: {org_email}</div>
+        <td style="text-align: center; padding: 0 10px; vertical-align: top;">
+          <div class="org-title-ne">{org_name}</div>
+          <div class="org-title-en">{org.name if org else 'NEPAL MEDICAL ASSOCIATION'}</div>
+          <div class="committee-title">ELECTION COMMITTEE</div>
+          <div class="tenure-sub">{tenure_range}</div>
+          <div class="org-meta">
+            {org_address}. Telephone no. {org_phone}. Email: {org_email}
+          </div>
         </td>
-        <td style="width: 80px; text-align: right; vertical-align: top;">
-          <div style="width: 72px; height: 72px; border-radius: 50%; background: #EEF2FF; border: 1px solid #4F46E5; display: inline-flex; align-items: center; justify-content: center; color: #4F46E5; font-size: 24px;">⚖️</div>
+        <td style="width: 130px; text-align: right; vertical-align: top; font-size: 10px; font-weight: bold; color: #334155; line-height: 1.4;">
+          <div>Regd. No. {notice_number}</div>
         </td>
       </tr>
     </table>
 
-    <div class="divider-thick"></div>
-    <div class="divider-thin"></div>
-
-    <div class="meta-row">
-      <div>
-        <div>पत्र संख्या (Dispatch No.): {election_year}/{next_year}</div>
-        <div>चलानी नं. (Ref No.): {notice_number}</div>
-      </div>
-      <div style="text-align: right;">
-        <div>मिति (Date): {nepali_date}</div>
-        <div style="font-size: 10.5px; color: #64748B;">{english_date}</div>
-      </div>
+    <!-- Overlapping Stamp Seal -->
+    <div style="position: absolute; right: 260px; top: 75px; z-index: 10;">
+      {stamp_html}
     </div>
 
-    <div class="subject-box">
-      विषय: {notice.title}
-    </div>
+    <!-- Solid Divider Line -->
+    <div class="divider-solid"></div>
 
-    <div class="content-body">
-      {notice_content}
-    </div>
+    <!-- 2-Column Statutory Body Layout -->
+    <div class="main-grid">
+      <!-- Left Column: Election Committee Roster -->
+      <div class="left-sidebar">
+        <div style="font-weight: 900; font-size: 11.5px; color: #0F172A; text-transform: uppercase; margin-bottom: 2px;">
+          ELECTION COMMITTEE
+        </div>
+        <div style="font-weight: bold; font-size: 11px; color: #334155; margin-bottom: 16px;">
+          {tenure_range}
+        </div>
 
-    <div class="footer-row">
-      <div>
-        {stamp_html}
+        {committee_sidebar_html}
       </div>
 
-      <div class="signatories-block">
-        {signatories_html}
-      </div>
-    </div>
+      <!-- Right Column: Notice Body -->
+      <div class="right-content">
+        <div>
+          <!-- Date -->
+          <div class="date-text">
+            मिति: {nepali_date}
+          </div>
 
-    <div style="text-align: center; font-size: 9.5px; color: #94A3B8; font-style: italic; margin-top: 36px;">
-      यस आधिकारिक सूचना निर्वाचन समितिको निर्णय अनुसार प्रमाणित गरिएको छ।
+          <!-- Notice Header -->
+          <div class="notice-title-box">
+            सूचना !
+          </div>
+
+          {f'<div style="font-weight:bold; font-size:13px; margin-bottom:14px; text-align:center;">विषय: {notice.title}</div>' if notice.title != 'सूचना' and notice.title != 'सूचना !' else ''}
+
+          <!-- Notice Body Paragraphs -->
+          <div class="content-body">
+            {notice_content}
+          </div>
+        </div>
+
+        <!-- Bottom Signatories -->
+        <div style="margin-top: 36px; display: flex; justify-content: flex-end;">
+          <div class="signatories-block">
+            {signatories_html}
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

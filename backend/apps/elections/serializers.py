@@ -153,6 +153,7 @@ class ElectionNoticeSerializer(serializers.ModelSerializer):
     election_stamp_mode = serializers.CharField(source='election.stamp_mode', read_only=True)
     election_year = serializers.SerializerMethodField()
     signatories = serializers.SerializerMethodField()
+    committee_members = serializers.SerializerMethodField()
 
     class Meta:
         model = ElectionNotice
@@ -162,13 +163,13 @@ class ElectionNoticeSerializer(serializers.ModelSerializer):
             # Letterhead fields
             'election_title', 'org_name', 'org_address', 'org_phone', 'org_email',
             'org_logo_url', 'election_logo_url', 'election_stamp_image', 'election_stamp_mode',
-            'election_year', 'signatories',
+            'election_year', 'signatories', 'committee_members',
             'created_at'
         ]
         read_only_fields = [
             'id', 'election', 'election_title', 'org_name', 'org_address', 'org_phone',
             'org_email', 'org_logo_url', 'election_logo_url', 'election_stamp_image',
-            'election_stamp_mode', 'election_year', 'signatories', 'created_at'
+            'election_stamp_mode', 'election_year', 'signatories', 'committee_members', 'created_at'
         ]
 
     def get_election_stamp_image(self, obj):
@@ -231,6 +232,28 @@ class ElectionNoticeSerializer(serializers.ModelSerializer):
                 'signature_url': sig_url,
             })
         return signatories
+
+    def get_committee_members(self, obj):
+        if not obj.election:
+            return []
+        members = []
+        for c in obj.election.committees.all():
+            full_name = ''
+            if c.chair_user and hasattr(c.chair_user, 'memberships') and c.chair_user.memberships.exists():
+                full_name = c.chair_user.memberships.first().full_name
+            elif c.committee_name:
+                full_name = c.committee_name
+            else:
+                full_name = c.chair_email
+
+            members.append({
+                'id': str(c.id),
+                'name': full_name,
+                'designation': c.chair_designation or 'Election Officer',
+                'role': c.role,
+                'include_in_letterhead': c.include_in_letterhead,
+            })
+        return members
 
 
 class ElectionCommitteeSerializer(serializers.ModelSerializer):

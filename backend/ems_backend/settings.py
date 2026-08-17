@@ -337,17 +337,15 @@ CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 # ==============================================================================
 # CORS HEADERS CONFIGURATION (Allows Vercel Web & Local Dev)
 # ==============================================================================
+from corsheaders.defaults import default_headers, default_methods
+
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_HEADERS = [
-    'accept',
-    'accept-encoding',
-    'authorization',
-    'content-type',
-    'dnt',
-    'origin',
-    'user-agent',
-    'x-csrftoken',
-    'x-requested-with',
+CORS_ALLOW_METHODS = list(default_methods)
+CORS_ALLOW_HEADERS = list(default_headers) + [
     'x-organization-id',
+    'bypass-tunnel-reminder',
+    'bypasstunnelreminder',
+    'ngrok-skip-browser-warning',
 ]
+

@@ -30,7 +30,10 @@ jobs:
           flutter build web --release --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL || 'https://api.yourdomain.com/v1' }}
 
       - name: Deploy to Vercel
+        if: ${{ env.VERCEL_TOKEN != '' }}
         uses: amondnet/vercel-action@v25
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}

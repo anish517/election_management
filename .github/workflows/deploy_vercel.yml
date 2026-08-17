@@ -1,0 +1,40 @@
+name: Deploy Flutter Web to Vercel
+
+on:
+  push:
+    branches:
+      - main
+      - anish-work
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.x'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        working-directory: ./election_management
+        run: flutter pub get
+
+      - name: Build Flutter Web (Production)
+        working-directory: ./election_management
+        run: |
+          flutter build web --release --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL || 'https://api.yourdomain.com/v1' }}
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: ./election_management
+          vercel-args: '--prod'

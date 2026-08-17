@@ -208,10 +208,12 @@ class ElectionNoticeSerializer(serializers.ModelSerializer):
         signatories = []
         for c in obj.election.committees.filter(include_in_letterhead=True):
             full_name = ''
-            if c.chair_user and hasattr(c.chair_user, 'memberships') and c.chair_user.memberships.exists():
+            if c.committee_name and c.committee_name.strip() and '@' not in c.committee_name:
+                full_name = c.committee_name.strip()
+            elif c.chair_user and hasattr(c.chair_user, 'memberships') and c.chair_user.memberships.exists():
                 full_name = c.chair_user.memberships.first().full_name
-            elif c.committee_name:
-                full_name = c.committee_name
+            elif c.committee_name and c.committee_name.strip():
+                full_name = c.committee_name.strip()
             else:
                 full_name = c.chair_email
 
@@ -239,10 +241,12 @@ class ElectionNoticeSerializer(serializers.ModelSerializer):
         members = []
         for c in obj.election.committees.all():
             full_name = ''
-            if c.chair_user and hasattr(c.chair_user, 'memberships') and c.chair_user.memberships.exists():
+            if c.committee_name and c.committee_name.strip() and '@' not in c.committee_name:
+                full_name = c.committee_name.strip()
+            elif c.chair_user and hasattr(c.chair_user, 'memberships') and c.chair_user.memberships.exists():
                 full_name = c.chair_user.memberships.first().full_name
-            elif c.committee_name:
-                full_name = c.committee_name
+            elif c.committee_name and c.committee_name.strip():
+                full_name = c.committee_name.strip()
             else:
                 full_name = c.chair_email
 
@@ -282,6 +286,8 @@ class ElectionCommitteeSerializer(serializers.ModelSerializer):
         return obj.chair_user.email if obj.chair_user else obj.chair_email
 
     def get_chair_full_name(self, obj):
+        if obj.committee_name and obj.committee_name.strip() and '@' not in obj.committee_name:
+            return obj.committee_name.strip()
         if obj.chair_user:
             if hasattr(obj.chair_user, 'memberships') and obj.chair_user.memberships.exists():
                 return obj.chair_user.memberships.first().full_name

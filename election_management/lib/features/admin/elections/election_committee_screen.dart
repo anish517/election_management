@@ -862,6 +862,7 @@ class _EditCommitteeDialog extends ConsumerStatefulWidget {
 class _EditCommitteeDialogState extends ConsumerState<_EditCommitteeDialog> {
   final _formKey = GlobalKey<FormState>();
   late String _selectedRole;
+  late TextEditingController _nameCtrl;
   late TextEditingController _designationCtrl;
   late TextEditingController _contactCtrl;
   bool _includeInLetterhead = true;
@@ -881,6 +882,12 @@ class _EditCommitteeDialogState extends ConsumerState<_EditCommitteeDialog> {
       _selectedRole = 'election_officer';
     }
     _includeInLetterhead = c['include_in_letterhead'] ?? true;
+    
+    final initialName = (c['committee_name'] != null && c['committee_name'].toString().isNotEmpty && !c['committee_name'].toString().contains('@'))
+        ? c['committee_name'].toString()
+        : (c['chair_full_name']?.toString() ?? '');
+    _nameCtrl = TextEditingController(text: initialName);
+
     _designationCtrl = TextEditingController(
       text: (c['chair_designation']?.toString().isNotEmpty == true)
           ? c['chair_designation'].toString()
@@ -893,6 +900,7 @@ class _EditCommitteeDialogState extends ConsumerState<_EditCommitteeDialog> {
 
   @override
   void dispose() {
+    _nameCtrl.dispose();
     _designationCtrl.dispose();
     _contactCtrl.dispose();
     super.dispose();
@@ -926,6 +934,7 @@ class _EditCommitteeDialogState extends ConsumerState<_EditCommitteeDialog> {
     try {
       final dio = ref.read(apiClientProvider);
       final patchData = <String, dynamic>{
+        'committee_name': _nameCtrl.text.trim(),
         'role': _selectedRole,
         'chair_designation': _designationCtrl.text.trim(),
         'chair_contact': _contactCtrl.text.trim(),
@@ -1039,6 +1048,22 @@ class _EditCommitteeDialogState extends ConsumerState<_EditCommitteeDialog> {
                   ),
                   const SizedBox(height: 14),
                 ],
+
+                // Member Full Name Field
+                const Text('Member Full Name / पूरा नाम *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _nameCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Prof. Dr. Pranay Ratna Shakya',
+                    prefixIcon: const Icon(Icons.person_outline_rounded),
+                    filled: true,
+                    fillColor: isDark ? AppColors.surfaceVariant : const Color(0xFFF9FAFB),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Full name is required' : null,
+                ),
+                const SizedBox(height: 16),
 
                 // Committee Designation Field
                 const Text('Committee Designation / पद *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
@@ -1214,6 +1239,7 @@ class _CreateCommitteeDialogState extends ConsumerState<_CreateCommitteeDialog> 
   static const int _maxSignatureBytes = 2 * 1024 * 1024; // 2 MB
 
   // Manual new user controllers
+  final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
@@ -1222,6 +1248,7 @@ class _CreateCommitteeDialogState extends ConsumerState<_CreateCommitteeDialog> 
 
   @override
   void dispose() {
+    _nameCtrl.dispose();
     _designationCtrl.dispose();
     _contactCtrl.dispose();
     _emailCtrl.dispose();
@@ -1286,6 +1313,9 @@ class _CreateCommitteeDialogState extends ConsumerState<_CreateCommitteeDialog> 
         mapData['committee_name'] = _selectedMember!.fullName;
       } else {
         mapData['committee_type'] = 'new';
+        mapData['committee_name'] = _nameCtrl.text.trim().isNotEmpty
+            ? _nameCtrl.text.trim()
+            : _emailCtrl.text.trim();
         mapData['chair_email'] = _emailCtrl.text.trim();
         mapData['password'] = _passwordCtrl.text;
       }
@@ -1579,6 +1609,24 @@ class _CreateCommitteeDialogState extends ConsumerState<_CreateCommitteeDialog> 
                       ],
                     ] else ...[
                       // MODE 2: CREATE NEW USER
+                      const Text('Member Full Name / पूरा नाम *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      const SizedBox(height: 6),
+                      TextFormField(
+                        controller: _nameCtrl,
+                        decoration: InputDecoration(
+                          hintText: 'e.g. Prof. Dr. Pranay Ratna Shakya',
+                          prefixIcon: const Icon(Icons.person_outline_rounded),
+                          filled: true,
+                          fillColor: isDark ? AppColors.surfaceVariant : const Color(0xFFF9FAFB),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        validator: (v) {
+                          if (_mode == 'new' && (v == null || v.trim().isEmpty)) return 'Full name is required';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 14),
+
                       const Text('Official Email Address *', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                       const SizedBox(height: 6),
                       TextFormField(

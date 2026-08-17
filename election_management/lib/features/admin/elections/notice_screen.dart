@@ -1280,19 +1280,19 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
                                           'ELECTION COMMITTEE',
                                           textAlign: TextAlign.center,
                                           style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFF0F172A),
-                                            letterSpacing: 0.2,
+                                            fontSize: 13.5,
+                                            fontWeight: FontWeight.w900,
+                                            color: AppColors.primary,
+                                            letterSpacing: 0.3,
                                           ),
                                         ),
                                         Text(
                                           '($electionYear-${(int.tryParse(electionYear) ?? 2083) + 3})',
                                           textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontSize: 11.5,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.grey.shade800,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.primary,
                                           ),
                                         ),
                                         const SizedBox(height: 4),
@@ -1464,17 +1464,17 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
             'ELECTION COMMITTEE',
             style: TextStyle(
               fontWeight: FontWeight.w900,
-              fontSize: 11.5,
-              color: Color(0xFF0F172A),
-              letterSpacing: 0.2,
+              fontSize: 12,
+              color: AppColors.primary,
+              letterSpacing: 0.3,
             ),
           ),
           Text(
             tenureRange,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 11,
-              color: Colors.grey.shade800,
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 11.5,
+              color: AppColors.primary,
             ),
           ),
           const SizedBox(height: 18),

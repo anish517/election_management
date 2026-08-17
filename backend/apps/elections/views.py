@@ -1081,16 +1081,16 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
     }}
     .committee-title {{
       font-size: 13.5px;
-      font-weight: bold;
-      color: #0F172A;
+      font-weight: 900;
+      color: #4F46E5;
       text-align: center;
-      letter-spacing: 0.2px;
+      letter-spacing: 0.3px;
       margin: 0 0 2px 0;
     }}
     .tenure-sub {{
       font-size: 12px;
-      font-weight: bold;
-      color: #334155;
+      font-weight: 800;
+      color: #4F46E5;
       text-align: center;
       margin: 0 0 4px 0;
     }}
@@ -1244,10 +1244,10 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
     <div class="main-grid">
       <!-- Left Column: Election Committee Roster -->
       <div class="left-sidebar">
-        <div style="font-weight: 900; font-size: 11.5px; color: #0F172A; text-transform: uppercase; margin-bottom: 2px;">
+        <div style="font-weight: 900; font-size: 12px; color: #4F46E5; text-transform: uppercase; margin-bottom: 2px; letter-spacing: 0.3px;">
           ELECTION COMMITTEE
         </div>
-        <div style="font-weight: bold; font-size: 11px; color: #334155; margin-bottom: 16px;">
+        <div style="font-weight: 800; font-size: 11.5px; color: #4F46E5; margin-bottom: 16px;">
           {tenure_range}
         </div>
 

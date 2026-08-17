@@ -547,7 +547,9 @@ class _CandidateMomentumRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fraction = maxScore > 0 ? (candidate.score / maxScore).clamp(0.0, 1.0) : 0.0;
-    final isTop = rank == 1;
+    final hasVotes = candidate.score > 0;
+    final isTop = hasVotes && rank == 1;
+    final isWinner = candidate.isWinner && hasVotes;
     final cardColor = isDark ? AppColors.surface : Colors.white;
 
     return Container(
@@ -557,15 +559,19 @@ class _CandidateMomentumRow extends StatelessWidget {
         color: cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isTop
+          color: isWinner
               ? Colors.amber.shade600.withValues(alpha: 0.5)
-              : (isDark ? AppColors.surfaceVariant : Colors.grey.shade200),
-          width: isTop ? 1.5 : 1,
+              : (isLive && isTop
+                  ? AppColors.primaryLight.withValues(alpha: 0.4)
+                  : (isDark ? AppColors.surfaceVariant : Colors.grey.shade200)),
+          width: (isWinner || (isLive && isTop)) ? 1.5 : 1,
         ),
         boxShadow: [
-          if (!isDark && isTop)
+          if (!isDark && (isWinner || isTop))
             BoxShadow(
-              color: Colors.amber.withValues(alpha: 0.08),
+              color: isWinner
+                  ? Colors.amber.withValues(alpha: 0.08)
+                  : AppColors.primary.withValues(alpha: 0.04),
               blurRadius: 12,
               offset: const Offset(0, 3),
             ),
@@ -581,18 +587,20 @@ class _CandidateMomentumRow extends StatelessWidget {
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: isTop
+                  color: isWinner
                       ? Colors.amber.withValues(alpha: 0.2)
                       : (isDark ? AppColors.surfaceVariant : const Color(0xFFECEFF4)),
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
                 child: Text(
-                  isTop ? '🏆' : '$rank',
+                  isWinner ? '🏆' : '$rank',
                   style: TextStyle(
-                    fontSize: isTop ? 13 : 11,
+                    fontSize: isWinner ? 13 : 11,
                     fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white70 : AppColors.textSecondaryLightMode,
+                    color: isWinner
+                        ? Colors.amber.shade700
+                        : (isDark ? Colors.white70 : AppColors.textSecondaryLightMode),
                   ),
                 ),
               ),
@@ -605,7 +613,7 @@ class _CandidateMomentumRow extends StatelessWidget {
                   children: [
                     Text(
                       candidate.name,
-                      style: TextStyle(fontWeight: isTop ? FontWeight.bold : FontWeight.w600, fontSize: 14),
+                      style: TextStyle(fontWeight: (isWinner || isTop) ? FontWeight.bold : FontWeight.w600, fontSize: 14),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -627,9 +635,7 @@ class _CandidateMomentumRow extends StatelessWidget {
                     candidate.score.toStringAsFixed(1),
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.5),
                   ),
-                  if (isLive && isTop)
-                    _LiveBadge()
-                  else if (candidate.isWinner)
+                  if (isWinner)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
@@ -637,7 +643,9 @@ class _CandidateMomentumRow extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Text('WINNER', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.amber)),
-                    ),
+                    )
+                  else if (isLive && isTop)
+                    _LiveBadge(),
                 ],
               ),
             ],

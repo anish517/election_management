@@ -112,7 +112,10 @@ class _ElectionListScreenState extends ConsumerState<ElectionListScreen> {
               if (_selectedFilter == 'all') return true;
               if (_selectedFilter == 'voting_open') return e.state == 'voting_open';
               if (_selectedFilter == 'nominations') {
-                return e.state == 'nominations_open' || e.state == 'nominations_closed';
+                return e.state == 'nomination_open' ||
+                    e.state == 'nomination_closed' ||
+                    e.state == 'nominations_open' ||
+                    e.state == 'nominations_closed';
               }
               if (_selectedFilter == 'results') {
                 return e.state == 'results_provisional' || e.state == 'results_final' || e.state == 'voting_closed';

@@ -230,8 +230,8 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
       return;
     }
 
-    final org = ref.read(orgProfileProvider).valueOrNull;
     final election = ref.read(electionProvider(widget.electionId)).valueOrNull;
+    final org = ref.read(orgProfileProvider).valueOrNull;
 
     // Check fee calculation directly from designation
     double fee = 0.0;
@@ -242,7 +242,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
       }
     }
 
-    final isPaymentEnabled = (org?.isPaymentEnabled == true || election?.isPaidCandidacy == true) && fee > 0;
+    final isPaymentEnabled = (org?.isPaymentEnabled ?? false) && fee > 0;
 
     if (isPaymentEnabled && _txnRefCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -612,74 +612,84 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                                     const SizedBox(height: 8),
                                     Text('Manifesto: ${c.manifesto}', style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
                                   ],
-                                  // Payment info badge
-                                  if (c.latestPayment != null || c.paymentStatus != 'unpaid') ...[
+                                  if (c.latestPayment != null || c.paymentStatus == 'paid' || c.paymentStatus == 'waived') ...[
                                     const SizedBox(height: 10),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: c.latestPayment?.isVerified == true || c.paymentStatus == 'paid'
-                                            ? Colors.green.withValues(alpha: 0.1)
-                                            : c.latestPayment?.isRejected == true
-                                                ? AppColors.error.withValues(alpha: 0.1)
-                                                : const Color(0xFFF59E0B).withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: c.latestPayment?.isVerified == true || c.paymentStatus == 'paid'
-                                              ? Colors.green.withValues(alpha: 0.3)
-                                              : c.latestPayment?.isRejected == true
-                                                  ? AppColors.error.withValues(alpha: 0.3)
-                                                  : const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                                    () {
+                                      final isWaived = c.paymentStatus == 'waived';
+                                      final isVerified = !isWaived && (c.latestPayment?.isVerified == true || c.paymentStatus == 'paid');
+                                      final isRejected = !isWaived && (c.latestPayment?.isRejected == true);
+                                      final isSuccess = isWaived || isVerified;
+
+                                      return Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: isSuccess
+                                              ? Colors.green.withValues(alpha: 0.1)
+                                              : isRejected
+                                                  ? AppColors.error.withValues(alpha: 0.1)
+                                                  : const Color(0xFFF59E0B).withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: isSuccess
+                                                ? Colors.green.withValues(alpha: 0.3)
+                                                : isRejected
+                                                    ? AppColors.error.withValues(alpha: 0.3)
+                                                    : const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                                          ),
                                         ),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            c.latestPayment?.isVerified == true || c.paymentStatus == 'paid'
-                                                ? Icons.check_circle_outline_rounded
-                                                : c.latestPayment?.isRejected == true
-                                                    ? Icons.error_outline_rounded
-                                                    : Icons.hourglass_top_rounded,
-                                            size: 16,
-                                            color: c.latestPayment?.isVerified == true || c.paymentStatus == 'paid'
-                                                ? Colors.green.shade800
-                                                : c.latestPayment?.isRejected == true
-                                                    ? AppColors.error
-                                                    : const Color(0xFFD97706),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              c.latestPayment != null
-                                                  ? 'Payment: ${c.latestPayment!.statusDisplay} (${c.latestPayment!.transactionReference.isNotEmpty ? "#${c.latestPayment!.transactionReference}" : "Rs. ${c.latestPayment!.amount.toStringAsFixed(0)}"})'
-                                                  : 'Payment Status: ${c.paymentStatus.toUpperCase()}',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
-                                                color: c.latestPayment?.isVerified == true || c.paymentStatus == 'paid'
-                                                    ? Colors.green.shade800
-                                                    : c.latestPayment?.isRejected == true
-                                                        ? AppColors.error
-                                                        : const Color(0xFFD97706),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              isSuccess
+                                                  ? Icons.check_circle_outline_rounded
+                                                  : isRejected
+                                                      ? Icons.error_outline_rounded
+                                                      : Icons.hourglass_top_rounded,
+                                              size: 16,
+                                              color: isSuccess
+                                                  ? Colors.green.shade800
+                                                  : isRejected
+                                                      ? AppColors.error
+                                                      : const Color(0xFFD97706),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                isWaived
+                                                    ? 'Free Nomination (निःशुल्क दर्ता)'
+                                                    : isVerified
+                                                        ? 'Payment Verified (भुक्तानी स्वीकृत) — Rs. ${c.latestPayment?.amount.toStringAsFixed(0) ?? ""}'
+                                                        : isRejected
+                                                            ? 'Payment Rejected (भुक्तानी अस्वीकृत)'
+                                                            : 'Payment: Pending Verification (Rs. ${c.latestPayment?.amount.toStringAsFixed(0) ?? ""})',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isSuccess
+                                                      ? Colors.green.shade800
+                                                      : isRejected
+                                                          ? AppColors.error
+                                                          : const Color(0xFFD97706),
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                          if (c.latestPayment?.isRejected == true) ...[
-                                            OutlinedButton(
-                                              onPressed: () => _handleResubmitPayment(c),
-                                              style: OutlinedButton.styleFrom(
-                                                foregroundColor: AppColors.error,
-                                                side: const BorderSide(color: AppColors.error),
-                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                                minimumSize: Size.zero,
-                                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            if (isRejected) ...[
+                                              OutlinedButton(
+                                                onPressed: () => _handleResubmitPayment(c),
+                                                style: OutlinedButton.styleFrom(
+                                                  foregroundColor: AppColors.error,
+                                                  side: const BorderSide(color: AppColors.error),
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                  minimumSize: Size.zero,
+                                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                ),
+                                                child: const Text('Re-submit Proof', style: TextStyle(fontSize: 11)),
                                               ),
-                                              child: const Text('Re-submit Proof', style: TextStyle(fontSize: 11)),
-                                            ),
+                                            ],
                                           ],
-                                        ],
-                                      ),
-                                    ),
+                                        ),
+                                      );
+                                    }(),
                                   ],
                                   if (!isWithdrawn && !isRejected) ...[
                                     const SizedBox(height: 12),
@@ -743,8 +753,12 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                         ),
                         items: election.positions.map((p) {
                           final posFee = p.nomineeCharge;
-                          final isPaid = (org?.isPaymentEnabled ?? true) && posFee > 0;
-                          final feeText = isPaid ? ' — (Fee: Rs. ${posFee.toStringAsFixed(0)} NPR)' : ' — (Free)';
+                          final isGlobalActive = org?.isPaymentEnabled ?? false;
+                          final feeText = (isGlobalActive && posFee > 0)
+                              ? ' — (Fee: Rs. ${posFee.toStringAsFixed(0)} NPR)'
+                              : (posFee > 0 && !isGlobalActive)
+                                  ? ' — (Free: Payments OFF)'
+                                  : ' — (Free)';
                           return DropdownMenuItem(
                             value: p.id,
                             child: Text('${p.title}$feeText', style: const TextStyle(fontWeight: FontWeight.w600)),
@@ -987,9 +1001,14 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
     final positionTitle = pos?.title ?? 'Selected Designation';
     final fee = pos?.nomineeCharge ?? 0.0;
 
-    final isPaymentEnabled = (org == null || org.isPaymentEnabled || election?.isPaidCandidacy == true) && fee > 0;
+    final isGlobalPaymentEnabled = org?.isPaymentEnabled ?? false;
+    final isPaymentEnabled = isGlobalPaymentEnabled && fee > 0;
 
     if (!isPaymentEnabled) {
+      final message = !isGlobalPaymentEnabled && fee > 0
+          ? 'Payment Collection Disabled: Online payments are currently turned OFF in organization settings. No payment or voucher is required for $positionTitle.'
+          : 'Free Candidacy (निःशुल्क उम्मेदवारी): No nomination filing fee is required for $positionTitle.';
+
       return Container(
         margin: const EdgeInsets.only(bottom: 24),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -1004,7 +1023,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Free Candidacy (निःशुल्क उम्मेदवारी): No nomination filing fee is required for $positionTitle.',
+                message,
                 style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5, color: Colors.green),
               ),
             ),

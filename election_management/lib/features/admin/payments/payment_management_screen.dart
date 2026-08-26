@@ -367,69 +367,86 @@ class _PaymentManagementScreenState extends ConsumerState<PaymentManagementScree
             // ══════════════════════════════════════════════════════════
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: TextField(
-                      controller: _searchCtrl,
-                      decoration: InputDecoration(
-                        hintText: 'Search by Txn ID, Candidate Name, Email...',
-                        prefixIcon: const Icon(Icons.search, size: 20),
-                        suffixIcon: _searchCtrl.text.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear, size: 18),
-                                onPressed: () {
-                                  _searchCtrl.clear();
-                                  ref.read(paymentFilterProvider.notifier).update(
-                                        (s) => s.copyWith(searchQuery: ''),
-                                      );
-                                },
-                              )
-                            : null,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      onChanged: (val) {
-                        ref.read(paymentFilterProvider.notifier).update(
-                              (s) => s.copyWith(searchQuery: val),
-                            );
-                      },
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isNarrow = constraints.maxWidth < 600;
+                  final searchWidget = TextField(
+                    controller: _searchCtrl,
+                    decoration: InputDecoration(
+                      hintText: 'Search by Txn ID, Candidate Name, Email...',
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      suffixIcon: _searchCtrl.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 18),
+                              onPressed: () {
+                                _searchCtrl.clear();
+                                ref.read(paymentFilterProvider.notifier).update(
+                                      (s) => s.copyWith(searchQuery: ''),
+                                    );
+                              },
+                            )
+                          : null,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: electionsAsync.when(
-                      loading: () => const SizedBox.shrink(),
-                      error: (err, stack) => const SizedBox.shrink(),
-                      data: (elections) {
-                        final currentElection = ref.watch(paymentFilterProvider).electionId;
-                        return DropdownButtonFormField<String>(
-                          initialValue: currentElection.isEmpty ? null : currentElection,
-                          decoration: InputDecoration(
-                            hintText: 'All Elections',
-                            prefixIcon: const Icon(Icons.how_to_vote_outlined, size: 18),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    onChanged: (val) {
+                      ref.read(paymentFilterProvider.notifier).update(
+                            (s) => s.copyWith(searchQuery: val),
+                          );
+                    },
+                  );
+
+                  final dropdownWidget = electionsAsync.when(
+                    loading: () => const SizedBox.shrink(),
+                    error: (err, stack) => const SizedBox.shrink(),
+                    data: (elections) {
+                      final currentElection = ref.watch(paymentFilterProvider).electionId;
+                      return DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        initialValue: currentElection.isEmpty ? null : currentElection,
+                        decoration: InputDecoration(
+                          hintText: 'All Elections',
+                          prefixIcon: const Icon(Icons.how_to_vote_outlined, size: 18),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        items: [
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Text('All Elections', overflow: TextOverflow.ellipsis, maxLines: 1),
                           ),
-                          items: [
-                            const DropdownMenuItem(value: null, child: Text('All Elections')),
-                            ...elections.map((e) => DropdownMenuItem(
-                                  value: e.id,
-                                  child: Text(e.title, overflow: TextOverflow.ellipsis),
-                                )),
-                          ],
-                          onChanged: (val) {
-                            ref.read(paymentFilterProvider.notifier).update(
-                                  (s) => s.copyWith(electionId: val ?? ''),
-                                );
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
+                          ...elections.map((e) => DropdownMenuItem(
+                                value: e.id,
+                                child: Text(e.title, overflow: TextOverflow.ellipsis, maxLines: 1),
+                              )),
+                        ],
+                        onChanged: (val) {
+                          ref.read(paymentFilterProvider.notifier).update(
+                                (s) => s.copyWith(electionId: val ?? ''),
+                              );
+                        },
+                      );
+                    },
+                  );
+
+                  if (isNarrow) {
+                    return Column(
+                      children: [
+                        searchWidget,
+                        const SizedBox(height: 10),
+                        dropdownWidget,
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    children: [
+                      Expanded(flex: 3, child: searchWidget),
+                      const SizedBox(width: 12),
+                      Expanded(flex: 2, child: dropdownWidget),
+                    ],
+                  );
+                },
               ),
             ),
             const Divider(height: 1),

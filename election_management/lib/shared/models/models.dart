@@ -153,6 +153,8 @@ class ElectionModel {
       );
 
   bool get isVotingActive => state == 'voting_open';
+  bool get isNominationOpen => state == 'nomination_open' || state == 'nominations_open';
+  bool get isNominationClosed => state == 'nomination_closed' || state == 'nominations_closed';
   bool get isDraft => state == 'draft';
   bool get isPublished => state == 'published';
   bool get hasResults =>

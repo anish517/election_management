@@ -101,15 +101,15 @@ class CandidateViewSet(viewsets.ModelViewSet):
             default_fee = float(ps.get('default_nomination_fee', 0.0) or 0.0)
             fee = pos_charge if pos_charge > 0 else (el_charge if el_charge > 0 else default_fee)
 
-            is_payment_enabled = bool(ps.get('is_payment_enabled', False) or election.is_paid_candidacy)
+            is_payment_enabled = bool(ps.get('is_payment_enabled', False))
             txn_ref = (self.request.data.get('transaction_reference') or self.request.data.get('transaction_id') or '').strip()
             receipt_url = (self.request.data.get('receipt_image_url') or self.request.data.get('receipt_url') or '').strip()
             pay_notes = (self.request.data.get('payment_notes') or '').strip()
             pay_method = self.request.data.get('payment_method') or 'static_qr_bank'
 
-            initial_payment_status = 'waived'
-            if (is_payment_enabled and fee > 0) or txn_ref:
-                initial_payment_status = 'pending_verification'
+            is_payment_required = is_payment_enabled and fee > 0
+
+            initial_payment_status = 'pending_verification' if (is_payment_required and (txn_ref or receipt_url)) else 'waived'
 
             candidate = serializer.save(
                 election=election,
@@ -122,8 +122,8 @@ class CandidateViewSet(viewsets.ModelViewSet):
                 contact_number=phone or '',
             )
 
-            # If payment is active or transaction reference provided, create Payment ledger record
-            if (is_payment_enabled and fee > 0) or txn_ref:
+            # If payment is active and proof provided, create Payment ledger record
+            if (is_payment_required and (txn_ref or receipt_url)) or txn_ref:
                 from apps.billing.models import Payment, PaymentStatus
                 Payment.objects.create(
                     organization=election.organization,

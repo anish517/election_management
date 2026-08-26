@@ -534,6 +534,33 @@ class _AboutTab extends StatelessWidget {
               valueColor: _statusColor(candidate.status),
             ).animate().fadeIn(delay: 250.ms).slideX(begin: 0.1),
 
+          if (candidate.latestPayment != null || candidate.paymentStatus != 'unpaid') ...[
+            const SizedBox(height: 8),
+            _InfoRow(
+              icon: Icons.receipt_long_rounded,
+              label: 'Nomination Fee & Payment Verification',
+              value: candidate.latestPayment != null
+                  ? 'Rs. ${candidate.latestPayment!.amount.toStringAsFixed(0)} • ${candidate.latestPayment!.statusDisplay} (${candidate.latestPayment!.transactionReference.isNotEmpty ? "#${candidate.latestPayment!.transactionReference}" : "QR Transfer"})'
+                  : 'Status: ${candidate.paymentStatus.toUpperCase()}',
+              isDark: isDark,
+              valueColor: candidate.latestPayment?.isVerified == true || candidate.paymentStatus == 'paid'
+                  ? const Color(0xFF10B981)
+                  : candidate.latestPayment?.isRejected == true
+                      ? const Color(0xFFEF4444)
+                      : const Color(0xFFF59E0B),
+            ).animate().fadeIn(delay: 270.ms).slideX(begin: 0.1),
+            if (candidate.latestPayment?.receiptImageUrl.isNotEmpty == true) ...[
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.only(left: 32),
+                child: Text(
+                  'Voucher URL: ${candidate.latestPayment!.receiptImageUrl}',
+                  style: TextStyle(fontSize: 11, color: isDark ? Colors.white54 : Colors.grey.shade600),
+                ),
+              ),
+            ],
+          ],
+
           if (candidate.reviewNotes.isNotEmpty) ...[
             const SizedBox(height: 8),
             _InfoRow(

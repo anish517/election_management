@@ -400,9 +400,9 @@ class _ElectionListTile extends StatelessWidget {
                       ),
                     if (election.isPaidCandidacy) ...[
                       const SizedBox(width: 8),
-                      _InfoChip(
+                      const _InfoChip(
                         icon: Icons.payments_outlined,
-                        label: 'Fee: NPR ${election.nomineeCharge.toStringAsFixed(0)}',
+                        label: 'Paid Nomination',
                       ),
                     ],
                   ],

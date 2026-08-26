@@ -20,6 +20,7 @@ class CandidateSerializer(serializers.ModelSerializer):
     
     position_title = serializers.CharField(source='position.title', read_only=True)
     full_name = serializers.CharField(read_only=True)
+    latest_payment = serializers.SerializerMethodField(read_only=True)
     
     class Meta:
         model = Candidate
@@ -28,10 +29,30 @@ class CandidateSerializer(serializers.ModelSerializer):
             'first_name', 'middle_name', 'last_name', 'full_name',
             'email', 'contact_number', 'gender', 'date_of_birth', 'address',
             'candidate_image', 'personal_description', 'contribution_to_org',
-            'manifesto', 'status', 'documents', 'endorsements', 
+            'manifesto', 'status', 'payment_status', 'latest_payment',
+            'documents', 'endorsements', 
             'reviewed_by', 'review_notes', 'reviewed_at', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'election', 'reviewed_by', 'review_notes', 'reviewed_at', 'created_at', 'updated_at', 'full_name']
+        read_only_fields = ['id', 'election', 'reviewed_by', 'review_notes', 'reviewed_at', 'created_at', 'updated_at', 'full_name', 'latest_payment']
+
+    def get_latest_payment(self, obj):
+        payment = obj.payments.order_by('-created_at').first()
+        if not payment:
+            return None
+        return {
+            'id': str(payment.id),
+            'amount': str(payment.amount),
+            'currency': payment.currency,
+            'payment_method': payment.payment_method,
+            'payment_method_display': payment.get_payment_method_display(),
+            'transaction_reference': payment.transaction_reference,
+            'receipt_image_url': payment.receipt_image_url,
+            'payment_notes': payment.payment_notes,
+            'status': payment.status,
+            'status_display': payment.get_status_display(),
+            'rejection_reason': payment.rejection_reason,
+            'created_at': payment.created_at.isoformat() if payment.created_at else None,
+        }
 
     @transaction.atomic
     def create(self, validated_data):

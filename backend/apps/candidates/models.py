@@ -52,6 +52,17 @@ class Candidate(TimestampedModel):
     status = models.CharField(
         max_length=20, choices=NominationStatus.choices, default=NominationStatus.DRAFT
     )
+    payment_status = models.CharField(
+        max_length=30,
+        choices=[
+            ('unpaid', 'Unpaid'),
+            ('pending_verification', 'Pending Verification'),
+            ('paid', 'Paid / Verified'),
+            ('waived', 'Waived / Free'),
+        ],
+        default='unpaid',
+        db_index=True,
+    )
     
     # Audit trail for approval
     reviewed_by = models.ForeignKey(

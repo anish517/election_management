@@ -297,6 +297,41 @@ class _NominationListScreenState extends ConsumerState<NominationListScreen> wit
                           ),
                           const SizedBox(height: 6),
                           Text(c.name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                          if (c.latestPayment != null || c.paymentStatus != 'unpaid') ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(
+                                  c.latestPayment?.isVerified == true || c.paymentStatus == 'paid'
+                                      ? Icons.check_circle_rounded
+                                      : c.latestPayment?.isRejected == true
+                                          ? Icons.cancel_rounded
+                                          : Icons.pending_rounded,
+                                  size: 14,
+                                  color: c.latestPayment?.isVerified == true || c.paymentStatus == 'paid'
+                                      ? Colors.green
+                                      : c.latestPayment?.isRejected == true
+                                          ? AppColors.error
+                                          : const Color(0xFFF59E0B),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  c.latestPayment != null
+                                      ? 'Fee: Rs. ${c.latestPayment!.amount.toStringAsFixed(0)} • ${c.latestPayment!.statusDisplay} (${c.latestPayment!.transactionReference.isNotEmpty ? "#${c.latestPayment!.transactionReference}" : "QR"})'
+                                      : 'Payment: ${c.paymentStatus.toUpperCase()}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: c.latestPayment?.isVerified == true || c.paymentStatus == 'paid'
+                                        ? Colors.green
+                                        : c.latestPayment?.isRejected == true
+                                            ? AppColors.error
+                                            : const Color(0xFFF59E0B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                           if (c.manifesto.isNotEmpty) ...[
                             const SizedBox(height: 6),
                             Text(

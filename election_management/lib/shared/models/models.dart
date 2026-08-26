@@ -332,6 +332,8 @@ class CandidateModel {
   final String? address;
   
   final String reviewNotes;
+  final String paymentStatus;
+  final PaymentModel? latestPayment;
   final List<CandidateEndorsementModel> endorsements;
 
   const CandidateModel({
@@ -355,6 +357,8 @@ class CandidateModel {
     this.dateOfBirth,
     this.address,
     this.reviewNotes = '',
+    this.paymentStatus = 'unpaid',
+    this.latestPayment,
     this.endorsements = const [],
   });
 
@@ -379,6 +383,10 @@ class CandidateModel {
         dateOfBirth: json['date_of_birth'] as String?,
         address: json['address'] as String?,
         reviewNotes: json['review_notes'] as String? ?? '',
+        paymentStatus: json['payment_status'] as String? ?? 'unpaid',
+        latestPayment: json['latest_payment'] is Map<String, dynamic>
+            ? PaymentModel.fromJson(json['latest_payment'] as Map<String, dynamic>)
+            : null,
         endorsements: (json['endorsements'] as List<dynamic>?)
                 ?.map((e) => CandidateEndorsementModel.fromJson(e as Map<String, dynamic>))
                 .toList() ??
@@ -656,6 +664,134 @@ class OrganizationModel {
         dataRetentionYears: json['data_retention_years'] as int? ?? 7,
         legalHold: json['legal_hold'] as bool? ?? false,
       );
+
+  // Static Payment Helpers
+  bool get isPaymentEnabled =>
+      (paymentSettings['is_payment_enabled'] as bool?) ?? false;
+  String get staticQrImageUrl {
+    final qr = (paymentSettings['qr_image_url'] as String?) ?? '';
+    if (qr.isNotEmpty) return qr;
+    final nested = paymentSettings['qr_account'];
+    if (nested is Map && (nested['qr_image_url'] as String?)?.isNotEmpty == true) {
+      return nested['qr_image_url'] as String;
+    }
+    return bankQrUrl;
+  }
+  String get staticBankName =>
+      (paymentSettings['bank_name'] as String?) ?? bankName;
+  String get staticAccountName =>
+      (paymentSettings['account_name'] as String?) ?? bankAccountName;
+  String get staticAccountNumber =>
+      (paymentSettings['account_number'] as String?) ?? bankAccountNumber;
+  String get staticBranch =>
+      (paymentSettings['branch'] as String?) ?? bankBranch;
+  String get staticWalletType =>
+      (paymentSettings['wallet_type'] as String?) ?? 'fonepay';
+  String get staticWalletId =>
+      (paymentSettings['wallet_id'] as String?) ?? '';
+  String get staticEsewaId =>
+      (paymentSettings['esewa_id'] as String?) ?? '';
+  String get staticEsewaQrUrl =>
+      (paymentSettings['esewa_qr_url'] as String?) ?? '';
+  String get staticKhaltiId =>
+      (paymentSettings['khalti_id'] as String?) ?? '';
+  String get staticKhaltiQrUrl =>
+      (paymentSettings['khalti_qr_url'] as String?) ?? '';
+  String get staticImepayId =>
+      (paymentSettings['imepay_id'] as String?) ?? '';
+  String get staticImepayQrUrl =>
+      (paymentSettings['imepay_qr_url'] as String?) ?? '';
+  String get staticConnectIpsId =>
+      (paymentSettings['connectips_id'] as String?) ?? '';
+  String get staticInstructions =>
+      (paymentSettings['instructions'] as String?) ?? '';
+  double get defaultNominationFee =>
+      double.tryParse(paymentSettings['default_nomination_fee']?.toString() ?? '0.0') ?? 0.0;
+}
+
+class PaymentModel {
+  final String id;
+  final String? organizationId;
+  final String? electionId;
+  final String? electionTitle;
+  final String? candidateId;
+  final String? candidateName;
+  final String? candidateImage;
+  final String? positionTitle;
+  final String? userId;
+  final String? userName;
+  final String? userEmail;
+  final double amount;
+  final String currency;
+  final String paymentMethod;
+  final String paymentMethodDisplay;
+  final String transactionReference;
+  final String receiptImageUrl;
+  final String paymentNotes;
+  final String status;
+  final String statusDisplay;
+  final String? reviewedByEmail;
+  final String? reviewedAt;
+  final String rejectionReason;
+  final String? createdAt;
+
+  const PaymentModel({
+    required this.id,
+    this.organizationId,
+    this.electionId,
+    this.electionTitle,
+    this.candidateId,
+    this.candidateName,
+    this.candidateImage,
+    this.positionTitle,
+    this.userId,
+    this.userName,
+    this.userEmail,
+    required this.amount,
+    this.currency = 'NPR',
+    this.paymentMethod = 'static_qr_bank',
+    this.paymentMethodDisplay = 'Static Bank QR',
+    this.transactionReference = '',
+    this.receiptImageUrl = '',
+    this.paymentNotes = '',
+    this.status = 'pending',
+    this.statusDisplay = 'Pending Verification',
+    this.reviewedByEmail,
+    this.reviewedAt,
+    this.rejectionReason = '',
+    this.createdAt,
+  });
+
+  factory PaymentModel.fromJson(Map<String, dynamic> json) => PaymentModel(
+        id: json['id'] as String? ?? '',
+        organizationId: json['organization'] as String?,
+        electionId: json['election'] as String?,
+        electionTitle: json['election_title'] as String?,
+        candidateId: json['candidate'] as String?,
+        candidateName: json['candidate_name'] as String?,
+        candidateImage: json['candidate_image'] as String?,
+        positionTitle: json['position_title'] as String?,
+        userId: json['user'] as String?,
+        userName: json['user_name'] as String?,
+        userEmail: json['user_email'] as String?,
+        amount: double.tryParse(json['amount']?.toString() ?? '0.0') ?? 0.0,
+        currency: json['currency'] as String? ?? 'NPR',
+        paymentMethod: json['payment_method'] as String? ?? 'static_qr_bank',
+        paymentMethodDisplay: json['payment_method_display'] as String? ?? 'Static Bank QR',
+        transactionReference: json['transaction_reference'] as String? ?? '',
+        receiptImageUrl: json['receipt_image_url'] as String? ?? '',
+        paymentNotes: json['payment_notes'] as String? ?? '',
+        status: json['status'] as String? ?? 'pending',
+        statusDisplay: json['status_display'] as String? ?? 'Pending Verification',
+        reviewedByEmail: json['reviewed_by_email'] as String?,
+        reviewedAt: json['reviewed_at'] as String?,
+        rejectionReason: json['rejection_reason'] as String? ?? '',
+        createdAt: json['created_at'] as String?,
+      );
+
+  bool get isPending => status.toLowerCase() == 'pending';
+  bool get isVerified => status.toLowerCase() == 'verified' || status.toLowerCase() == 'completed';
+  bool get isRejected => status.toLowerCase() == 'rejected' || status.toLowerCase() == 'failed';
 }
 
 class OrganizationStatsModel {

@@ -271,7 +271,6 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
 
   // --- Payment ---
   bool _isPaid = false;
-  final _chargeCtrl = TextEditingController(text: '0');
 
   // --- Ballot & Voting Rules ---
   bool _isSecretBallot = true;
@@ -283,7 +282,6 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
     _descCtrl.dispose();
     _prefixCtrl.dispose();
     _contactCtrl.dispose();
-    _chargeCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
   }
@@ -406,7 +404,7 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
         isSecretBallot: _isSecretBallot,
         allowBoycott: _allowBoycott,
         isPaidCandidacy: _isPaid,
-        nomineeCharge: double.tryParse(_chargeCtrl.text) ?? 0,
+        nomineeCharge: 0,
       );
       if (mounted) {
         if (context.canPop()) {
@@ -920,17 +918,26 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
                       ],
                     ),
                     if (_isPaid) ...[
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _chargeCtrl,
-                        decoration: _dec('Nominee Charge (NPR) *', hint: 'e.g. 500', prefix: const Icon(Icons.currency_rupee_rounded)),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        validator: (v) {
-                          if (!_isPaid) return null;
-                          if (v == null || v.trim().isEmpty) return 'Fee is required when paid';
-                          if (double.tryParse(v) == null) return 'Enter a valid amount';
-                          return null;
-                        },
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.info_outline, size: 18, color: Colors.blue),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Nomination filing charges (e.g., President: Rs. 250, Vice President: Rs. 200) will be configured individually during the Designation / Position Creation step.',
+                                style: TextStyle(fontSize: 12, height: 1.4),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ],

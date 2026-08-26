@@ -298,7 +298,7 @@ class ElectionDetailScreen extends ConsumerWidget {
               if (election.contactNumber.isNotEmpty)
                 _MetaItem(icon: Icons.phone_outlined, label: 'Helpline: ${election.contactNumber}'),
               if (election.isPaidCandidacy)
-                _MetaItem(icon: Icons.monetization_on_outlined, label: 'Nomination Fee: Rs. ${election.nomineeCharge.toStringAsFixed(0)}'),
+                const _MetaItem(icon: Icons.monetization_on_outlined, label: 'Paid Nomination (Designation Fee Applies)'),
             ],
           ),
           

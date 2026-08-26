@@ -10,6 +10,11 @@ import '../../shared/widgets/loading_button.dart';
 import '../../shared/widgets/image_upload_widget.dart';
 import '../candidates/nomination_list_screen.dart';
 import '../../core/providers/auth_provider.dart';
+import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
+import '../../core/providers/org_providers.dart';
+import '../../core/providers/payment_providers.dart';
+import '../../shared/models/models.dart';
 
 class _EndorsementItem {
   final String endorsementType;
@@ -64,6 +69,12 @@ class NominationScreen extends ConsumerStatefulWidget {
 class _NominationScreenState extends ConsumerState<NominationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _manifestoController = TextEditingController();
+  final _txnRefCtrl = TextEditingController();
+  final _paymentNotesCtrl = TextEditingController();
+  String _voucherImageUrl = '';
+  bool _isUploadingVoucher = false;
+  String _selectedPaymentChannel = 'fonepay';
+
   String? _selectedPositionId;
   String? _selectedQuotaId;
   String _photoUrl = '';
@@ -82,6 +93,8 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
   @override
   void dispose() {
     _manifestoController.dispose();
+    _txnRefCtrl.dispose();
+    _paymentNotesCtrl.dispose();
     for (final p in _proposers) {
       p.dispose();
     }
@@ -91,11 +104,153 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
     super.dispose();
   }
 
+  Future<void> _handleResubmitPayment(CandidateModel c) async {
+    final payment = c.latestPayment;
+    if (payment == null) return;
+
+    final txnCtrl = TextEditingController(text: payment.transactionReference);
+    final notesCtrl = TextEditingController();
+    String receiptUrl = payment.receiptImageUrl;
+    bool isUploading = false;
+
+    final res = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Re-submit Payment Proof'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (payment.rejectionReason.isNotEmpty) ...[
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                    ),
+                    child: Text(
+                      'Officer Rejection Reason: ${payment.rejectionReason}',
+                      style: const TextStyle(color: AppColors.error, fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ],
+                TextField(
+                  controller: txnCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Updated Transaction ID *',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                OutlinedButton.icon(
+                  onPressed: isUploading
+                      ? null
+                      : () async {
+                          final f = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['jpg', 'png', 'jpeg'], withData: true);
+                          if (f == null || f.files.isEmpty || f.files.first.bytes == null) return;
+                          setModalState(() => isUploading = true);
+                          try {
+                            final dio = ref.read(apiClientProvider);
+                            final resp = await dio.post(
+                              ApiConstants.fileUpload,
+                              data: FormData.fromMap({'file': MultipartFile.fromBytes(f.files.first.bytes!, filename: f.files.first.name)}),
+                            );
+                            final url = resp.data['url'] as String?;
+                            setModalState(() {
+                              isUploading = false;
+                              if (url != null) receiptUrl = url;
+                            });
+                          } catch (_) {
+                            setModalState(() => isUploading = false);
+                          }
+                        },
+                  icon: isUploading ? const CircularProgressIndicator() : const Icon(Icons.upload_file),
+                  label: Text(receiptUrl.isNotEmpty ? 'Voucher Attached' : 'Attach New Voucher Screenshot'),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: notesCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Explanation Notes',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                if (txnCtrl.text.trim().isEmpty) return;
+                Navigator.pop(ctx, true);
+              },
+              child: const Text('Submit Updated Proof'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (res == true) {
+      try {
+        await ref.read(paymentActionsProvider.notifier).resubmitPayment(
+              payment.id,
+              transactionReference: txnCtrl.text.trim(),
+              receiptImageUrl: receiptUrl,
+              paymentNotes: notesCtrl.text.trim(),
+            );
+        ref.invalidate(candidatesProvider(widget.electionId));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Payment proof resubmitted for officer review!')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Resubmission failed: $e')),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedPositionId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please select a position.')));
+      return;
+    }
+
+    final org = ref.read(orgProfileProvider).valueOrNull;
+    final election = ref.read(electionProvider(widget.electionId)).valueOrNull;
+
+    // Check fee calculation directly from designation
+    double fee = 0.0;
+    if (election != null && _selectedPositionId != null) {
+      final pos = election.positions.where((p) => p.id == _selectedPositionId).firstOrNull;
+      if (pos != null) {
+        fee = pos.nomineeCharge;
+      }
+    }
+
+    final isPaymentEnabled = (org?.isPaymentEnabled == true || election?.isPaidCandidacy == true) && fee > 0;
+
+    if (isPaymentEnabled && _txnRefCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter the Transaction Reference ID (भौचर / ट्रान्ज्याक्सन नम्बर) below.'),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
 
@@ -114,14 +269,24 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
     setState(() => _isSubmitting = true);
     try {
       final dio = ref.read(apiClientProvider);
-      await dio.post(ApiConstants.electionCandidates(widget.electionId), data: {
+      final payload = <String, dynamic>{
         'position': _selectedPositionId,
         if (_selectedQuotaId != null && _selectedQuotaId!.isNotEmpty) 'quota': _selectedQuotaId,
         'manifesto': _manifestoController.text.trim(),
         'candidate_image': _photoUrl,
         'election': widget.electionId,
         'endorsements': endorsements,
-      });
+        if (isPaymentEnabled) ...{
+          'transaction_reference': _txnRefCtrl.text.trim(),
+          'receipt_image_url': _voucherImageUrl,
+          'payment_notes': _paymentNotesCtrl.text.trim(),
+          'payment_method': _selectedPaymentChannel,
+        },
+      };
+
+      await dio.post(ApiConstants.electionCandidates(widget.electionId), data: payload);
+
+      ref.invalidate(candidatesProvider(widget.electionId));
 
       if (mounted) {
         context.pop();
@@ -355,6 +520,8 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
           }
 
           final candidatesAsync = ref.watch(candidatesProvider(widget.electionId));
+          final org = ref.watch(orgProfileProvider).valueOrNull;
+          final isDark = Theme.of(context).brightness == Brightness.dark;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24),
@@ -445,6 +612,75 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                                     const SizedBox(height: 8),
                                     Text('Manifesto: ${c.manifesto}', style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
                                   ],
+                                  // Payment info badge
+                                  if (c.latestPayment != null || c.paymentStatus != 'unpaid') ...[
+                                    const SizedBox(height: 10),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: c.latestPayment?.isVerified == true || c.paymentStatus == 'paid'
+                                            ? Colors.green.withValues(alpha: 0.1)
+                                            : c.latestPayment?.isRejected == true
+                                                ? AppColors.error.withValues(alpha: 0.1)
+                                                : const Color(0xFFF59E0B).withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: c.latestPayment?.isVerified == true || c.paymentStatus == 'paid'
+                                              ? Colors.green.withValues(alpha: 0.3)
+                                              : c.latestPayment?.isRejected == true
+                                                  ? AppColors.error.withValues(alpha: 0.3)
+                                                  : const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            c.latestPayment?.isVerified == true || c.paymentStatus == 'paid'
+                                                ? Icons.check_circle_outline_rounded
+                                                : c.latestPayment?.isRejected == true
+                                                    ? Icons.error_outline_rounded
+                                                    : Icons.hourglass_top_rounded,
+                                            size: 16,
+                                            color: c.latestPayment?.isVerified == true || c.paymentStatus == 'paid'
+                                                ? Colors.green.shade800
+                                                : c.latestPayment?.isRejected == true
+                                                    ? AppColors.error
+                                                    : const Color(0xFFD97706),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              c.latestPayment != null
+                                                  ? 'Payment: ${c.latestPayment!.statusDisplay} (${c.latestPayment!.transactionReference.isNotEmpty ? "#${c.latestPayment!.transactionReference}" : "Rs. ${c.latestPayment!.amount.toStringAsFixed(0)}"})'
+                                                  : 'Payment Status: ${c.paymentStatus.toUpperCase()}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color: c.latestPayment?.isVerified == true || c.paymentStatus == 'paid'
+                                                    ? Colors.green.shade800
+                                                    : c.latestPayment?.isRejected == true
+                                                        ? AppColors.error
+                                                        : const Color(0xFFD97706),
+                                              ),
+                                            ),
+                                          ),
+                                          if (c.latestPayment?.isRejected == true) ...[
+                                            OutlinedButton(
+                                              onPressed: () => _handleResubmitPayment(c),
+                                              style: OutlinedButton.styleFrom(
+                                                foregroundColor: AppColors.error,
+                                                side: const BorderSide(color: AppColors.error),
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                minimumSize: Size.zero,
+                                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                              ),
+                                              child: const Text('Re-submit Proof', style: TextStyle(fontSize: 11)),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                   if (!isWithdrawn && !isRejected) ...[
                                     const SizedBox(height: 12),
                                     Align(
@@ -501,11 +737,17 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                       const SizedBox(height: 24),
 
                       DropdownButtonFormField<String>(
-                        decoration: const InputDecoration(labelText: 'Position / Designation *'),
+                        decoration: const InputDecoration(
+                          labelText: 'Position / Designation *',
+                          prefixIcon: Icon(Icons.military_tech_outlined),
+                        ),
                         items: election.positions.map((p) {
+                          final posFee = p.nomineeCharge;
+                          final isPaid = (org?.isPaymentEnabled ?? true) && posFee > 0;
+                          final feeText = isPaid ? ' — (Fee: Rs. ${posFee.toStringAsFixed(0)} NPR)' : ' — (Free)';
                           return DropdownMenuItem(
                             value: p.id,
-                            child: Text(p.title),
+                            child: Text('${p.title}$feeText', style: const TextStyle(fontWeight: FontWeight.w600)),
                           );
                         }).toList(),
                         initialValue: _selectedPositionId,
@@ -562,33 +804,22 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF2563EB).withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(8),
+                                  color: AppColors.primary.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.how_to_reg_rounded, size: 16, color: Color(0xFF2563EB)),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'PROPOSERS (प्रस्तावक) — ${_proposers.length}',
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF2563EB)),
-                                    ),
-                                  ],
-                                ),
+                                child: Text('${_proposers.length}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
                               ),
+                              const SizedBox(width: 8),
+                              const Text('PROPOSERS (प्रस्तावक)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
                             ],
                           ),
                           OutlinedButton.icon(
-                            onPressed: () {
-                              setState(() {
-                                _proposers.add(_EndorsementItem(endorsementType: 'proposer'));
-                              });
-                            },
+                            onPressed: () => setState(() => _proposers.add(_EndorsementItem(endorsementType: 'proposer'))),
                             icon: const Icon(Icons.add_rounded, size: 16),
                             label: const Text('Add Proposer', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                             style: OutlinedButton.styleFrom(
-                                  foregroundColor: const Color(0xFF2563EB),
-                                  side: const BorderSide(color: Color(0xFF2563EB)),
+                                  foregroundColor: AppColors.primary,
+                                  side: const BorderSide(color: AppColors.primary),
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
@@ -605,7 +836,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                           totalCount: _proposers.length,
                           roleTitle: 'PROPOSER (प्रस्तावक) #${idx + 1}',
                           roleSubtitle: 'Primary member who nominates and proposes this candidate',
-                          primaryColor: const Color(0xFF2563EB),
+                          primaryColor: AppColors.primary,
                           roleIcon: Icons.how_to_reg_rounded,
                           onRemove: _proposers.length > 1
                               ? () {
@@ -636,28 +867,17 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF059669).withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(8),
+                                  color: const Color(0xFF059669).withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.verified_user_rounded, size: 16, color: Color(0xFF059669)),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'SUPPORTERS (समर्थक) — ${_supporters.length}',
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF059669)),
-                                    ),
-                                  ],
-                                ),
+                                child: Text('${_supporters.length}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF059669))),
                               ),
+                              const SizedBox(width: 8),
+                              const Text('SUPPORTERS (समर्थक)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
                             ],
                           ),
                           OutlinedButton.icon(
-                            onPressed: () {
-                              setState(() {
-                                _supporters.add(_EndorsementItem(endorsementType: 'supporter'));
-                              });
-                            },
+                            onPressed: () => setState(() => _supporters.add(_EndorsementItem(endorsementType: 'supporter'))),
                             icon: const Icon(Icons.add_rounded, size: 16),
                             label: const Text('Add Supporter', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                             style: OutlinedButton.styleFrom(
@@ -698,7 +918,14 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                           onSignatureUploaded: (url) => setState(() => item.signatureUrl = url),
                         );
                       }),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 28),
+
+                      _buildEmbeddedPaymentCard(
+                        isDark: isDark,
+                        org: org,
+                        election: election,
+                      ),
+                      const SizedBox(height: 24),
                       
                       LoadingButton(
                         onPressed: _submit,
@@ -712,6 +939,784 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildEmbeddedPaymentCard({
+    required bool isDark,
+    required OrganizationModel? org,
+    required ElectionModel? election,
+  }) {
+    // If no position selected yet, show an inviting helper banner
+    if (_selectedPositionId == null) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 24),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.blue.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.info_outline_rounded, color: Colors.blue, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Nomination Fee & Static QR Payment Step',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Colors.blue),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Please select a Position / Designation from the dropdown above to display the applicable fee (e.g. President: Rs. 250), bank details, and upload your payment voucher.',
+                    style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.blue.shade900),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final pos = election?.positions.where((p) => p.id == _selectedPositionId).firstOrNull;
+    final positionTitle = pos?.title ?? 'Selected Designation';
+    final fee = pos?.nomineeCharge ?? 0.0;
+
+    final isPaymentEnabled = (org == null || org.isPaymentEnabled || election?.isPaidCandidacy == true) && fee > 0;
+
+    if (!isPaymentEnabled) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 24),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.green.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.check_circle_outline_rounded, color: Colors.green, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Free Candidacy (निःशुल्क उम्मेदवारी): No nomination filing fee is required for $positionTitle.',
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5, color: Colors.green),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Determine available payment channels
+    final channels = <Map<String, dynamic>>[
+      {
+        'id': 'fonepay',
+        'title': 'FonePay / Bank QR',
+        'icon': Icons.qr_code_2_rounded,
+        'color': const Color(0xFF2563EB),
+      },
+      if (org?.staticAccountNumber.isNotEmpty == true || org?.staticBankName.isNotEmpty == true)
+        {
+          'id': 'bank_transfer',
+          'title': 'Bank Transfer (A/C)',
+          'icon': Icons.account_balance_rounded,
+          'color': const Color(0xFF1E3A8A),
+        },
+      {
+        'id': 'esewa',
+        'title': 'eSewa',
+        'icon': Icons.account_balance_wallet_rounded,
+        'color': const Color(0xFF60BB46),
+      },
+      {
+        'id': 'khalti',
+        'title': 'Khalti',
+        'icon': Icons.wallet_rounded,
+        'color': const Color(0xFF5C2D91),
+      },
+      if (org?.staticConnectIpsId.isNotEmpty == true || org?.staticAccountNumber.isNotEmpty == true)
+        {
+          'id': 'connectips',
+          'title': 'ConnectIPS',
+          'icon': Icons.sync_alt_rounded,
+          'color': const Color(0xFF0284C7),
+        },
+    ];
+
+    // Selected channel details
+    final currentChannel = channels.firstWhere(
+      (c) => c['id'] == _selectedPaymentChannel,
+      orElse: () => channels.first,
+    );
+    final activeColor = currentChannel['color'] as Color;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 28),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: activeColor.withValues(alpha: 0.4),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: activeColor.withValues(alpha: 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: activeColor.withValues(alpha: 0.1),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              border: Border(bottom: BorderSide(color: activeColor.withValues(alpha: 0.2))),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: activeColor.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(currentChannel['icon'] as IconData, color: activeColor, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Nomination Fee Payment (उम्मेदवारी दर्ता दस्तुर)',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
+                      Text(
+                        'Designation: $positionTitle',
+                        style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.grey.shade700),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: activeColor,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(color: activeColor.withValues(alpha: 0.3), blurRadius: 6, offset: const Offset(0, 2)),
+                    ],
+                  ),
+                  child: Text(
+                    'Rs. ${fee.toStringAsFixed(0)} NPR',
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ══════════════════════════════════════════════════════════
+                // 1. SELECT PAYMENT METHOD CHANNEL TABS
+                // ══════════════════════════════════════════════════════════
+                const Text(
+                  'Select Payment Method (भुक्तानी माध्यम छान्नुहोस्):',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: channels.map((c) {
+                    final isSelected = c['id'] == _selectedPaymentChannel;
+                    final chColor = c['color'] as Color;
+
+                    return ChoiceChip(
+                      selected: isSelected,
+                      onSelected: (val) {
+                        if (val) setState(() => _selectedPaymentChannel = c['id'] as String);
+                      },
+                      avatar: Icon(c['icon'] as IconData, size: 16, color: isSelected ? Colors.white : chColor),
+                      label: Text(c['title'] as String),
+                      selectedColor: chColor,
+                      labelStyle: TextStyle(
+                        color: isSelected ? Colors.white : (isDark ? Colors.white : Colors.black87),
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        fontSize: 12.5,
+                      ),
+                      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                      side: BorderSide(
+                        color: isSelected ? chColor : (isDark ? Colors.white12 : Colors.grey.shade300),
+                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 20),
+
+                // ══════════════════════════════════════════════════════════
+                // 2. ACTIVE CHANNEL PAYMENT DETAILS CARD
+                // ══════════════════════════════════════════════════════════
+                _buildActiveChannelContent(
+                  channelId: _selectedPaymentChannel,
+                  activeColor: activeColor,
+                  org: org,
+                  isDark: isDark,
+                ),
+
+                if (org != null && org.staticInstructions.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.info_outline, size: 18, color: Colors.blue),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            org.staticInstructions,
+                            style: const TextStyle(fontSize: 12, color: Colors.blue),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 20),
+                const Divider(height: 1),
+                const SizedBox(height: 20),
+
+                // ══════════════════════════════════════════════════════════
+                // 3. VOUCHER & TRANSACTION ID SUBMISSION
+                // ══════════════════════════════════════════════════════════
+                const Text(
+                  'Submit Payment Proof & Voucher (भौचर तथा भुक्तानी प्रमाण) *',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                const SizedBox(height: 14),
+
+                TextFormField(
+                  controller: _txnRefCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Transaction Reference ID / Voucher Number *',
+                    hintText: 'e.g. TXN-99887766 or Bank Voucher No',
+                    prefixIcon: const Icon(Icons.pin_outlined, size: 20),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  validator: (v) {
+                    if (isPaymentEnabled && (v == null || v.trim().isEmpty)) {
+                      return 'Please enter Transaction Reference ID';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // Voucher uploader with preview box
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: _voucherImageUrl.isNotEmpty
+                        ? Colors.green.withValues(alpha: 0.06)
+                        : (isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC)),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _voucherImageUrl.isNotEmpty
+                          ? Colors.green.withValues(alpha: 0.4)
+                          : (isDark ? Colors.white12 : Colors.grey.shade300),
+                      style: _voucherImageUrl.isNotEmpty ? BorderStyle.solid : BorderStyle.solid,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: _voucherImageUrl.isNotEmpty
+                              ? Colors.green.withValues(alpha: 0.15)
+                              : AppColors.primary.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          _voucherImageUrl.isNotEmpty ? Icons.receipt_long_rounded : Icons.upload_file_rounded,
+                          color: _voucherImageUrl.isNotEmpty ? Colors.green : AppColors.primary,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _voucherImageUrl.isNotEmpty
+                                  ? 'Receipt Voucher Attached'
+                                  : 'Upload Payment Voucher / Receipt Screenshot',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: _voucherImageUrl.isNotEmpty ? Colors.green.shade800 : null,
+                              ),
+                            ),
+                            Text(
+                              _voucherImageUrl.isNotEmpty
+                                  ? _voucherImageUrl.split("/").last
+                                  : 'PNG, JPG, PDF (Screenshot from Mobile Banking/eSewa/Khalti)',
+                              style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white60 : Colors.grey.shade600),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      ElevatedButton.icon(
+                        onPressed: _isUploadingVoucher
+                            ? null
+                            : () async {
+                                final res = await FilePicker.platform.pickFiles(
+                                  type: FileType.custom,
+                                  allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+                                  withData: true,
+                                );
+                                if (res == null || res.files.isEmpty || res.files.first.bytes == null) return;
+                                setState(() => _isUploadingVoucher = true);
+                                try {
+                                  final dio = ref.read(apiClientProvider);
+                                  final resp = await dio.post(
+                                    ApiConstants.fileUpload,
+                                    data: FormData.fromMap({
+                                      'file': MultipartFile.fromBytes(
+                                        res.files.first.bytes!,
+                                        filename: res.files.first.name,
+                                      ),
+                                    }),
+                                  );
+                                  final url = resp.data['url'] as String?;
+                                  setState(() {
+                                    _isUploadingVoucher = false;
+                                    if (url != null) _voucherImageUrl = url;
+                                  });
+                                } catch (_) {
+                                  setState(() => _isUploadingVoucher = false);
+                                }
+                              },
+                        icon: _isUploadingVoucher
+                            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                            : Icon(_voucherImageUrl.isNotEmpty ? Icons.change_circle_rounded : Icons.attach_file_rounded, size: 16),
+                        label: Text(_voucherImageUrl.isNotEmpty ? 'Change' : 'Browse File'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _voucherImageUrl.isNotEmpty ? Colors.green.shade700 : AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                TextFormField(
+                  controller: _paymentNotesCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Payment Remarks / Notes (Optional)',
+                    hintText: 'e.g. Paid via eSewa by Candidate',
+                    prefixIcon: const Icon(Icons.note_alt_outlined, size: 20),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  maxLines: 2,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActiveChannelContent({
+    required String channelId,
+    required Color activeColor,
+    required dynamic org,
+    required bool isDark,
+  }) {
+    if (channelId == 'fonepay') {
+      final qrPath = org?.staticQrImageUrl ?? (org?.bankQrUrl ?? '');
+      final fullQrUrl = qrPath.isNotEmpty ? ApiConstants.getFullImageUrl(qrPath) : null;
+
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: activeColor.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 130,
+              height: 130,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(11),
+                child: fullQrUrl != null
+                    ? Image.network(
+                        fullQrUrl,
+                        fit: BoxFit.contain,
+                        errorBuilder: (ctx, err, stack) => _buildQrPlaceholder(activeColor, isDark),
+                      )
+                    : _buildQrPlaceholder(activeColor, isDark),
+              ),
+            ),
+            const SizedBox(width: 18),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: activeColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text('Official FonePay / Standee QR', style: TextStyle(color: activeColor, fontWeight: FontWeight.bold, fontSize: 11)),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Scan this QR code using any Mobile Banking App (Global IME, NIC Asia, Nabil, etc.) or FonePay.',
+                    style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.grey.shade700),
+                  ),
+                  const SizedBox(height: 8),
+                  if (org?.staticBankName.isNotEmpty == true) ...[
+                    Text('Bank: ${org!.staticBankName}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  ],
+                  if (org?.staticAccountName.isNotEmpty == true) ...[
+                    const SizedBox(height: 2),
+                    Text('A/C Name: ${org!.staticAccountName}', style: const TextStyle(fontSize: 12)),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (channelId == 'bank_transfer') {
+      return Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: activeColor.withValues(alpha: 0.25)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: activeColor.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.account_balance_rounded, color: activeColor, size: 20),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        org?.staticBankName.isNotEmpty == true ? org!.staticBankName : 'Direct Bank Account Deposit',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5),
+                      ),
+                      if (org?.staticBranch.isNotEmpty == true)
+                        Text('Branch: ${org!.staticBranch}', style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white60 : Colors.grey.shade600)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            if (org?.staticAccountNumber.isNotEmpty == true) ...[
+              _buildCopyableRow(label: 'Account Number (खाता नम्बर)', value: org!.staticAccountNumber, isDark: isDark),
+              const SizedBox(height: 6),
+            ],
+            if (org?.staticAccountName.isNotEmpty == true) ...[
+              Text('Account Holder: ${org!.staticAccountName}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 6),
+            ],
+            Text(
+              '💡 Tip: Transfer the nomination fee via your Mobile Banking app or Bank Counter, then upload the voucher screenshot below.',
+              style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white54 : Colors.grey.shade600),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (channelId == 'esewa') {
+      final hasQr = org?.staticEsewaQrUrl.isNotEmpty == true;
+      final fullQrUrl = hasQr ? ApiConstants.getFullImageUrl(org!.staticEsewaQrUrl) : null;
+
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: activeColor.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (hasQr && fullQrUrl != null) ...[
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(11),
+                  child: Image.network(
+                    fullQrUrl,
+                    fit: BoxFit.contain,
+                    errorBuilder: (ctx, err, stack) => _buildQrPlaceholder(activeColor, isDark),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF60BB46).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text('eSewa Wallet Transfer', style: TextStyle(color: Color(0xFF60BB46), fontWeight: FontWeight.bold, fontSize: 11)),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildCopyableRow(
+                    label: 'eSewa ID / Mobile No',
+                    value: org?.staticEsewaId.isNotEmpty == true
+                        ? org!.staticEsewaId
+                        : (org?.staticWalletId.isNotEmpty == true ? org!.staticWalletId : 'Official Account'),
+                    isDark: isDark,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '💡 Send money directly from your eSewa App to the ID above and attach the screenshot.',
+                    style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white54 : Colors.grey.shade600),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (channelId == 'khalti') {
+      final hasQr = org?.staticKhaltiQrUrl.isNotEmpty == true;
+      final fullQrUrl = hasQr ? ApiConstants.getFullImageUrl(org!.staticKhaltiQrUrl) : null;
+
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: activeColor.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (hasQr && fullQrUrl != null) ...[
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(11),
+                  child: Image.network(
+                    fullQrUrl,
+                    fit: BoxFit.contain,
+                    errorBuilder: (ctx, err, stack) => _buildQrPlaceholder(activeColor, isDark),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+            ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF5C2D91).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text('Khalti Wallet Transfer', style: TextStyle(color: Color(0xFF5C2D91), fontWeight: FontWeight.bold, fontSize: 11)),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildCopyableRow(
+                    label: 'Khalti ID / Mobile No',
+                    value: org?.staticKhaltiId.isNotEmpty == true
+                        ? org!.staticKhaltiId
+                        : (org?.staticWalletId.isNotEmpty == true ? org!.staticWalletId : 'Official Account'),
+                    isDark: isDark,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '💡 Send money directly from your Khalti App to the ID above and attach the screenshot.',
+                    style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white54 : Colors.grey.shade600),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (channelId == 'connectips') {
+      return Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: activeColor.withValues(alpha: 0.25)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: activeColor.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.sync_alt_rounded, color: activeColor, size: 20),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'ConnectIPS Direct Inter-Bank Transfer (NCHL)',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            if (org?.staticConnectIpsId.isNotEmpty == true) ...[
+              _buildCopyableRow(label: 'ConnectIPS Payee / Username', value: org!.staticConnectIpsId, isDark: isDark),
+              const SizedBox(height: 6),
+            ],
+            if (org?.staticAccountNumber.isNotEmpty == true) ...[
+              _buildCopyableRow(label: 'Bank A/C Number', value: org!.staticAccountNumber, isDark: isDark),
+              const SizedBox(height: 6),
+            ],
+            if (org?.staticBankName.isNotEmpty == true) ...[
+              Text('Bank Name: ${org!.staticBankName}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 6),
+            ],
+            Text(
+              '💡 Tip: Transfer via connectips.com or ConnectIPS Mobile App, then input the transaction reference ID below.',
+              style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white54 : Colors.grey.shade600),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildCopyableRow({required String label, required String value, required bool isDark}) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            '$label: $value',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.primaryLight),
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.copy_rounded, size: 16),
+          visualDensity: VisualDensity.compact,
+          tooltip: 'Copy $label',
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: value));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('$label copied to clipboard!'),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQrPlaceholder(Color activeColor, bool isDark) {
+    return Container(
+      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.qr_code_2_rounded, size: 48, color: activeColor),
+          const SizedBox(height: 6),
+          Text(
+            'Scan via App',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : Colors.grey.shade700),
+          ),
+        ],
       ),
     );
   }

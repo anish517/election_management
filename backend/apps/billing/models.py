@@ -62,26 +62,109 @@ class Subscription(TimestampedModel):
         db_table = 'subscriptions'
 
 
+class PaymentStatus(models.TextChoices):
+    PENDING = 'pending', 'Pending Verification'
+    VERIFIED = 'verified', 'Verified / Approved'
+    REJECTED = 'rejected', 'Rejected'
+    COMPLETED = 'completed', 'Completed'
+    FAILED = 'failed', 'Failed'
+
+
+class PaymentMethod(models.TextChoices):
+    STATIC_QR_BANK = 'static_qr_bank', 'Static Bank QR'
+    STATIC_QR_WALLET = 'static_qr_wallet', 'Digital Wallet QR (eSewa/Khalti/Fonepay)'
+    BANK_TRANSFER = 'bank_transfer', 'Direct Bank Transfer'
+    CASH_VOUCHER = 'cash_voucher', 'Cash Voucher'
+
+
 class Payment(TimestampedModel):
-    """Payment records for subscription billing."""
+    """
+    Payment audit ledger for nomination fees and organizational billing.
+    Supports Static QR payments with voucher uploads and officer verification.
+    """
     organization = models.ForeignKey(
         'organizations.Organization',
         on_delete=models.CASCADE,
         related_name='payments',
     )
-    subscription = models.ForeignKey(Subscription, on_delete=models.SET_NULL, null=True)
-    gateway = models.CharField(
-        max_length=20,
-        choices=[('khalti', 'Khalti'), ('esewa', 'eSewa'), ('stripe', 'Stripe')],
+    election = models.ForeignKey(
+        'elections.Election',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='payments',
     )
+    candidate = models.ForeignKey(
+        'candidates.Candidate',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='payments',
+    )
+    user = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='payments',
+    )
+    subscription = models.ForeignKey(
+        Subscription,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(max_length=5, default='NPR')
-    status = models.CharField(
+    payment_method = models.CharField(
+        max_length=30,
+        choices=PaymentMethod.choices,
+        default=PaymentMethod.STATIC_QR_BANK,
+    )
+    
+    # Candidate / Payer submission details
+    transaction_reference = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        help_text='Transaction ID / Voucher Reference Number',
+    )
+    receipt_image_url = models.URLField(
+        blank=True,
+        default='',
+        help_text='Uploaded payment voucher or screenshot URL',
+    )
+    payment_notes = models.TextField(blank=True, default='')
+
+    # Legacy gateway compatibility
+    gateway = models.CharField(
         max_length=20,
-        choices=[('pending', 'Pending'), ('completed', 'Completed'), ('failed', 'Failed')],
-        default='pending',
+        blank=True,
+        default='static_qr',
     )
     gateway_reference = models.CharField(max_length=255, blank=True, default='')
 
+    # Verification state & Officer audit trail
+    status = models.CharField(
+        max_length=20,
+        choices=PaymentStatus.choices,
+        default=PaymentStatus.PENDING,
+        db_index=True,
+    )
+    reviewed_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reviewed_payments',
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.TextField(blank=True, default='')
+
     class Meta:
         db_table = 'payments'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Payment {self.id} — NPR {self.amount} ({self.status}) [{self.organization.name}]"

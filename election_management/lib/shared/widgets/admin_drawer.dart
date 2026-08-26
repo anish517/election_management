@@ -172,6 +172,29 @@ class AdminDrawer extends ConsumerWidget {
                     ),
 
                     // Group 2: Management
+                    if (user.role == 'org_admin' || user.role == 'superadmin' || user.role == 'election_officer') ...[
+                      const SizedBox(height: 12),
+                      _buildSectionHeader('FINANCE & PAYMENTS (भुक्तानी व्यवस्थापन)', isDark),
+                      _buildNavItem(
+                        context,
+                        title: 'Payment History & Ledger',
+                        icon: Icons.receipt_long_rounded,
+                        isActive: currentRoute.contains('/admin/payments') || currentRoute.contains('payments'),
+                        onTap: () => handleNav('admin-payments', '/admin/payments'),
+                        isDark: isDark,
+                      ),
+                      if (user.role == 'org_admin' || user.role == 'superadmin')
+                        _buildNavItem(
+                          context,
+                          title: 'Payment QR & Settings',
+                          icon: Icons.qr_code_2_rounded,
+                          isActive: currentRoute.contains('payment-settings'),
+                          onTap: () => handleNav('payment-settings', '/payment-settings'),
+                          isDark: isDark,
+                        ),
+                    ],
+
+                    // Group 3: Management
                     if (user.role == 'org_admin' || user.role == 'superadmin') ...[
                       const SizedBox(height: 12),
                       _buildSectionHeader('MANAGEMENT (व्यवस्थापन)', isDark),
@@ -179,8 +202,8 @@ class AdminDrawer extends ConsumerWidget {
                         context,
                         title: 'Organization Settings',
                         icon: Icons.tune_rounded,
-                        isActive: currentRoute.contains('settings') && !currentRoute.contains('payment'),
-                        onTap: () => handleNav('org-settings', '/settings'),
+                        isActive: currentRoute.contains('org-settings'),
+                        onTap: () => handleNav('org-settings', '/org-settings'),
                         isDark: isDark,
                       ),
                       _buildNavItem(
@@ -189,14 +212,6 @@ class AdminDrawer extends ConsumerWidget {
                         icon: Icons.gavel_rounded,
                         isActive: currentRoute.contains('rules'),
                         onTap: () => handleNav('election-rules', '/election-rules'),
-                        isDark: isDark,
-                      ),
-                      _buildNavItem(
-                        context,
-                        title: 'Payment Settings',
-                        icon: Icons.credit_card_rounded,
-                        isActive: currentRoute.contains('payment'),
-                        onTap: () => handleNav('payment-settings', '/payment-settings'),
                         isDark: isDark,
                       ),
                     ],

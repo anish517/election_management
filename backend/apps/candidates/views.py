@@ -93,15 +93,50 @@ class CandidateViewSet(viewsets.ModelViewSet):
             last_name = voter.last_name if voter else (member.last_name if member else '')
             phone = voter.phone if voter else (member.phone if member else self.request.user.phone)
 
-            serializer.save(
+            # Calculate applicable fee
+            pos = serializer.validated_data.get('position')
+            pos_charge = float(pos.nominee_charge or 0.0) if pos else 0.0
+            el_charge = float(election.nominee_charge or 0.0)
+            ps = election.organization.payment_settings or {}
+            default_fee = float(ps.get('default_nomination_fee', 0.0) or 0.0)
+            fee = pos_charge if pos_charge > 0 else (el_charge if el_charge > 0 else default_fee)
+
+            is_payment_enabled = bool(ps.get('is_payment_enabled', False) or election.is_paid_candidacy)
+            txn_ref = (self.request.data.get('transaction_reference') or self.request.data.get('transaction_id') or '').strip()
+            receipt_url = (self.request.data.get('receipt_image_url') or self.request.data.get('receipt_url') or '').strip()
+            pay_notes = (self.request.data.get('payment_notes') or '').strip()
+            pay_method = self.request.data.get('payment_method') or 'static_qr_bank'
+
+            initial_payment_status = 'waived'
+            if (is_payment_enabled and fee > 0) or txn_ref:
+                initial_payment_status = 'pending_verification'
+
+            candidate = serializer.save(
                 election=election,
                 status=NominationStatus.SUBMITTED,
+                payment_status=initial_payment_status,
                 email=user_email,
                 first_name=first_name,
                 middle_name=middle_name,
                 last_name=last_name,
                 contact_number=phone or '',
             )
+
+            # If payment is active or transaction reference provided, create Payment ledger record
+            if (is_payment_enabled and fee > 0) or txn_ref:
+                from apps.billing.models import Payment, PaymentStatus
+                Payment.objects.create(
+                    organization=election.organization,
+                    election=election,
+                    candidate=candidate,
+                    user=self.request.user,
+                    amount=fee if fee > 0 else 0.00,
+                    payment_method=pay_method,
+                    transaction_reference=txn_ref,
+                    receipt_image_url=receipt_url,
+                    payment_notes=pay_notes,
+                    status=PaymentStatus.PENDING,
+                )
         except IntegrityError:
             raise ValidationError({'error': 'You have already submitted a nomination for this position.'})
 

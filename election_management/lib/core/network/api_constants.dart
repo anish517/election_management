@@ -114,4 +114,12 @@ class ApiConstants {
   // Organization
   static const String organizationProfile = '/organization/';
   static const String organizationStats = '/organization/stats/';
+
+  // Payments & Static QR Ledger
+  static const String payments = '/payments/';
+  static const String paymentStats = '/payments/stats/';
+  static String verifyPayment(String id) => '/payments/$id/verify/';
+  static String rejectPayment(String id) => '/payments/$id/reject/';
+  static String resubmitPayment(String id) => '/payments/$id/resubmit/';
+  static String electionPayments(String electionId) => '/elections/$electionId/payments/';
 }

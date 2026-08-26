@@ -20,6 +20,7 @@ import '../../features/candidates/nomination_list_screen.dart';
 import '../../features/admin/organization/org_settings_screen.dart';
 import '../../features/admin/election_rules/election_rules_screen.dart';
 import '../../features/admin/payment_settings/payment_settings_screen.dart';
+import '../../features/admin/payments/payment_management_screen.dart';
 import '../../features/results/results_screen.dart';
 import '../../features/profile/user_profile_screen.dart';
 import '../../features/analytics/analytics_screen.dart';
@@ -73,7 +74,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/elections';
       }
 
-      // Prevent voters/candidates from accessing the admin dashboard
+      // Prevent voters/candidates from accessing admin restricted routes
       if (isLoggedIn && user != null) {
         final role = user.role;
         final isAdminRoute = loc.startsWith('/dashboard') ||
@@ -81,6 +82,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             loc.startsWith('/payment-settings');
         final isAdminRole = role == 'org_admin' || role == 'super_admin';
         if (isAdminRoute && !isAdminRole) return '/elections';
+
+        final isOfficerRoute = loc.startsWith('/admin/payments');
+        final isOfficerOrAdmin = isAdminRole || role == 'election_officer';
+        if (isOfficerRoute && !isOfficerOrAdmin) return '/elections';
       }
 
       return null;
@@ -122,6 +127,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/payment-settings',
         name: 'payment-settings',
         builder: (context, state) => const PaymentSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/admin/payments',
+        name: 'admin-payments',
+        builder: (context, state) => const PaymentManagementScreen(),
       ),
       GoRoute(
         path: '/profile',

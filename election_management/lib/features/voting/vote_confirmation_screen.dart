@@ -21,6 +21,121 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
   String? _error;
   bool _hasAffirmed = true;
 
+  Future<void> _showFinalConfirmDialog(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: isDark ? AppColors.surface : Colors.white,
+          contentPadding: const EdgeInsets.all(0),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  border: Border(bottom: BorderSide(color: const Color(0xFF10B981).withValues(alpha: 0.2))),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        SizedBox(width: 28, height: 28, child: CustomPaint(painter: _VoteSwastikPainter(color: const Color(0xFF10B981)))),
+                        const Expanded(
+                          child: Column(
+                            children: [
+                              Text('Final Confirmation', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              Text('अन्तिम पुष्टि', style: TextStyle(fontSize: 11, color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: 28, height: 28, child: CustomPaint(painter: _VoteSwastikPainter(color: const Color(0xFF10B981)))),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 32),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Are you absolutely sure you want to cast your ballot?',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'This action is permanent and irreversible. Once submitted, your ballot is cryptographically sealed and cannot be changed or withdrawn.',
+                      style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.grey.shade700, height: 1.4),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.07),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.lock_rounded, color: Colors.red, size: 16),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Your vote is secret — no one can see your selections after submission.',
+                              style: TextStyle(fontSize: 12, color: Colors.red, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                        child: const Text('Go Back'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton.icon(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        icon: const Icon(Icons.how_to_vote_rounded, size: 18),
+                        label: const Text('Cast My Vote (मतदान गर्नुहोस्)', style: TextStyle(fontWeight: FontWeight.bold)),
+                        style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (confirmed == true && mounted) {
+      _doSubmitVote();
+    }
+  }
+
   Future<void> _submitVote() async {
     if (!_hasAffirmed) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -32,6 +147,11 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
       return;
     }
 
+    // Show final popup before submitting
+    await _showFinalConfirmDialog(context);
+  }
+
+  Future<void> _doSubmitVote() async {
     setState(() {
       _isSubmitting = true;
       _error = null;
@@ -78,6 +198,9 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
           msg = errors.join('\n');
         }
       }
+      if (msg.toLowerCase().contains('already cast') || msg.toLowerCase().contains('already voted')) {
+        msg = 'Already Submitted (मतदान भइसकेको छ). Your ballot has already been cast and recorded for this election.';
+      }
       if (mounted) {
         setState(() {
           _isSubmitting = false;
@@ -85,10 +208,14 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
         });
       }
     } catch (e) {
+      String msg = e.toString();
+      if (msg.toLowerCase().contains('already cast') || msg.toLowerCase().contains('already voted')) {
+        msg = 'Already Submitted (मतदान भइसकेको छ). Your ballot has already been cast and recorded for this election.';
+      }
       if (mounted) {
         setState(() {
           _isSubmitting = false;
-          _error = e.toString();
+          _error = msg;
         });
       }
     }
@@ -103,11 +230,21 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
     return Scaffold(
       backgroundColor: isDark ? AppColors.background : const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            Text('Review & Confirm Ballot', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            Text('मतपत्र समीक्षा तथा अन्तिम प्रमाणीकरण', style: TextStyle(fontSize: 11, color: Colors.white70)),
+            SizedBox(
+              width: 22,
+              height: 22,
+              child: CustomPaint(painter: _VoteSwastikPainter(color: Colors.white)),
+            ),
+            const SizedBox(width: 10),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Review & Confirm Ballot', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                Text('मतपत्र समीक्षा तथा अन्तिम प्रमाणीकरण', style: TextStyle(fontSize: 11, color: Colors.white70)),
+              ],
+            ),
           ],
         ),
         leading: IconButton(
@@ -151,7 +288,11 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                           const SizedBox(height: 20),
                           Row(
                             children: [
-                              const Icon(Icons.checklist_rtl_rounded, color: AppColors.primaryLight, size: 22),
+                              const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CustomPaint(painter: _VoteSwastikPainter(color: Color(0xFFB91C1C))),
+                              ),
                               const SizedBox(width: 8),
                               Text(
                                 'Your Verified Selections (तपाईंको छनोट विवरण)',
@@ -487,18 +628,64 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                           ),
                           if (isRanked)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: AppColors.primaryLight,
-                                borderRadius: BorderRadius.circular(6),
+                                color: const Color(0xFFB91C1C).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFB91C1C), width: 1.5),
                               ),
-                              child: Text(
-                                'Preference #${rankIndex + 1}',
-                                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CustomPaint(painter: _VoteSwastikPainter(color: Color(0xFFB91C1C))),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    '#${rankIndex + 1} वरियता',
+                                    style: const TextStyle(color: Color(0xFFB91C1C), fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
                               ),
                             )
                           else
-                            const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 22),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFB91C1C).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFB91C1C), width: 1.5),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFB91C1C).withValues(alpha: 0.15),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CustomPaint(painter: _VoteSwastikPainter(color: Color(0xFFB91C1C))),
+                                  ),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'स्वस्तिक छाप',
+                                    style: TextStyle(
+                                      color: Color(0xFFB91C1C),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.2,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
                     );
@@ -558,4 +745,51 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
       ),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Traditional Hindu / Nepali Swastik CustomPainter for Vote Confirmation
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _VoteSwastikPainter extends CustomPainter {
+  final Color color;
+  const _VoteSwastikPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final double w = size.width;
+    final double h = size.height;
+    final double t = w / 3;
+    final double c = w / 3;
+
+    final path = Path();
+
+    // Center square
+    path.addRect(Rect.fromLTWH(t, t, c, c));
+
+    // Top arm
+    path.addRect(Rect.fromLTWH(t, 0, c, t));
+
+    // Bottom arm
+    path.addRect(Rect.fromLTWH(t, h - t, c, t));
+
+    // Left arm
+    path.addRect(Rect.fromLTWH(0, t, t, c));
+
+    // Right arm
+    path.addRect(Rect.fromLTWH(w - t, t, t, c));
+
+    // Hooks (right-facing swastik)
+    path.addRect(Rect.fromLTWH(w - t, 0, t, t));
+    path.addRect(Rect.fromLTWH(0, h - t, t, t));
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_VoteSwastikPainter old) => old.color != color;
 }

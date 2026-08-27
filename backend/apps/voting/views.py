@@ -56,6 +56,9 @@ class VotingViewSet(viewsets.ViewSet):
         except Exception:
             return None
 
+    # Roles that are NEVER allowed to cast a ballot
+    _NON_VOTER_ROLES = {'org_admin', 'election_officer', 'observer', 'auditor', 'super_admin'}
+
     @action(detail=False, methods=['get'])
     def ballot(self, request, election_pk=None):
         """Returns the structured ballot with approved candidates."""
@@ -63,24 +66,61 @@ class VotingViewSet(viewsets.ViewSet):
             election = Election.objects.get(id=election_pk, organization=request.user.organization)
         except Election.DoesNotExist:
             return Response({'error': 'Election not found'}, status=404)
-            
+
+        # Check if the user's role is a committee/admin role (not eligible to vote)
+        user_role = getattr(request.user, 'role', '')
+        if user_role in self._NON_VOTER_ROLES:
+            return Response({
+                'ballot': [],
+                'allow_boycott': False,
+                'is_secret_ballot': election.is_secret_ballot,
+                'not_eligible': True,
+                'not_eligible_reason': f'Your role ({user_role.replace("_", " ").title()}) is not permitted to vote. Only registered voters may cast a ballot.',
+                'has_voted': False,
+                'voter_info': None,
+            })
+
+        # Check voter roll and has_voted status
+        roll = self._get_voter_roll(request, election_pk)
+        has_voted = roll.has_voted if roll else False
+        voter_id = roll.voter_id if roll else ''
+        voter_name = (f"{roll.first_name} {roll.last_name}".strip()) if roll else (request.user.full_name if hasattr(request.user, 'full_name') else request.user.email)
+
         ballot_data = BallotService.generate_ballot(election)
         return Response({
             'ballot': ballot_data,
             'allow_boycott': election.allow_boycott,
             'is_secret_ballot': election.is_secret_ballot,
+            'not_eligible': False,
+            'has_voted': has_voted,
+            'voter_info': {
+                'voter_id': voter_id,
+                'full_name': voter_name,
+                'email': request.user.email,
+            },
         })
 
     @action(detail=False, methods=['post'])
     def session(self, request, election_pk=None):
         """Generates a voting session token."""
+        # Block non-voter roles from ever starting a session
+        user_role = getattr(request.user, 'role', '')
+        if user_role in self._NON_VOTER_ROLES:
+            return Response(
+                {'error': f'Your role ({user_role.replace("_", " ").title()}) is not permitted to vote. Committee members and administrators cannot cast ballots.'},
+                status=403
+            )
+
         roll = self._get_voter_roll(request, election_pk)
         if not roll:
             return Response({'error': 'You are not eligible to vote in this election.'}, status=403)
-            
+
+        if roll.has_voted:
+            return Response({'error': 'You have already cast your ballot in this election. Each voter may only vote once.'}, status=403)
+
         if roll.election.state != 'voting_open':
-            return Response({'error': 'Voting is not active.'}, status=400)
-            
+            return Response({'error': 'Voting is not currently active.'}, status=400)
+
         try:
             token = BallotService.start_session(roll)
             return Response({'session_token': token})

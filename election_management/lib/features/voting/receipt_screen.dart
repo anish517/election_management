@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
@@ -21,30 +20,6 @@ class ReceiptScreen extends ConsumerStatefulWidget {
 }
 
 class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
-  bool _copied = false;
-
-  void _copyHash() {
-    Clipboard.setData(ClipboardData(text: widget.receiptHash));
-    setState(() => _copied = true);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.check_circle_rounded, color: Colors.white),
-            SizedBox(width: 10),
-            Text('Cryptographic receipt fingerprint copied to clipboard!'),
-          ],
-        ),
-        backgroundColor: Colors.green.shade700,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) setState(() => _copied = false);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -56,9 +31,9 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 680),
+            constraints: const BoxConstraints(maxWidth: 600),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
               child: Column(
                 children: [
                   _buildSuccessIcon(),
@@ -66,9 +41,7 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
                   _buildTitle(context, isDark),
                   const SizedBox(height: 28),
                   _buildReceiptCard(context, electionTitle, isDark),
-                  const SizedBox(height: 24),
-                  _buildExplainer(context, isDark),
-                  const SizedBox(height: 36),
+                  const SizedBox(height: 32),
                   _buildActions(context),
                   const SizedBox(height: 20),
                 ],
@@ -87,8 +60,8 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
       curve: Curves.easeOutBack,
       builder: (_, value, child) => Transform.scale(scale: value, child: child),
       child: Container(
-        width: 90,
-        height: 90,
+        width: 96,
+        height: 96,
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             colors: [Color(0xFF10B981), Color(0xFF059669)],
@@ -104,7 +77,7 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
             ),
           ],
         ),
-        child: const Icon(Icons.check_rounded, color: Colors.white, size: 50),
+        child: const Icon(Icons.check_rounded, color: Colors.white, size: 54),
       ),
     );
   }
@@ -123,16 +96,16 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
           style: TextStyle(fontSize: 13, color: AppColors.primaryLight, fontWeight: FontWeight.bold),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            'Your ballot has been anonymized, cryptographically sealed, and submitted into the official ballot box.',
+            'Thank you for exercising your democratic right. Your ballot has been cast anonymously and recorded into the official ballot box.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 13.5,
               color: isDark ? Colors.white60 : Colors.grey.shade600,
-              height: 1.4,
+              height: 1.45,
             ),
           ),
         ),
@@ -141,6 +114,10 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
   }
 
   Widget _buildReceiptCard(BuildContext context, String electionTitle, bool isDark) {
+    final now = DateTime.now();
+    final formattedDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final formattedTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -150,183 +127,101 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
         boxShadow: [
           if (!isDark)
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header Ribbon
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.3) : const Color(0xFFF8FAFC),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(19)),
-              border: Border(bottom: BorderSide(color: isDark ? Colors.white10 : Colors.grey.shade200)),
-            ),
-            child: Row(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.receipt_long_rounded, color: Color(0xFF10B981), size: 20),
+                  child: const Icon(Icons.how_to_vote_rounded, color: Color(0xFF10B981), size: 22),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Cryptographic Vote Receipt (प्रमाणीकरण भौचर)',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
-                      ),
                       Text(
                         electionTitle,
-                        style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white60 : Colors.grey.shade600),
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5),
                         overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Electronic Ballot Confirmation',
+                        style: TextStyle(fontSize: 11.5, color: Color(0xFF10B981), fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(6),
+                    color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
                   ),
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.lock_rounded, size: 12, color: Colors.green),
+                      Icon(Icons.check_circle_rounded, size: 13, color: Color(0xFF10B981)),
                       SizedBox(width: 4),
-                      Text('SEALED', style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)),
+                      Text('CONFIRMED', style: TextStyle(color: Color(0xFF10B981), fontSize: 10.5, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
               ],
             ),
-          ),
-
-          // Hash Token Box
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(height: 16),
+            const Divider(height: 1),
+            const SizedBox(height: 16),
+            Row(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'RECEIPT AUDIT FINGERPRINT',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.8,
-                        color: isDark ? Colors.white54 : Colors.grey.shade600,
-                      ),
-                    ),
-                    TextButton.icon(
-                      onPressed: _copyHash,
-                      icon: Icon(_copied ? Icons.check_rounded : Icons.copy_rounded, size: 14),
-                      label: Text(_copied ? 'Copied' : 'Copy Hash', style: const TextStyle(fontSize: 12)),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppColors.primaryLight,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade300),
-                  ),
-                  child: SelectableText(
-                    widget.receiptHash,
-                    style: const TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.8,
-                      height: 1.4,
-                    ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('DATE', style: TextStyle(fontSize: 10, color: isDark ? Colors.white38 : Colors.grey.shade500, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                      const SizedBox(height: 2),
+                      Text(formattedDate, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  'Keep this cryptographic token safe. You can use this receipt hash to verify that your ballot is counted in the official audit tally.',
-                  style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white54 : Colors.grey.shade600, height: 1.35),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('TIME', style: TextStyle(fontSize: 10, color: isDark ? Colors.white38 : Colors.grey.shade500, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                      const SizedBox(height: 2),
+                      Text(formattedTime, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('BALLOT TYPE', style: TextStyle(fontSize: 10, color: isDark ? Colors.white38 : Colors.grey.shade500, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                      const SizedBox(height: 2),
+                      const Text('Secret Ballot', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF10B981))),
+                    ],
+                  ),
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExplainer(BuildContext context, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1B4B).withValues(alpha: 0.3) : const Color(0xFFEEF2FF),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6366F1).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.verified_user_rounded, color: Color(0xFF6366F1), size: 16),
-              ),
-              const SizedBox(width: 10),
-              const Text(
-                'What does this cryptographic receipt guarantee?',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          const _ExplainerItem(
-            icon: Icons.shield_rounded,
-            title: 'Tamper-Evident Registration',
-            text: 'Your vote was successfully encrypted and appended into the verified election tally roll.',
-          ),
-          const _ExplainerItem(
-            icon: Icons.visibility_off_rounded,
-            title: 'Complete Ballot Secrecy',
-            text: 'Your candidate selections are strictly disassociated from your identity — neither admins nor observers can see what you voted.',
-          ),
-          const _ExplainerItem(
-            icon: Icons.fingerprint_rounded,
-            title: 'Mathematical Verifiability',
-            text: 'This hash serves as a digital receipt to independently verify ballot inclusion without compromising your privacy.',
-          ),
-          const _ExplainerItem(
-            icon: Icons.analytics_rounded,
-            title: 'Certified Results Publication',
-            text: 'Election results will be officially computed and certified once the voting window closes.',
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -371,45 +266,6 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
           ),
         ],
       ],
-    );
-  }
-}
-
-class _ExplainerItem extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String text;
-  const _ExplainerItem({required this.icon, required this.title, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: const Color(0xFF6366F1), size: 16),
-          const SizedBox(width: 10),
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: TextStyle(
-                  fontSize: 12.5,
-                  color: isDark ? Colors.white70 : const Color(0xFF334155),
-                  height: 1.35,
-                  fontFamily: Theme.of(context).textTheme.bodyMedium?.fontFamily,
-                ),
-                children: [
-                  TextSpan(text: '$title: ', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  TextSpan(text: text),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

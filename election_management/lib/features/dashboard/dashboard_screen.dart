@@ -224,24 +224,69 @@ class DashboardScreen extends ConsumerWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(13),
-                    child: (user?.organizationLogoUrl.isNotEmpty == true)
-                        ? Image.network(
-                            ApiConstants.getFullImageUrl(user!.organizationLogoUrl)!,
-                            fit: BoxFit.cover,
-                            errorBuilder: (ctx, err, stack) => const Icon(Icons.how_to_vote_rounded, color: Colors.white, size: 26),
-                          )
-                        : const Icon(Icons.how_to_vote_rounded, color: Colors.white, size: 26),
-                  ),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    // User Photo Avatar / Org Icon
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: ClipOval(
+                        child: (user?.photoUrl.isNotEmpty == true)
+                            ? Image.network(
+                                ApiConstants.getFullImageUrl(user!.photoUrl)!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (ctx, err, stack) => Center(
+                                  child: Text(
+                                    name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
+                                  ),
+                                ),
+                              )
+                            : (user?.organizationLogoUrl.isNotEmpty == true)
+                                ? Image.network(
+                                    ApiConstants.getFullImageUrl(user!.organizationLogoUrl)!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (ctx, err, stack) => const Icon(Icons.person_rounded, color: Colors.white, size: 28),
+                                  )
+                                : const Icon(Icons.person_rounded, color: Colors.white, size: 28),
+                      ),
+                    ),
+                    // Small Organization Logo Badge on bottom-right of avatar
+                    if (user?.photoUrl.isNotEmpty == true && user?.organizationLogoUrl.isNotEmpty == true)
+                      Positioned(
+                        bottom: -2,
+                        right: -2,
+                        child: Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                          child: ClipOval(
+                            child: Image.network(
+                              ApiConstants.getFullImageUrl(user!.organizationLogoUrl)!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (ctx, err, stack) => const Icon(Icons.how_to_vote, size: 12, color: AppColors.primary),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(width: 16),
                 Expanded(

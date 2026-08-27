@@ -12,6 +12,7 @@ from apps.billing.serializers import (
     PaymentVerificationSerializer,
     PaymentRejectionSerializer,
     PaymentResubmitSerializer,
+    PaymentCorrectionSerializer,
 )
 from apps.audit.models import log_action
 
@@ -231,3 +232,45 @@ class PaymentViewSet(viewsets.ModelViewSet):
             'rejected_count': rejected_count,
             'total_transactions': qs.count(),
         })
+
+    @action(detail=True, methods=['post'])
+    def request_correction(self, request, pk=None):
+        """
+        Admin/Officer requests a correction from the candidate for a payment.
+        Sets status back to 'pending' and saves correction notes and history.
+        """
+        user = request.user
+        is_officer = (
+            user.role in ['org_admin', 'super_admin', 'election_officer']
+            or getattr(user, 'is_org_admin', False)
+        )
+        if not is_officer:
+            raise PermissionDenied('Only election officers can request payment corrections.')
+
+        payment = self.get_object()
+        serializer = PaymentCorrectionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        notes = serializer.validated_data['correction_notes']
+
+        # Append to correction_history
+        history_entry = {
+            'date': timezone.now().isoformat(),
+            'by': user.email,
+            'note': notes,
+            'status_before': payment.status,
+        }
+        current_history = payment.correction_history or []
+        current_history.append(history_entry)
+
+        payment.correction_notes = notes
+        payment.correction_history = current_history
+        payment.status = PaymentStatus.PENDING
+        payment.save(update_fields=['correction_notes', 'correction_history', 'status'])
+
+        log_action('payment.correction_requested', user.organization, user, {
+            'payment_id': str(payment.id),
+            'correction_notes': notes,
+        })
+
+        return Response(PaymentSerializer(payment).data)

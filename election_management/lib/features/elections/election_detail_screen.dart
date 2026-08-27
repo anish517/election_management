@@ -575,7 +575,7 @@ class ElectionDetailScreen extends ConsumerWidget {
             label: const Text('Review Nominations'),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateNominations, foregroundColor: Colors.white),
           ),
-        if (election.isVotingActive)
+        if (election.isVotingActive && user != null && !user.canManageElections && !user.isObserver && !user.isAuditor)
           ElevatedButton.icon(
             onPressed: () => context.pushNamed('ballot',
                 pathParameters: {'electionId': electionId}),
@@ -585,7 +585,7 @@ class ElectionDetailScreen extends ConsumerWidget {
           )
           .animate(onPlay: (controller) => controller.repeat(reverse: true))
           .scale(begin: const Offset(1, 1), end: const Offset(1.03, 1.03), duration: 800.ms),
-        if (election.hasResults || election.state == 'voting_closed' || (election.state == 'voting_open' && user?.canManageElections == true))
+        if (election.hasResults || election.state == 'voting_closed' || (election.state == 'voting_open' && (election.resultsVisibility == 'public' || user?.canManageElections == true || user?.isObserver == true || user?.isAuditor == true || election.resultsVisibility == 'org_members')))
           ElevatedButton.icon(
             onPressed: () => context.pushNamed('results',
                 pathParameters: {'electionId': electionId}),

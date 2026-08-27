@@ -162,6 +162,12 @@ class Payment(TimestampedModel):
     reviewed_at = models.DateTimeField(null=True, blank=True)
     rejection_reason = models.TextField(blank=True, default='')
 
+    # Correction / Amendment tracking
+    # When admin requests a correction (e.g., wrong TXN ref), this records it
+    correction_notes = models.TextField(blank=True, default='', help_text='Latest correction request details from admin')
+    # Full history of corrections: [{ "date": ..., "by": ..., "note": ..., "status_before": ... }, ...]
+    correction_history = models.JSONField(blank=True, default=list, help_text='Audit trail of all correction requests')
+
     class Meta:
         db_table = 'payments'
         ordering = ['-created_at']

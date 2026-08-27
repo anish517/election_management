@@ -709,6 +709,15 @@ class OrganizationModel {
       (paymentSettings['instructions'] as String?) ?? '';
   double get defaultNominationFee =>
       double.tryParse(paymentSettings['default_nomination_fee']?.toString() ?? '0.0') ?? 0.0;
+
+  // Nomination Endorsements Settings
+  int get minProposers => (paymentSettings['min_proposers'] as num?)?.toInt() ?? 1;
+  int get maxProposers => (paymentSettings['max_proposers'] as num?)?.toInt() ?? 5;
+  int get minSupporters => (paymentSettings['min_supporters'] as num?)?.toInt() ?? 1;
+  int get maxSupporters => (paymentSettings['max_supporters'] as num?)?.toInt() ?? 5;
+  bool get showVotingDuration => (paymentSettings['show_voting_duration'] as bool?) ?? false;
+  bool get enableVotingCountdown => (paymentSettings['enable_voting_countdown'] as bool?) ?? false;
+  int get votingTimeLimitMinutes => (paymentSettings['voting_time_limit_minutes'] as num?)?.toInt() ?? 5;
 }
 
 class PaymentModel {
@@ -735,6 +744,8 @@ class PaymentModel {
   final String? reviewedByEmail;
   final String? reviewedAt;
   final String rejectionReason;
+  final String correctionNotes;
+  final List<dynamic> correctionHistory;
   final String? createdAt;
 
   const PaymentModel({
@@ -761,6 +772,8 @@ class PaymentModel {
     this.reviewedByEmail,
     this.reviewedAt,
     this.rejectionReason = '',
+    this.correctionNotes = '',
+    this.correctionHistory = const [],
     this.createdAt,
   });
 
@@ -788,12 +801,15 @@ class PaymentModel {
         reviewedByEmail: json['reviewed_by_email'] as String?,
         reviewedAt: json['reviewed_at'] as String?,
         rejectionReason: json['rejection_reason'] as String? ?? '',
+        correctionNotes: json['correction_notes'] as String? ?? '',
+        correctionHistory: (json['correction_history'] as List<dynamic>?) ?? const [],
         createdAt: json['created_at'] as String?,
       );
 
   bool get isPending => status.toLowerCase() == 'pending';
   bool get isVerified => status.toLowerCase() == 'verified' || status.toLowerCase() == 'completed';
   bool get isRejected => status.toLowerCase() == 'rejected' || status.toLowerCase() == 'failed';
+  bool get hasCorrections => correctionNotes.isNotEmpty || correctionHistory.isNotEmpty;
 }
 
 class OrganizationStatsModel {

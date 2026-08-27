@@ -14,12 +14,14 @@ class HourlyActivity {
 class AnalyticsCandidateScore {
   final String candidateId;
   final String name;
+  final String photoUrl;
   final double score;
   final bool isWinner;
   final String positionTitle;
   const AnalyticsCandidateScore({
     required this.candidateId,
     required this.name,
+    this.photoUrl = '',
     required this.score,
     required this.isWinner,
     required this.positionTitle,
@@ -99,9 +101,14 @@ final analyticsProvider =
           final breakdown = posMap['breakdown'] as List<dynamic>? ?? [];
           for (final cand in breakdown) {
             final candMap = cand as Map<String, dynamic>;
+            final photo = (candMap['photo_url'] as String?) ??
+                (candMap['candidate_image'] as String?) ??
+                (candMap['photo'] as String?) ??
+                '';
             topCandidates.add(AnalyticsCandidateScore(
               candidateId: candMap['candidate_id'] as String? ?? '',
               name: candMap['name'] as String? ?? '',
+              photoUrl: photo,
               score: (candMap['score'] as num?)?.toDouble() ?? 0.0,
               isWinner: winners.contains(candMap['candidate_id']) && ((candMap['score'] as num?)?.toDouble() ?? 0.0) > 0,
               positionTitle: posTitle,

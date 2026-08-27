@@ -266,6 +266,30 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
       }
     }
 
+    final minProps = org?.minProposers ?? 1;
+    final minSupps = org?.minSupporters ?? 1;
+    final validProps = _proposers.where((p) => p.isNotEmpty).length;
+    final validSupps = _supporters.where((s) => s.isNotEmpty).length;
+
+    if (validProps < minProps) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('At least $minProps proposer(s) (प्रस्तावक) are required by institutional bylaws.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    if (validSupps < minSupps) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('At least $minSupps supporter(s) (समर्थक) are required by institutional bylaws.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isSubmitting = true);
     try {
       final dio = ref.read(apiClientProvider);
@@ -821,23 +845,33 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                                   color: AppColors.primary.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: Text('${_proposers.length}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+                                child: Text('${_proposers.length}/${org?.maxProposers ?? 5}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
                               ),
                               const SizedBox(width: 8),
-                              const Text('PROPOSERS (प्रस्तावक)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('PROPOSERS (प्रस्तावक)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                                  Text(
+                                    'Required: Min ${org?.minProposers ?? 1}, Max ${org?.maxProposers ?? 5}',
+                                    style: TextStyle(fontSize: 10.5, color: isDark ? Colors.white54 : Colors.grey.shade600),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
-                          OutlinedButton.icon(
-                            onPressed: () => setState(() => _proposers.add(_EndorsementItem(endorsementType: 'proposer'))),
-                            icon: const Icon(Icons.add_rounded, size: 16),
-                            label: const Text('Add Proposer', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                            style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.primary,
-                                  side: const BorderSide(color: AppColors.primary),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          if (_proposers.length < (org?.maxProposers ?? 5))
+                            OutlinedButton.icon(
+                              onPressed: () => setState(() => _proposers.add(_EndorsementItem(endorsementType: 'proposer'))),
+                              icon: const Icon(Icons.add_rounded, size: 16),
+                              label: const Text('Add Proposer', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                              style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppColors.primary,
+                                    side: const BorderSide(color: AppColors.primary),
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
                             ),
-                          ),
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -852,7 +886,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                           roleSubtitle: 'Primary member who nominates and proposes this candidate',
                           primaryColor: AppColors.primary,
                           roleIcon: Icons.how_to_reg_rounded,
-                          onRemove: _proposers.length > 1
+                          onRemove: _proposers.length > (org?.minProposers ?? 1)
                               ? () {
                                   setState(() {
                                     item.dispose();
@@ -884,23 +918,33 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                                   color: const Color(0xFF059669).withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: Text('${_supporters.length}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF059669))),
+                                child: Text('${_supporters.length}/${org?.maxSupporters ?? 5}', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF059669))),
                               ),
                               const SizedBox(width: 8),
-                              const Text('SUPPORTERS (समर्थक)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('SUPPORTERS (समर्थक)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                                  Text(
+                                    'Required: Min ${org?.minSupporters ?? 1}, Max ${org?.maxSupporters ?? 5}',
+                                    style: TextStyle(fontSize: 10.5, color: isDark ? Colors.white54 : Colors.grey.shade600),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
-                          OutlinedButton.icon(
-                            onPressed: () => setState(() => _supporters.add(_EndorsementItem(endorsementType: 'supporter'))),
-                            icon: const Icon(Icons.add_rounded, size: 16),
-                            label: const Text('Add Supporter', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                            style: OutlinedButton.styleFrom(
-                                  foregroundColor: const Color(0xFF059669),
-                                  side: const BorderSide(color: Color(0xFF059669)),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          if (_supporters.length < (org?.maxSupporters ?? 5))
+                            OutlinedButton.icon(
+                              onPressed: () => setState(() => _supporters.add(_EndorsementItem(endorsementType: 'supporter'))),
+                              icon: const Icon(Icons.add_rounded, size: 16),
+                              label: const Text('Add Supporter', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                              style: OutlinedButton.styleFrom(
+                                    foregroundColor: const Color(0xFF059669),
+                                    side: const BorderSide(color: Color(0xFF059669)),
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
                             ),
-                          ),
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -915,7 +959,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                           roleSubtitle: 'Secondary member who seconds and backs this nomination',
                           primaryColor: const Color(0xFF059669),
                           roleIcon: Icons.verified_user_rounded,
-                          onRemove: _supporters.length > 1
+                          onRemove: _supporters.length > (org?.minSupporters ?? 1)
                               ? () {
                                   setState(() {
                                     item.dispose();
@@ -1032,34 +1076,43 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
       );
     }
 
-    // Determine available payment channels
+    // Determine available payment channels based on configured payment settings
+    final hasFonepay = (org?.staticQrImageUrl.isNotEmpty == true) || (org?.bankQrUrl.isNotEmpty == true);
+    final hasBankTransfer = (org?.staticAccountNumber.isNotEmpty == true) || (org?.bankAccountNumber.isNotEmpty == true) || (org?.staticBankName.isNotEmpty == true);
+    final hasEsewa = (org?.staticEsewaId.isNotEmpty == true) || (org?.staticEsewaQrUrl.isNotEmpty == true);
+    final hasKhalti = (org?.staticKhaltiId.isNotEmpty == true) || (org?.staticKhaltiQrUrl.isNotEmpty == true);
+    final hasConnectIps = (org?.staticConnectIpsId.isNotEmpty == true);
+
     final channels = <Map<String, dynamic>>[
-      {
-        'id': 'fonepay',
-        'title': 'FonePay / Bank QR',
-        'icon': Icons.qr_code_2_rounded,
-        'color': const Color(0xFF2563EB),
-      },
-      if (org?.staticAccountNumber.isNotEmpty == true || org?.staticBankName.isNotEmpty == true)
+      if (hasFonepay)
+        {
+          'id': 'fonepay',
+          'title': 'FonePay / Bank QR',
+          'icon': Icons.qr_code_2_rounded,
+          'color': const Color(0xFF2563EB),
+        },
+      if (hasBankTransfer)
         {
           'id': 'bank_transfer',
           'title': 'Bank Transfer (A/C)',
           'icon': Icons.account_balance_rounded,
           'color': const Color(0xFF1E3A8A),
         },
-      {
-        'id': 'esewa',
-        'title': 'eSewa',
-        'icon': Icons.account_balance_wallet_rounded,
-        'color': const Color(0xFF60BB46),
-      },
-      {
-        'id': 'khalti',
-        'title': 'Khalti',
-        'icon': Icons.wallet_rounded,
-        'color': const Color(0xFF5C2D91),
-      },
-      if (org?.staticConnectIpsId.isNotEmpty == true || org?.staticAccountNumber.isNotEmpty == true)
+      if (hasEsewa)
+        {
+          'id': 'esewa',
+          'title': 'eSewa',
+          'icon': Icons.account_balance_wallet_rounded,
+          'color': const Color(0xFF60BB46),
+        },
+      if (hasKhalti)
+        {
+          'id': 'khalti',
+          'title': 'Khalti',
+          'icon': Icons.wallet_rounded,
+          'color': const Color(0xFF5C2D91),
+        },
+      if (hasConnectIps)
         {
           'id': 'connectips',
           'title': 'ConnectIPS',
@@ -1068,12 +1121,22 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
         },
     ];
 
+    // Fallback if payment is enabled but no specific method is configured
+    if (channels.isEmpty) {
+      channels.add({
+        'id': 'bank_transfer',
+        'title': 'Direct Bank / Voucher Deposit',
+        'icon': Icons.receipt_long_rounded,
+        'color': const Color(0xFF2563EB),
+      });
+    }
+
     // Selected channel details
-    final currentChannel = channels.firstWhere(
-      (c) => c['id'] == _selectedPaymentChannel,
-      orElse: () => channels.first,
-    );
-    final activeColor = currentChannel['color'] as Color;
+    final activeChannel = channels.any((c) => c['id'] == _selectedPaymentChannel)
+        ? channels.firstWhere((c) => c['id'] == _selectedPaymentChannel)
+        : channels.first;
+    final activeChannelId = activeChannel['id'] as String;
+    final activeColor = activeChannel['color'] as Color;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 28),
@@ -1111,7 +1174,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                     color: activeColor.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(currentChannel['icon'] as IconData, color: activeColor, size: 22),
+                  child: Icon(activeChannel['icon'] as IconData, color: activeColor, size: 22),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1164,7 +1227,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                   spacing: 10,
                   runSpacing: 10,
                   children: channels.map((c) {
-                    final isSelected = c['id'] == _selectedPaymentChannel;
+                    final isSelected = c['id'] == activeChannelId;
                     final chColor = c['color'] as Color;
 
                     return ChoiceChip(
@@ -1195,7 +1258,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                 // 2. ACTIVE CHANNEL PAYMENT DETAILS CARD
                 // ══════════════════════════════════════════════════════════
                 _buildActiveChannelContent(
-                  channelId: _selectedPaymentChannel,
+                  channelId: activeChannelId,
                   activeColor: activeColor,
                   org: org,
                   isDark: isDark,

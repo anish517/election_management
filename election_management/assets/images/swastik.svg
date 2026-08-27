@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <g fill="#B91C1C">
+    <!-- Center -->
+    <rect x="40" y="40" width="40" height="40"/>
+    <!-- Top -->
+    <rect x="40" y="0" width="40" height="40"/>
+    <!-- Bottom -->
+    <rect x="40" y="80" width="40" height="40"/>
+    <!-- Left -->
+    <rect x="0" y="40" width="40" height="40"/>
+    <!-- Right -->
+    <rect x="80" y="40" width="40" height="40"/>
+    <!-- Top-Right hook -->
+    <rect x="80" y="0" width="40" height="40"/>
+    <!-- Bottom-Left hook -->
+    <rect x="0" y="80" width="40" height="40"/>
+  </g>
+  <!-- White cutouts to form proper swastik shape -->
+  <rect x="0" y="0" width="40" height="40" fill="white"/>
+  <rect x="80" y="80" width="40" height="40" fill="white"/>
+</svg>

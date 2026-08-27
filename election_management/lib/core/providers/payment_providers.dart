@@ -171,6 +171,23 @@ class PaymentActionsNotifier extends AutoDisposeAsyncNotifier<void> {
       rethrow;
     }
   }
+
+  Future<void> requestCorrection(String paymentId, {required String correctionNotes}) async {
+    state = const AsyncValue.loading();
+    try {
+      final dio = ref.read(apiClientProvider);
+      await dio.post(
+        ApiConstants.requestPaymentCorrection(paymentId),
+        data: {'correction_notes': correctionNotes},
+      );
+      ref.invalidate(paymentsListProvider);
+      ref.invalidate(paymentStatsProvider);
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
 }
 
 final paymentActionsProvider =

@@ -227,6 +227,170 @@ class _PaymentManagementScreenState extends ConsumerState<PaymentManagementScree
     }
   }
 
+  Future<void> _handleRequestCorrection(PaymentModel payment) async {
+    final noteCtrl = TextEditingController();
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.edit_note_rounded, color: Colors.orange),
+            SizedBox(width: 10),
+            Text('Request Payment Correction'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Specify what correction is required from ${payment.candidateName ?? payment.userName ?? "the candidate"} (e.g., incorrect transaction number, unclear voucher, or underpayment):',
+              style: const TextStyle(fontSize: 13.5),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: noteCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Correction Instructions *',
+                hintText: 'e.g. Please re-upload clear voucher screenshot with legible TXN ID...',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade800, foregroundColor: Colors.white),
+            onPressed: () {
+              if (noteCtrl.text.trim().isEmpty) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(content: Text('Please describe the correction required.')),
+                );
+                return;
+              }
+              Navigator.pop(ctx, true);
+            },
+            icon: const Icon(Icons.send_rounded, size: 16),
+            label: const Text('Send Correction Request'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await ref.read(paymentActionsProvider.notifier).requestCorrection(
+            payment.id,
+            correctionNotes: noteCtrl.text.trim(),
+          );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Correction request sent to candidate successfully.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send correction request: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  void _showCorrectionHistoryDialog(PaymentModel payment) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.history_rounded, color: Colors.orange),
+              SizedBox(width: 10),
+              Text('Correction History & Notes'),
+            ],
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (payment.correctionNotes.isNotEmpty) ...[
+                    const Text('Latest Correction Request:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 6),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                      ),
+                      child: Text(
+                        payment.correctionNotes,
+                        style: const TextStyle(fontSize: 13, color: Colors.orange, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (payment.correctionHistory.isNotEmpty) ...[
+                    const Text('Correction Audit History:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 8),
+                    ...payment.correctionHistory.map((item) {
+                      final date = item['date']?.toString() ?? '';
+                      final by = item['by']?.toString() ?? '';
+                      final note = item['note']?.toString() ?? '';
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.surfaceVariant : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('By: $by', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                Text(date.length > 10 ? date.substring(0, 10) : date, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(note, style: const TextStyle(fontSize: 12)),
+                          ],
+                        ),
+                      );
+                    }),
+                  ] else if (payment.correctionNotes.isEmpty) ...[
+                    const Text('No previous correction requests recorded for this payment.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _showReceiptLightbox(PaymentModel payment) {
     final fullUrl = ApiConstants.getFullImageUrl(payment.receiptImageUrl);
     if (fullUrl == null) return;
@@ -620,6 +784,32 @@ class _PaymentManagementScreenState extends ConsumerState<PaymentManagementScree
                           const SizedBox(width: 8),
                         ],
                         const Spacer(),
+                        if (p.hasCorrections) ...[
+                          InkWell(
+                            onTap: () => _showCorrectionHistoryDialog(p),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.history_rounded, size: 12, color: Colors.orange),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Correction History',
+                                    style: TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
@@ -723,6 +913,31 @@ class _PaymentManagementScreenState extends ConsumerState<PaymentManagementScree
             ],
           ),
 
+          // Correction note banner if correction notes exist
+          if (p.correctionNotes.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.edit_note_rounded, size: 16, color: Colors.orange),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Correction Required: ${p.correctionNotes}',
+                      style: const TextStyle(color: Colors.orange, fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           // Rejection reason notice if rejected
           if (p.isRejected && p.rejectionReason.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -778,6 +993,15 @@ class _PaymentManagementScreenState extends ConsumerState<PaymentManagementScree
 
               // Verification Actions
               if (p.isPending) ...[
+                OutlinedButton.icon(
+                  onPressed: () => _handleRequestCorrection(p),
+                  icon: const Icon(Icons.edit_note_rounded, size: 16, color: Colors.orange),
+                  label: const Text('Correction', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: Colors.orange.withValues(alpha: 0.4)),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 OutlinedButton.icon(
                   onPressed: () => _handleReject(p),
                   icon: const Icon(Icons.close_rounded, size: 16, color: AppColors.error),

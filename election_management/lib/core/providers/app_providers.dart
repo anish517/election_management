@@ -31,23 +31,66 @@ final electionProvider = FutureProvider.autoDispose.family<ElectionModel, String
   return ElectionModel.fromJson(resp.data as Map<String, dynamic>);
 });
 
+// ─── Ballot Data Model ───────────────────────────────────────────────────────
+
+class BallotData {
+  final List<PositionModel> positions;
+  final bool hasVoted;
+  final bool notEligible;
+  final String notEligibleReason;
+  final Map<String, dynamic>? voterInfo;
+  final bool allowBoycott;
+  const BallotData({
+    required this.positions,
+    required this.hasVoted,
+    required this.notEligible,
+    required this.notEligibleReason,
+    this.voterInfo,
+    required this.allowBoycott,
+  });
+}
+
 // ─── Ballot Provider ─────────────────────────────────────────────────────────
 
-final ballotProvider = FutureProvider.autoDispose.family<List<PositionModel>, String>((ref, electionId) async {
+final ballotDataProvider = FutureProvider.autoDispose.family<BallotData, String>((ref, electionId) async {
   final dio = ref.watch(apiClientProvider);
   final resp = await dio.get(ApiConstants.ballot(electionId));
   final data = resp.data;
   List<dynamic> list;
-  if (data is Map && data.containsKey('ballot')) {
-    list = data['ballot'] as List<dynamic>;
+  bool hasVoted = false;
+  bool notEligible = false;
+  String notEligibleReason = '';
+  Map<String, dynamic>? voterInfo;
+  bool allowBoycott = true;
+  if (data is Map) {
+    list = (data['ballot'] as List<dynamic>?) ?? [];
+    hasVoted = data['has_voted'] as bool? ?? false;
+    notEligible = data['not_eligible'] as bool? ?? false;
+    notEligibleReason = data['not_eligible_reason'] as String? ?? '';
+    voterInfo = data['voter_info'] as Map<String, dynamic>?;
+    allowBoycott = data['allow_boycott'] as bool? ?? true;
   } else if (data is List) {
     list = data;
   } else {
     list = [];
   }
-  return list
+  final positions = list
       .map((p) => PositionModel.fromJson(p as Map<String, dynamic>))
       .toList();
+  return BallotData(
+    positions: positions,
+    hasVoted: hasVoted,
+    notEligible: notEligible,
+    notEligibleReason: notEligibleReason,
+    voterInfo: voterInfo,
+    allowBoycott: allowBoycott,
+  );
+});
+
+// Backwards-compatible provider for screens that only need positions
+final ballotProvider = FutureProvider.autoDispose.family<List<PositionModel>, String>((ref, electionId) async {
+  final data = await ref.watch(ballotDataProvider(electionId).future);
+  return data.positions;
 });
 
 // ─── Results Provider ────────────────────────────────────────────────────────

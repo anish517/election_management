@@ -39,6 +39,8 @@ class PaymentSerializer(serializers.ModelSerializer):
             'reviewed_by_email',
             'reviewed_at',
             'rejection_reason',
+            'correction_notes',
+            'correction_history',
             'created_at',
             'updated_at',
         ]
@@ -51,6 +53,8 @@ class PaymentSerializer(serializers.ModelSerializer):
             'reviewed_by_email',
             'reviewed_at',
             'rejection_reason',
+            'correction_notes',
+            'correction_history',
             'created_at',
             'updated_at',
         ]
@@ -68,3 +72,7 @@ class PaymentResubmitSerializer(serializers.Serializer):
     transaction_reference = serializers.CharField(required=True, max_length=255)
     receipt_image_url = serializers.CharField(required=False, allow_blank=True, default='')
     payment_notes = serializers.CharField(required=False, allow_blank=True, default='')
+
+
+class PaymentCorrectionSerializer(serializers.Serializer):
+    correction_notes = serializers.CharField(required=True, allow_blank=False, help_text='Describe what needs to be corrected by the candidate')

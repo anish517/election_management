@@ -412,7 +412,7 @@ class _ElectionListTile extends StatelessWidget {
                 ),
 
                 // Active Buttons
-                if (election.isVotingActive) ...[
+                if (election.isVotingActive && user != null && !user!.canManageElections && !user!.isObserver && !user!.isAuditor) ...[
                   const SizedBox(height: 14),
                   SizedBox(
                     width: double.infinity,

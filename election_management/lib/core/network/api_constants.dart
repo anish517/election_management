@@ -121,5 +121,6 @@ class ApiConstants {
   static String verifyPayment(String id) => '/payments/$id/verify/';
   static String rejectPayment(String id) => '/payments/$id/reject/';
   static String resubmitPayment(String id) => '/payments/$id/resubmit/';
+  static String requestPaymentCorrection(String id) => '/payments/$id/request_correction/';
   static String electionPayments(String electionId) => '/elections/$electionId/payments/';
 }

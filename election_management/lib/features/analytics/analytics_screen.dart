@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/network/api_constants.dart';
 import '../../core/providers/analytics_provider.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/theme/app_theme.dart';
@@ -606,6 +607,10 @@ class _CandidateMomentumRow extends StatelessWidget {
               ),
               const SizedBox(width: 12),
 
+              // Candidate Avatar Photo
+              _buildCandidateAvatar(candidate, isDark, isWinner, isTop),
+              const SizedBox(width: 12),
+
               // Candidate Information
               Expanded(
                 child: Column(
@@ -672,6 +677,63 @@ class _CandidateMomentumRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCandidateAvatar(
+    AnalyticsCandidateScore candidate,
+    bool isDark,
+    bool isWinner,
+    bool isTop,
+  ) {
+    final photo = candidate.photoUrl.trim();
+    final fullUrl = photo.isNotEmpty ? ApiConstants.getFullImageUrl(photo) : null;
+
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: isWinner
+              ? Colors.amber.shade600
+              : (isLive && isTop ? AppColors.primaryLight : (isDark ? Colors.white24 : Colors.grey.shade300)),
+          width: (isWinner || (isLive && isTop)) ? 2 : 1,
+        ),
+      ),
+      child: ClipOval(
+        child: fullUrl != null
+            ? Image.network(
+                fullUrl,
+                width: 44,
+                height: 44,
+                fit: BoxFit.cover,
+                errorBuilder: (ctx, err, stack) => _buildInitialsAvatar(candidate.name, isDark),
+              )
+            : _buildInitialsAvatar(candidate.name, isDark),
+      ),
+    );
+  }
+
+  Widget _buildInitialsAvatar(String name, bool isDark) {
+    final trimmed = name.trim();
+    final initials = trimmed.isNotEmpty
+        ? trimmed.split(' ').where((e) => e.isNotEmpty).map((e) => e[0].toUpperCase()).take(2).join()
+        : '?';
+
+    return Container(
+      width: 44,
+      height: 44,
+      color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+      alignment: Alignment.center,
+      child: Text(
+        initials,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          color: isDark ? Colors.white70 : const Color(0xFF475569),
+        ),
       ),
     );
   }

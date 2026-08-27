@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/providers/app_providers.dart';
+import '../../core/providers/org_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/network/api_constants.dart';
 import '../../shared/models/models.dart';
@@ -19,10 +21,97 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
   final PageController _pageController = PageController();
   int _currentIndex = 0;
 
+  // Voting duration stopwatch & countdown
+  final Stopwatch _stopwatch = Stopwatch();
+  Timer? _timer;
+  Duration _elapsed = Duration.zero;
+  int _remainingSeconds = 300;
+  bool _countdownInitialized = false;
+  bool _timeExpired = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _stopwatch.start();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() {
+        _elapsed = _stopwatch.elapsed;
+        final org = ref.read(orgProfileProvider).valueOrNull;
+        if (org?.enableVotingCountdown == true) {
+          if (!_countdownInitialized) {
+            _remainingSeconds = (org?.votingTimeLimitMinutes ?? 5) * 60;
+            _countdownInitialized = true;
+          }
+          if (_remainingSeconds > 0) {
+            _remainingSeconds--;
+            if (_remainingSeconds == 0 && !_timeExpired) {
+              _timeExpired = true;
+              _showTimeExpiredDialog();
+            }
+          }
+        }
+      });
+    });
+  }
+
   @override
   void dispose() {
+    _stopwatch.stop();
+    _timer?.cancel();
     _pageController.dispose();
     super.dispose();
+  }
+
+  String get _elapsedStr {
+    final m = _elapsed.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = _elapsed.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  String get _countdownStr {
+    final m = (_remainingSeconds ~/ 60).toString().padLeft(2, '0');
+    final s = (_remainingSeconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  void _showTimeExpiredDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          icon: const Icon(Icons.timer_off_rounded, color: Colors.red, size: 48),
+          title: const Text(
+            'Voting Time Expired\n(मतदान समय समाप्त भयो)',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+          content: const Text(
+            'Your allotted voting time limit has elapsed. To ensure election integrity, ballot papers must be submitted within the established time frame.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13),
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            FilledButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                context.pop();
+              },
+              icon: const Icon(Icons.arrow_back_rounded, size: 18),
+              label: const Text('Return to Elections'),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFE11D48),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _nextPage(int totalPages) {
@@ -39,11 +128,18 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final ballotAsync = ref.watch(ballotProvider(widget.electionId));
-    final electionAsync = ref.watch(electionProvider(widget.electionId));
-    final allowBoycott = electionAsync.valueOrNull?.allowBoycott ?? true;
+    final ballotAsync = ref.watch(ballotDataProvider(widget.electionId));
+    final orgAsync = ref.watch(orgProfileProvider);
     final selections = ref.watch(ballotSelectionsProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final org = orgAsync.valueOrNull;
+    final showDurationTimer = (org?.showVotingDuration == true);
+    final enableCountdown = (org?.enableVotingCountdown == true);
+
+    if (enableCountdown && !_countdownInitialized && org != null) {
+      _remainingSeconds = org.votingTimeLimitMinutes * 60;
+      _countdownInitialized = true;
+    }
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.background : const Color(0xFFF8FAFC),
@@ -59,6 +155,78 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
           icon: const Icon(Icons.close_rounded),
           onPressed: () => context.pop(),
         ),
+        actions: [
+          if (enableCountdown)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: _remainingSeconds < 60
+                        ? Colors.red.withValues(alpha: 0.3)
+                        : (_remainingSeconds < 120
+                            ? Colors.orange.withValues(alpha: 0.3)
+                            : Colors.white.withValues(alpha: 0.15)),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _remainingSeconds < 60
+                          ? Colors.red.shade300
+                          : (_remainingSeconds < 120 ? Colors.orange.shade300 : Colors.white24),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.hourglass_top_rounded,
+                        size: 14,
+                        color: _remainingSeconds < 60
+                            ? Colors.red.shade200
+                            : (_remainingSeconds < 120 ? Colors.orange.shade200 : Colors.white70),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        'Time Left: $_countdownStr',
+                        style: TextStyle(
+                          fontFamily: 'monospace',
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12.5,
+                          color: _remainingSeconds < 60
+                              ? Colors.red.shade100
+                              : (_remainingSeconds < 120 ? Colors.orange.shade100 : Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else if (showDurationTimer)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.timer_outlined, size: 14, color: Colors.white70),
+                      const SizedBox(width: 4),
+                      Text(
+                        _elapsedStr,
+                        style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
       body: ballotAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -83,7 +251,20 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
             ],
           ),
         ),
-        data: (positions) {
+        data: (ballotData) {
+          // ── 1. Admin / non-voter block ──
+          if (ballotData.notEligible) {
+            return _buildNotEligibleScreen(context, ballotData.notEligibleReason, isDark);
+          }
+
+          // ── 2. Already voted ──
+          if (ballotData.hasVoted) {
+            return _buildAlreadyVotedScreen(context, isDark);
+          }
+
+          final positions = ballotData.positions;
+          final allowBoycott = ballotData.allowBoycott;
+
           if (positions.isEmpty) {
             return const Center(
               child: Text('No positions available on this ballot.', style: TextStyle(fontSize: 14, color: AppColors.textMuted)),
@@ -184,65 +365,257 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
   }
 
   Widget _buildBallotHeader(BuildContext context, List<PositionModel> positions, bool allowBoycott, bool isDark) {
+    final ballotData = ref.watch(ballotDataProvider(widget.electionId)).valueOrNull;
+    final election = ref.watch(electionProvider(widget.electionId)).valueOrNull;
+    final now = DateTime.now();
+    final votingDate = '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
+    final votingTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final voterName = ballotData?.voterInfo?['full_name'] as String? ?? '';
+    final voterId = ballotData?.voterInfo?['voter_id'] as String? ?? '';
+    final electionName = election?.title ?? '';
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1B4B).withValues(alpha: 0.6) : const Color(0xFFEEF2FF),
+        gradient: isDark
+            ? const LinearGradient(colors: [Color(0xFF1E293B), Color(0xFF0F172A)], begin: Alignment.topLeft, end: Alignment.bottomRight)
+            : const LinearGradient(colors: [Color(0xFFFFF7ED), Color(0xFFFFEDD5)], begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.25)),
+        border: Border.all(color: const Color(0xFFB91C1C).withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(color: const Color(0xFFB91C1C).withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))
+        ],
       ),
       child: Column(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6366F1).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.shield_outlined, color: Color(0xFF6366F1), size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'End-to-End Cryptographic Secret Ballot',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Your choices remain sealed on your local device and are only transmitted when you confirm and sign your ballot on the final review screen.',
-                      style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white70 : const Color(0xFF475569)),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          if (allowBoycott) ...[
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+          // Top Header strip with Swastik
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFB91C1C).withValues(alpha: isDark ? 0.3 : 0.08),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+              border: Border(bottom: BorderSide(color: const Color(0xFFB91C1C).withValues(alpha: 0.2))),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                OutlinedButton.icon(
-                  onPressed: () => _confirmBoycottAll(context, positions),
-                  icon: const Icon(Icons.block_rounded, size: 15, color: Colors.deepOrange),
-                  label: const Text('Boycott Entire Election (सम्पूर्ण बहिष्कार)'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.deepOrange,
-                    side: BorderSide(color: Colors.deepOrange.withValues(alpha: 0.4)),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                // Left Swastik
+                SizedBox(width: 32, height: 32, child: CustomPaint(painter: _SwastikPainter(color: const Color(0xFFB91C1C)))),
+                Expanded(
+                  child: Column(
+                    children: [
+                      Text(
+                        'मतपत्र — OFFICIAL BALLOT',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: isDark ? Colors.white : const Color(0xFFB91C1C),
+                          letterSpacing: 0.5,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      if (electionName.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          electionName,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white70 : const Color(0xFF78350F),
+                          ),
+                          textAlign: TextAlign.center,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
                   ),
                 ),
+                // Right Swastik
+                SizedBox(width: 32, height: 32, child: CustomPaint(painter: _SwastikPainter(color: const Color(0xFFB91C1C)))),
               ],
             ),
-          ],
+          ),
+
+          // Voter Info Grid
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: _ballotInfoField('Voter Name', voterName.isNotEmpty ? voterName : '—', Icons.person_rounded, isDark)),
+                    const SizedBox(width: 10),
+                    Expanded(child: _ballotInfoField('Voter ID', voterId.isNotEmpty ? voterId : '—', Icons.badge_rounded, isDark)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(child: _ballotInfoField('Voting Date', votingDate, Icons.calendar_today_rounded, isDark)),
+                    const SizedBox(width: 10),
+                    Expanded(child: _ballotInfoField('Voting Time', votingTime, Icons.access_time_rounded, isDark)),
+                  ],
+                ),
+                if (allowBoycott) ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () => _confirmBoycottAll(context, positions),
+                        icon: const Icon(Icons.block_rounded, size: 14, color: Colors.deepOrange),
+                        label: const Text('Boycott Entire Election'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.deepOrange,
+                          side: BorderSide(color: Colors.deepOrange.withValues(alpha: 0.4)),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _ballotInfoField(String label, String value, IconData icon, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFB91C1C).withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: const Color(0xFFB91C1C).withValues(alpha: 0.7)),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: isDark ? Colors.white54 : Colors.grey.shade600, letterSpacing: 0.3)),
+                Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87), overflow: TextOverflow.ellipsis),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotEligibleScreen(BuildContext context, String reason, bool isDark) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.gavel_rounded, color: Colors.orange, size: 40),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Not Eligible to Vote',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const Text(
+              'मतदान गर्न अयोग्य',
+              style: TextStyle(fontSize: 13, color: AppColors.primaryLight, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+              ),
+              child: Text(
+                reason.isNotEmpty
+                    ? reason
+                    : 'Your account role does not have voting privileges. Only registered voters may cast a ballot.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 13.5, height: 1.4),
+              ),
+            ),
+            const SizedBox(height: 24),
+            OutlinedButton.icon(
+              onPressed: () => context.pop(),
+              icon: const Icon(Icons.arrow_back_rounded),
+              label: const Text('Go Back'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAlreadyVotedScreen(BuildContext context, bool isDark) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF10B981), Color(0xFF059669)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(color: const Color(0xFF10B981).withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8)),
+                ],
+              ),
+              child: const Icon(Icons.how_to_vote_rounded, color: Colors.white, size: 46),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Already Voted!',
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const Text(
+              'मतदान भइसकेको छ',
+              style: TextStyle(fontSize: 14, color: Color(0xFF10B981), fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'You have already cast your secret ballot in this election. Each voter is permitted to vote only once to ensure electoral integrity.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13.5, color: isDark ? Colors.white70 : Colors.grey.shade700, height: 1.4),
+              ),
+            ),
+            const SizedBox(height: 28),
+            FilledButton.icon(
+              onPressed: () => context.pop(),
+              icon: const Icon(Icons.check_circle_rounded),
+              label: const Text('Return to Election'),
+              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981)),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -714,7 +1087,8 @@ class _CandidateTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = isSelected ? AppColors.primaryLight : AppColors.primary;
+    const stampColor = Color(0xFFB91C1C);
+    final primaryColor = isSelected ? stampColor : AppColors.primary;
 
     return InkWell(
       onTap: onTap,
@@ -723,17 +1097,17 @@ class _CandidateTile extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
           color: isSelected
-              ? primaryColor.withValues(alpha: isDark ? 0.15 : 0.08)
+              ? stampColor.withValues(alpha: isDark ? 0.12 : 0.06)
               : (isDark ? AppColors.surfaceVariant.withValues(alpha: 0.4) : const Color(0xFFFAFAFA)),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? primaryColor : (isDark ? Colors.white12 : Colors.grey.shade300),
+            color: isSelected ? stampColor : (isDark ? Colors.white12 : Colors.grey.shade300),
             width: isSelected ? 2 : 1,
           ),
           boxShadow: [
             if (isSelected)
               BoxShadow(
-                color: primaryColor.withValues(alpha: 0.15),
+                color: stampColor.withValues(alpha: 0.15),
                 blurRadius: 10,
                 offset: const Offset(0, 3),
               ),
@@ -784,7 +1158,7 @@ class _CandidateTile extends StatelessWidget {
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
-                            color: isSelected ? primaryColor : (isDark ? Colors.white : Colors.black87),
+                            color: isSelected ? stampColor : (isDark ? Colors.white : Colors.black87),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -858,33 +1232,59 @@ class _CandidateTile extends StatelessWidget {
               ),
             ),
 
-            // Selection Indicator Pill (Top Right)
+            // Selection Indicator: Traditional Swastik Stamp (स्वस्तिक छाप)
             Positioned(
               top: 10,
               right: 10,
-              child: Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: isSelected ? primaryColor : (isDark ? Colors.white12 : Colors.grey.shade300),
-                  shape: BoxShape.circle,
-                ),
-                child: rank != null
-                    ? SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: Center(
-                          child: Text(
-                            '$rank',
-                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+              child: isSelected
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: stampColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: stampColor, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: stampColor.withValues(alpha: 0.2),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
                           ),
-                        ),
-                      )
-                    : Icon(
-                        isSelected ? Icons.check_rounded : Icons.radio_button_unchecked_rounded,
-                        color: isSelected ? Colors.white : (isDark ? Colors.white38 : Colors.grey.shade400),
-                        size: 16,
+                        ],
                       ),
-              ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const CustomPaint(
+                            size: Size(16, 16),
+                            painter: _SwastikPainter(color: stampColor),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            rank != null ? '#$rank मत' : 'स्वस्तिक छाप',
+                            style: const TextStyle(
+                              color: stampColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10.5,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white10 : const Color(0xFFF1F5F9),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: isDark ? Colors.white24 : Colors.grey.shade400),
+                      ),
+                      child: Icon(
+                        Icons.radio_button_unchecked_rounded,
+                        color: isDark ? Colors.white38 : Colors.grey.shade400,
+                        size: 14,
+                      ),
+                    ),
             ),
           ],
         ),
@@ -909,4 +1309,60 @@ class _CandidateTile extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Traditional Hindu / Nepali Swastik CustomPainter
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SwastikPainter extends CustomPainter {
+  final Color color;
+  const _SwastikPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final double w = size.width;
+    final double h = size.height;
+    // Unit fractions — works at any size
+    // arm width = 1/3, arm length = 1/3 + center (1/3) = full span
+    final double t = w / 3; // thickness of each arm
+    final double c = w / 3; // size of center block
+
+    final path = Path();
+
+    // Center square
+    path.addRect(Rect.fromLTWH(t, t, c, c));
+
+    // Top arm
+    path.addRect(Rect.fromLTWH(t, 0, c, t));
+
+    // Bottom arm
+    path.addRect(Rect.fromLTWH(t, h - t, c, t));
+
+    // Left arm
+    path.addRect(Rect.fromLTWH(0, t, t, c));
+
+    // Right arm
+    path.addRect(Rect.fromLTWH(w - t, t, t, c));
+
+    // Hooks (right-facing swastik / प्रदक्षिण स्वस्तिक)
+    // Top-right hook → points RIGHT then down
+    path.addRect(Rect.fromLTWH(w - t, 0, t, t));
+
+    // Bottom-left hook → points LEFT then up
+    path.addRect(Rect.fromLTWH(0, h - t, t, t));
+
+    // Now carve out the connecting regions that are NOT part of the swastik
+    // by using the Even-Odd fill rule. Flutter uses nonzero by default, so
+    // we paint the shape using a clip approach instead:
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_SwastikPainter old) => old.color != color;
 }

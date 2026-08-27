@@ -28,6 +28,15 @@ class _ElectionRulesScreenState extends ConsumerState<ElectionRulesScreen> {
   String _selectedVisibility = 'admin_only';
   bool _officersCanPublish = false;
 
+  // Nomination Endorsements & Ballot Duration Config
+  late TextEditingController _minProposersCtrl;
+  late TextEditingController _maxProposersCtrl;
+  late TextEditingController _minSupportersCtrl;
+  late TextEditingController _maxSupportersCtrl;
+  late TextEditingController _votingTimeLimitCtrl;
+  bool _showVotingDuration = false;
+  bool _enableVotingCountdown = false;
+
   bool _initialized = false;
 
   @override
@@ -38,6 +47,11 @@ class _ElectionRulesScreenState extends ConsumerState<ElectionRulesScreen> {
     _voterRollOffsetCtrl = TextEditingController();
     _defaultSilentCtrl = TextEditingController();
     _grievanceWindowCtrl = TextEditingController();
+    _minProposersCtrl = TextEditingController();
+    _maxProposersCtrl = TextEditingController();
+    _minSupportersCtrl = TextEditingController();
+    _maxSupportersCtrl = TextEditingController();
+    _votingTimeLimitCtrl = TextEditingController();
   }
 
   @override
@@ -47,6 +61,11 @@ class _ElectionRulesScreenState extends ConsumerState<ElectionRulesScreen> {
     _voterRollOffsetCtrl.dispose();
     _defaultSilentCtrl.dispose();
     _grievanceWindowCtrl.dispose();
+    _minProposersCtrl.dispose();
+    _maxProposersCtrl.dispose();
+    _minSupportersCtrl.dispose();
+    _maxSupportersCtrl.dispose();
+    _votingTimeLimitCtrl.dispose();
     super.dispose();
   }
 
@@ -61,12 +80,31 @@ class _ElectionRulesScreenState extends ConsumerState<ElectionRulesScreen> {
         ? org.defaultResultVisibility
         : 'admin_only';
     _officersCanPublish = org.electionOfficersCanPublish;
+
+    _minProposersCtrl.text = (org.paymentSettings['min_proposers'] ?? 1).toString();
+    _maxProposersCtrl.text = (org.paymentSettings['max_proposers'] ?? 5).toString();
+    _minSupportersCtrl.text = (org.paymentSettings['min_supporters'] ?? 1).toString();
+    _maxSupportersCtrl.text = (org.paymentSettings['max_supporters'] ?? 5).toString();
+    _showVotingDuration = (org.paymentSettings['show_voting_duration'] as bool?) ?? false;
+    _enableVotingCountdown = (org.paymentSettings['enable_voting_countdown'] as bool?) ?? false;
+    _votingTimeLimitCtrl.text = (org.paymentSettings['voting_time_limit_minutes'] ?? 5).toString();
+
     _initialized = true;
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     try {
+      final org = ref.read(orgProfileProvider).valueOrNull;
+      final updatedPaymentSettings = Map<String, dynamic>.from(org?.paymentSettings ?? {});
+      updatedPaymentSettings['min_proposers'] = int.tryParse(_minProposersCtrl.text.trim()) ?? 1;
+      updatedPaymentSettings['max_proposers'] = int.tryParse(_maxProposersCtrl.text.trim()) ?? 5;
+      updatedPaymentSettings['min_supporters'] = int.tryParse(_minSupportersCtrl.text.trim()) ?? 1;
+      updatedPaymentSettings['max_supporters'] = int.tryParse(_maxSupportersCtrl.text.trim()) ?? 5;
+      updatedPaymentSettings['show_voting_duration'] = _showVotingDuration;
+      updatedPaymentSettings['enable_voting_countdown'] = _enableVotingCountdown;
+      updatedPaymentSettings['voting_time_limit_minutes'] = int.tryParse(_votingTimeLimitCtrl.text.trim()) ?? 5;
+
       await ref.read(updateOrgSettingsProvider.notifier).updateSettings({
         'default_nomination_window_days': int.tryParse(_defaultNominationCtrl.text.trim()) ?? 7,
         'default_voting_window_days': int.tryParse(_defaultVotingCtrl.text.trim()) ?? 1,
@@ -75,6 +113,7 @@ class _ElectionRulesScreenState extends ConsumerState<ElectionRulesScreen> {
         'grievance_window_days': int.tryParse(_grievanceWindowCtrl.text.trim()) ?? 3,
         'default_result_visibility': _selectedVisibility,
         'election_officers_can_publish': _officersCanPublish,
+        'payment_settings': updatedPaymentSettings,
       });
 
       if (mounted) {
@@ -367,6 +406,142 @@ class _ElectionRulesScreenState extends ConsumerState<ElectionRulesScreen> {
                               value: _officersCanPublish,
                               activeThumbColor: AppColors.primary,
                               onChanged: (val) => setState(() => _officersCanPublish = val),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Section C: Nomination Endorsements Rules
+                      _section(
+                        title: 'Nomination Endorsement Rules (प्रस्तावक तथा समर्थक)',
+                        subtitle: 'Define minimum and maximum number of proposers and supporters required per candidacy nomination',
+                        icon: Icons.how_to_reg_outlined,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _minProposersCtrl,
+                                  decoration: _dec('Min Proposers (न्यूनतम प्रस्तावक)', prefix: const Icon(Icons.person_outline)),
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _maxProposersCtrl,
+                                  decoration: _dec('Max Proposers (अधिकतम प्रस्तावक)', prefix: const Icon(Icons.people_alt_outlined)),
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _minSupportersCtrl,
+                                  decoration: _dec('Min Supporters (न्यूनतम समर्थक)', prefix: const Icon(Icons.verified_outlined)),
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _maxSupportersCtrl,
+                                  decoration: _dec('Max Supporters (अधिकतम समर्थक)', prefix: const Icon(Icons.verified_user_outlined)),
+                                  keyboardType: TextInputType.number,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+
+                      // Section D: Ballot Time Limit, Countdown & Duration
+                      _section(
+                        title: 'Ballot Time Limit & Countdown (मतदान समय सीमा तथा काउन्टडाउन)',
+                        subtitle: 'Enforce maximum voting time limit per ballot session or display duration timer',
+                        icon: Icons.timer_outlined,
+                        children: [
+                          Material(
+                            color: isDark ? AppColors.surfaceVariant : const Color(0xFFF4F4F5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              side: BorderSide(
+                                color: isDark ? Colors.white12 : Colors.grey.shade300,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                SwitchListTile(
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  title: const Text('Enforce Voting Time Limit Countdown (समय सीमा काउन्टडाउन)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                  subtitle: const Text(
+                                    'When enabled, voters must cast and submit their ballot within the defined time limit before the session expires.',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                  value: _enableVotingCountdown,
+                                  activeThumbColor: const Color(0xFFE11D48),
+                                  onChanged: (val) => setState(() => _enableVotingCountdown = val),
+                                ),
+                                if (_enableVotingCountdown) ...[
+                                  const Divider(height: 1),
+                                  Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Text('Voting Time Limit (Minutes)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                'Allocated voting duration per session (e.g. 5 minutes)',
+                                                style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white60 : Colors.grey.shade600),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        SizedBox(
+                                          width: 120,
+                                          child: TextFormField(
+                                            controller: _votingTimeLimitCtrl,
+                                            decoration: _dec('Minutes', prefix: const Icon(Icons.hourglass_top_rounded, size: 18)),
+                                            keyboardType: TextInputType.number,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          Material(
+                            color: isDark ? AppColors.surfaceVariant : const Color(0xFFF4F4F5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              side: BorderSide(
+                                color: isDark ? Colors.white12 : Colors.grey.shade300,
+                              ),
+                            ),
+                            child: SwitchListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              title: const Text('Show Stopwatch Timer on Ballot', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              subtitle: const Text(
+                                'Displays an elapsed stopwatch timer at the top of the secret electronic ballot.',
+                                style: TextStyle(fontSize: 12),
+                              ),
+                              value: _showVotingDuration,
+                              activeThumbColor: AppColors.primary,
+                              onChanged: (val) => setState(() => _showVotingDuration = val),
                             ),
                           ),
                         ],

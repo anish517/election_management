@@ -109,7 +109,8 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
     if (payment == null) return;
 
     final txnCtrl = TextEditingController(text: payment.transactionReference);
-    final notesCtrl = TextEditingController();
+    final notesCtrl = TextEditingController(text: payment.paymentNotes);
+    String selectedMethod = payment.paymentMethod.isNotEmpty ? payment.paymentMethod : 'static_qr_bank';
     String receiptUrl = payment.receiptImageUrl;
     bool isUploading = false;
 
@@ -118,12 +119,55 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Re-submit Payment Proof'),
+          title: Row(
+            children: [
+              Icon(
+                payment.isCorrectionRequested ? Icons.edit_note_rounded : Icons.replay_rounded,
+                color: payment.isCorrectionRequested ? const Color(0xFFD97706) : AppColors.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                payment.isCorrectionRequested ? 'Correct & Resubmit Payment' : 'Re-submit Payment Proof',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ],
+          ),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (payment.correctionNotes.isNotEmpty) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFF59E0B)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 18),
+                            SizedBox(width: 6),
+                            Text(
+                              'Officer Correction Request (सच्याउने निर्देशन):',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF92400E)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          payment.correctionNotes,
+                          style: const TextStyle(fontSize: 12.5, color: Color(0xFF78350F), height: 1.35),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ],
                 if (payment.rejectionReason.isNotEmpty) ...[
                   Container(
                     padding: const EdgeInsets.all(10),
@@ -142,8 +186,10 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                 TextField(
                   controller: txnCtrl,
                   decoration: const InputDecoration(
-                    labelText: 'Updated Transaction ID *',
+                    labelText: 'Updated Transaction Reference / ID *',
+                    hintText: 'e.g. 1234567890 / Voucher Ref',
                     border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.receipt_long_rounded),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -169,14 +215,27 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                             setModalState(() => isUploading = false);
                           }
                         },
-                  icon: isUploading ? const CircularProgressIndicator() : const Icon(Icons.upload_file),
-                  label: Text(receiptUrl.isNotEmpty ? 'Voucher Attached' : 'Attach New Voucher Screenshot'),
+                  icon: isUploading
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.upload_file),
+                  label: Text(receiptUrl.isNotEmpty ? 'Voucher Attached (Replace)' : 'Attach Clear Voucher Screenshot'),
                 ),
+                if (receiptUrl.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: Colors.green, size: 14),
+                      const SizedBox(width: 4),
+                      const Text('Receipt voucher attached', style: TextStyle(color: Colors.green, fontSize: 11)),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 14),
                 TextField(
                   controller: notesCtrl,
                   decoration: const InputDecoration(
-                    labelText: 'Explanation Notes',
+                    labelText: 'Explanation / Note to Officer (Optional)',
+                    hintText: 'e.g. Attached clear voucher screenshot with visible TXN ID',
                     border: OutlineInputBorder(),
                   ),
                   maxLines: 2,
@@ -186,12 +245,22 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            ElevatedButton(
+            ElevatedButton.icon(
               onPressed: () {
-                if (txnCtrl.text.trim().isEmpty) return;
+                if (txnCtrl.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please enter Transaction ID.')),
+                  );
+                  return;
+                }
                 Navigator.pop(ctx, true);
               },
-              child: const Text('Submit Updated Proof'),
+              icon: const Icon(Icons.send_rounded, size: 16),
+              label: const Text('Submit Updated Proof'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: payment.isCorrectionRequested ? const Color(0xFFD97706) : AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
             ),
           ],
         ),
@@ -200,22 +269,43 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
 
     if (res == true) {
       try {
-        await ref.read(paymentActionsProvider.notifier).resubmitPayment(
-              payment.id,
-              transactionReference: txnCtrl.text.trim(),
-              receiptImageUrl: receiptUrl,
-              paymentNotes: notesCtrl.text.trim(),
-            );
+        final dio = ref.read(apiClientProvider);
+        final payload = <String, dynamic>{
+          'transaction_reference': txnCtrl.text.trim(),
+          if (selectedMethod.isNotEmpty) 'payment_method': selectedMethod,
+          if (receiptUrl.isNotEmpty) 'receipt_image_url': receiptUrl,
+          if (notesCtrl.text.trim().isNotEmpty) 'payment_notes': notesCtrl.text.trim(),
+        };
+        await dio.post(ApiConstants.resubmitPayment(payment.id), data: payload);
         ref.invalidate(candidatesProvider(widget.electionId));
+        ref.invalidate(electionProvider(widget.electionId));
+        ref.invalidate(paymentsListProvider);
+        ref.invalidate(paymentStatsProvider);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Payment proof resubmitted for officer review!')),
+            const SnackBar(
+              content: Text('✅ Payment details successfully resubmitted for officer review!'),
+              backgroundColor: Colors.green,
+            ),
           );
         }
       } catch (e) {
+        String msg = 'Resubmission failed';
+        if (e is DioException && e.response?.data is Map) {
+          final data = e.response!.data as Map;
+          if (data.containsKey('detail')) {
+            msg = data['detail'].toString();
+          } else if (data.containsKey('error')) {
+            msg = data['error'].toString();
+          } else if (data.values.isNotEmpty) {
+            msg = data.values.first.toString();
+          }
+        } else {
+          msg = 'Resubmission failed: $e';
+        }
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Resubmission failed: $e')),
+            SnackBar(content: Text(msg), backgroundColor: Colors.red),
           );
         }
       }
@@ -227,6 +317,24 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
     if (_selectedPositionId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please select a position.')));
+      return;
+    }
+
+    final user = ref.read(authProvider).user;
+    final candidates = ref.read(candidatesProvider(widget.electionId)).valueOrNull ?? [];
+    final alreadyNominated = candidates.any((c) =>
+        c.email?.toLowerCase() == user?.email.toLowerCase() &&
+        c.positionId == _selectedPositionId &&
+        c.status != 'withdrawn' &&
+        c.status != 'rejected');
+
+    if (alreadyNominated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You have already submitted an active nomination for this position (तपाईंले यस पदको लागि पहिले नै उम्मेदवारी दर्ता गरिसक्नुभएको छ).'),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
 
@@ -547,118 +655,135 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
           final org = ref.watch(orgProfileProvider).valueOrNull;
           final isDark = Theme.of(context).brightness == Brightness.dark;
 
+          final candidates = candidatesAsync.valueOrNull ?? [];
+          final myNominations = candidates.where((c) => c.email == user?.email).toList();
+          final myActiveNominatedPosIds = myNominations
+              .where((n) => n.status != 'withdrawn' && n.status != 'rejected')
+              .map((n) => n.positionId)
+              .whereType<String>()
+              .toSet();
+          final allPositionsNominated = election.positions.isNotEmpty &&
+              election.positions.every((p) => myActiveNominatedPosIds.contains(p.id));
+
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                candidatesAsync.when(
-                  data: (candidates) {
-                    final myNominations = candidates.where((c) => c.email == user?.email).toList();
-                    if (myNominations.isEmpty) return const SizedBox.shrink();
+                        if (myNominations.isNotEmpty) ...[
+                          Row(
+                            children: [
+                              const Icon(Icons.assignment_ind_outlined, color: AppColors.primary, size: 22),
+                              const SizedBox(width: 8),
+                              Text('My Nominations (मेरा उम्मेदवारीहरू)', style: Theme.of(context).textTheme.headlineSmall),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          ...myNominations.map((c) {
+                            final isWithdrawn = c.status == 'withdrawn';
+                            final isApproved = c.status == 'approved';
+                            final isRejected = c.status == 'rejected';
+                            final isWaived = c.paymentStatus == 'waived';
+                            final isCorrectionReq = !isWaived &&
+                                (c.latestPayment?.isCorrectionRequested == true ||
+                                    (c.latestPayment?.correctionNotes.isNotEmpty == true));
+                            final isVerified = !isWaived && (c.latestPayment?.isVerified == true || c.paymentStatus == 'paid');
+                            final isPayRejected = !isWaived && (c.latestPayment?.isRejected == true);
+                            final isSuccess = isWaived || isVerified;
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.assignment_ind_outlined, color: AppColors.primary, size: 22),
-                            const SizedBox(width: 8),
-                            Text('My Nominations (मेरा उम्मेदवारीहरू)', style: Theme.of(context).textTheme.headlineSmall),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        ...myNominations.map((c) {
-                          final isWithdrawn = c.status == 'withdrawn';
-                          final isApproved = c.status == 'approved';
-                          final isRejected = c.status == 'rejected';
-
-                          return Card(
-                            elevation: 0,
-                            margin: const EdgeInsets.only(bottom: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(
-                                color: isWithdrawn
-                                    ? Colors.grey.shade400
-                                    : isApproved
-                                        ? Colors.green.shade300
-                                        : isRejected
-                                            ? Colors.red.shade300
-                                            : Colors.orange.shade300,
+                            return Card(
+                              elevation: 0,
+                              margin: const EdgeInsets.only(bottom: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(
+                                  color: isWithdrawn
+                                      ? Colors.grey.shade400
+                                      : isApproved
+                                          ? Colors.green.shade300
+                                          : isRejected || isPayRejected
+                                              ? Colors.red.shade300
+                                              : isCorrectionReq
+                                                  ? Colors.amber.shade600
+                                                  : Colors.orange.shade300,
+                                  width: isCorrectionReq ? 1.5 : 1,
+                                ),
                               ),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          c.positionTitle ?? 'Position',
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: isWithdrawn
-                                              ? Colors.grey.shade200
-                                              : isApproved
-                                                  ? Colors.green.shade50
-                                                  : isRejected
-                                                      ? Colors.red.shade50
-                                                      : Colors.orange.shade50,
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          isWithdrawn
-                                              ? 'WITHDRAWN (फिर्ता)'
-                                              : (c.status?.toUpperCase() ?? 'PENDING'),
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            color: isWithdrawn
-                                                ? Colors.grey.shade700
-                                                : isApproved
-                                                    ? Colors.green.shade800
-                                                    : isRejected
-                                                        ? Colors.red.shade800
-                                                        : Colors.orange.shade800,
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            c.positionTitle ?? 'Position',
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                           ),
                                         ),
-                                      ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: isWithdrawn
+                                                ? Colors.grey.shade200
+                                                : isApproved
+                                                    ? Colors.green.shade50
+                                                    : isRejected
+                                                        ? Colors.red.shade50
+                                                        : isCorrectionReq
+                                                            ? const Color(0xFFFEF3C7)
+                                                            : Colors.orange.shade50,
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            isWithdrawn
+                                                ? 'WITHDRAWN (फिर्ता)'
+                                                : isCorrectionReq
+                                                    ? 'CORRECTION REQUIRED (सच्याउनुहोस्)'
+                                                    : (c.status?.toUpperCase() ?? 'PENDING'),
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: isWithdrawn
+                                                  ? Colors.grey.shade700
+                                                  : isApproved
+                                                      ? Colors.green.shade800
+                                                      : isRejected
+                                                          ? Colors.red.shade800
+                                                          : isCorrectionReq
+                                                              ? const Color(0xFF92400E)
+                                                              : Colors.orange.shade800,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    if (c.manifesto.isNotEmpty) ...[
+                                      const SizedBox(height: 8),
+                                      Text('Manifesto: ${c.manifesto}', style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
                                     ],
-                                  ),
-                                  if (c.manifesto.isNotEmpty) ...[
-                                    const SizedBox(height: 8),
-                                    Text('Manifesto: ${c.manifesto}', style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
-                                  ],
-                                  if (c.latestPayment != null || c.paymentStatus == 'paid' || c.paymentStatus == 'waived') ...[
-                                    const SizedBox(height: 10),
-                                    () {
-                                      final isWaived = c.paymentStatus == 'waived';
-                                      final isVerified = !isWaived && (c.latestPayment?.isVerified == true || c.paymentStatus == 'paid');
-                                      final isRejected = !isWaived && (c.latestPayment?.isRejected == true);
-                                      final isSuccess = isWaived || isVerified;
-
-                                      return Container(
+                                    if (c.latestPayment != null || c.paymentStatus == 'paid' || c.paymentStatus == 'waived') ...[
+                                      const SizedBox(height: 10),
+                                      Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                         decoration: BoxDecoration(
                                           color: isSuccess
                                               ? Colors.green.withValues(alpha: 0.1)
-                                              : isRejected
+                                              : isPayRejected
                                                   ? AppColors.error.withValues(alpha: 0.1)
-                                                  : const Color(0xFFF59E0B).withValues(alpha: 0.1),
+                                                  : isCorrectionReq
+                                                      ? const Color(0xFFFEF3C7)
+                                                      : const Color(0xFFF59E0B).withValues(alpha: 0.1),
                                           borderRadius: BorderRadius.circular(8),
                                           border: Border.all(
                                             color: isSuccess
                                                 ? Colors.green.withValues(alpha: 0.3)
-                                                : isRejected
+                                                : isPayRejected
                                                     ? AppColors.error.withValues(alpha: 0.3)
-                                                    : const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                                                    : isCorrectionReq
+                                                        ? const Color(0xFFF59E0B)
+                                                        : const Color(0xFFF59E0B).withValues(alpha: 0.3),
                                           ),
                                         ),
                                         child: Row(
@@ -666,15 +791,19 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                                             Icon(
                                               isSuccess
                                                   ? Icons.check_circle_outline_rounded
-                                                  : isRejected
+                                                  : isPayRejected
                                                       ? Icons.error_outline_rounded
-                                                      : Icons.hourglass_top_rounded,
+                                                      : isCorrectionReq
+                                                          ? Icons.warning_amber_rounded
+                                                          : Icons.hourglass_top_rounded,
                                               size: 16,
                                               color: isSuccess
                                                   ? Colors.green.shade800
-                                                  : isRejected
+                                                  : isPayRejected
                                                       ? AppColors.error
-                                                      : const Color(0xFFD97706),
+                                                      : isCorrectionReq
+                                                          ? const Color(0xFFD97706)
+                                                          : const Color(0xFFD97706),
                                             ),
                                             const SizedBox(width: 8),
                                             Expanded(
@@ -683,120 +812,208 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                                                     ? 'Free Nomination (निःशुल्क दर्ता)'
                                                     : isVerified
                                                         ? 'Payment Verified (भुक्तानी स्वीकृत) — Rs. ${c.latestPayment?.amount.toStringAsFixed(0) ?? ""}'
-                                                        : isRejected
+                                                        : isPayRejected
                                                             ? 'Payment Rejected (भुक्तानी अस्वीकृत)'
-                                                            : 'Payment: Pending Verification (Rs. ${c.latestPayment?.amount.toStringAsFixed(0) ?? ""})',
+                                                            : isCorrectionReq
+                                                                ? 'Payment Correction Requested (सच्याउन अनुरोध) — Rs. ${c.latestPayment?.amount.toStringAsFixed(0) ?? ""}'
+                                                                : 'Payment: Pending Verification (Rs. ${c.latestPayment?.amount.toStringAsFixed(0) ?? ""})',
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   fontWeight: FontWeight.w600,
                                                   color: isSuccess
                                                       ? Colors.green.shade800
-                                                      : isRejected
+                                                      : isPayRejected
                                                           ? AppColors.error
-                                                          : const Color(0xFFD97706),
+                                                          : isCorrectionReq
+                                                              ? const Color(0xFF92400E)
+                                                              : const Color(0xFFD97706),
                                                 ),
                                               ),
                                             ),
-                                            if (isRejected) ...[
+                                            if (isPayRejected || isCorrectionReq) ...[
                                               OutlinedButton(
                                                 onPressed: () => _handleResubmitPayment(c),
                                                 style: OutlinedButton.styleFrom(
-                                                  foregroundColor: AppColors.error,
-                                                  side: const BorderSide(color: AppColors.error),
+                                                  foregroundColor: isCorrectionReq ? const Color(0xFFD97706) : AppColors.error,
+                                                  side: BorderSide(color: isCorrectionReq ? const Color(0xFFD97706) : AppColors.error),
                                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                                   minimumSize: Size.zero,
                                                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                                 ),
-                                                child: const Text('Re-submit Proof', style: TextStyle(fontSize: 11)),
+                                                child: Text(isCorrectionReq ? 'Correct Details' : 'Re-submit Proof', style: const TextStyle(fontSize: 11)),
                                               ),
                                             ],
                                           ],
                                         ),
-                                      );
-                                    }(),
-                                  ],
-                                  if (!isWithdrawn && !isRejected) ...[
-                                    const SizedBox(height: 12),
-                                    Align(
-                                      alignment: Alignment.centerRight,
-                                      child: OutlinedButton.icon(
-                                        onPressed: () => _handleWithdraw(c.id, c.positionTitle ?? 'Position'),
-                                        icon: const Icon(Icons.remove_circle_outline, size: 14, color: Colors.red),
-                                        label: const Text('Withdraw Candidacy', style: TextStyle(color: Colors.red, fontSize: 12)),
-                                        style: OutlinedButton.styleFrom(
-                                          side: const BorderSide(color: Colors.red),
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                          minimumSize: Size.zero,
-                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                    ],
+                                    if (isCorrectionReq) ...[
+                                      const SizedBox(height: 10),
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFFFFBEB),
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(color: const Color(0xFFF59E0B)),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                const Icon(Icons.edit_note_rounded, color: Color(0xFFD97706), size: 18),
+                                                const SizedBox(width: 6),
+                                                const Text(
+                                                  'Officer Correction Note (सच्याउने निर्देशन):',
+                                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF92400E)),
+                                                ),
+                                                const Spacer(),
+                                                ElevatedButton.icon(
+                                                  onPressed: () => _handleResubmitPayment(c),
+                                                  icon: const Icon(Icons.refresh_rounded, size: 13),
+                                                  label: const Text('Correct & Resubmit', style: TextStyle(fontSize: 11)),
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor: const Color(0xFFD97706),
+                                                    foregroundColor: Colors.white,
+                                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                                    minimumSize: Size.zero,
+                                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            if (c.latestPayment?.correctionNotes.isNotEmpty == true) ...[
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                c.latestPayment!.correctionNotes,
+                                                style: const TextStyle(fontSize: 12, color: Color(0xFF78350F), height: 1.35),
+                                              ),
+                                            ],
+                                          ],
                                         ),
                                       ),
-                                    ),
+                                    ],
+                                    if (!isWithdrawn && !isRejected) ...[
+                                      const SizedBox(height: 12),
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: OutlinedButton.icon(
+                                          onPressed: () => _handleWithdraw(c.id, c.positionTitle ?? 'Position'),
+                                          icon: const Icon(Icons.remove_circle_outline, size: 14, color: Colors.red),
+                                          label: const Text('Withdraw Candidacy', style: TextStyle(color: Colors.red, fontSize: 12)),
+                                          style: OutlinedButton.styleFrom(
+                                            side: const BorderSide(color: Colors.red),
+                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                            minimumSize: Size.zero,
+                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ],
-                                ],
+                                ),
                               ),
-                            ),
-                          );
-                        }),
-                        const SizedBox(height: 32),
-                        const Divider(),
-                        const SizedBox(height: 32),
-                      ],
-                    );
-                  },
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (_, _) => const SizedBox.shrink(),
-                ),
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Candidate Nomination Form',
-                          style: Theme.of(context).textTheme.headlineSmall),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Submit your official candidacy with required Proposer (प्रस्तावक) and Supporter (समर्थक) details.',
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                      const SizedBox(height: 24),
-                      
-                      Center(
-                        child: ImageUploadWidget(
-                          initialImageUrl: _photoUrl,
-                          placeholderText: 'Upload Candidate Photo',
-                          radius: 50,
-                          onImageUploaded: (url) => setState(() => _photoUrl = url),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
+                            );
+                          }),
+                          const SizedBox(height: 32),
+                          const Divider(),
+                          const SizedBox(height: 32),
+                        ],
 
-                      DropdownButtonFormField<String>(
-                        decoration: const InputDecoration(
-                          labelText: 'Position / Designation *',
-                          prefixIcon: Icon(Icons.military_tech_outlined),
-                        ),
-                        items: election.positions.map((p) {
-                          final posFee = p.nomineeCharge;
-                          final isGlobalActive = org?.isPaymentEnabled ?? false;
-                          final feeText = (isGlobalActive && posFee > 0)
-                              ? ' — (Fee: Rs. ${posFee.toStringAsFixed(0)} NPR)'
-                              : (posFee > 0 && !isGlobalActive)
-                                  ? ' — (Free: Payments OFF)'
-                                  : ' — (Free)';
-                          return DropdownMenuItem(
-                            value: p.id,
-                            child: Text('${p.title}$feeText', style: const TextStyle(fontWeight: FontWeight.w600)),
-                          );
-                        }).toList(),
-                        initialValue: _selectedPositionId,
-                        onChanged: (val) {
-                          setState(() {
-                            _selectedPositionId = val;
-                            _selectedQuotaId = null;
-                          });
-                        },
-                        validator: (val) => val == null ? 'Please select a position' : null,
-                      ),
+                        if (allPositionsNominated) ...[
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: isDark ? AppColors.surfaceVariant : const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: isDark ? Colors.white12 : Colors.grey.shade300),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.check_circle_outline_rounded, color: Colors.green, size: 28),
+                                SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'All Available Nominations Filed',
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                      ),
+                                      SizedBox(height: 3),
+                                      Text(
+                                        'You have already submitted active nominations for all designations in this election. You can monitor your review and verification status above.',
+                                        style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ] else ...[
+                          Form(
+                            key: _formKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Candidate Nomination Form',
+                                    style: Theme.of(context).textTheme.headlineSmall),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Submit your official candidacy with required Proposer (प्रस्तावक) and Supporter (समर्थक) details.',
+                                  style: TextStyle(color: Colors.grey[600]),
+                                ),
+                                const SizedBox(height: 24),
+                                
+                                Center(
+                                  child: ImageUploadWidget(
+                                    initialImageUrl: _photoUrl,
+                                    placeholderText: 'Upload Candidate Photo',
+                                    radius: 50,
+                                    onImageUploaded: (url) => setState(() => _photoUrl = url),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+
+                                DropdownButtonFormField<String>(
+                                  decoration: const InputDecoration(
+                                    labelText: 'Position / Designation *',
+                                    prefixIcon: Icon(Icons.military_tech_outlined),
+                                  ),
+                                  items: election.positions.map((p) {
+                                    final isAlreadyNominated = myActiveNominatedPosIds.contains(p.id);
+                                    final posFee = p.nomineeCharge;
+                                    final isGlobalActive = org?.isPaymentEnabled ?? false;
+                                    final feeText = (isGlobalActive && posFee > 0)
+                                        ? ' — (Fee: Rs. ${posFee.toStringAsFixed(0)} NPR)'
+                                        : (posFee > 0 && !isGlobalActive)
+                                            ? ' — (Free: Payments OFF)'
+                                            : ' — (Free)';
+                                    return DropdownMenuItem(
+                                      value: isAlreadyNominated ? null : p.id,
+                                      enabled: !isAlreadyNominated,
+                                      child: Text(
+                                        isAlreadyNominated
+                                            ? '${p.title} (Already Nominated — पहिले नै दर्ता)'
+                                            : '${p.title}$feeText',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          color: isAlreadyNominated ? Colors.grey : (isDark ? Colors.white : Colors.black87),
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                  initialValue: _selectedPositionId,
+                                  onChanged: (val) {
+                                    if (val == null) return;
+                                    setState(() {
+                                      _selectedPositionId = val;
+                                      _selectedQuotaId = null;
+                                    });
+                                  },
+                                  validator: (val) => val == null ? 'Please select an available position' : null,
+                                ),
                       const SizedBox(height: 16),
                       
                       if (_selectedPositionId != null) ...[
@@ -994,12 +1211,13 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                   ),
                 ),
               ],
-            ),
-          );
-        },
-      ),
-    );
-  }
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
 
   Widget _buildEmbeddedPaymentCard({
     required bool isDark,

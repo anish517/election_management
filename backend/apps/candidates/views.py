@@ -81,6 +81,18 @@ class CandidateViewSet(viewsets.ModelViewSet):
                 "Conflict of Interest: Election Officers, Observers, Auditors, and Election Committee members are not eligible to run as candidates or submit nominations in this election."
             )
 
+        # Duplicate Active Nomination Check:
+        pos = serializer.validated_data.get('position')
+        existing = Candidate.objects.filter(
+            election=election,
+            position=pos,
+            email__iexact=user_email,
+        ).exclude(status__in=[NominationStatus.WITHDRAWN, NominationStatus.REJECTED]).first()
+        if existing:
+            raise ValidationError({
+                'detail': f"You have already submitted an active nomination for '{pos.title if pos else 'this position'}'. You cannot file multiple nominations for the same designation."
+            })
+
         try:
             voter = VoterRoll.objects.filter(election=election, email__iexact=user_email).first()
             if not voter and self.request.user.phone:
@@ -94,7 +106,6 @@ class CandidateViewSet(viewsets.ModelViewSet):
             phone = voter.phone if voter else (member.phone if member else self.request.user.phone)
 
             # Calculate applicable fee
-            pos = serializer.validated_data.get('position')
             pos_charge = float(pos.nominee_charge or 0.0) if pos else 0.0
             el_charge = float(election.nominee_charge or 0.0)
             ps = election.organization.payment_settings or {}

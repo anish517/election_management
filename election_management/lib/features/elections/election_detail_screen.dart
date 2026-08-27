@@ -28,6 +28,7 @@ import '../../shared/widgets/shimmer_loaders.dart';
 import 'package:nepali_date_picker/nepali_date_picker.dart';
 import '../../shared/widgets/responsive_layout.dart';
 import '../candidates/candidate_profile_sheet.dart';
+import '../candidates/nomination_list_screen.dart';
 
 class ElectionDetailScreen extends ConsumerWidget {
   final String electionId;
@@ -105,6 +106,13 @@ class ElectionDetailScreen extends ConsumerWidget {
 
   Widget _buildBody(BuildContext context, WidgetRef ref, ElectionModel election, UserModel? user) {
     final isAuditor = user?.isAuditor ?? false;
+    final candidatesAsync = ref.watch(candidatesProvider(election.id));
+    final myCorrectionNomination = user != null
+        ? (candidatesAsync.valueOrNull ?? []).where((c) =>
+            c.email?.toLowerCase() == user.email.toLowerCase() &&
+            (c.latestPayment?.isCorrectionRequested == true ||
+                (c.latestPayment?.correctionNotes.isNotEmpty == true))).firstOrNull
+        : null;
 
     return ResponsivePageWrapper(
       child: SingleChildScrollView(
@@ -114,6 +122,10 @@ class ElectionDetailScreen extends ConsumerWidget {
           children: [
             _buildHeroCard(context, election),
             const SizedBox(height: 20),
+            if (myCorrectionNomination != null) ...[
+              _buildPaymentCorrectionAlertCard(context, election, myCorrectionNomination),
+              const SizedBox(height: 16),
+            ],
             if (isAuditor) ...[
               _buildAuditorCard(context, election),
               const SizedBox(height: 20),
@@ -129,6 +141,89 @@ class ElectionDetailScreen extends ConsumerWidget {
             _buildPositionsSection(context, election, user),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentCorrectionAlertCard(
+    BuildContext context,
+    ElectionModel election,
+    CandidateModel candidate,
+  ) {
+    final payment = candidate.latestPayment;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF3C7),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF59E0B), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Payment Correction Required (भुक्तानी सच्याउनुहोस्)',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF92400E)),
+                    ),
+                    Text(
+                      'Designation: ${candidate.positionTitle ?? "Nomination"}',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFFB45309)),
+                    ),
+                  ],
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => context.pushNamed('nominate', pathParameters: {'electionId': election.id}),
+                icon: const Icon(Icons.edit_note_rounded, size: 16),
+                label: const Text('Correct & Resubmit'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFD97706),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              ),
+            ],
+          ),
+          if (payment?.correctionNotes.isNotEmpty == true) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+              ),
+              child: Text(
+                'Officer Note: ${payment!.correctionNotes}',
+                style: const TextStyle(fontSize: 12.5, color: Color(0xFF78350F), height: 1.35),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

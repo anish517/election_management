@@ -70,6 +70,7 @@ class PaymentRejectionSerializer(serializers.Serializer):
 
 class PaymentResubmitSerializer(serializers.Serializer):
     transaction_reference = serializers.CharField(required=True, max_length=255)
+    payment_method = serializers.CharField(required=False, allow_blank=True, default='')
     receipt_image_url = serializers.CharField(required=False, allow_blank=True, default='')
     payment_notes = serializers.CharField(required=False, allow_blank=True, default='')
 

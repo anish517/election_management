@@ -51,8 +51,29 @@ class CandidateSerializer(serializers.ModelSerializer):
             'status': payment.status,
             'status_display': payment.get_status_display(),
             'rejection_reason': payment.rejection_reason,
+            'correction_notes': payment.correction_notes or '',
+            'correction_history': payment.correction_history or [],
             'created_at': payment.created_at.isoformat() if payment.created_at else None,
         }
+
+    def validate(self, attrs):
+        request = self.context.get('request')
+        if request and request.method == 'POST':
+            user_email = request.user.email.strip().lower()
+            election = self.context.get('election') or attrs.get('election')
+            position = attrs.get('position')
+            if election and position:
+                from apps.candidates.models import NominationStatus
+                existing = Candidate.objects.filter(
+                    election=election,
+                    position=position,
+                    email__iexact=user_email,
+                ).exclude(status__in=[NominationStatus.WITHDRAWN, NominationStatus.REJECTED]).exists()
+                if existing:
+                    raise serializers.ValidationError(
+                        f"You have already filed an active nomination for '{position.title}'. Multiple nominations for the same designation are not permitted."
+                    )
+        return attrs
 
     @transaction.atomic
     def create(self, validated_data):

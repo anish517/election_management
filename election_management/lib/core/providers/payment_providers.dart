@@ -112,7 +112,7 @@ final paymentStatsProvider = FutureProvider.autoDispose<PaymentStatsData>((ref) 
   return PaymentStatsData.fromJson(response.data as Map<String, dynamic>);
 });
 
-class PaymentActionsNotifier extends AutoDisposeAsyncNotifier<void> {
+class PaymentActionsNotifier extends AsyncNotifier<void> {
   @override
   FutureOr<void> build() {}
 
@@ -147,6 +147,7 @@ class PaymentActionsNotifier extends AutoDisposeAsyncNotifier<void> {
   Future<void> resubmitPayment(
     String paymentId, {
     required String transactionReference,
+    String? paymentMethod,
     String? receiptImageUrl,
     String? paymentNotes,
   }) async {
@@ -156,6 +157,9 @@ class PaymentActionsNotifier extends AutoDisposeAsyncNotifier<void> {
       final payload = <String, dynamic>{
         'transaction_reference': transactionReference,
       };
+      if (paymentMethod != null && paymentMethod.isNotEmpty) {
+        payload['payment_method'] = paymentMethod;
+      }
       if (receiptImageUrl != null && receiptImageUrl.isNotEmpty) {
         payload['receipt_image_url'] = receiptImageUrl;
       }
@@ -191,6 +195,6 @@ class PaymentActionsNotifier extends AutoDisposeAsyncNotifier<void> {
 }
 
 final paymentActionsProvider =
-    AutoDisposeAsyncNotifierProvider<PaymentActionsNotifier, void>(
+    AsyncNotifierProvider<PaymentActionsNotifier, void>(
   () => PaymentActionsNotifier(),
 );

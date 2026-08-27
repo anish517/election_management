@@ -175,12 +175,15 @@ class PaymentViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         payment.transaction_reference = serializer.validated_data['transaction_reference']
+        if serializer.validated_data.get('payment_method'):
+            payment.payment_method = serializer.validated_data['payment_method']
         if serializer.validated_data.get('receipt_image_url'):
             payment.receipt_image_url = serializer.validated_data['receipt_image_url']
         if serializer.validated_data.get('payment_notes'):
             payment.payment_notes = serializer.validated_data['payment_notes']
         payment.status = PaymentStatus.PENDING
         payment.rejection_reason = ''
+        payment.correction_notes = ''
         payment.reviewed_by = None
         payment.reviewed_at = None
         payment.save()

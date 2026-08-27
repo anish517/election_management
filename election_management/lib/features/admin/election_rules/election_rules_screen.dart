@@ -116,6 +116,8 @@ class _ElectionRulesScreenState extends ConsumerState<ElectionRulesScreen> {
         'payment_settings': updatedPaymentSettings,
       });
 
+      ref.invalidate(orgProfileProvider);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: const Row(

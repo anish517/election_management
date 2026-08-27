@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:nepali_date_picker/nepali_date_picker.dart';
+import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/providers/app_providers.dart';
@@ -115,8 +117,9 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
 
   Widget _buildReceiptCard(BuildContext context, String electionTitle, bool isDark) {
     final now = DateTime.now();
-    final formattedDate = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-    final formattedTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final nepaliNow = now.toNepaliDateTime();
+    final formattedDate = '${NepaliDateFormat('yyyy/MM/dd').format(nepaliNow)} BS (${NepaliDateFormat('MMM d, yyyy').format(nepaliNow)})';
+    final formattedTime = DateFormat('hh:mm a').format(now);
 
     return Container(
       width: double.infinity,

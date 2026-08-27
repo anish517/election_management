@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:nepali_date_picker/nepali_date_picker.dart';
+import 'package:intl/intl.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/org_providers.dart';
 import '../../core/theme/app_theme.dart';
@@ -144,88 +146,131 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
     return Scaffold(
       backgroundColor: isDark ? AppColors.background : const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Secret Electronic Ballot', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            Text('गोप्य विद्युतीय मतपत्र', style: TextStyle(fontSize: 11, color: Colors.white70)),
+            Text(
+              'Secret Electronic Ballot',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+              ),
+            ),
+            Text(
+              'गोप्य विद्युतीय मतपत्र',
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark ? Colors.white60 : Colors.grey.shade600,
+              ),
+            ),
           ],
         ),
         leading: IconButton(
-          icon: const Icon(Icons.close_rounded),
+          icon: Icon(
+            Icons.close_rounded,
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
+          ),
           onPressed: () => context.pop(),
         ),
         actions: [
-          if (enableCountdown)
+          // 1. Elapsed Stopwatch Badge (if enabled)
+          if (showDurationTimer)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 6),
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _remainingSeconds < 60
-                        ? Colors.red.withValues(alpha: 0.3)
-                        : (_remainingSeconds < 120
-                            ? Colors.orange.withValues(alpha: 0.3)
-                            : Colors.white.withValues(alpha: 0.15)),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: _remainingSeconds < 60
-                          ? Colors.red.shade300
-                          : (_remainingSeconds < 120 ? Colors.orange.shade300 : Colors.white24),
-                    ),
+                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: isDark ? Colors.white24 : Colors.grey.shade300),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        Icons.hourglass_top_rounded,
-                        size: 14,
-                        color: _remainingSeconds < 60
-                            ? Colors.red.shade200
-                            : (_remainingSeconds < 120 ? Colors.orange.shade200 : Colors.white70),
+                        Icons.timer_outlined,
+                        size: 15,
+                        color: isDark ? Colors.white70 : const Color(0xFF475569),
                       ),
                       const SizedBox(width: 5),
                       Text(
-                        'Time Left: $_countdownStr',
+                        'Elapsed: $_elapsedStr',
                         style: TextStyle(
                           fontFamily: 'monospace',
                           fontWeight: FontWeight.bold,
-                          fontSize: 12.5,
-                          color: _remainingSeconds < 60
-                              ? Colors.red.shade100
-                              : (_remainingSeconds < 120 ? Colors.orange.shade100 : Colors.white),
+                          fontSize: 12,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-            )
-          else if (showDurationTimer)
+            ),
+
+          // 2. Remaining Time Countdown Badge (if enabled)
+          if (enableCountdown)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 6),
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
+                    color: _remainingSeconds < 60
+                        ? (isDark ? const Color(0xFF7F1D1D).withValues(alpha: 0.6) : const Color(0xFFFEE2E2))
+                        : (_remainingSeconds < 120
+                            ? (isDark ? const Color(0xFF78350F).withValues(alpha: 0.6) : const Color(0xFFFEF3C7))
+                            : (isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF))),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: _remainingSeconds < 60
+                          ? const Color(0xFFEF4444)
+                          : (_remainingSeconds < 120 ? const Color(0xFFF59E0B) : (isDark ? Colors.blue.shade700 : const Color(0xFF3B82F6))),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      if (_remainingSeconds < 60)
+                        BoxShadow(
+                          color: const Color(0xFFEF4444).withValues(alpha: 0.25),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                    ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.timer_outlined, size: 14, color: Colors.white70),
-                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.hourglass_top_rounded,
+                        size: 15,
+                        color: _remainingSeconds < 60
+                            ? (isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626))
+                            : (_remainingSeconds < 120
+                                ? (isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706))
+                                : (isDark ? Colors.blue.shade300 : const Color(0xFF2563EB))),
+                      ),
+                      const SizedBox(width: 6),
                       Text(
-                        _elapsedStr,
-                        style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                        'Time Left: $_countdownStr',
+                        style: TextStyle(
+                          fontFamily: 'monospace',
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                          color: _remainingSeconds < 60
+                              ? (isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B))
+                              : (_remainingSeconds < 120
+                                  ? (isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E))
+                                  : (isDark ? Colors.blue.shade100 : const Color(0xFF1E40AF))),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
             ),
+          const SizedBox(width: 6),
         ],
       ),
       body: ballotAsync.when(
@@ -368,8 +413,9 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
     final ballotData = ref.watch(ballotDataProvider(widget.electionId)).valueOrNull;
     final election = ref.watch(electionProvider(widget.electionId)).valueOrNull;
     final now = DateTime.now();
-    final votingDate = '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
-    final votingTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+    final nepaliNow = now.toNepaliDateTime();
+    final votingDate = '${NepaliDateFormat('yyyy/MM/dd').format(nepaliNow)} BS (${NepaliDateFormat('MMM d, yyyy').format(nepaliNow)})';
+    final votingTime = DateFormat('hh:mm a').format(now);
     final voterName = ballotData?.voterInfo?['full_name'] as String? ?? '';
     final voterId = ballotData?.voterInfo?['voter_id'] as String? ?? '';
     final electionName = election?.title ?? '';

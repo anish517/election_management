@@ -110,10 +110,11 @@ class TallyService:
         if boycott_score > 0:
             breakdown.append({
                 'candidate_id': '__BOYCOTT__',
-                'name': 'No Vote / Boycott (बहिष्कार)',
+                'name': 'No Vote / Abstained (खाली मत / कसैलाई मत छैन)',
                 'photo_url': '',
                 'score': boycott_score
             })
+
             
         return {
             'position_id': pos_id,

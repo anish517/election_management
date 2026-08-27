@@ -22,6 +22,7 @@ class BallotScreen extends ConsumerStatefulWidget {
 class _BallotScreenState extends ConsumerState<BallotScreen> {
   final PageController _pageController = PageController();
   int _currentIndex = 0;
+  bool? _isSinglePage;
 
   // Voting duration stopwatch & countdown
   final Stopwatch _stopwatch = Stopwatch();
@@ -174,10 +175,89 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
           onPressed: () => context.pop(),
         ),
         actions: [
-          // 1. Elapsed Stopwatch Badge (if enabled)
+          // View Mode Switcher: Single-Page vs Wizard
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: isDark ? Colors.white24 : Colors.grey.shade300),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  InkWell(
+                    onTap: () => setState(() => _isSinglePage = true),
+                    borderRadius: const BorderRadius.horizontal(left: Radius.circular(9)),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: (_isSinglePage ?? true)
+                            ? AppColors.primary
+                            : Colors.transparent,
+                        borderRadius: const BorderRadius.horizontal(left: Radius.circular(9)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.article_outlined,
+                            size: 14,
+                            color: (_isSinglePage ?? true) ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'All-in-One (एकै पृष्ठ)',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: (_isSinglePage ?? true) ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => setState(() => _isSinglePage = false),
+                    borderRadius: const BorderRadius.horizontal(right: Radius.circular(9)),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: (_isSinglePage == false)
+                            ? AppColors.primary
+                            : Colors.transparent,
+                        borderRadius: const BorderRadius.horizontal(right: Radius.circular(9)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.view_carousel_outlined,
+                            size: 14,
+                            color: (_isSinglePage == false) ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Wizard (क्रमिक)',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: (_isSinglePage == false) ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Elapsed Stopwatch Badge (if enabled)
           if (showDurationTimer)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Center(
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -210,10 +290,10 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
               ),
             ),
 
-          // 2. Remaining Time Countdown Badge (if enabled)
+          // Remaining Time Countdown Badge (if enabled)
           if (enableCountdown)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Center(
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
@@ -297,12 +377,12 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
           ),
         ),
         data: (ballotData) {
-          // ── 1. Admin / non-voter block ──
+          // 1. Admin / non-voter block
           if (ballotData.notEligible) {
             return _buildNotEligibleScreen(context, ballotData.notEligibleReason, isDark);
           }
 
-          // ── 2. Already voted ──
+          // 2. Already voted
           if (ballotData.hasVoted) {
             return _buildAlreadyVotedScreen(context, isDark);
           }
@@ -316,96 +396,235 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
             );
           }
 
-          final progressValue = (_currentIndex + 1) / positions.length;
+          // Auto-default to Single-Page view if minimum candidates (<= 8) or positions (<= 3)
+          if (_isSinglePage == null) {
+            final totalCands = positions.fold<int>(0, (sum, p) => sum + p.candidates.length);
+            _isSinglePage = positions.length <= 3 || totalCands <= 8;
+          }
 
-          return Column(
-            children: [
-              // Stepper Header Bar
-              Container(
-                color: isDark ? AppColors.surface : Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          if (_isSinglePage == true) {
+            return _buildSinglePageBallot(context, ref, positions, allowBoycott, selections, isDark);
+          }
+
+          return _buildWizardBallot(context, ref, positions, allowBoycott, selections, isDark);
+        },
+      ),
+    );
+  }
+
+  Widget _buildSinglePageBallot(
+    BuildContext context,
+    WidgetRef ref,
+    List<PositionModel> positions,
+    bool allowBoycott,
+    Map<String, List<String>> selections,
+    bool isDark,
+  ) {
+    final completedCount = ref.read(ballotSelectionsProvider.notifier).completedContestsCount(positions);
+    final allDecided = completedCount == positions.length;
+
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1100),
                 child: Column(
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                'Contest ${_currentIndex + 1} of ${positions.length}',
-                                style: const TextStyle(color: AppColors.primaryLight, fontWeight: FontWeight.bold, fontSize: 11.5),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(
-                              positions[_currentIndex].title,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                    _buildBallotHeader(context, positions, allowBoycott, isDark),
+                    ...positions.map(
+                      (p) => Padding(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: _BallotPositionCard(
+                          position: p,
+                          electionId: widget.electionId,
+                          allowBoycott: allowBoycott,
                         ),
-                        Text(
-                          '${(progressValue * 100).toInt()}% Completed',
-                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: isDark ? Colors.white60 : Colors.grey.shade600),
-                        ),
-                      ],
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: progressValue,
-                        minHeight: 6,
-                        backgroundColor: isDark ? AppColors.surfaceVariant : const Color(0xFFE2E8F0),
-                        valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryLight),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        // Single-Page Fixed Bottom Action Bar
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surface : Colors.white,
+            border: Border(top: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 12,
+                offset: const Offset(0, -3),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            top: false,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1100),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: allDecided
+                            ? Colors.green.withValues(alpha: 0.12)
+                            : AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: allDecided
+                              ? Colors.green.withValues(alpha: 0.3)
+                              : AppColors.primary.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            allDecided ? Icons.check_circle_rounded : Icons.info_outline_rounded,
+                            size: 16,
+                            color: allDecided ? Colors.green : AppColors.primaryLight,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '$completedCount of ${positions.length} Contests Decided',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.bold,
+                              color: allDecided ? Colors.green : AppColors.primaryLight,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    FilledButton.icon(
+                      onPressed: () => context.pushNamed('vote-confirm', pathParameters: {'electionId': widget.electionId}),
+                      icon: const Icon(Icons.how_to_vote_rounded, size: 18),
+                      label: const Text(
+                        'Review & Sign Ballot (मतपत्र समीक्षा)',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF10B981),
+                        padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 15),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                   ],
                 ),
               ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
-              // Position Page View
-              Expanded(
-                child: PageView.builder(
-                  controller: _pageController,
-                  physics: const NeverScrollableScrollPhysics(),
-                  onPageChanged: (idx) => setState(() => _currentIndex = idx),
-                  itemCount: positions.length,
-                  itemBuilder: (context, i) {
-                    return SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 1100),
-                          child: Column(
-                            children: [
-                              if (i == 0) _buildBallotHeader(context, positions, allowBoycott, isDark),
-                              _BallotPositionCard(
-                                position: positions[i],
-                                electionId: widget.electionId,
-                                allowBoycott: allowBoycott,
-                              ),
-                            ],
-                          ),
+  Widget _buildWizardBallot(
+    BuildContext context,
+    WidgetRef ref,
+    List<PositionModel> positions,
+    bool allowBoycott,
+    Map<String, List<String>> selections,
+    bool isDark,
+  ) {
+    final progressValue = (_currentIndex + 1) / positions.length;
+
+    return Column(
+      children: [
+        // Stepper Header Bar
+        Container(
+          color: isDark ? AppColors.surface : Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'Contest ${_currentIndex + 1} of ${positions.length}',
+                          style: const TextStyle(color: AppColors.primaryLight, fontWeight: FontWeight.bold, fontSize: 11.5),
                         ),
                       ),
-                    );
-                  },
+                      const SizedBox(width: 10),
+                      Text(
+                        positions[_currentIndex].title,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                  Text(
+                    '${(progressValue * 100).toInt()}% Completed',
+                    style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: isDark ? Colors.white60 : Colors.grey.shade600),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: progressValue,
+                  minHeight: 6,
+                  backgroundColor: isDark ? AppColors.surfaceVariant : const Color(0xFFE2E8F0),
+                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryLight),
                 ),
               ),
-
-              // Bottom Wizard Action Controls
-              _buildWizardControls(context, ref, selections, positions, isDark),
             ],
-          );
-        },
-      ),
+          ),
+        ),
+
+        // Position Page View
+        Expanded(
+          child: PageView.builder(
+            controller: _pageController,
+            physics: const NeverScrollableScrollPhysics(),
+            onPageChanged: (idx) => setState(() => _currentIndex = idx),
+            itemCount: positions.length,
+            itemBuilder: (context, i) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1100),
+                    child: Column(
+                      children: [
+                        if (i == 0) _buildBallotHeader(context, positions, allowBoycott, isDark),
+                        _BallotPositionCard(
+                          position: positions[i],
+                          electionId: widget.electionId,
+                          allowBoycott: allowBoycott,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+
+        // Bottom Wizard Action Controls
+        _buildWizardControls(context, ref, selections, positions, isDark),
+      ],
     );
   }
 
@@ -915,29 +1134,60 @@ class _BallotPositionCard extends ConsumerWidget {
                 ],
 
                 // Selection Counter Badge
-                if (!position.isRankedChoice && !position.isApproval && !position.isYesNo)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: positionSelections.length == position.seatsAvailable
-                          ? Colors.green.withValues(alpha: 0.15)
-                          : AppColors.primaryLight.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: positionSelections.length == position.seatsAvailable
-                            ? Colors.green
-                            : AppColors.primaryLight.withValues(alpha: 0.3),
+                if (!position.isRankedChoice && !position.isApproval && !position.isYesNo) ...[
+                  () {
+                    final isNoVoteSelected = ref.read(ballotSelectionsProvider.notifier).isNoVote(position.id);
+                    if (isNoVoteSelected) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.do_not_disturb_alt_rounded, size: 13, color: Color(0xFFD97706)),
+                            SizedBox(width: 4),
+                            Text(
+                              'No Vote (कसैलाई मत छैन)',
+                              style: TextStyle(
+                                color: Color(0xFFD97706),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    final isComplete = positionSelections.length == position.seatsAvailable;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isComplete
+                            ? Colors.green.withValues(alpha: 0.15)
+                            : (positionSelections.isNotEmpty ? AppColors.primaryLight.withValues(alpha: 0.12) : (isDark ? Colors.white10 : Colors.grey.shade100)),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isComplete
+                              ? Colors.green
+                              : (positionSelections.isNotEmpty ? AppColors.primaryLight.withValues(alpha: 0.3) : (isDark ? Colors.white24 : Colors.grey.shade300)),
+                        ),
                       ),
-                    ),
-                    child: Text(
-                      '${positionSelections.length}/${position.seatsAvailable} Selected',
-                      style: TextStyle(
-                        color: positionSelections.length == position.seatsAvailable ? Colors.green : AppColors.primaryLight,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                      child: Text(
+                        '${positionSelections.length}/${position.seatsAvailable} Selected',
+                        style: TextStyle(
+                          color: isComplete ? Colors.green : (positionSelections.isNotEmpty ? AppColors.primaryLight : (isDark ? Colors.white60 : Colors.grey.shade700)),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  }(),
+                ],
               ],
             ),
           ),
@@ -1009,29 +1259,28 @@ class _BallotPositionCard extends ConsumerWidget {
               ),
             ),
 
-          // No Vote / Boycott Option
-          if (allowBoycott)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-              child: _BoycottPositionTile(
-                isBoycotted: positionSelections.contains('__BOYCOTT__'),
-                onTap: () {
-                  ref.read(ballotSelectionsProvider.notifier).toggleBoycott(position.id);
-                },
-              ),
+          // Dedicated Per-Position "No Vote / None of the Above / Abstain" Option
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: _NoVotePositionTile(
+              isNoVote: ref.read(ballotSelectionsProvider.notifier).isNoVote(position.id),
+              onTap: () {
+                ref.read(ballotSelectionsProvider.notifier).toggleNoVote(position.id);
+              },
             ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _BoycottPositionTile extends StatelessWidget {
-  final bool isBoycotted;
+class _NoVotePositionTile extends StatelessWidget {
+  final bool isNoVote;
   final VoidCallback onTap;
 
-  const _BoycottPositionTile({
-    required this.isBoycotted,
+  const _NoVotePositionTile({
+    required this.isNoVote,
     required this.onTap,
   });
 
@@ -1046,13 +1295,13 @@ class _BoycottPositionTile extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: isBoycotted
-              ? Colors.red.withValues(alpha: isDark ? 0.15 : 0.08)
+          color: isNoVote
+              ? const Color(0xFFD97706).withValues(alpha: isDark ? 0.15 : 0.08)
               : (isDark ? Colors.white.withValues(alpha: 0.03) : const Color(0xFFFAFAFA)),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isBoycotted ? Colors.red : (isDark ? Colors.white12 : Colors.grey.shade300),
-            width: isBoycotted ? 1.5 : 1,
+            color: isNoVote ? const Color(0xFFD97706) : (isDark ? Colors.white12 : Colors.grey.shade300),
+            width: isNoVote ? 1.5 : 1,
           ),
         ),
         child: Row(
@@ -1060,13 +1309,13 @@ class _BoycottPositionTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: isBoycotted ? Colors.red : Colors.grey.withValues(alpha: 0.15),
+                color: isNoVote ? const Color(0xFFD97706) : Colors.grey.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                Icons.block_rounded,
+                Icons.do_not_disturb_alt_rounded,
                 size: 18,
-                color: isBoycotted ? Colors.white : Colors.grey,
+                color: isNoVote ? Colors.white : Colors.grey,
               ),
             ),
             const SizedBox(width: 14),
@@ -1077,19 +1326,19 @@ class _BoycottPositionTile extends StatelessWidget {
                   Row(
                     children: [
                       const Text(
-                        'No Vote / Boycott This Office (बहिष्कार)',
+                        'No Vote / None of the Above (यस पदमा कसैलाई पनि मत दिन्न / NOTA)',
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
                       ),
-                      if (isBoycotted) ...[
+                      if (isNoVote) ...[
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.red,
+                            color: const Color(0xFFD97706),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: const Text(
-                            'SELECTED',
+                            'ABSTAINED',
                             style: TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -1098,15 +1347,15 @@ class _BoycottPositionTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'I choose to abstain from casting a vote for any candidate in this specific contest.',
+                    'I choose to abstain from casting a vote for any candidate in this specific contest (यस पदमा कुनै पनि उम्मेदवारलाई मत नदिई खाली राख्न चाहन्छु).',
                     style: TextStyle(color: isDark ? Colors.white54 : AppColors.textMuted, fontSize: 11.5),
                   ),
                 ],
               ),
             ),
             Checkbox(
-              value: isBoycotted,
-              activeColor: Colors.red,
+              value: isNoVote,
+              activeColor: const Color(0xFFD97706),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
               onChanged: (_) => onTap(),
             ),
@@ -1116,6 +1365,7 @@ class _BoycottPositionTile extends StatelessWidget {
     );
   }
 }
+
 
 class _CandidateTile extends StatelessWidget {
   final CandidateModel candidate;

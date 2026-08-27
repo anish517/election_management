@@ -144,8 +144,10 @@ class BallotSelectionsNotifier extends StateNotifier<Map<String, List<String>>> 
     final current = Map<String, List<String>>.from(state);
     final positionSelections = List<String>.from(current[positionId] ?? []);
 
-    // If boycott was selected, remove it
+    // If No Vote / Boycott was selected, remove it
     positionSelections.remove('__BOYCOTT__');
+    positionSelections.remove('__NO_VOTE__');
+    positionSelections.remove('NOTA');
 
     if (positionSelections.contains(candidateId)) {
       positionSelections.remove(candidateId);
@@ -164,36 +166,63 @@ class BallotSelectionsNotifier extends StateNotifier<Map<String, List<String>>> 
     state = current;
   }
 
-  void toggleBoycott(String positionId) {
+  void toggleNoVote(String positionId) {
     final current = Map<String, List<String>>.from(state);
     final positionSelections = List<String>.from(current[positionId] ?? []);
-    if (positionSelections.contains('__BOYCOTT__')) {
-      positionSelections.remove('__BOYCOTT__');
+    final isAlreadyNoVote = positionSelections.contains('__NO_VOTE__') ||
+        positionSelections.contains('__BOYCOTT__') ||
+        positionSelections.contains('NOTA');
+
+    if (isAlreadyNoVote) {
+      positionSelections.clear();
     } else {
       positionSelections
         ..clear()
-        ..add('__BOYCOTT__');
+        ..add('__NO_VOTE__');
     }
     current[positionId] = positionSelections;
     state = current;
   }
 
+  void toggleBoycott(String positionId) {
+    toggleNoVote(positionId);
+  }
+
   void boycottEntireElection(List<PositionModel> positions) {
     final current = <String, List<String>>{};
     for (final p in positions) {
-      current[p.id] = ['__BOYCOTT__'];
+      current[p.id] = ['__NO_VOTE__'];
     }
     state = current;
   }
 
+  bool isNoVote(String positionId) {
+    final list = state[positionId];
+    if (list == null || list.isEmpty) return false;
+    return list.contains('__NO_VOTE__') || list.contains('__BOYCOTT__') || list.contains('NOTA');
+  }
+
   bool isBoycotted(String positionId) {
-    return state[positionId]?.contains('__BOYCOTT__') ?? false;
+    return isNoVote(positionId);
   }
 
   bool isSelected(String positionId, String candidateId) {
     return state[positionId]?.contains(candidateId) ?? false;
   }
-  
+
+  bool hasContestDecision(String positionId) {
+    final list = state[positionId];
+    return list != null && list.isNotEmpty;
+  }
+
+  int completedContestsCount(List<PositionModel> positions) {
+    int count = 0;
+    for (final p in positions) {
+      if (hasContestDecision(p.id)) count++;
+    }
+    return count;
+  }
+
   int? getRank(String positionId, String candidateId) {
     final list = state[positionId];
     if (list == null) return null;

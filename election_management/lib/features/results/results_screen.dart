@@ -546,13 +546,31 @@ class _CandidateResultTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isHighlighted = isWinner || isLeading;
-    final barColor = isWinner ? const Color(0xFF10B981) : (isLeading ? Colors.amber.shade700 : AppColors.primaryLight);
+    final isNoVoteOrBoycott = score.candidateId == '__BOYCOTT__' ||
+        score.candidateId == '__NO_VOTE__' ||
+        score.candidateId == 'NOTA' ||
+        score.name.toLowerCase().contains('no vote') ||
+        score.name.toLowerCase().contains('boycott');
 
-    final borderColor = isHighlighted
-        ? barColor.withValues(alpha: 0.5)
-        : (isDark ? AppColors.surfaceVariant : Colors.grey.shade200);
-    final bgColor = isHighlighted ? barColor.withValues(alpha: isDark ? 0.1 : 0.05) : Colors.transparent;
+    final effectiveWinner = isNoVoteOrBoycott ? false : isWinner;
+    final effectiveLeading = isNoVoteOrBoycott ? false : isLeading;
+    final isHighlighted = effectiveWinner || effectiveLeading;
+
+    final barColor = isNoVoteOrBoycott
+        ? const Color(0xFFD97706)
+        : (effectiveWinner
+            ? const Color(0xFF10B981)
+            : (effectiveLeading ? Colors.amber.shade700 : AppColors.primaryLight));
+
+    final borderColor = isNoVoteOrBoycott
+        ? const Color(0xFFD97706).withValues(alpha: 0.35)
+        : (isHighlighted
+            ? barColor.withValues(alpha: 0.5)
+            : (isDark ? AppColors.surfaceVariant : Colors.grey.shade200));
+
+    final bgColor = isNoVoteOrBoycott
+        ? const Color(0xFFD97706).withValues(alpha: isDark ? 0.08 : 0.04)
+        : (isHighlighted ? barColor.withValues(alpha: isDark ? 0.1 : 0.05) : Colors.transparent);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -565,12 +583,14 @@ class _CandidateResultTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Candidate Photo / Avatar
+          // Candidate Photo / Avatar / No Vote Icon
           Container(
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: isDark ? AppColors.surfaceVariant : Colors.grey.shade200,
+              color: isNoVoteOrBoycott
+                  ? const Color(0xFFD97706).withValues(alpha: 0.12)
+                  : (isDark ? AppColors.surfaceVariant : Colors.grey.shade200),
               borderRadius: BorderRadius.circular(14),
               boxShadow: [
                 BoxShadow(
@@ -582,13 +602,17 @@ class _CandidateResultTile extends StatelessWidget {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(14),
-              child: score.photoUrl.isNotEmpty
-                  ? Image.network(
-                      score.photoUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => _buildPlaceholder(isDark),
+              child: isNoVoteOrBoycott
+                  ? const Center(
+                      child: Icon(Icons.do_not_disturb_alt_rounded, color: Color(0xFFD97706), size: 30),
                     )
-                  : _buildPlaceholder(isDark),
+                  : (score.photoUrl.isNotEmpty
+                      ? Image.network(
+                          score.photoUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => _buildPlaceholder(isDark),
+                        )
+                      : _buildPlaceholder(isDark)),
             ),
           ),
           const SizedBox(width: 16),
@@ -603,15 +627,21 @@ class _CandidateResultTile extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: isWinner
-                            ? const Color(0xFF10B981)
-                            : (isLeading ? Colors.amber.shade700 : (isDark ? AppColors.surfaceVariant : Colors.grey.shade200)),
+                        color: isNoVoteOrBoycott
+                            ? const Color(0xFFD97706).withValues(alpha: 0.15)
+                            : (effectiveWinner
+                                ? const Color(0xFF10B981)
+                                : (effectiveLeading ? Colors.amber.shade700 : (isDark ? AppColors.surfaceVariant : Colors.grey.shade200))),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        isWinner ? '🏆 ELECTED' : (isLeading ? '🟢 LEADING' : '#$rank'),
+                        isNoVoteOrBoycott
+                            ? '⚪ ABSTAINED / NOTA'
+                            : (effectiveWinner ? '🏆 ELECTED' : (effectiveLeading ? '🟢 LEADING' : '#$rank')),
                         style: TextStyle(
-                          color: isHighlighted ? Colors.white : (isDark ? Colors.white70 : Colors.black54),
+                          color: isNoVoteOrBoycott
+                              ? const Color(0xFFD97706)
+                              : (isHighlighted ? Colors.white : (isDark ? Colors.white70 : Colors.black54)),
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.5,
@@ -679,3 +709,4 @@ class _CandidateResultTile extends StatelessWidget {
     );
   }
 }
+

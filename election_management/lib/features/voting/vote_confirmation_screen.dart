@@ -452,7 +452,9 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
     List<String> selectedIds,
     bool isDark,
   ) {
-    final isBoycotted = selectedIds.contains('__BOYCOTT__');
+    final isNoVote = selectedIds.contains('__BOYCOTT__') ||
+        selectedIds.contains('__NO_VOTE__') ||
+        selectedIds.contains('NOTA');
     final selectedCandidates = position.candidates.where((c) => selectedIds.contains(c.id)).toList();
 
     return Container(
@@ -491,16 +493,17 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5),
                   ),
                 ),
-                if (isBoycotted)
+                if (isNoVote)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.1),
+                      color: const Color(0xFFD97706).withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFD97706).withValues(alpha: 0.3)),
                     ),
                     child: const Text(
-                      'Boycotted (बहिष्कार)',
-                      style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.bold),
+                      'No Vote / Abstained (मत नदिएको)',
+                      style: TextStyle(color: Color(0xFFD97706), fontSize: 11, fontWeight: FontWeight.bold),
                     ),
                   )
                 else if (selectedCandidates.isEmpty)
@@ -511,7 +514,7 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: const Text(
-                      'Abstained',
+                      'Unselected (छनोट नगरिएको)',
                       style: TextStyle(color: Colors.amber, fontSize: 11, fontWeight: FontWeight.bold),
                     ),
                   )
@@ -537,22 +540,22 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (isBoycotted)
+                if (isNoVote)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.08),
+                      color: const Color(0xFFD97706).withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.red.withValues(alpha: 0.25)),
+                      border: Border.all(color: const Color(0xFFD97706).withValues(alpha: 0.25)),
                     ),
                     child: const Row(
                       children: [
-                        Icon(Icons.block_rounded, color: Colors.red, size: 18),
+                        Icon(Icons.do_not_disturb_alt_rounded, color: Color(0xFFD97706), size: 18),
                         SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'No Vote / Boycott chosen for this office.',
-                            style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13),
+                            'No Vote / None of the Above chosen for this office (यस पदमा कसैलाई पनि मत नदिई खाली राखिएको छ)।',
+                            style: TextStyle(color: Color(0xFFD97706), fontWeight: FontWeight.bold, fontSize: 13),
                           ),
                         ),
                       ],
@@ -572,13 +575,14 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                         SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'No candidate selected — you have chosen to abstain for this seat.',
+                            'No candidate selected — you have chosen to abstain for this seat (कुनै उम्मेदवार छनोट गरिएको छैन)।',
                             style: TextStyle(color: Colors.amber, fontSize: 12.5, fontWeight: FontWeight.w600),
                           ),
                         ),
                       ],
                     ),
                   )
+
                 else
                   ...selectedCandidates.map((c) {
                     final rankIndex = selectedIds.indexOf(c.id);

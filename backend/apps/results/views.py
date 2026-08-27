@@ -20,25 +20,22 @@ class ElectionResultsViewSet(viewsets.ViewSet):
             return Response({'error': 'Election not found'}, status=404)
             
         # Security/Visibility Check:
-        # Voters must NOT be able to see results until voting is closed and results are published,
-        # even after submitting their ballot.
-        is_privileged = (
-            request.user.role in ['org_admin', 'election_officer', 'observer', 'auditor', 'super_admin']
+        # Observers, auditors, voters, and electors must NOT see candidate vote tallies
+        # while voting is open. Results are accessible only after voting is closed or published,
+        # unless an election officer/admin is actively managing the election.
+        is_admin = (
+            request.user.role in ['org_admin', 'election_officer', 'super_admin']
             or getattr(request.user, 'is_org_admin', False)
             or getattr(request.user, 'is_staff', False)
         )
 
         is_published = election.state in ['voting_closed', 'results_provisional', 'results_final']
 
-        if request.user.role == 'voter' and not is_published:
+        if not is_published and not is_admin:
             return Response({
                 'error': 'Results are not available yet. Results will be published once voting is closed.'
             }, status=403)
 
-        if not is_published and not election.live_turnout_enabled and not is_privileged:
-            return Response({
-                'error': 'Results are not available yet.'
-            }, status=403)
             
         tally_data = TallyService.tally_election(election)
 

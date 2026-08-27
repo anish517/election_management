@@ -680,7 +680,9 @@ class ElectionDetailScreen extends ConsumerWidget {
           )
           .animate(onPlay: (controller) => controller.repeat(reverse: true))
           .scale(begin: const Offset(1, 1), end: const Offset(1.03, 1.03), duration: 800.ms),
-        if (election.hasResults || election.state == 'voting_closed' || (election.state == 'voting_open' && (election.resultsVisibility == 'public' || user?.canManageElections == true || user?.isObserver == true || user?.isAuditor == true || election.resultsVisibility == 'org_members')))
+        if (election.hasResults ||
+            election.state == 'voting_closed' ||
+            (election.state == 'voting_open' && user?.canManageElections == true))
           ElevatedButton.icon(
             onPressed: () => context.pushNamed('results',
                 pathParameters: {'electionId': electionId}),
@@ -688,6 +690,8 @@ class ElectionDetailScreen extends ConsumerWidget {
             label: const Text('View Results (नतिजा)'),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateResults, foregroundColor: Colors.white),
           ),
+
+
         if (election.hasResults || user?.isAuditor == true || user?.canManageElections == true)
           OutlinedButton.icon(
             onPressed: () => Navigator.of(context).push(

@@ -148,6 +148,7 @@ class AppTheme {
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: const Color(0xFF09090B),
+        foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
         titleTextStyle: _heading(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
@@ -252,6 +253,7 @@ class AppTheme {
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: const Color(0xFFFFFFFF),
+        foregroundColor: const Color(0xFF171717),
         elevation: 0,
         centerTitle: false,
         titleTextStyle: _heading(fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF171717)),

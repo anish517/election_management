@@ -374,7 +374,7 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
               'उम्मेदवार मनोनयन तथा दर्ता',
               style: TextStyle(
                 fontSize: 11,
-                color: (Theme.of(context).appBarTheme.foregroundColor ?? (isDark ? Colors.white : AppColors.primary)).withValues(alpha: 0.65),
+                color: isDark ? Colors.white70 : AppColors.textSecondaryLightMode,
               ),
             ),
           ],

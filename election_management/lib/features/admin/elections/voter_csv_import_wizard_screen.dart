@@ -236,7 +236,7 @@ class _VoterCsvImportWizardScreenState extends ConsumerState<VoterCsvImportWizar
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Bulk CSV Voter Roll Importer', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            Text('मतदाता सूची CSV आयात विगार्ड', style: TextStyle(fontSize: 11, color: Theme.of(context).appBarTheme.foregroundColor?.withValues(alpha: 0.65) ?? Colors.white70)),
+            Text('मतदाता सूची CSV आयात विगार्ड', style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : AppColors.textSecondaryLightMode)),
           ],
         ),
         leading: IconButton(

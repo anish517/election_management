@@ -238,14 +238,14 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
             SizedBox(
               width: 22,
               height: 22,
-              child: CustomPaint(painter: _VoteSwastikPainter(color: Colors.white)),
+              child: CustomPaint(painter: _VoteSwastikPainter(color: isDark ? Colors.white : AppColors.primary)),
             ),
             const SizedBox(width: 10),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(l10n.isEnglish ? 'Review & Confirm Ballot' : (l10n.isNepali ? 'मतपत्र समीक्षा तथा अन्तिम प्रमाणीकरण' : 'Review & Confirm Ballot'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                Text(l10n.isEnglish ? 'Secure Cryptographic Submission' : 'मतपत्र समीक्षा तथा अन्तिम प्रमाणीकरण', style: TextStyle(fontSize: 11, color: (Theme.of(context).appBarTheme.foregroundColor ?? Colors.white).withValues(alpha: 0.7))),
+                Text(l10n.isEnglish ? 'Secure Cryptographic Submission' : 'मतपत्र समीक्षा तथा अन्तिम प्रमाणीकरण', style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : AppColors.textSecondaryLightMode)),
               ],
             ),
           ],

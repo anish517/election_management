@@ -264,7 +264,7 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('Official Election Notices (सूचनाहरू)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              Text('आधिकारिक लेटरहेड तथा सूचना पाटी', style: TextStyle(fontSize: 11, color: Theme.of(context).appBarTheme.foregroundColor?.withValues(alpha: 0.65) ?? Colors.white70)),
+              Text('आधिकारिक लेटरहेड तथा सूचना पाटी', style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : AppColors.textSecondaryLightMode)),
             ],
           ),
           leading: IconButton(

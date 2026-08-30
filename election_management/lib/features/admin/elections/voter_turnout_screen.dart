@@ -31,7 +31,7 @@ class _VoterTurnoutScreenState extends ConsumerState<VoterTurnoutScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Voter Turnout & Telemetry', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            Text('प्रत्यक्ष मतदान सहभागिता तथा विवरण', style: TextStyle(fontSize: 11, color: Theme.of(context).appBarTheme.foregroundColor?.withValues(alpha: 0.65) ?? Colors.white70)),
+            Text('प्रत्यक्ष मतदान सहभागिता तथा विवरण', style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : AppColors.textSecondaryLightMode)),
           ],
         ),
         actions: [

@@ -190,7 +190,7 @@ class _GuidelinesScreenState extends ConsumerState<GuidelinesScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('Election Guidelines (निर्देशिका)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              Text('आधिकारिक आचारसंहिता तथा नियमहरू', style: TextStyle(fontSize: 11, color: Theme.of(context).appBarTheme.foregroundColor?.withValues(alpha: 0.65) ?? Colors.white70)),
+              Text('आधिकारिक आचारसंहिता तथा नियमहरू', style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : AppColors.textSecondaryLightMode)),
             ],
           ),
           leading: IconButton(

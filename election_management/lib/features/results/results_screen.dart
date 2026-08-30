@@ -616,15 +616,17 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
             ...posResult.breakdown.asMap().entries.map((entry) {
               final i = entry.key;
               final score = entry.value;
-              final isTopCandidate = posResult.winners.contains(score.candidateId) || score.isElected;
+              final isUncontested = score.isUncontested || posResult.isUncontested;
+              final isTopCandidate = posResult.winners.contains(score.candidateId) || score.isElected || isUncontested;
               final totalVotes = posResult.totalValidBallots;
               final pct = totalVotes > 0 ? score.score / totalVotes : 0.0;
 
               return _CandidateResultTile(
                 rank: score.rank > 0 ? score.rank : (i + 1),
                 score: score,
-                isWinner: !isLive && isTopCandidate && score.score > 0,
-                isLeading: isLive && isTopCandidate && score.score > 0,
+                isWinner: !isLive && isTopCandidate && (score.score > 0 || isUncontested || score.isElected),
+                isLeading: isLive && isTopCandidate && (score.score > 0 || isUncontested),
+                isUncontested: isUncontested,
                 percentage: pct,
                 totalVotes: totalVotes,
               );
@@ -672,13 +674,17 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
               score.name.toLowerCase().contains('no vote') ||
               score.name.toLowerCase().contains('boycott');
 
-          final isElected = !isLive && !isNoVoteOrBoycott && (posResult.winners.contains(score.candidateId) || score.isElected) && score.score > 0;
-          final isLeading = isLive && !isNoVoteOrBoycott && (posResult.winners.contains(score.candidateId) || score.isElected) && score.score > 0;
+          final isUncontested = score.isUncontested || posResult.isUncontested;
+          final isTopCandidate = posResult.winners.contains(score.candidateId) || score.isElected || isUncontested;
+          final isElected = !isLive && !isNoVoteOrBoycott && (isUncontested || (isTopCandidate && (score.score > 0 || score.isElected)));
+          final isLeading = isLive && !isNoVoteOrBoycott && (isTopCandidate && (score.score > 0 || isUncontested));
           final isTie = score.isTie;
           final pct = totalVotes > 0 ? (score.score / totalVotes * 100) : 0.0;
 
           Color? rowBg;
-          if (isElected) {
+          if (isUncontested) {
+            rowBg = const Color(0xFF0D9488).withValues(alpha: isDark ? 0.15 : 0.08);
+          } else if (isElected) {
             rowBg = const Color(0xFF10B981).withValues(alpha: isDark ? 0.15 : 0.08);
           } else if (isTie) {
             rowBg = Colors.amber.withValues(alpha: isDark ? 0.15 : 0.08);
@@ -852,7 +858,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
         ),
       );
     }
-    if (isUncontested && isElected) {
+    if (isUncontested) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
@@ -950,6 +956,7 @@ class _CandidateResultTile extends StatelessWidget {
   final CandidateScore score;
   final bool isWinner;
   final bool isLeading;
+  final bool isUncontested;
   final double percentage;
   final int totalVotes;
 
@@ -958,6 +965,7 @@ class _CandidateResultTile extends StatelessWidget {
     required this.score,
     required this.isWinner,
     required this.isLeading,
+    this.isUncontested = false,
     required this.percentage,
     required this.totalVotes,
   });
@@ -971,15 +979,18 @@ class _CandidateResultTile extends StatelessWidget {
         score.name.toLowerCase().contains('no vote') ||
         score.name.toLowerCase().contains('boycott');
 
-    final effectiveWinner = isNoVoteOrBoycott ? false : isWinner;
+    final effectiveUncontested = isNoVoteOrBoycott ? false : (isUncontested || score.isUncontested);
+    final effectiveWinner = isNoVoteOrBoycott ? false : (isWinner || effectiveUncontested);
     final effectiveLeading = isNoVoteOrBoycott ? false : isLeading;
     final isHighlighted = effectiveWinner || effectiveLeading;
 
     final barColor = isNoVoteOrBoycott
         ? const Color(0xFFD97706)
-        : (effectiveWinner
-            ? const Color(0xFF10B981)
-            : (effectiveLeading ? Colors.amber.shade700 : AppColors.primaryLight));
+        : (effectiveUncontested
+            ? const Color(0xFF0D9488)
+            : (effectiveWinner
+                ? const Color(0xFF10B981)
+                : (effectiveLeading ? Colors.amber.shade700 : AppColors.primaryLight)));
 
     final borderColor = isNoVoteOrBoycott
         ? const Color(0xFFD97706).withValues(alpha: 0.35)
@@ -1048,15 +1059,19 @@ class _CandidateResultTile extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: isNoVoteOrBoycott
                             ? const Color(0xFFD97706).withValues(alpha: 0.15)
-                            : (effectiveWinner
-                                ? const Color(0xFF10B981)
-                                : (effectiveLeading ? Colors.amber.shade700 : (isDark ? AppColors.surfaceVariant : Colors.grey.shade200))),
+                            : (effectiveUncontested
+                                ? const Color(0xFF0D9488)
+                                : (effectiveWinner
+                                    ? const Color(0xFF10B981)
+                                    : (effectiveLeading ? Colors.amber.shade700 : (isDark ? AppColors.surfaceVariant : Colors.grey.shade200)))),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         isNoVoteOrBoycott
                             ? '⚪ ABSTAINED / NOTA'
-                            : (effectiveWinner ? '🏆 ELECTED' : (effectiveLeading ? '🟢 LEADING' : '#$rank')),
+                            : (effectiveUncontested
+                                ? '🏆 UNCONTESTED (निर्विरोध)'
+                                : (effectiveWinner ? '🏆 ELECTED' : (effectiveLeading ? '🟢 LEADING' : '#$rank'))),
                         style: TextStyle(
                           color: isNoVoteOrBoycott
                               ? const Color(0xFFD97706)

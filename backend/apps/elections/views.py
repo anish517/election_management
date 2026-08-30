@@ -956,6 +956,11 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
                     'role': c.role,
                 })
 
+        # Detect if notice is results declaration notice
+        t_low = (notice.title or '').lower()
+        c_low = (notice.content or '').lower()
+        is_results_notice = any(k in t_low or k in c_low for k in ['मतदान सम्पन्न', 'मत परिणाम', 'परिणाम', 'voting completed', 'result'])
+
         # Build Left Committee Roster Sidebar HTML
         tenure_range = f"({election_year}-{int(election_year)+3})" if election_year.isdigit() else f"({election_year})"
         committee_sidebar_html = ""
@@ -998,7 +1003,55 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
         else:
             stamp_html = digital_seal_html
 
-        notice_content = (notice.content or '').replace('\n', '<br>')
+        def render_markdown_table(t_lines):
+            if len(t_lines) < 2:
+                return ''
+            headers = [c.strip() for c in t_lines[0].split('|') if c.strip()]
+            th_cells = ''.join([f'<th style="background:#F1F5F9; font-weight:bold; font-size:11.5px; padding:6px 8px; border:1px solid #CBD5E1; color:#0F172A;">{h}</th>' for h in headers])
+            rows_html = ''
+            for l in t_lines[1:]:
+                clean = l.replace('-', '').replace(':', '').replace('|', '').strip()
+                if not clean:
+                    continue
+                cells = [c.strip() for c in l.split('|') if c.strip()]
+                is_win = '🏆 ELECTED' in l or 'विजयी' in l
+                is_tie = '⚠️ TIED' in l or 'बराबरी' in l
+                bg_style = 'background:#ECFDF5;' if is_win else ('background:#FFFBEB;' if is_tie else '')
+                tds = ''
+                for idx, c in enumerate(cells):
+                    is_status = (idx == len(cells) - 1)
+                    color = '#059669' if is_win and is_status else ('#B45309' if is_tie and is_status else '#1E293B')
+                    weight = 'bold' if is_win or is_tie else 'normal'
+                    tds += f'<td style="padding:6px 8px; border:1px solid #E2E8F0; font-size:11px; font-weight:{weight}; color:{color};">{c}</td>'
+                rows_html += f'<tr style="{bg_style}">{tds}</tr>'
+            return f'<table style="width:100%; border-collapse:collapse; margin:14px 0; border:1px solid #CBD5E1; text-align:left;"><thead><tr>{th_cells}</tr></thead><tbody>{rows_html}</tbody></table>'
+
+        def format_notice_content_html(raw_content):
+            if not raw_content:
+                return ''
+            if '|' in raw_content and '---' in raw_content:
+                lines = raw_content.split('\n')
+                out = []
+                table_lines = []
+                in_table = False
+                for line in lines:
+                    trimmed = line.strip()
+                    if trimmed.startswith('|') and trimmed.endswith('|'):
+                        in_table = True
+                        table_lines.append(trimmed)
+                    else:
+                        if in_table and table_lines:
+                            out.append(render_markdown_table(table_lines))
+                            table_lines = []
+                            in_table = False
+                        if trimmed:
+                            out.append(f'<p style="margin: 0 0 10px 0; line-height: 1.8;">{trimmed}</p>')
+                if in_table and table_lines:
+                    out.append(render_markdown_table(table_lines))
+                return ''.join(out)
+            return raw_content.replace('\n', '<br>')
+
+        notice_content = format_notice_content_html(notice.content or '')
         logo_html = f'<img src="{org_logo}" class="header-logo" alt="Logo">' if org_logo else '<div class="header-logo" style="background:#EEF2FF; border:1px solid #C7D2FE; display:flex; align-items:center; justify-content:center; font-size:28px;">🏛️</div>'
 
         html = f"""<!DOCTYPE html>
@@ -1258,15 +1311,17 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
             मिति: {nepali_date}
           </div>
 
+          {'<div style="text-align:center; margin-bottom:10px;"><span style="background:#F0FDF4; border:1.2px solid #059669; color:#065F46; font-size:11px; font-weight:900; padding:4px 12px; border-radius:6px; letter-spacing:0.3px;">🏆 आधिकारिक मत परिणाम घोषणा (OFFICIAL RESULTS DECLARATION)</span></div>' if is_results_notice else ''}
+
           <!-- Notice Header -->
           <div class="notice-title-box">
             सूचना !
           </div>
 
-          {f'<div style="font-weight:bold; font-size:13px; margin-bottom:14px; text-align:center;">विषय: {notice.title}</div>' if notice.title != 'सूचना' and notice.title != 'सूचना !' else ''}
+          {f'<div style="font-weight:bold; font-size:13px; margin-bottom:14px; text-align:center; background:#F8FAFC; padding:6px 12px; border-radius:6px; border:1px solid #CBD5E1;">विषय: {notice.title}</div>' if is_results_notice else (f'<div style="font-weight:bold; font-size:13px; margin-bottom:14px; text-align:center;">विषय: {notice.title}</div>' if notice.title != 'सूचना' and notice.title != 'सूचना !' else '')}
 
           <!-- Notice Body Paragraphs -->
-          <div class="content-body">
+          <div class="content-body" style="{'background:#F0FDF4; padding:12px; border-radius:8px; border:1px solid #86EFAC;' if is_results_notice else ''}">
             {notice_content}
           </div>
         </div>

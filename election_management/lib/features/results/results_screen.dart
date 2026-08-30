@@ -23,6 +23,7 @@ class ResultsScreen extends ConsumerStatefulWidget {
 
 class _ResultsScreenState extends ConsumerState<ResultsScreen> {
   Timer? _pollingTimer;
+  bool _showTableView = true;
 
   @override
   void initState() {
@@ -173,15 +174,68 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
           _buildResultsHeader(context, tally, election, user, isDark),
           const SizedBox(height: 24),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(Icons.military_tech_rounded, size: 20, color: AppColors.primaryLight),
-              const SizedBox(width: 8),
-              Text(
-                'Contested Offices & Candidate Standings (पदगत नतिजा)',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : Colors.black87,
+              Row(
+                children: [
+                  const Icon(Icons.military_tech_rounded, size: 20, color: AppColors.primaryLight),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Contested Offices & Results Table (पदगत नतिजा विवरण)',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+              // Toggle Table vs Card View
+              Container(
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceVariant : Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      onTap: () => setState(() => _showTableView = true),
+                      borderRadius: const BorderRadius.horizontal(left: Radius.circular(10)),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _showTableView ? AppColors.primary : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.table_chart_rounded, size: 15, color: _showTableView ? Colors.white : (isDark ? Colors.white70 : Colors.black87)),
+                            const SizedBox(width: 5),
+                            Text('Table', style: TextStyle(color: _showTableView ? Colors.white : (isDark ? Colors.white70 : Colors.black87), fontSize: 12, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => setState(() => _showTableView = false),
+                      borderRadius: const BorderRadius.horizontal(right: Radius.circular(10)),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: !_showTableView ? AppColors.primary : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.view_agenda_rounded, size: 15, color: !_showTableView ? Colors.white : (isDark ? Colors.white70 : Colors.black87)),
+                            const SizedBox(width: 5),
+                            Text('Cards', style: TextStyle(color: !_showTableView ? Colors.white : (isDark ? Colors.white70 : Colors.black87), fontSize: 12, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -489,7 +543,33 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(posResult.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              posResult.title,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${posResult.seatsAvailable} Seat${posResult.seatsAvailable > 1 ? 's' : ''} (${posResult.seatsAvailable} सिट)',
+                              style: const TextStyle(
+                                color: AppColors.primaryLight,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
                       Text(
                         '${posResult.totalValidBallots} vote(s) cast across candidates',
                         style: TextStyle(color: isDark ? Colors.white60 : AppColors.textMuted, fontSize: 12),
@@ -500,27 +580,289 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
               ],
             ),
           ),
+
+          // Tie Detection Alert Banner
+          if (posResult.hasTie)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.amber.shade700, width: 1.2),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.amber.shade800, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'बराबरी मत (Tie Detected): अन्तिम सिटका लागि उम्मेदवारहरूबीच बराबर मत प्राप्त भएको छ। निर्वाचन समितिद्वारा गोलाप्रथा वा निर्देशिका बमोजिम निर्णय गरिनेछ।',
+                      style: TextStyle(color: Colors.amber.shade900, fontSize: 11.5, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           Divider(color: isDark ? AppColors.surfaceVariant : Colors.grey.shade200, height: 1),
 
-          // Candidates List
-          ...posResult.breakdown.asMap().entries.map((entry) {
-            final i = entry.key;
-            final score = entry.value;
-            final isTopCandidate = posResult.winners.contains(score.candidateId);
-            final totalVotes = posResult.totalValidBallots;
-            final pct = totalVotes > 0 ? score.score / totalVotes : 0.0;
+          // Structured Results Table vs Cards
+          if (_showTableView)
+            _buildResultsTable(context, posResult, isLive, isDark)
+          else ...[
+            // Candidates Card List
+            ...posResult.breakdown.asMap().entries.map((entry) {
+              final i = entry.key;
+              final score = entry.value;
+              final isTopCandidate = posResult.winners.contains(score.candidateId) || score.isElected;
+              final totalVotes = posResult.totalValidBallots;
+              final pct = totalVotes > 0 ? score.score / totalVotes : 0.0;
 
-            return _CandidateResultTile(
-              rank: i + 1,
-              score: score,
-              isWinner: !isLive && isTopCandidate && score.score > 0,
-              isLeading: isLive && isTopCandidate && score.score > 0,
-              percentage: pct,
-              totalVotes: totalVotes,
-            );
-          }),
+              return _CandidateResultTile(
+                rank: score.rank > 0 ? score.rank : (i + 1),
+                score: score,
+                isWinner: !isLive && isTopCandidate && score.score > 0,
+                isLeading: isLive && isTopCandidate && score.score > 0,
+                percentage: pct,
+                totalVotes: totalVotes,
+              );
+            }),
+          ],
           const SizedBox(height: 8),
         ],
+      ),
+    );
+  }
+
+  Widget _buildResultsTable(BuildContext context, PositionResult posResult, bool isLive, bool isDark) {
+    final totalVotes = posResult.totalValidBallots;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 72),
+        child: DataTable(
+          headingRowColor: WidgetStateProperty.all(
+            isDark ? AppColors.surfaceVariant.withValues(alpha: 0.5) : const Color(0xFFF1F5F9),
+          ),
+          columnSpacing: 20,
+          horizontalMargin: 16,
+          columns: const [
+            DataColumn(label: Text('Position (पद)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5))),
+            DataColumn(label: Text('Seats (सिट)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5))),
+            DataColumn(label: Text('Candidate Name (उम्मेदवार)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5))),
+            DataColumn(label: Text('Votes Received (प्राप्त मत)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5))),
+            DataColumn(label: Text('Status / Result (नतिजा)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5))),
+          ],
+          rows: posResult.breakdown.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final score = entry.value;
+            final isNoVoteOrBoycott = score.candidateId == '__BOYCOTT__' ||
+                score.candidateId == '__NO_VOTE__' ||
+                score.candidateId == 'NOTA' ||
+                score.name.toLowerCase().contains('no vote') ||
+                score.name.toLowerCase().contains('boycott');
+
+            final isElected = !isLive && !isNoVoteOrBoycott && (posResult.winners.contains(score.candidateId) || score.isElected) && score.score > 0;
+            final isLeading = isLive && !isNoVoteOrBoycott && (posResult.winners.contains(score.candidateId) || score.isElected) && score.score > 0;
+            final isTie = score.isTie;
+            final pct = totalVotes > 0 ? (score.score / totalVotes * 100) : 0.0;
+
+            Color? rowBg;
+            if (isElected) {
+              rowBg = const Color(0xFF10B981).withValues(alpha: isDark ? 0.15 : 0.08);
+            } else if (isTie) {
+              rowBg = Colors.amber.withValues(alpha: isDark ? 0.15 : 0.08);
+            } else if (isNoVoteOrBoycott) {
+              rowBg = const Color(0xFFD97706).withValues(alpha: isDark ? 0.08 : 0.04);
+            }
+
+            return DataRow(
+              color: rowBg != null ? WidgetStateProperty.all(rowBg) : null,
+              cells: [
+                // 1. Position Title (only display title text on first row for clean grouping)
+                DataCell(
+                  Text(
+                    idx == 0 ? posResult.title : '',
+                    style: TextStyle(
+                      fontWeight: idx == 0 ? FontWeight.bold : FontWeight.normal,
+                      color: isDark ? Colors.white : Colors.black87,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                // 2. Position Seats
+                DataCell(
+                  idx == 0
+                      ? Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '${posResult.seatsAvailable} Seat${posResult.seatsAvailable > 1 ? 's' : ''}',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.primaryLight),
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+                // 3. Candidate Name
+                DataCell(
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: isNoVoteOrBoycott
+                              ? const Color(0xFFD97706).withValues(alpha: 0.15)
+                              : (isDark ? AppColors.surfaceVariant : Colors.grey.shade200),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: isNoVoteOrBoycott
+                              ? const Center(child: Icon(Icons.do_not_disturb_alt_rounded, color: Color(0xFFD97706), size: 16))
+                              : (score.photoUrl.isNotEmpty
+                                  ? Image.network(
+                                      score.photoUrl,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.person_rounded, size: 18),
+                                    )
+                                  : const Icon(Icons.person_rounded, size: 18)),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Flexible(
+                        child: Text(
+                          score.name,
+                          style: TextStyle(
+                            fontWeight: isElected ? FontWeight.bold : (isNoVoteOrBoycott ? FontWeight.w500 : FontWeight.w600),
+                            fontSize: 13,
+                            color: isElected
+                                ? const Color(0xFF10B981)
+                                : (isDark ? Colors.white : Colors.black87),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // 4. Votes Received
+                DataCell(
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${score.score == score.score.toInt() ? score.score.toInt() : score.score.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13.5,
+                          color: isElected ? const Color(0xFF10B981) : (isDark ? Colors.white : Colors.black87),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '(${pct.toStringAsFixed(1)}%)',
+                        style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white60 : AppColors.textMuted),
+                      ),
+                    ],
+                  ),
+                ),
+                // 5. Status / Mandate Badge
+                DataCell(
+                  _buildStatusBadge(isElected, isLeading, isTie, isNoVoteOrBoycott, score.rank > 0 ? score.rank : (idx + 1)),
+                ),
+              ],
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(bool isElected, bool isLeading, bool isTie, bool isNoVoteOrBoycott, int rank) {
+    if (isNoVoteOrBoycott) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: const Color(0xFFD97706).withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: const Text(
+          '⚪ NOTA / Abstained',
+          style: TextStyle(color: Color(0xFFD97706), fontSize: 11, fontWeight: FontWeight.bold),
+        ),
+      );
+    }
+    if (isElected) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFF10B981),
+          borderRadius: BorderRadius.circular(6),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF10B981).withValues(alpha: 0.3),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.military_tech_rounded, size: 14, color: Colors.white),
+            SizedBox(width: 4),
+            Text('🏆 ELECTED (विजयी)', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      );
+    }
+    if (isLeading) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.amber.shade700,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.trending_up_rounded, size: 13, color: Colors.white),
+            SizedBox(width: 4),
+            Text('🟢 LEADING', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      );
+    }
+    if (isTie) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.amber.shade100,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.amber.shade800),
+        ),
+        child: Text(
+          '⚠️ TIED (बराबरी)',
+          style: TextStyle(color: Colors.amber.shade900, fontSize: 11, fontWeight: FontWeight.bold),
+        ),
+      );
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.grey.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        '#$rank',
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
       ),
     );
   }

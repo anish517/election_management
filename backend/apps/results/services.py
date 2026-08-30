@@ -42,8 +42,6 @@ class TallyService:
                             candidate_scores[cand_id] += weight
                         
             sorted_scores = sorted(candidate_scores.items(), key=lambda x: x[1], reverse=True)
-            if is_result_state and total_valid_ballots > 0:
-                winners = [item[0] for item in sorted_scores[:seats] if item[1] > 0]
                 
         # RANKED CHOICE (Instant Runoff Voting)
         elif position.voting_method == 'ranked_choice':
@@ -92,19 +90,41 @@ class TallyService:
                         break
             
             sorted_scores = sorted(final_scores.items(), key=lambda x: x[1], reverse=True)
-            if is_result_state and total_valid_ballots > 0:
-                winners = [item[0] for item in sorted_scores[:seats] if item[1] > 0]
             
         else:
             sorted_scores = []
             
-        for cand_id, score in sorted_scores:
+        # Determine elected winners and boundary ties
+        has_tie = False
+        tied_cand_ids = set()
+        valid_scores = [item for item in sorted_scores if item[1] > 0]
+
+        if is_result_state and total_valid_ballots > 0 and valid_scores:
+            if len(valid_scores) <= seats:
+                # All candidates with non-zero votes fit in available seats
+                winners = [item[0] for item in valid_scores]
+            else:
+                cutoff_score = valid_scores[seats - 1][1]
+                next_score = valid_scores[seats][1]
+                if cutoff_score == next_score:
+                    # Boundary tie for the last seat(s)
+                    has_tie = True
+                    tied_cand_ids = {item[0] for item in valid_scores if item[1] == cutoff_score}
+                    # Winners are candidates strictly above the boundary tie
+                    winners = [item[0] for item in valid_scores if item[1] > cutoff_score]
+                else:
+                    winners = [item[0] for item in valid_scores[:seats]]
+
+        for rank, (cand_id, score) in enumerate(sorted_scores, start=1):
             c_info = candidates_map.get(cand_id, {'name': 'Unknown', 'photo_url': ''})
             breakdown.append({
                 'candidate_id': cand_id,
                 'name': c_info['name'],
                 'photo_url': c_info['photo_url'],
-                'score': score
+                'score': score,
+                'rank': rank,
+                'is_elected': cand_id in winners,
+                'is_tie': cand_id in tied_cand_ids,
             })
 
         if boycott_score > 0:
@@ -112,13 +132,17 @@ class TallyService:
                 'candidate_id': '__BOYCOTT__',
                 'name': 'No Vote / Abstained (खाली मत / कसैलाई मत छैन)',
                 'photo_url': '',
-                'score': boycott_score
+                'score': boycott_score,
+                'rank': len(sorted_scores) + 1,
+                'is_elected': False,
+                'is_tie': False,
             })
 
-            
         return {
             'position_id': pos_id,
             'title': position.title,
+            'seats_available': seats,
+            'has_tie': has_tie,
             'total_valid_ballots': total_valid_ballots,
             'winners': winners,
             'breakdown': breakdown

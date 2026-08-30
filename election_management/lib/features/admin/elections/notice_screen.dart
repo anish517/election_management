@@ -696,6 +696,94 @@ class _NoticeDialogState extends ConsumerState<_NoticeDialog> {
     });
   }
 
+  Future<void> _importResultsTable() async {
+    setState(() => _isSaving = true);
+    try {
+      final dio = ref.read(apiClientProvider);
+      final res = await dio.get(ApiConstants.results(widget.electionId));
+      final data = res.data;
+      if (data is Map && data.containsKey('results')) {
+        final results = data['results'] as List<dynamic>;
+        final totalVoters = data['total_voters'] ?? 0;
+        final ballotsCast = data['ballots_cast'] ?? 0;
+        final turnout = data['turnout_percentage'] ?? 0;
+
+        final sb = StringBuffer();
+        sb.writeln('यस संस्थाको निर्वाचन कार्यतालिका अनुसार सञ्चालन भएको मतदान कार्य सम्पन्न भई कुल $totalVoters मतदातामध्ये $ballotsCast मत ($turnout%) खसेको र मतगणना कार्य सम्पन्न भई निर्वाचन समितिद्वारा प्रमाणित अन्तिम मत परिणाम निम्नानुसार घोषणा गरिएको छ:\n');
+        sb.writeln('| पद (Position) | सिट (Seats) | उम्मेदवार (Candidate Name) | प्राप्त मत (Votes) | स्थिति / नतिजा (Outcome) |');
+        sb.writeln('| :--- | :--- | :--- | :--- | :--- |');
+
+        for (final pos in results) {
+          final posTitle = pos['title'] ?? 'Position';
+          final seats = pos['seats_available'] ?? 1;
+          final winners = List<String>.from(pos['winners'] ?? []);
+          final breakdown = (pos['breakdown'] as List<dynamic>?) ?? [];
+
+          for (final cand in breakdown) {
+            final candId = cand['candidate_id'] ?? '';
+            final name = cand['name'] ?? '';
+            final score = cand['score'] ?? 0;
+            final isElected = cand['is_elected'] == true || winners.contains(candId);
+            final isTie = cand['is_tie'] == true;
+            final isNota = candId == '__BOYCOTT__' || name.toString().toLowerCase().contains('no vote') || name.toString().toLowerCase().contains('abstained');
+
+            String status = '#${cand['rank'] ?? ''}';
+            if (isNota) {
+              status = '⚪ NOTA / Abstained';
+            } else if (isElected && (score is num ? score > 0 : true)) {
+              status = '🏆 ELECTED (विजयी)';
+            } else if (isTie) {
+              status = '⚠️ TIED (बराबरी)';
+            }
+
+            final scoreStr = score is num ? (score == score.toInt() ? '${score.toInt()}' : '$score') : '$score';
+            sb.writeln('| $posTitle | $seats | $name | $scoreStr | $status |');
+          }
+        }
+
+        sb.writeln('\nनिर्वाचित हुनुभएका सम्पूर्ण पदाधिकारी तथा सदस्यहरूलाई हार्दिक बधाई ज्ञापन गर्दै सफल कार्यकालको शुभकामना व्यक्त गर्दछौं।');
+
+        setState(() {
+          _titleController.text = 'मतदान कार्य सम्पन्न तथा अन्तिम मत परिणाम घोषणा सम्बन्धी आधिकारिक सूचना';
+          _contentController.text = sb.toString();
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle_rounded, color: Colors.white),
+                  SizedBox(width: 8),
+                  Text('Official Results Table successfully inserted into Notice!'),
+                ],
+              ),
+              backgroundColor: Color(0xFF10B981),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No results data available yet. Ensure election voting has concluded.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to import results table: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -783,12 +871,51 @@ class _NoticeDialogState extends ConsumerState<_NoticeDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Quick Statutory Templates
-                const Text('Statutory Notice Templates (द्रुत सूचना ढाँचा):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+                Row(
+                  children: [
+                    const Text('Statutory Notice Templates (द्रुत सूचना ढाँचा):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+                    if (widget.electionData?['state'] == 'voting_closed' ||
+                        widget.electionData?['state'] == 'results_provisional' ||
+                        widget.electionData?['state'] == 'results_final') ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                        ),
+                        child: const Text('Voting Completed (मतदान सम्पन्न)', style: TextStyle(color: Color(0xFF10B981), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ],
+                ),
                 const SizedBox(height: 6),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
+                      ActionChip(
+                        avatar: const Icon(Icons.table_chart_rounded, size: 16, color: Color(0xFF10B981)),
+                        backgroundColor: const Color(0xFF10B981).withValues(alpha: 0.15),
+                        label: const Text('📊 Auto-Insert Results Table (नतिजा तालिका सहित)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF065F46))),
+                        onPressed: _importResultsTable,
+                      ),
+                      const SizedBox(width: 6),
+                      ActionChip(
+                        avatar: const Icon(Icons.how_to_vote_rounded, size: 16, color: Color(0xFF10B981)),
+                        backgroundColor: (widget.electionData?['state'] == 'voting_closed' ||
+                                widget.electionData?['state'] == 'results_provisional' ||
+                                widget.electionData?['state'] == 'results_final')
+                            ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                            : null,
+                        label: const Text('★ Voting Completed (मतदान सम्पन्न तथा परिणाम)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        onPressed: () => _applyTemplate(
+                          'मतदान कार्य सम्पन्न तथा अन्तिम मत परिणाम घोषणा सम्बन्धी आधिकारिक सूचना',
+                          'यस संस्थाको निर्वाचन कार्यतालिका अनुसार सञ्चालन भएको मतदान कार्य सफलतापूर्वक सम्पन्न भएको छ।\n\nनिर्वाचन निर्देशिका अनुसार सम्पूर्ण मतपेटिका / विद्युतीय मतपत्रहरूको संकलन तथा प्रमाणीकरण सम्पन्न गरी निर्वाचन समितिद्वारा आधिकारिक मत परिणाम घोषणा गरिएको छ।\n\nनिर्वाचित हुनुभएका सम्पूर्ण पदाधिकारी तथा सदस्यहरूलाई हार्दिक बधाई ज्ञापन गर्दै सफल कार्यकालको शुभकामना व्यक्त गर्दछौं।',
+                        ),
+                      ),
+                      const SizedBox(width: 6),
                       ActionChip(
                         avatar: const Icon(Icons.event_note_rounded, size: 16),
                         label: const Text('1. Election Schedule (कार्यतालिका)', style: TextStyle(fontSize: 11)),
@@ -1139,6 +1266,16 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
       signatories = widget.committees.where((c) => c['include_in_letterhead'] != false).toList();
     }
 
+    final titleLower = (notice['title'] ?? '').toString().toLowerCase();
+    final contentLower = (notice['content'] ?? '').toString().toLowerCase();
+    final isResultsNotice = titleLower.contains('मतदान सम्पन्न') ||
+        titleLower.contains('मत परिणाम') ||
+        titleLower.contains('परिणाम') ||
+        titleLower.contains('voting completed') ||
+        titleLower.contains('result') ||
+        contentLower.contains('मतदान सम्पन्न') ||
+        contentLower.contains('मतगणना सम्पन्न');
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
@@ -1367,6 +1504,37 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
                                         ),
                                         const SizedBox(height: 8),
 
+                                        // Notice Template Variant: Results Declaration Ribbon
+                                        if (isResultsNotice) ...[
+                                          Center(
+                                            child: Container(
+                                              margin: const EdgeInsets.only(bottom: 10),
+                                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF065F46).withValues(alpha: 0.08),
+                                                borderRadius: BorderRadius.circular(6),
+                                                border: Border.all(color: const Color(0xFF059669), width: 1.2),
+                                              ),
+                                              child: const Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(Icons.verified_rounded, size: 15, color: Color(0xFF059669)),
+                                                  SizedBox(width: 6),
+                                                  Text(
+                                                    '🏆 आधिकारिक मत परिणाम घोषणा (OFFICIAL RESULTS DECLARATION)',
+                                                    style: TextStyle(
+                                                      fontSize: 10.5,
+                                                      fontWeight: FontWeight.w900,
+                                                      color: Color(0xFF065F46),
+                                                      letterSpacing: 0.3,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+
                                         // Centered Main Notice Header: सूचना !
                                         const Center(
                                           child: Text(
@@ -1383,26 +1551,44 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
                                         if ((notice['title'] ?? '').isNotEmpty && notice['title'] != 'सूचना' && notice['title'] != 'सूचना !') ...[
                                           const SizedBox(height: 6),
                                           Center(
-                                            child: Text(
-                                              'विषय: ${notice['title']}',
-                                              textAlign: TextAlign.center,
-                                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                                            child: Container(
+                                              padding: isResultsNotice
+                                                  ? const EdgeInsets.symmetric(horizontal: 14, vertical: 6)
+                                                  : EdgeInsets.zero,
+                                              decoration: isResultsNotice
+                                                  ? BoxDecoration(
+                                                      color: const Color(0xFFF8FAFC),
+                                                      borderRadius: BorderRadius.circular(6),
+                                                      border: Border.all(color: const Color(0xFFCBD5E1)),
+                                                    )
+                                                  : null,
+                                              child: Text(
+                                                'विषय: ${notice['title']}',
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isResultsNotice ? const Color(0xFF0F172A) : null,
+                                                ),
+                                              ),
                                             ),
                                           ),
                                         ],
                                         const SizedBox(height: 14),
 
-                                        // Notice Content Body
-                                        Text(
-                                          notice['content'] ?? '',
-                                          textAlign: TextAlign.justify,
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            height: 1.85,
-                                            color: Color(0xFF1E293B),
-                                          ),
+                                        // Notice Content Body with Markdown Table Support
+                                        Container(
+                                          padding: isResultsNotice ? const EdgeInsets.all(12) : EdgeInsets.zero,
+                                          decoration: isResultsNotice
+                                              ? BoxDecoration(
+                                                  color: const Color(0xFFF0FDF4),
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  border: Border.all(color: const Color(0xFF86EFAC), width: 1),
+                                                )
+                                              : null,
+                                          child: _buildNoticeRichContent(notice['content'] ?? '', isResultsNotice),
                                         ),
-                                        const SizedBox(height: 40),
+                                        const SizedBox(height: 36),
 
                                         // Signatories Block with Count-Based Alignment (1 -> Left, 2+ -> Center)
                                         Align(
@@ -1433,6 +1619,150 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoticeRichContent(String content, bool isResultsNotice) {
+    if (content.contains('|') && content.contains('---')) {
+      final lines = content.split('\n');
+      final widgets = <Widget>[];
+      final tableLines = <String>[];
+      bool inTable = false;
+
+      for (final line in lines) {
+        final trimmed = line.trim();
+        if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+          inTable = true;
+          tableLines.add(trimmed);
+        } else {
+          if (inTable && tableLines.isNotEmpty) {
+            widgets.add(_renderMarkdownTable(tableLines));
+            tableLines.clear();
+            inTable = false;
+          }
+          if (trimmed.isNotEmpty) {
+            widgets.add(Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Text(
+                trimmed,
+                textAlign: TextAlign.justify,
+                style: const TextStyle(
+                  fontSize: 13,
+                  height: 1.8,
+                  color: Color(0xFF1E293B),
+                ),
+              ),
+            ));
+          }
+        }
+      }
+      if (inTable && tableLines.isNotEmpty) {
+        widgets.add(_renderMarkdownTable(tableLines));
+      }
+      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: widgets);
+    }
+
+    return Text(
+      content,
+      textAlign: TextAlign.justify,
+      style: const TextStyle(
+        fontSize: 13,
+        height: 1.85,
+        color: Color(0xFF1E293B),
+      ),
+    );
+  }
+
+  Widget _renderMarkdownTable(List<String> tableLines) {
+    if (tableLines.length < 2) return const SizedBox.shrink();
+
+    // Parse header
+    final headerCells = tableLines[0]
+        .split('|')
+        .map((c) => c.trim())
+        .where((c) => c.isNotEmpty)
+        .toList();
+
+    // Rows (skip index 1 if it's separator)
+    final rows = <TableRow>[];
+
+    // Header TableRow
+    rows.add(
+      TableRow(
+        decoration: const BoxDecoration(color: Color(0xFFF1F5F9)),
+        children: headerCells.map((header) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+            child: Text(
+              header,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: Color(0xFF0F172A)),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+
+    for (int i = 1; i < tableLines.length; i++) {
+      final line = tableLines[i];
+      if (line.replaceAll(RegExp(r'[\s\|\:\-]'), '').isEmpty) continue; // skip divider line
+
+      final cells = line
+          .split('|')
+          .map((c) => c.trim())
+          .where((c) => c.isNotEmpty)
+          .toList();
+
+      if (cells.isEmpty) continue;
+
+      final isElectedRow = line.contains('🏆 ELECTED') || line.contains('विजयी');
+      final isTiedRow = line.contains('⚠️ TIED') || line.contains('बराबरी');
+
+      Color? rowColor;
+      if (isElectedRow) {
+        rowColor = const Color(0xFF10B981).withValues(alpha: 0.1);
+      } else if (isTiedRow) {
+        rowColor = Colors.amber.withValues(alpha: 0.12);
+      }
+
+      rows.add(
+        TableRow(
+          decoration: rowColor != null ? BoxDecoration(color: rowColor) : null,
+          children: cells.asMap().entries.map((entry) {
+            final text = entry.value;
+            final isStatusCell = entry.key == cells.length - 1;
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: isElectedRow ? FontWeight.bold : FontWeight.normal,
+                  color: isElectedRow && isStatusCell
+                      ? const Color(0xFF059669)
+                      : (isTiedRow && isStatusCell ? Colors.amber.shade900 : const Color(0xFF1E293B)),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0xFFCBD5E1)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: Table(
+          border: TableBorder.all(color: const Color(0xFFE2E8F0), width: 1),
+          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          children: rows,
         ),
       ),
     );

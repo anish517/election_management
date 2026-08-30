@@ -506,6 +506,8 @@ class TallyResult {
 class PositionResult {
   final String positionId;
   final String title;
+  final int seatsAvailable;
+  final bool hasTie;
   final int totalValidBallots;
   final List<String> winners;
   final List<CandidateScore> breakdown;
@@ -513,6 +515,8 @@ class PositionResult {
   const PositionResult({
     required this.positionId,
     required this.title,
+    this.seatsAvailable = 1,
+    this.hasTie = false,
     required this.totalValidBallots,
     required this.winners,
     required this.breakdown,
@@ -521,6 +525,8 @@ class PositionResult {
   factory PositionResult.fromJson(Map<String, dynamic> json) => PositionResult(
         positionId: json['position_id'] as String,
         title: json['title'] as String,
+        seatsAvailable: json['seats_available'] as int? ?? 1,
+        hasTie: json['has_tie'] as bool? ?? false,
         totalValidBallots: json['total_valid_ballots'] as int? ?? 0,
         winners: (json['winners'] as List<dynamic>?)
                 ?.map((w) => w as String)
@@ -538,12 +544,18 @@ class CandidateScore {
   final String name;
   final String photoUrl;
   final double score;
+  final int rank;
+  final bool isElected;
+  final bool isTie;
 
   const CandidateScore({
     required this.candidateId,
     required this.name,
     required this.photoUrl,
     required this.score,
+    this.rank = 0,
+    this.isElected = false,
+    this.isTie = false,
   });
 
   factory CandidateScore.fromJson(Map<String, dynamic> json) => CandidateScore(
@@ -551,6 +563,9 @@ class CandidateScore {
         name: json['name'] as String? ?? json['candidate_name'] as String? ?? '',
         photoUrl: json['photo_url'] as String? ?? '',
         score: double.tryParse(json['score']?.toString() ?? '0.0') ?? 0.0,
+        rank: json['rank'] as int? ?? 0,
+        isElected: json['is_elected'] as bool? ?? false,
+        isTie: json['is_tie'] as bool? ?? false,
       );
 }
 

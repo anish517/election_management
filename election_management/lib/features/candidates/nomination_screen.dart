@@ -322,16 +322,16 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
 
     final user = ref.read(authProvider).user;
     final candidates = ref.read(candidatesProvider(widget.electionId)).valueOrNull ?? [];
-    final alreadyNominated = candidates.any((c) =>
+    final activeNomination = candidates.where((c) =>
         c.email?.toLowerCase() == user?.email.toLowerCase() &&
-        c.positionId == _selectedPositionId &&
         c.status != 'withdrawn' &&
-        c.status != 'rejected');
+        c.status != 'rejected').firstOrNull;
 
-    if (alreadyNominated) {
+    if (activeNomination != null) {
+      final posTitle = activeNomination.positionTitle ?? 'another position';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You have already submitted an active nomination for this position (तपाईंले यस पदको लागि पहिले नै उम्मेदवारी दर्ता गरिसक्नुभएको छ).'),
+        SnackBar(
+          content: Text('You already have an active nomination for "$posTitle" in this election. Candidates may only apply for one position per election (एउटै निर्वाचनमा एकभन्दा बढी पदका लागि उम्मेदवारी दिन पाइँदैन).'),
           backgroundColor: Colors.red,
         ),
       );
@@ -403,7 +403,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
       final dio = ref.read(apiClientProvider);
       final payload = <String, dynamic>{
         'position': _selectedPositionId,
-        if (_selectedQuotaId != null && _selectedQuotaId!.isNotEmpty) 'quota': _selectedQuotaId,
+        'quota': _selectedQuotaId,
         'manifesto': _manifestoController.text.trim(),
         'candidate_image': _photoUrl,
         'election': widget.electionId,
@@ -429,16 +429,22 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
       String msg = 'Submission failed';
       if (e.response?.data is Map) {
         final data = e.response!.data as Map;
-        if (data.containsKey('error')) {
+        if (data.containsKey('detail')) {
+          msg = data['detail'].toString();
+        } else if (data.containsKey('error')) {
           msg = data['error'].toString();
         } else if (data.containsKey('non_field_errors')) {
-          msg = (data['non_field_errors'] as List).join(', ');
+          final errs = data['non_field_errors'];
+          msg = errs is List ? errs.join(', ') : errs.toString();
         } else if (data.values.isNotEmpty) {
-          msg = data.values.first.toString();
+          final firstVal = data.values.first;
+          msg = firstVal is List ? firstVal.join(', ') : firstVal.toString();
         }
+      } else if (e.response?.data is String) {
+        msg = e.response!.data as String;
       }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.red));
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -657,13 +663,15 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
 
           final candidates = candidatesAsync.valueOrNull ?? [];
           final myNominations = candidates.where((c) => c.email == user?.email).toList();
-          final myActiveNominatedPosIds = myNominations
+          final myActiveNominations = myNominations
               .where((n) => n.status != 'withdrawn' && n.status != 'rejected')
+              .toList();
+          final myActiveNominatedPosIds = myActiveNominations
               .map((n) => n.positionId)
               .whereType<String>()
               .toSet();
-          final allPositionsNominated = election.positions.isNotEmpty &&
-              election.positions.every((p) => myActiveNominatedPosIds.contains(p.id));
+          final hasActiveNomination = myActiveNominations.isNotEmpty;
+
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24),
@@ -920,37 +928,54 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                           const SizedBox(height: 32),
                         ],
 
-                        if (allPositionsNominated) ...[
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: isDark ? AppColors.surfaceVariant : const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: isDark ? Colors.white12 : Colors.grey.shade300),
-                            ),
-                            child: const Row(
-                              children: [
-                                Icon(Icons.check_circle_outline_rounded, color: Colors.green, size: 28),
-                                SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'All Available Nominations Filed',
-                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                      ),
-                                      SizedBox(height: 3),
-                                      Text(
-                                        'You have already submitted active nominations for all designations in this election. You can monitor your review and verification status above.',
-                                        style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-                                      ),
-                                    ],
+                        if (hasActiveNomination) ...[
+                          () {
+                            final active = myActiveNominations.first;
+                            final posTitle = active.positionTitle ?? 'Designation';
+                            return Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: isDark ? const Color(0xFF3B82F6).withValues(alpha: 0.3) : const Color(0xFFBFDBFE)),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.verified_user_rounded, color: Color(0xFF2563EB), size: 24),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Active Nomination on File (सक्रिय उम्मेदवारी दर्ता भइसकेको)',
+                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Institutional election regulations permit candidates to apply for only ONE position per election. You currently hold an active nomination for "$posTitle" (Status: ${active.status?.toUpperCase() ?? "PENDING"}).',
+                                          style: TextStyle(fontSize: 12.5, color: isDark ? Colors.white70 : const Color(0xFF1E3A8A), height: 1.4),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'If you wish to apply for a different designation, you must first withdraw your current nomination for $posTitle above (माथिको उम्मेदवारी फिर्ता लिएपछि मात्र अर्को पदमा आवेदन दिन सकिन्छ).',
+                                          style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white60 : const Color(0xFF475569)),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }(),
                         ] else ...[
                           Form(
                             key: _formKey,

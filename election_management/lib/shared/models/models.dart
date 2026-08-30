@@ -810,7 +810,9 @@ class PaymentModel {
   bool get isVerified => status.toLowerCase() == 'verified' || status.toLowerCase() == 'completed';
   bool get isRejected => status.toLowerCase() == 'rejected' || status.toLowerCase() == 'failed';
   bool get isCorrectionRequested => isPending && correctionNotes.isNotEmpty;
+  bool get isResubmittedCorrection => isPending && correctionHistory.isNotEmpty && correctionNotes.isEmpty;
   bool get hasCorrections => correctionNotes.isNotEmpty || correctionHistory.isNotEmpty;
+
 }
 
 class OrganizationStatsModel {

@@ -631,62 +631,114 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
   Widget _buildBallotHeader(BuildContext context, List<PositionModel> positions, bool allowBoycott, bool isDark) {
     final ballotData = ref.watch(ballotDataProvider(widget.electionId)).valueOrNull;
     final election = ref.watch(electionProvider(widget.electionId)).valueOrNull;
+    final org = ref.watch(orgProfileProvider).valueOrNull;
+
     final now = DateTime.now();
     final nepaliNow = now.toNepaliDateTime();
     final votingDate = '${NepaliDateFormat('yyyy/MM/dd').format(nepaliNow)} BS (${NepaliDateFormat('MMM d, yyyy').format(nepaliNow)})';
     final votingTime = DateFormat('hh:mm a').format(now);
-    final voterName = ballotData?.voterInfo?['full_name'] as String? ?? '';
-    final voterId = ballotData?.voterInfo?['voter_id'] as String? ?? '';
-    final electionName = election?.title ?? '';
+    final voterName = (ballotData?.voterInfo?['full_name'] as String?)?.trim() ?? '';
+    final voterId = (ballotData?.voterInfo?['voter_id'] as String?)?.trim() ?? '';
+    final electionName = election?.title.trim() ?? '';
+    final orgName = org?.name.trim() ?? '';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        gradient: isDark
-            ? const LinearGradient(colors: [Color(0xFF1E293B), Color(0xFF0F172A)], begin: Alignment.topLeft, end: Alignment.bottomRight)
-            : const LinearGradient(colors: [Color(0xFFFFF7ED), Color(0xFFFFEDD5)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFB91C1C).withValues(alpha: 0.3)),
+        border: Border.all(
+          color: isDark ? const Color(0xFFB91C1C).withValues(alpha: 0.4) : const Color(0xFFE2E8F0),
+          width: 1.2,
+        ),
         boxShadow: [
-          BoxShadow(color: const Color(0xFFB91C1C).withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))
+          BoxShadow(
+            color: isDark ? Colors.black.withValues(alpha: 0.25) : const Color(0xFFB91C1C).withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
         children: [
-          // Top Header strip with Swastik
+          // Top Header Banner with Swastiks & Election Title
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             decoration: BoxDecoration(
-              color: const Color(0xFFB91C1C).withValues(alpha: isDark ? 0.3 : 0.08),
+              gradient: isDark
+                  ? const LinearGradient(
+                      colors: [Color(0xFF331317), Color(0xFF1E293B)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                  : const LinearGradient(
+                      colors: [Color(0xFFFFF7ED), Color(0xFFFFFAF0)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
-              border: Border(bottom: BorderSide(color: const Color(0xFFB91C1C).withValues(alpha: 0.2))),
+              border: Border(
+                bottom: BorderSide(
+                  color: isDark ? Colors.white10 : const Color(0xFFB91C1C).withValues(alpha: 0.15),
+                ),
+              ),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Left Swastik
-                SizedBox(width: 32, height: 32, child: CustomPaint(painter: _SwastikPainter(color: const Color(0xFFB91C1C)))),
+                // Left Swastik Emblem
+                SizedBox(
+                  width: 38,
+                  height: 38,
+                  child: CustomPaint(
+                    painter: const _SwastikPainter(color: Color(0xFFB91C1C)),
+                  ),
+                ),
+                const SizedBox(width: 16),
+
+                // Center Title & Election Branding
                 Expanded(
                   child: Column(
                     children: [
-                      Text(
-                        'मतपत्र — OFFICIAL BALLOT',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: isDark ? Colors.white : const Color(0xFFB91C1C),
-                          letterSpacing: 0.5,
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2.5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFB91C1C).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFFB91C1C).withValues(alpha: 0.25)),
                         ),
-                        textAlign: TextAlign.center,
+                        child: const Text(
+                          'मतपत्र — OFFICIAL BALLOT',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12.5,
+                            color: Color(0xFFB91C1C),
+                            letterSpacing: 1.2,
+                          ),
+                        ),
                       ),
                       if (electionName.isNotEmpty) ...[
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 4),
                         Text(
                           electionName,
                           style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            letterSpacing: 0.2,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                      if (orgName.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          orgName,
+                          style: TextStyle(
                             fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white70 : const Color(0xFF78350F),
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? Colors.white70 : const Color(0xFF64748B),
                           ),
                           textAlign: TextAlign.center,
                           overflow: TextOverflow.ellipsis,
@@ -695,52 +747,165 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                     ],
                   ),
                 ),
-                // Right Swastik
-                SizedBox(width: 32, height: 32, child: CustomPaint(painter: _SwastikPainter(color: const Color(0xFFB91C1C)))),
+
+                const SizedBox(width: 16),
+                // Right Swastik Emblem
+                SizedBox(
+                  width: 38,
+                  height: 38,
+                  child: CustomPaint(
+                    painter: const _SwastikPainter(color: Color(0xFFB91C1C)),
+                  ),
+                ),
               ],
             ),
           ),
 
-          // Voter Info Grid
+          // Metadata Grid: 4 items (Voter Name, Voter ID, Voting Date, Voting Time)
           Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              children: [
-                Row(
+            padding: const EdgeInsets.all(16),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth >= 768;
+                return Column(
                   children: [
-                    Expanded(child: _ballotInfoField('Voter Name', voterName.isNotEmpty ? voterName : '—', Icons.person_rounded, isDark)),
-                    const SizedBox(width: 10),
-                    Expanded(child: _ballotInfoField('Voter ID', voterId.isNotEmpty ? voterId : '—', Icons.badge_rounded, isDark)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(child: _ballotInfoField('Voting Date', votingDate, Icons.calendar_today_rounded, isDark)),
-                    const SizedBox(width: 10),
-                    Expanded(child: _ballotInfoField('Voting Time', votingTime, Icons.access_time_rounded, isDark)),
-                  ],
-                ),
-                if (allowBoycott) ...[
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: () => _confirmBoycottAll(context, positions),
-                        icon: const Icon(Icons.block_rounded, size: 14, color: Colors.deepOrange),
-                        label: const Text('Boycott Entire Election'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.deepOrange,
-                          side: BorderSide(color: Colors.deepOrange.withValues(alpha: 0.4)),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                        ),
+                    if (isWide)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildBallotInfoCard(
+                              label: 'VOTER NAME',
+                              value: voterName.isNotEmpty ? voterName : 'Authenticated Voter',
+                              icon: Icons.person_rounded,
+                              isDark: isDark,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildBallotInfoCard(
+                              label: 'VOTER ID',
+                              value: voterId.isNotEmpty ? voterId : '—',
+                              icon: Icons.badge_outlined,
+                              isDark: isDark,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildBallotInfoCard(
+                              label: 'VOTING DATE',
+                              value: votingDate,
+                              icon: Icons.calendar_today_outlined,
+                              isDark: isDark,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildBallotInfoCard(
+                              label: 'VOTING TIME',
+                              value: votingTime,
+                              icon: Icons.access_time_rounded,
+                              isDark: isDark,
+                            ),
+                          ),
+                        ],
+                      )
+                    else ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildBallotInfoCard(
+                              label: 'VOTER NAME',
+                              value: voterName.isNotEmpty ? voterName : 'Authenticated Voter',
+                              icon: Icons.person_rounded,
+                              isDark: isDark,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _buildBallotInfoCard(
+                              label: 'VOTER ID',
+                              value: voterId.isNotEmpty ? voterId : '—',
+                              icon: Icons.badge_outlined,
+                              isDark: isDark,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildBallotInfoCard(
+                              label: 'VOTING DATE',
+                              value: votingDate,
+                              icon: Icons.calendar_today_outlined,
+                              isDark: isDark,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _buildBallotInfoCard(
+                              label: 'VOTING TIME',
+                              value: votingTime,
+                              icon: Icons.access_time_rounded,
+                              isDark: isDark,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
-                  ),
-                ],
-              ],
+
+                    // Footer security notice & Boycott button
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.verified_user_outlined,
+                            size: 15,
+                            color: isDark ? Colors.blue.shade300 : const Color(0xFF2563EB),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'End-to-End Cryptographically Sealed Ballot • Secret & Anonymous (गोप्य विद्युतीय मतदान)',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: isDark ? Colors.white70 : const Color(0xFF475569),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (allowBoycott) ...[
+                            const SizedBox(width: 10),
+                            OutlinedButton.icon(
+                              onPressed: () => _confirmBoycottAll(context, positions),
+                              icon: const Icon(Icons.block_rounded, size: 13, color: Colors.deepOrange),
+                              label: const Text('Boycott Entire Election'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.deepOrange,
+                                side: BorderSide(color: Colors.deepOrange.withValues(alpha: 0.4)),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ],
@@ -748,24 +913,61 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
     );
   }
 
-  Widget _ballotInfoField(String label, String value, IconData icon, bool isDark) {
+  Widget _buildBallotInfoCard({
+    required String label,
+    required String value,
+    required IconData icon,
+    required bool isDark,
+  }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.7),
+        color: isDark ? const Color(0xFF0F172A).withValues(alpha: 0.6) : const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFB91C1C).withValues(alpha: 0.12)),
+        border: Border.all(
+          color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+          width: 1,
+        ),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 14, color: const Color(0xFFB91C1C).withValues(alpha: 0.7)),
-          const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFFB91C1C).withValues(alpha: 0.2) : const Color(0xFFB91C1C).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              size: 16,
+              color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFFB91C1C),
+            ),
+          ),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(label, style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: isDark ? Colors.white54 : Colors.grey.shade600, letterSpacing: 0.3)),
-                Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87), overflow: TextOverflow.ellipsis),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                    color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
           ),

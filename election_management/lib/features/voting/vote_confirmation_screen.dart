@@ -7,6 +7,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/network/api_constants.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/loading_button.dart';
+import 'ballot_l10n.dart';
 
 class VoteConfirmationScreen extends ConsumerStatefulWidget {
   final String electionId;
@@ -226,6 +227,8 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
     final ballotAsync = ref.watch(ballotProvider(widget.electionId));
     final selections = ref.watch(ballotSelectionsProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ballotLang = ref.watch(ballotLanguageProvider);
+    final l10n = BallotL10n(ballotLang);
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.background : const Color(0xFFF8FAFC),
@@ -238,11 +241,11 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
               child: CustomPaint(painter: _VoteSwastikPainter(color: Colors.white)),
             ),
             const SizedBox(width: 10),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Review & Confirm Ballot', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                Text('मतपत्र समीक्षा तथा अन्तिम प्रमाणीकरण', style: TextStyle(fontSize: 11, color: Colors.white70)),
+                Text(l10n.isEnglish ? 'Review & Confirm Ballot' : (l10n.isNepali ? 'मतपत्र समीक्षा तथा अन्तिम प्रमाणीकरण' : 'Review & Confirm Ballot'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                Text(l10n.isEnglish ? 'Secure Cryptographic Submission' : 'मतपत्र समीक्षा तथा अन्तिम प्रमाणीकरण', style: const TextStyle(fontSize: 11, color: Colors.white70)),
               ],
             ),
           ],
@@ -295,7 +298,7 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                'Your Verified Selections (तपाईंको छनोट विवरण)',
+                                l10n.isEnglish ? 'Your Verified Selections' : (l10n.isNepali ? 'तपाईंको छनोट विवरण' : 'Your Verified Selections (तपाईंको छनोट विवरण)'),
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
@@ -310,6 +313,7 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                                 position,
                                 selections[position.id] ?? [],
                                 isDark,
+                                l10n,
                               )),
 
                           // Affirmation Checkbox Card
@@ -451,6 +455,7 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
     PositionModel position,
     List<String> selectedIds,
     bool isDark,
+    BallotL10n l10n,
   ) {
     final isNoVote = selectedIds.contains('__BOYCOTT__') ||
         selectedIds.contains('__NO_VOTE__') ||
@@ -489,7 +494,7 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    position.title,
+                    l10n.translatePositionTitle(position.title),
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5),
                   ),
                 ),
@@ -501,9 +506,9 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(color: const Color(0xFFD97706).withValues(alpha: 0.3)),
                     ),
-                    child: const Text(
-                      'No Vote / Abstained (मत नदिएको)',
-                      style: TextStyle(color: Color(0xFFD97706), fontSize: 11, fontWeight: FontWeight.bold),
+                    child: Text(
+                      l10n.abstainedBadge,
+                      style: const TextStyle(color: Color(0xFFD97706), fontSize: 11, fontWeight: FontWeight.bold),
                     ),
                   )
                 else if (selectedCandidates.isEmpty)
@@ -526,7 +531,7 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      '${selectedCandidates.length} Selected',
+                      l10n.selectedCounter(selectedCandidates.length, position.seatsAvailable),
                       style: const TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -548,14 +553,14 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: const Color(0xFFD97706).withValues(alpha: 0.25)),
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.do_not_disturb_alt_rounded, color: Color(0xFFD97706), size: 18),
-                        SizedBox(width: 10),
+                        const Icon(Icons.do_not_disturb_alt_rounded, color: Color(0xFFD97706), size: 18),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'No Vote / None of the Above chosen for this office (यस पदमा कसैलाई पनि मत नदिई खाली राखिएको छ)।',
-                            style: TextStyle(color: Color(0xFFD97706), fontWeight: FontWeight.bold, fontSize: 13),
+                            l10n.noVoteSubtitle,
+                            style: const TextStyle(color: Color(0xFFD97706), fontWeight: FontWeight.bold, fontSize: 13),
                           ),
                         ),
                       ],

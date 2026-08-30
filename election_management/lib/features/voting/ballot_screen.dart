@@ -10,6 +10,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/network/api_constants.dart';
 import '../../shared/models/models.dart';
 import '../candidates/candidate_profile_sheet.dart';
+import 'ballot_l10n.dart';
 
 class BallotScreen extends ConsumerStatefulWidget {
   final String electionId;
@@ -129,6 +130,30 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
     }
   }
 
+  Widget _buildLangItem(WidgetRef ref, BallotLanguage lang, String label, bool isDark) {
+    final currentLang = ref.watch(ballotLanguageProvider);
+    final isSelected = currentLang == lang;
+    return InkWell(
+      onTap: () => ref.read(ballotLanguageProvider.notifier).state = lang,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+            color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ballotAsync = ref.watch(ballotDataProvider(widget.electionId));
@@ -138,6 +163,8 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
     final org = orgAsync.valueOrNull;
     final showDurationTimer = (org?.showVotingDuration == true);
     final enableCountdown = (org?.enableVotingCountdown == true);
+    final ballotLang = ref.watch(ballotLanguageProvider);
+    final l10n = BallotL10n(ballotLang);
 
     if (enableCountdown && !_countdownInitialized && org != null) {
       _remainingSeconds = org.votingTimeLimitMinutes * 60;
@@ -151,7 +178,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Secret Electronic Ballot',
+              l10n.secretElectronicBallot,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
@@ -159,7 +186,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
               ),
             ),
             Text(
-              'गोप्य विद्युतीय मतपत्र',
+              l10n.secretElectronicBallotSub,
               style: TextStyle(
                 fontSize: 11,
                 color: isDark ? Colors.white60 : Colors.grey.shade600,
@@ -175,6 +202,26 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
           onPressed: () => context.pop(),
         ),
         actions: [
+          // Language Switcher (Bilingual vs EN vs NE)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: isDark ? Colors.white24 : Colors.grey.shade300),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildLangItem(ref, BallotLanguage.bilingual, 'द्विभाषी', isDark),
+                  _buildLangItem(ref, BallotLanguage.english, 'EN', isDark),
+                  _buildLangItem(ref, BallotLanguage.nepali, 'नेपाली', isDark),
+                ],
+              ),
+            ),
+          ),
+
           // View Mode Switcher: Single-Page vs Wizard
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -207,7 +254,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'All-in-One (एकै पृष्ठ)',
+                            l10n.allInOneView,
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
@@ -238,7 +285,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'Wizard (क्रमिक)',
+                            l10n.wizardView,
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
@@ -276,7 +323,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                       ),
                       const SizedBox(width: 5),
                       Text(
-                        'Elapsed: $_elapsedStr',
+                        l10n.elapsedTimer(_elapsedStr),
                         style: TextStyle(
                           fontFamily: 'monospace',
                           fontWeight: FontWeight.bold,
@@ -333,7 +380,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        'Time Left: $_countdownStr',
+                        l10n.countdownTimer(_countdownStr),
                         style: TextStyle(
                           fontFamily: 'monospace',
                           fontWeight: FontWeight.w800,
@@ -403,10 +450,10 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
           }
 
           if (_isSinglePage == true) {
-            return _buildSinglePageBallot(context, ref, positions, allowBoycott, selections, isDark);
+            return _buildSinglePageBallot(context, ref, positions, allowBoycott, selections, isDark, l10n);
           }
 
-          return _buildWizardBallot(context, ref, positions, allowBoycott, selections, isDark);
+          return _buildWizardBallot(context, ref, positions, allowBoycott, selections, isDark, l10n);
         },
       ),
     );
@@ -419,6 +466,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
     bool allowBoycott,
     Map<String, List<String>> selections,
     bool isDark,
+    BallotL10n l10n,
   ) {
     final completedCount = ref.read(ballotSelectionsProvider.notifier).completedContestsCount(positions);
     final allDecided = completedCount == positions.length;
@@ -433,7 +481,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                 constraints: const BoxConstraints(maxWidth: 1100),
                 child: Column(
                   children: [
-                    _buildBallotHeader(context, positions, allowBoycott, isDark),
+                    _buildBallotHeader(context, positions, allowBoycott, isDark, l10n),
                     ...positions.map(
                       (p) => Padding(
                         padding: const EdgeInsets.only(bottom: 20),
@@ -441,6 +489,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                           position: p,
                           electionId: widget.electionId,
                           allowBoycott: allowBoycott,
+                          l10n: l10n,
                         ),
                       ),
                     ),
@@ -496,7 +545,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            '$completedCount of ${positions.length} Contests Decided',
+                            l10n.contestsDecidedCount(completedCount, positions.length),
                             style: TextStyle(
                               fontSize: 12.5,
                               fontWeight: FontWeight.bold,
@@ -510,9 +559,9 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                     FilledButton.icon(
                       onPressed: () => context.pushNamed('vote-confirm', pathParameters: {'electionId': widget.electionId}),
                       icon: const Icon(Icons.how_to_vote_rounded, size: 18),
-                      label: const Text(
-                        'Review & Sign Ballot (मतपत्र समीक्षा)',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                      label: Text(
+                        l10n.reviewAndSignBallot,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF10B981),
@@ -537,6 +586,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
     bool allowBoycott,
     Map<String, List<String>> selections,
     bool isDark,
+    BallotL10n l10n,
   ) {
     final progressValue = (_currentIndex + 1) / positions.length;
 
@@ -560,20 +610,20 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          'Contest ${_currentIndex + 1} of ${positions.length}',
+                          l10n.contestStepProgress(_currentIndex + 1, positions.length),
                           style: const TextStyle(color: AppColors.primaryLight, fontWeight: FontWeight.bold, fontSize: 11.5),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        positions[_currentIndex].title,
+                        l10n.translatePositionTitle(positions[_currentIndex].title),
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                   Text(
-                    '${(progressValue * 100).toInt()}% Completed',
+                    l10n.percentCompleted((progressValue * 100).toInt()),
                     style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: isDark ? Colors.white60 : Colors.grey.shade600),
                   ),
                 ],
@@ -607,11 +657,12 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                     constraints: const BoxConstraints(maxWidth: 1100),
                     child: Column(
                       children: [
-                        if (i == 0) _buildBallotHeader(context, positions, allowBoycott, isDark),
+                        if (i == 0) _buildBallotHeader(context, positions, allowBoycott, isDark, l10n),
                         _BallotPositionCard(
                           position: positions[i],
                           electionId: widget.electionId,
                           allowBoycott: allowBoycott,
+                          l10n: l10n,
                         ),
                       ],
                     ),
@@ -623,20 +674,23 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
         ),
 
         // Bottom Wizard Action Controls
-        _buildWizardControls(context, ref, selections, positions, isDark),
+        _buildWizardControls(context, ref, selections, positions, isDark, l10n),
       ],
     );
   }
 
-  Widget _buildBallotHeader(BuildContext context, List<PositionModel> positions, bool allowBoycott, bool isDark) {
+  Widget _buildBallotHeader(BuildContext context, List<PositionModel> positions, bool allowBoycott, bool isDark, BallotL10n l10n) {
     final ballotData = ref.watch(ballotDataProvider(widget.electionId)).valueOrNull;
     final election = ref.watch(electionProvider(widget.electionId)).valueOrNull;
     final org = ref.watch(orgProfileProvider).valueOrNull;
 
     final now = DateTime.now();
     final nepaliNow = now.toNepaliDateTime();
-    final votingDate = '${NepaliDateFormat('yyyy/MM/dd').format(nepaliNow)} BS (${NepaliDateFormat('MMM d, yyyy').format(nepaliNow)})';
-    final votingTime = DateFormat('hh:mm a').format(now);
+    final nepaliDateStr = '${NepaliDateFormat('yyyy/MM/dd').format(nepaliNow)} BS (${NepaliDateFormat('MMM d, yyyy').format(nepaliNow)})';
+    final engDateStr = DateFormat('yyyy/MM/dd (MMM d, yyyy)').format(now);
+    final nepaliDateFormatted = '${BallotL10n.toNepaliDigits(NepaliDateFormat('yyyy/MM/dd').format(nepaliNow))} वि.सं.';
+    final votingDate = l10n.isEnglish ? engDateStr : (l10n.isNepali ? nepaliDateFormatted : nepaliDateStr);
+    final votingTime = l10n.isNepali ? BallotL10n.toNepaliDigits(DateFormat('hh:mm a').format(now)) : DateFormat('hh:mm a').format(now);
     final voterName = (ballotData?.voterInfo?['full_name'] as String?)?.trim() ?? '';
     final voterId = (ballotData?.voterInfo?['voter_id'] as String?)?.trim() ?? '';
     final electionName = election?.title.trim() ?? '';
@@ -706,9 +760,9 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(color: const Color(0xFFB91C1C).withValues(alpha: 0.25)),
                         ),
-                        child: const Text(
-                          'मतपत्र — OFFICIAL BALLOT',
-                          style: TextStyle(
+                        child: Text(
+                          l10n.officialBallotBadge,
+                          style: const TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 12.5,
                             color: Color(0xFFB91C1C),
@@ -774,8 +828,8 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                         children: [
                           Expanded(
                             child: _buildBallotInfoCard(
-                              label: 'VOTER NAME',
-                              value: voterName.isNotEmpty ? voterName : 'Authenticated Voter',
+                              label: l10n.voterNameLabel,
+                              value: voterName.isNotEmpty ? voterName : l10n.authenticatedVoter,
                               icon: Icons.person_rounded,
                               isDark: isDark,
                             ),
@@ -783,8 +837,8 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: _buildBallotInfoCard(
-                              label: 'VOTER ID',
-                              value: voterId.isNotEmpty ? voterId : '—',
+                              label: l10n.voterIdLabel,
+                              value: voterId.isNotEmpty ? (l10n.isNepali ? BallotL10n.toNepaliDigits(voterId) : voterId) : '—',
                               icon: Icons.badge_outlined,
                               isDark: isDark,
                             ),
@@ -792,7 +846,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: _buildBallotInfoCard(
-                              label: 'VOTING DATE',
+                              label: l10n.votingDateLabel,
                               value: votingDate,
                               icon: Icons.calendar_today_outlined,
                               isDark: isDark,
@@ -801,7 +855,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: _buildBallotInfoCard(
-                              label: 'VOTING TIME',
+                              label: l10n.votingTimeLabel,
                               value: votingTime,
                               icon: Icons.access_time_rounded,
                               isDark: isDark,
@@ -814,8 +868,8 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                         children: [
                           Expanded(
                             child: _buildBallotInfoCard(
-                              label: 'VOTER NAME',
-                              value: voterName.isNotEmpty ? voterName : 'Authenticated Voter',
+                              label: l10n.voterNameLabel,
+                              value: voterName.isNotEmpty ? voterName : l10n.authenticatedVoter,
                               icon: Icons.person_rounded,
                               isDark: isDark,
                             ),
@@ -823,8 +877,8 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: _buildBallotInfoCard(
-                              label: 'VOTER ID',
-                              value: voterId.isNotEmpty ? voterId : '—',
+                              label: l10n.voterIdLabel,
+                              value: voterId.isNotEmpty ? (l10n.isNepali ? BallotL10n.toNepaliDigits(voterId) : voterId) : '—',
                               icon: Icons.badge_outlined,
                               isDark: isDark,
                             ),
@@ -836,7 +890,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                         children: [
                           Expanded(
                             child: _buildBallotInfoCard(
-                              label: 'VOTING DATE',
+                              label: l10n.votingDateLabel,
                               value: votingDate,
                               icon: Icons.calendar_today_outlined,
                               isDark: isDark,
@@ -845,7 +899,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: _buildBallotInfoCard(
-                              label: 'VOTING TIME',
+                              label: l10n.votingTimeLabel,
                               value: votingTime,
                               icon: Icons.access_time_rounded,
                               isDark: isDark,
@@ -874,7 +928,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'End-to-End Cryptographically Sealed Ballot • Secret & Anonymous (गोप्य विद्युतीय मतदान)',
+                              l10n.securitySealNotice,
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w500,
@@ -888,7 +942,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                             OutlinedButton.icon(
                               onPressed: () => _confirmBoycottAll(context, positions),
                               icon: const Icon(Icons.block_rounded, size: 13, color: Colors.deepOrange),
-                              label: const Text('Boycott Entire Election'),
+                              label: Text(l10n.boycottEntireElection),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.deepOrange,
                                 side: BorderSide(color: Colors.deepOrange.withValues(alpha: 0.4)),
@@ -1127,7 +1181,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
   }
 
   Widget _buildWizardControls(BuildContext context, WidgetRef ref,
-      Map<String, List<String>> selections, List<PositionModel> positions, bool isDark) {
+      Map<String, List<String>> selections, List<PositionModel> positions, bool isDark, BallotL10n l10n) {
     final hasSelections = selections.values.any((l) => l.isNotEmpty);
     final isLastStep = _currentIndex == positions.length - 1;
 
@@ -1155,7 +1209,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                   OutlinedButton.icon(
                     onPressed: _prevPage,
                     icon: const Icon(Icons.arrow_back_ios_rounded, size: 14),
-                    label: const Text('Previous Contest'),
+                    label: Text(l10n.previousContest),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -1174,7 +1228,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                       : () => _nextPage(positions.length),
                   icon: Icon(isLastStep ? Icons.how_to_vote_rounded : Icons.arrow_forward_ios_rounded, size: 16),
                   label: Text(
-                    isLastStep ? 'Review & Sign Ballot (मतपत्र समीक्षा)' : 'Next Contest (अर्को पद)',
+                    isLastStep ? l10n.reviewAndSignBallot : l10n.nextContest,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   style: FilledButton.styleFrom(
@@ -1196,17 +1250,18 @@ class _BallotPositionCard extends ConsumerWidget {
   final PositionModel position;
   final String electionId;
   final bool allowBoycott;
+  final BallotL10n l10n;
   const _BallotPositionCard({
     required this.position,
     required this.electionId,
     this.allowBoycott = true,
+    required this.l10n,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selections = ref.watch(ballotSelectionsProvider);
     final positionSelections = selections[position.id] ?? [];
-    final isFPTP = position.seatsAvailable == 1;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
@@ -1260,20 +1315,30 @@ class _BallotPositionCard extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        position.title,
+                        l10n.translatePositionTitle(position.title),
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         position.isRankedChoice
-                            ? 'Rank your choices in order of preference (वरियता क्रममा मतदान गर्नुहोस्)'
+                            ? (l10n.isEnglish
+                                ? 'Rank your choices in order of preference'
+                                : (l10n.isNepali
+                                    ? 'वरियता क्रममा मतदान गर्नुहोस्'
+                                    : 'Rank your choices in order of preference (वरियता क्रममा मतदान गर्नुहोस्)'))
                             : position.isApproval
-                                ? 'Select all candidates you approve of (स्वीकृत उम्मेदवारहरू छनोट गर्नुहोस्)'
+                                ? (l10n.isEnglish
+                                    ? 'Select all candidates you approve of'
+                                    : (l10n.isNepali
+                                        ? 'स्वीकृत उम्मेदवारहरू छनोट गर्नुहोस्'
+                                        : 'Select all candidates you approve of (स्वीकृत उम्मेदवारहरू छनोट गर्नुहोस्)'))
                                 : position.isYesNo
-                                    ? 'Select Yes or No (हो वा होइन छनोट गर्नुहोस्)'
-                                    : isFPTP
-                                        ? 'Select 1 candidate (१ जना उम्मेदवार छनोट गर्नुहोस्)'
-                                        : 'Select up to ${position.seatsAvailable} candidates (अधिकतम ${position.seatsAvailable} जना छनोट गर्नुहोस्)',
+                                    ? (l10n.isEnglish
+                                        ? 'Select Yes or No'
+                                        : (l10n.isNepali
+                                            ? 'हो वा होइन छनोट गर्नुहोस्'
+                                            : 'Select Yes or No (हो वा होइन छनोट गर्नुहोस्)'))
+                                    : l10n.selectionInstruction(position.seatsAvailable),
                         style: TextStyle(color: isDark ? Colors.white60 : AppColors.textMuted, fontSize: 12),
                       ),
                     ],
@@ -1299,7 +1364,7 @@ class _BallotPositionCard extends ConsumerWidget {
                             border: Border.all(color: Colors.purple.withValues(alpha: 0.3)),
                           ),
                           child: Text(
-                            '${q.name}: ${q.seats} Seat(s)',
+                            '${q.name}: ${l10n.formatNumber(q.seats)} Seat(s)',
                             style: const TextStyle(color: Colors.purple, fontWeight: FontWeight.bold, fontSize: 11),
                           ),
                         )),
@@ -1312,7 +1377,7 @@ class _BallotPositionCard extends ConsumerWidget {
                               border: Border.all(color: Colors.blueGrey.withValues(alpha: 0.3)),
                             ),
                             child: Text(
-                              'Open: $openSeats',
+                              'Open: ${l10n.formatNumber(openSeats)}',
                               style: const TextStyle(color: Colors.blueGrey, fontWeight: FontWeight.bold, fontSize: 11),
                             ),
                           ),
@@ -1347,14 +1412,14 @@ class _BallotPositionCard extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.do_not_disturb_alt_rounded, size: 13, color: Color(0xFFD97706)),
-                            SizedBox(width: 4),
+                            const Icon(Icons.do_not_disturb_alt_rounded, size: 13, color: Color(0xFFD97706)),
+                            const SizedBox(width: 4),
                             Text(
-                              'No Vote (कसैलाई मत छैन)',
-                              style: TextStyle(
+                              l10n.abstainedBadge,
+                              style: const TextStyle(
                                 color: Color(0xFFD97706),
                                 fontWeight: FontWeight.bold,
                                 fontSize: 11.5,
@@ -1380,7 +1445,7 @@ class _BallotPositionCard extends ConsumerWidget {
                         ),
                       ),
                       child: Text(
-                        '${positionSelections.length}/${position.seatsAvailable} Selected',
+                        l10n.selectedCounter(positionSelections.length, position.seatsAvailable),
                         style: TextStyle(
                           color: isComplete ? Colors.green : (positionSelections.isNotEmpty ? AppColors.primaryLight : (isDark ? Colors.white60 : Colors.grey.shade700)),
                           fontWeight: FontWeight.bold,
@@ -1396,12 +1461,12 @@ class _BallotPositionCard extends ConsumerWidget {
 
           // Candidates Grid
           if (position.candidates.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(32),
+            Padding(
+              padding: const EdgeInsets.all(32),
               child: Center(
                 child: Text(
-                  'No approved candidates listed for this position.',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  l10n.noApprovedCandidates,
+                  style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
                 ),
               ),
             )
@@ -1429,6 +1494,7 @@ class _BallotPositionCard extends ConsumerWidget {
                           candidate: candidate,
                           isSelected: isSelected,
                           rank: rank,
+                          l10n: l10n,
                           onTap: () {
                             final prevLength = positionSelections.length;
                             ref.read(ballotSelectionsProvider.notifier).toggleCandidate(
@@ -1466,6 +1532,7 @@ class _BallotPositionCard extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
             child: _NoVotePositionTile(
               isNoVote: ref.read(ballotSelectionsProvider.notifier).isNoVote(position.id),
+              l10n: l10n,
               onTap: () {
                 ref.read(ballotSelectionsProvider.notifier).toggleNoVote(position.id);
               },
@@ -1480,10 +1547,12 @@ class _BallotPositionCard extends ConsumerWidget {
 class _NoVotePositionTile extends StatelessWidget {
   final bool isNoVote;
   final VoidCallback onTap;
+  final BallotL10n l10n;
 
   const _NoVotePositionTile({
     required this.isNoVote,
     required this.onTap,
+    required this.l10n,
   });
 
   @override
@@ -1527,9 +1596,11 @@ class _NoVotePositionTile extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Text(
-                        'No Vote / None of the Above (यस पदमा कसैलाई पनि मत दिन्न / NOTA)',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                      Expanded(
+                        child: Text(
+                          l10n.noVoteTitle,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                        ),
                       ),
                       if (isNoVote) ...[
                         const SizedBox(width: 8),
@@ -1539,9 +1610,9 @@ class _NoVotePositionTile extends StatelessWidget {
                             color: const Color(0xFFD97706),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Text(
-                            'ABSTAINED',
-                            style: TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.bold),
+                          child: Text(
+                            l10n.abstainedBadge,
+                            style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ],
@@ -1549,7 +1620,7 @@ class _NoVotePositionTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'I choose to abstain from casting a vote for any candidate in this specific contest (यस पदमा कुनै पनि उम्मेदवारलाई मत नदिई खाली राख्न चाहन्छु).',
+                    l10n.noVoteSubtitle,
                     style: TextStyle(color: isDark ? Colors.white54 : AppColors.textMuted, fontSize: 11.5),
                   ),
                 ],
@@ -1574,12 +1645,14 @@ class _CandidateTile extends StatelessWidget {
   final bool isSelected;
   final int? rank;
   final VoidCallback onTap;
+  final BallotL10n l10n;
 
   const _CandidateTile({
     required this.candidate,
     required this.isSelected,
     this.rank,
     required this.onTap,
+    required this.l10n,
   });
 
   @override
@@ -1712,7 +1785,7 @@ class _CandidateTile extends StatelessWidget {
                                 Icon(Icons.info_outline_rounded, size: 13, color: primaryColor),
                                 const SizedBox(width: 4),
                                 Text(
-                                  'View Candidate Dossier',
+                                  l10n.viewCandidateDossier,
                                   style: TextStyle(
                                     fontSize: 11,
                                     color: primaryColor,
@@ -1758,7 +1831,9 @@ class _CandidateTile extends StatelessWidget {
                           ),
                           const SizedBox(width: 5),
                           Text(
-                            rank != null ? '#$rank मत' : 'स्वस्तिक छाप',
+                            rank != null
+                                ? (l10n.isNepali ? '#${BallotL10n.toNepaliDigits(rank)} मत' : '#$rank Vote')
+                                : (l10n.isNepali ? 'स्वस्तिक छाप' : (l10n.isEnglish ? 'VOTED' : 'स्वस्तिक छाप')),
                             style: const TextStyle(
                               color: stampColor,
                               fontWeight: FontWeight.bold,

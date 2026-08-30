@@ -8,7 +8,10 @@ from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
 from rest_framework_nested import routers
 
-from apps.users.views import RegisterView, LoginView, MeView, OTPRequestView, OTPVerifyView, LogoutView
+from apps.users.views import (
+    RegisterView, LoginView, MeView, OTPRequestView, OTPVerifyView, LogoutView,
+    PasswordResetRequestView, PasswordResetConfirmView,
+)
 from apps.members.views import MemberViewSet
 from rest_framework_simplejwt.views import TokenRefreshView
 from apps.elections.views import ElectionViewSet, PositionViewSet, PositionQuotaViewSet, ElectionNoticeViewSet
@@ -52,6 +55,8 @@ urlpatterns = [
     path('v1/auth/me/', MeView.as_view(), name='user-profile'),
     path('v1/auth/otp/request/', OTPRequestView.as_view(), name='otp-request'),
     path('v1/auth/otp/verify/', OTPVerifyView.as_view(), name='otp-verify'),
+    path('v1/auth/password-reset/request/', PasswordResetRequestView.as_view(), name='password-reset-request'),
+    path('v1/auth/password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
     
     # Organization Settings
     path('v1/organization/', OrganizationView.as_view(), name='organization-profile'),

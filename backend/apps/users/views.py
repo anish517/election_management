@@ -36,7 +36,10 @@ class RegisterView(APIView):
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            import logging
+            logging.getLogger(__name__).warning(f"[Registration Error] Data: {request.data} | Errors: {serializer.errors}")
+            serializer.is_valid(raise_exception=True)
         user, org = serializer.create(serializer.validated_data)
 
         refresh = RefreshToken.for_user(user)

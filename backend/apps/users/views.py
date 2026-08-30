@@ -14,6 +14,7 @@ from apps.users.serializers import (
     RegisterSerializer, LoginSerializer,
     OTPRequestSerializer, OTPVerifySerializer,
     UserProfileSerializer,
+    PasswordResetRequestSerializer, PasswordResetConfirmSerializer,
 )
 from apps.users.services import OTPService
 from apps.audit.models import log_action
@@ -192,3 +193,56 @@ class MeView(APIView):
                 )
         
         return Response(UserProfileSerializer(request.user).data)
+
+
+class PasswordResetRequestView(APIView):
+    """
+    POST /v1/auth/password-reset/request/
+    Sends a 6-digit OTP to an org_admin or election_officer email.
+    Voters/candidates/observers are rejected with a descriptive error.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = serializer.validated_data['user']
+        email = serializer.validated_data['email']
+        otp = serializer.create_otp(email, ip_address=get_client_ip(request))
+
+        OTPService.deliver(email, otp, 'password_reset')
+
+        log_action(
+            'user.password_reset_requested',
+            organization=user.organization,
+            actor=user,
+            target=user,
+            ip_address=get_client_ip(request),
+        )
+
+        return Response({'otp_sent': True})
+
+
+class PasswordResetConfirmView(APIView):
+    """
+    POST /v1/auth/password-reset/confirm/
+    Verifies OTP and resets the user's password.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user = serializer.save()
+
+        log_action(
+            'user.password_reset',
+            organization=user.organization,
+            actor=user,
+            target=user,
+            ip_address=get_client_ip(request),
+        )
+
+        return Response({'password_reset': True})

@@ -387,3 +387,128 @@ class UserProfileSerializer(serializers.ModelSerializer):
             }
             for r in rolls
         ]
+
+
+# ─── Password Reset Serializers ────────────────────────────────────────────────
+
+# Roles allowed to reset password (voters use OTP login, no password needed)
+ADMIN_ROLES = {UserRole.ORG_ADMIN, UserRole.ELECTION_OFFICER, UserRole.SUPER_ADMIN}
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """
+    POST /v1/auth/password-reset/request/
+    Sends a password-reset OTP to an org_admin or election_officer email.
+    Voters/candidates/observers are REJECTED — they use OTP login instead.
+    """
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        return value.strip().lower()
+
+    def validate(self, attrs):
+        email = attrs['email']
+        user = User.objects.filter(email=email).first()
+
+        if not user:
+            raise serializers.ValidationError(
+                {'email': 'No account found with this email address.'}
+            )
+
+        if user.role not in ADMIN_ROLES:
+            raise serializers.ValidationError(
+                {'email': 'Password reset is only available for Organization Admins and Election Officers. '
+                          'Voters and members can sign in using OTP / Phone instead.'}
+            )
+
+        if not user.is_active:
+            raise serializers.ValidationError({'email': 'This account has been deactivated.'})
+
+        attrs['user'] = user
+        return attrs
+
+    def create_otp(self, identifier: str, ip_address: str = None) -> str:
+        """Generate and store a password-reset OTP."""
+        window_start = timezone.now() - timedelta(seconds=settings.OTP_WINDOW_SECONDS)
+        recent_count = OTPRecord.objects.filter(
+            identifier=identifier,
+            purpose='password_reset',
+            created_at__gte=window_start,
+        ).count()
+
+        if recent_count >= settings.OTP_MAX_ATTEMPTS_PER_WINDOW:
+            raise serializers.ValidationError(
+                'Too many password reset requests. Please wait 15 minutes.'
+            )
+
+        otp = f"{secrets.randbelow(1000000):06d}"
+        otp_hash = hashlib.sha256(otp.encode()).hexdigest()
+
+        OTPRecord.objects.create(
+            identifier=identifier,
+            otp_hash=otp_hash,
+            purpose='password_reset',
+            expires_at=timezone.now() + timedelta(seconds=settings.OTP_EXPIRY_SECONDS),
+            ip_address=ip_address,
+        )
+
+        return otp
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    """
+    POST /v1/auth/password-reset/confirm/
+    Verifies the reset OTP and sets the new password.
+    """
+    email = serializers.EmailField()
+    otp = serializers.CharField(max_length=6, min_length=6)
+    new_password = serializers.CharField(min_length=8, write_only=True)
+    confirm_password = serializers.CharField(min_length=8, write_only=True)
+
+    def validate_email(self, value):
+        return value.strip().lower()
+
+    def validate(self, attrs):
+        email = attrs['email']
+        otp = attrs['otp']
+        new_password = attrs['new_password']
+        confirm_password = attrs['confirm_password']
+
+        if new_password != confirm_password:
+            raise serializers.ValidationError({'confirm_password': 'Passwords do not match.'})
+
+        # Find user and verify role
+        user = User.objects.filter(email=email).first()
+        if not user:
+            raise serializers.ValidationError({'email': 'No account found with this email.'})
+
+        if user.role not in ADMIN_ROLES:
+            raise serializers.ValidationError(
+                {'email': 'Password reset is not allowed for this account type.'}
+            )
+
+        # Verify OTP
+        otp_hash = hashlib.sha256(otp.encode()).hexdigest()
+        record = OTPRecord.objects.filter(
+            identifier=email,
+            otp_hash=otp_hash,
+            purpose='password_reset',
+            is_used=False,
+        ).order_by('-created_at').first()
+
+        if not record or not record.is_valid():
+            raise serializers.ValidationError({'otp': 'Invalid or expired OTP. Please request a new code.'})
+
+        # Mark OTP as used (single-use)
+        record.is_used = True
+        record.save(update_fields=['is_used'])
+
+        attrs['user'] = user
+        return attrs
+
+    def save(self):
+        user = self.validated_data['user']
+        user.set_password(self.validated_data['new_password'])
+        user.save(update_fields=['password', 'updated_at'])
+        return user
+

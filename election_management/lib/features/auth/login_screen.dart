@@ -186,7 +186,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   Widget _buildTabContent() {
     return SizedBox(
-      height: 280,
+      height: 320,
       child: TabBarView(
         controller: _tabController,
         children: [_buildPasswordTab(), _buildOtpTab()],
@@ -223,7 +223,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             validator: (v) => v == null || v.isEmpty ? 'Required' : null,
             onFieldSubmitted: (_) => _loginWithPassword(),
           ),
-          const SizedBox(height: 24),
+          // Forgot Password link
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => context.pushNamed('forgot-password'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text('Forgot Password?', style: TextStyle(fontSize: 13)),
+            ),
+          ),
+          const SizedBox(height: 12),
           LoadingButton(
             onPressed: _loginWithPassword,
             isLoading: _isLoading,

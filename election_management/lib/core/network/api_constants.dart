@@ -17,6 +17,8 @@ class ApiConstants {
   static const String me = '/auth/me/';
   static const String otpRequest = '/auth/otp/request/';
   static const String otpVerify = '/auth/otp/verify/';
+  static const String passwordResetRequest = '/auth/password-reset/request/';
+  static const String passwordResetConfirm = '/auth/password-reset/confirm/';
 
   // Core endpoints
   static const String fileUpload = '/upload/';

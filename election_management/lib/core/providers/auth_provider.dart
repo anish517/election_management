@@ -195,6 +195,34 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  Future<String?> requestPasswordReset(String email) async {
+    try {
+      await _dio.post(ApiConstants.passwordResetRequest, data: {'email': email});
+      return null;
+    } on DioException catch (e) {
+      return _extractError(e);
+    }
+  }
+
+  Future<String?> confirmPasswordReset({
+    required String email,
+    required String otp,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    try {
+      await _dio.post(ApiConstants.passwordResetConfirm, data: {
+        'email': email,
+        'otp': otp,
+        'new_password': newPassword,
+        'confirm_password': confirmPassword,
+      });
+      return null;
+    } on DioException catch (e) {
+      return _extractError(e);
+    }
+  }
+
   Future<void> logout() async {
     try {
       final refresh = await TokenStorage.read('refresh_token');

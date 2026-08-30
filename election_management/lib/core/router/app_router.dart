@@ -5,6 +5,8 @@ import '../providers/auth_provider.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/register_screen.dart';
 import '../../features/auth/otp_verify_screen.dart';
+import '../../features/auth/forgot_password_screen.dart';
+import '../../features/auth/reset_password_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/elections/election_list_screen.dart';
 import '../../features/admin/elections/election_dashboard_screen.dart';
@@ -53,7 +55,9 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final isOnAuth = loc.startsWith('/login') ||
           loc.startsWith('/otp') ||
-          loc.startsWith('/register');
+          loc.startsWith('/register') ||
+          loc.startsWith('/forgot-password') ||
+          loc.startsWith('/reset-password');
 
       // Not logged in → always go to login
       if (!isLoggedIn && !isOnAuth) return '/login';
@@ -95,6 +99,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/login',
         name: 'login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/forgot-password',
+        name: 'forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/reset-password/:email',
+        name: 'reset-password',
+        builder: (context, state) => ResetPasswordScreen(
+          email: state.pathParameters['email']!,
+        ),
       ),
       GoRoute(
         path: '/register',

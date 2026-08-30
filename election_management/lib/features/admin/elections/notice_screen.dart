@@ -43,22 +43,29 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
 
   Future<void> _fetchData() async {
     setState(() => _isLoading = true);
-    try {
-      final dio = ref.read(apiClientProvider);
+    final dio = ref.read(apiClientProvider);
 
-      // Fetch notices, election detail, and committees in parallel
-      final results = await Future.wait([
-        dio.get(ApiConstants.electionNotices(widget.electionId)),
-        dio.get(ApiConstants.electionDetail(widget.electionId)),
-        dio.get(ApiConstants.electionCommittees(widget.electionId)),
-      ]);
+    try {
+      final noticesFuture = dio
+          .get(ApiConstants.electionNotices(widget.electionId))
+          .catchError((_) => Response(requestOptions: RequestOptions(), data: []));
+
+      final detailFuture = dio
+          .get(ApiConstants.electionDetail(widget.electionId))
+          .catchError((_) => Response(requestOptions: RequestOptions(), data: <String, dynamic>{}));
+
+      final committeesFuture = dio
+          .get(ApiConstants.electionCommittees(widget.electionId))
+          .catchError((_) => Response(requestOptions: RequestOptions(), data: []));
+
+      final results = await Future.wait([noticesFuture, detailFuture, committeesFuture]);
 
       if (mounted) {
         setState(() {
           // Notices
           final noticeData = results[0].data;
           if (noticeData is Map && noticeData.containsKey('results')) {
-            _notices = noticeData['results'];
+            _notices = (noticeData['results'] as List?) ?? [];
           } else if (noticeData is List) {
             _notices = noticeData;
           } else {
@@ -67,7 +74,7 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
 
           // Election Detail
           if (results[1].data is Map<String, dynamic>) {
-            _electionData = results[1].data;
+            _electionData = results[1].data as Map<String, dynamic>;
           }
 
           // Committees
@@ -75,7 +82,7 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
           if (commData is List) {
             _committees = commData;
           } else if (commData is Map && commData.containsKey('results')) {
-            _committees = commData['results'];
+            _committees = (commData['results'] as List?) ?? [];
           } else {
             _committees = [];
           }
@@ -83,7 +90,7 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
           _isLoading = false;
         });
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -1226,103 +1233,95 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
                           // ─────────────────────────────────────────────────────────────
                           // LETTERHEAD TOP HEADER (Nepal Medical Association Standard)
                           // ─────────────────────────────────────────────────────────────
-                          Stack(
-                            clipBehavior: Clip.none,
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Left: Logo
-                                  Container(
-                                    width: 80,
-                                    height: 80,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: const Color(0xFF0F172A).withValues(alpha: 0.15), width: 1.5),
-                                    ),
-                                    child: ClipOval(
-                                      child: orgLogo.isNotEmpty
-                                          ? Image.network(
-                                              orgLogo,
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (_, _, _) => _defaultLogoBadge(),
-                                            )
-                                          : _defaultLogoBadge(),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 14),
-
-                                  // Center: Organization Name (Nepali & English), Election Committee, Tenure, Contacts
-                                  Expanded(
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          orgName,
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w900,
-                                            color: Color(0xFF0F172A),
-                                          ),
-                                        ),
-                                        Text(
-                                          orgName.toUpperCase(),
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(
-                                            fontSize: 13.5,
-                                            fontWeight: FontWeight.w800,
-                                            color: Color(0xFF1E293B),
-                                            letterSpacing: 0.4,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        const Text(
-                                          'ELECTION COMMITTEE',
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(
-                                            fontSize: 13.5,
-                                            fontWeight: FontWeight.w900,
-                                            color: AppColors.primary,
-                                            letterSpacing: 0.3,
-                                          ),
-                                        ),
-                                        Text(
-                                          '($electionYear-${(int.tryParse(electionYear) ?? 2083) + 3})',
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w800,
-                                            color: AppColors.primary,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '$orgAddress. Telephone no. $orgPhone. Email: $orgEmail',
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(fontSize: 10, color: Color(0xFF475569), height: 1.3),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 14),
-
-                                  // Right: Registration / Dispatch Regd No.
-                                  SizedBox(
-                                    width: 120,
-                                    child: Text(
-                                      'Regd. No. $noticeNumber',
-                                      textAlign: TextAlign.right,
-                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
-                                    ),
-                                  ),
-                                ],
+                              // Left: Logo
+                              Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: const Color(0xFF0F172A).withValues(alpha: 0.15), width: 1.5),
+                                ),
+                                child: ClipOval(
+                                  child: orgLogo.isNotEmpty
+                                      ? Image.network(
+                                          orgLogo,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, _, _) => _defaultLogoBadge(),
+                                        )
+                                      : _defaultLogoBadge(),
+                                ),
                               ),
+                              const SizedBox(width: 14),
 
-                              // Overlapping Stamp Seal
-                              Positioned(
-                                right: 180,
-                                bottom: -28,
-                                child: _buildStampArea(stampImageUrl),
+                              // Center: Organization Name (Nepali & English), Election Committee, Tenure, Contacts
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      orgName,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w900,
+                                        color: Color(0xFF0F172A),
+                                      ),
+                                    ),
+                                    Text(
+                                      orgName.toUpperCase(),
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFF1E293B),
+                                        letterSpacing: 0.4,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    const Text(
+                                      'ELECTION COMMITTEE',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w900,
+                                        color: AppColors.primary,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                    Text(
+                                      '($electionYear-${(int.tryParse(electionYear) ?? 2083) + 3})',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '$orgAddress. Telephone no. $orgPhone. Email: $orgEmail',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(fontSize: 10, color: Color(0xFF475569), height: 1.3),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+
+                              // Right: Registration / Dispatch Regd No. & Official Stamp
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    'Regd. No. $noticeNumber',
+                                    textAlign: TextAlign.right,
+                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  _buildStampArea(stampImageUrl),
+                                ],
                               ),
                             ],
                           ),
@@ -1405,9 +1404,9 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
                                         ),
                                         const SizedBox(height: 40),
 
-                                        // Bottom Right Signatories Block
+                                        // Signatories Block with Count-Based Alignment (1 -> Left, 2+ -> Center)
                                         Align(
-                                          alignment: Alignment.bottomRight,
+                                          alignment: signatories.length <= 1 ? Alignment.bottomLeft : Alignment.bottomCenter,
                                           child: _buildSignatoriesBlock(signatories, orgName),
                                         ),
                                       ],
@@ -1538,11 +1537,11 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
   Widget _buildDigitalSeal(String? stampImageUrl) {
     if (stampImageUrl != null && stampImageUrl.isNotEmpty) {
       return Container(
-        width: 105,
-        height: 105,
+        width: 92,
+        height: 92,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: const Color(0xFFDC2626).withValues(alpha: 0.85), width: 2),
+          border: Border.all(color: const Color(0xFFDC2626).withValues(alpha: 0.85), width: 1.8),
         ),
         child: ClipOval(
           child: Image.network(
@@ -1558,35 +1557,35 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
 
   Widget _buildManualSeal() {
     return Container(
-      width: 105,
-      height: 105,
+      width: 92,
+      height: 92,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(
           color: Colors.grey.shade400,
-          width: 1.5,
+          width: 1.4,
         ),
       ),
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.all(6.0),
+          padding: const EdgeInsets.all(4.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.crop_free_rounded, size: 18, color: Colors.grey.shade400),
+              Icon(Icons.crop_free_rounded, size: 16, color: Colors.grey.shade400),
               const SizedBox(height: 2),
               Text(
                 '[ आधिकारिक छाप ]\nOFFICIAL SEAL',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 8.0,
+                  fontSize: 7.5,
                   fontWeight: FontWeight.bold,
                   color: Colors.grey.shade500,
                 ),
               ),
               Text(
                 '(स्थान)',
-                style: TextStyle(fontSize: 7.0, color: Colors.grey.shade400),
+                style: TextStyle(fontSize: 6.5, color: Colors.grey.shade400),
               ),
             ],
           ),
@@ -1597,41 +1596,41 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
 
   Widget _defaultDigitalSeal() {
     return Container(
-      width: 105,
-      height: 105,
+      width: 92,
+      height: 92,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFDC2626).withValues(alpha: 0.85), width: 2.2),
+        border: Border.all(color: const Color(0xFFDC2626).withValues(alpha: 0.85), width: 2.0),
       ),
       child: Container(
-        margin: const EdgeInsets.all(3.0),
+        margin: const EdgeInsets.all(2.5),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: const Color(0xFFDC2626).withValues(alpha: 0.65), width: 1.2),
+          border: Border.all(color: const Color(0xFFDC2626).withValues(alpha: 0.65), width: 1.0),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('★ निर्वाचन समिति ★', style: TextStyle(fontSize: 8.0, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
-            const Icon(Icons.verified_rounded, size: 22, color: Color(0xFFDC2626)),
-            const Text('आधिकारिक छाप', style: TextStyle(fontSize: 8.0, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
-            Text('OFFICIAL SEAL', style: TextStyle(fontSize: 6.5, color: const Color(0xFFDC2626).withValues(alpha: 0.8))),
+            const Text('★ निर्वाचन समिति ★', style: TextStyle(fontSize: 7.5, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+            const Icon(Icons.verified_rounded, size: 18, color: Color(0xFFDC2626)),
+            const Text('आधिकारिक छाप', style: TextStyle(fontSize: 7.5, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+            Text('OFFICIAL SEAL', style: TextStyle(fontSize: 6.0, color: const Color(0xFFDC2626).withValues(alpha: 0.8))),
           ],
         ),
       ),
     );
   }
 
-  // Signatories Section
+  // Signatories Section with count-based alignment (1 -> Left, 2+ -> Center)
   Widget _buildSignatoriesBlock(List<dynamic> signatories, String orgName) {
     if (signatories.isEmpty) {
       return Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 140,
             height: 1,
-            color: Colors.grey.shade400,
+            color: const Color(0xFF1E293B),
           ),
           const SizedBox(height: 6),
           const Text('( प्रमुख निर्वाचन अधिकृत )', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
@@ -1640,11 +1639,13 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
       );
     }
 
+    final isSingle = signatories.length <= 1;
+
     return Wrap(
-      spacing: 16,
+      spacing: 24,
       runSpacing: 16,
-      alignment: WrapAlignment.end,
-      crossAxisAlignment: WrapCrossAlignment.end,
+      alignment: isSingle ? WrapAlignment.start : WrapAlignment.center,
+      crossAxisAlignment: isSingle ? WrapCrossAlignment.start : WrapCrossAlignment.center,
       children: signatories.map((s) {
         final name = s['name'] ?? s['chair_full_name'] ?? s['committee_name'] ?? 'Election Officer';
         final designation = s['designation'] ?? s['chair_designation'] ?? 'Committee Member';

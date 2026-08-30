@@ -189,7 +189,7 @@ class ElectionViewSet(viewsets.ModelViewSet):
         if self.action in [
             'create', 'update', 'partial_update', 'destroy',
             'assign_role',
-            'create_committee', 'committees', 'assignments',
+            'create_committee', 'assignments',
             'update_committee', 'delete_committee',
         ]:
             return [IsOrgAdmin()]
@@ -1176,8 +1176,8 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
     .signatories-block {{
       display: flex;
       flex-wrap: wrap;
-      gap: 20px;
-      justify-content: flex-end;
+      gap: 24px;
+      justify-content: {'flex-start' if len(signatories) <= 1 else 'center'};
     }}
     .signatory-card {{
       text-align: center;
@@ -1226,16 +1226,12 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
             {org_address}. Telephone no. {org_phone}. Email: {org_email}
           </div>
         </td>
-        <td style="width: 130px; text-align: right; vertical-align: top; font-size: 10px; font-weight: bold; color: #334155; line-height: 1.4;">
+        <td style="width: 140px; text-align: right; vertical-align: top; font-size: 10px; font-weight: bold; color: #334155; line-height: 1.4;">
           <div>Regd. No. {notice_number}</div>
+          <div style="margin-top: 6px; display: flex; justify-content: flex-end;">{stamp_html}</div>
         </td>
       </tr>
     </table>
-
-    <!-- Overlapping Stamp Seal -->
-    <div style="position: absolute; right: 260px; top: 75px; z-index: 10;">
-      {stamp_html}
-    </div>
 
     <!-- Solid Divider Line -->
     <div class="divider-solid"></div>

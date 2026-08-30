@@ -238,20 +238,31 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final data = e.response?.data;
     if (data is Map) {
       final err = data['error'];
-      if (err is Map) return err['message'] as String? ?? 'An error occurred';
+      if (err is Map) {
+        // Prefer specific field errors over the generic 'An error occurred' wrapper message
+        final fieldErrors = err['field_errors'];
+        if (fieldErrors is Map && fieldErrors.isNotEmpty) {
+          final firstKey = fieldErrors.keys.first;
+          final firstVal = fieldErrors[firstKey];
+          if (firstVal is List && firstVal.isNotEmpty) return firstVal.first.toString();
+        }
+        // Fall back to the top-level message only if no field errors
+        final msg = err['message'] as String?;
+        if (msg != null && msg.isNotEmpty && msg != 'An error occurred.') return msg;
+      }
       if (err is String) return err;
       final nonField = data['non_field_errors'];
       if (nonField is List && nonField.isNotEmpty) return nonField.first as String;
-      // Check field errors
+      // Check top-level field errors (standard DRF format)
       final fieldErrors = data['field_errors'];
       if (fieldErrors is Map && fieldErrors.isNotEmpty) {
         final firstKey = fieldErrors.keys.first;
         final firstVal = fieldErrors[firstKey];
         if (firstVal is List && firstVal.isNotEmpty) return firstVal.first.toString();
       }
-      
-      // Standard DRF field errors are usually at the top level
+      // Standard DRF field errors at top level
       for (final key in data.keys) {
+        if (key == 'error') continue;
         final val = data[key];
         if (val is List && val.isNotEmpty) {
           return val.first.toString();

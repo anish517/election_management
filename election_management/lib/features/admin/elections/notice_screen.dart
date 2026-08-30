@@ -710,12 +710,13 @@ class _NoticeDialogState extends ConsumerState<_NoticeDialog> {
 
         final sb = StringBuffer();
         sb.writeln('यस संस्थाको निर्वाचन कार्यतालिका अनुसार सञ्चालन भएको मतदान कार्य सम्पन्न भई कुल $totalVoters मतदातामध्ये $ballotsCast मत ($turnout%) खसेको र मतगणना कार्य सम्पन्न भई निर्वाचन समितिद्वारा प्रमाणित अन्तिम मत परिणाम निम्नानुसार घोषणा गरिएको छ:\n');
-        sb.writeln('| पद (Position) | सिट (Seats) | उम्मेदवार (Candidate Name) | प्राप्त मत (Votes) | स्थिति / नतिजा (Outcome) |');
-        sb.writeln('| :--- | :--- | :--- | :--- | :--- |');
+        sb.writeln('| पद (Position) | सिट (Seats) | उम्मेदवार (Candidate Name) | प्राप्त मत तथा नतिजा (Votes & Status) |');
+        sb.writeln('| :--- | :--- | :--- | :--- |');
 
         for (final pos in results) {
           final posTitle = pos['title'] ?? 'Position';
           final seats = pos['seats_available'] ?? 1;
+          final isUncontestedPos = pos['is_uncontested'] == true;
           final winners = List<String>.from(pos['winners'] ?? []);
           final breakdown = (pos['breakdown'] as List<dynamic>?) ?? [];
 
@@ -723,21 +724,27 @@ class _NoticeDialogState extends ConsumerState<_NoticeDialog> {
             final candId = cand['candidate_id'] ?? '';
             final name = cand['name'] ?? '';
             final score = cand['score'] ?? 0;
-            final isElected = cand['is_elected'] == true || winners.contains(candId);
+            final isUncontested = isUncontestedPos || cand['is_uncontested'] == true;
+            final isElected = cand['is_elected'] == true || winners.contains(candId) || isUncontested;
             final isTie = cand['is_tie'] == true;
             final isNota = candId == '__BOYCOTT__' || name.toString().toLowerCase().contains('no vote') || name.toString().toLowerCase().contains('abstained');
 
-            String status = '#${cand['rank'] ?? ''}';
+            final scoreStr = score is num ? (score == score.toInt() ? '${score.toInt()}' : '$score') : '$score';
+            String votesAndStatus = scoreStr;
             if (isNota) {
-              status = '⚪ NOTA / Abstained';
+              votesAndStatus = '$scoreStr (⚪ NOTA / Abstained)';
+            } else if (isUncontested) {
+              votesAndStatus = '$scoreStr  🏆 UNCONTESTED (निर्विरोध)';
             } else if (isElected && (score is num ? score > 0 : true)) {
-              status = '🏆 ELECTED (विजयी)';
+              votesAndStatus = '$scoreStr  🏆 ELECTED (विजयी)';
             } else if (isTie) {
-              status = '⚠️ TIED (बराबरी)';
+              votesAndStatus = '$scoreStr  ⚠️ TIED (बराबरी)';
+            } else {
+              final rank = cand['rank'] ?? '';
+              votesAndStatus = rank.toString().isNotEmpty ? '$scoreStr  (#$rank)' : scoreStr;
             }
 
-            final scoreStr = score is num ? (score == score.toInt() ? '${score.toInt()}' : '$score') : '$score';
-            sb.writeln('| $posTitle | $seats | $name | $scoreStr | $status |');
+            sb.writeln('| $posTitle | $seats | $name | $votesAndStatus |');
           }
         }
 
@@ -1456,18 +1463,11 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
                               ),
                               const SizedBox(width: 14),
 
-                              // Right: Registration / Dispatch Regd No. & Official Stamp
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    'Regd. No. $noticeNumber',
-                                    textAlign: TextAlign.right,
-                                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  _buildStampArea(stampImageUrl),
-                                ],
+                              // Right: Registration / Dispatch Regd No.
+                              Text(
+                                'Regd. No. $noticeNumber',
+                                textAlign: TextAlign.right,
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
                               ),
                             ],
                           ),
@@ -1499,104 +1499,60 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        // Top Right: Nepali Date
-                                        Align(
-                                          alignment: Alignment.topRight,
-                                          child: Text(
-                                            'मिति : ${_formatNepaliDate(dateIso)}',
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                              color: Color(0xFF0F172A),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-
-                                        // Notice Template Variant: Results Declaration Ribbon
-                                        if (isResultsNotice) ...[
-                                          Center(
-                                            child: Container(
-                                              margin: const EdgeInsets.only(bottom: 10),
-                                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFF065F46).withValues(alpha: 0.08),
-                                                borderRadius: BorderRadius.circular(6),
-                                                border: Border.all(color: const Color(0xFF059669), width: 1.2),
-                                              ),
-                                              child: const Row(
-                                                mainAxisSize: MainAxisSize.min,
+                                        // Notice Top Row: Notice Title & Subject (Center) with Date & Stamp (Right)
+                                        Row(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Expanded(
+                                              child: Column(
                                                 children: [
-                                                  Icon(Icons.verified_rounded, size: 15, color: Color(0xFF059669)),
-                                                  SizedBox(width: 6),
-                                                  Text(
-                                                    '🏆 आधिकारिक मत परिणाम घोषणा (OFFICIAL RESULTS DECLARATION)',
+                                                  const Text(
+                                                    'सूचना !',
+                                                    textAlign: TextAlign.center,
                                                     style: TextStyle(
-                                                      fontSize: 10.5,
+                                                      fontSize: 18,
                                                       fontWeight: FontWeight.w900,
-                                                      color: Color(0xFF065F46),
-                                                      letterSpacing: 0.3,
+                                                      color: Color(0xFF0F172A),
+                                                      letterSpacing: 0.5,
                                                     ),
                                                   ),
+                                                  if ((notice['title'] ?? '').isNotEmpty && notice['title'] != 'सूचना' && notice['title'] != 'सूचना !') ...[
+                                                    const SizedBox(height: 6),
+                                                    Text(
+                                                      'विषय: ${notice['title']}',
+                                                      textAlign: TextAlign.center,
+                                                      style: const TextStyle(
+                                                        fontSize: 13,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: Color(0xFF0F172A),
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ],
                                               ),
                                             ),
-                                          ),
-                                        ],
-
-                                        // Centered Main Notice Header: सूचना !
-                                        const Center(
-                                          child: Text(
-                                            'सूचना !',
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w900,
-                                              color: Color(0xFF0F172A),
-                                              letterSpacing: 0.5,
-                                            ),
-                                          ),
-                                        ),
-                                        if ((notice['title'] ?? '').isNotEmpty && notice['title'] != 'सूचना' && notice['title'] != 'सूचना !') ...[
-                                          const SizedBox(height: 6),
-                                          Center(
-                                            child: Container(
-                                              padding: isResultsNotice
-                                                  ? const EdgeInsets.symmetric(horizontal: 14, vertical: 6)
-                                                  : EdgeInsets.zero,
-                                              decoration: isResultsNotice
-                                                  ? BoxDecoration(
-                                                      color: const Color(0xFFF8FAFC),
-                                                      borderRadius: BorderRadius.circular(6),
-                                                      border: Border.all(color: const Color(0xFFCBD5E1)),
-                                                    )
-                                                  : null,
-                                              child: Text(
-                                                'विषय: ${notice['title']}',
-                                                textAlign: TextAlign.center,
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: isResultsNotice ? const Color(0xFF0F172A) : null,
+                                            const SizedBox(width: 12),
+                                            Column(
+                                              crossAxisAlignment: CrossAxisAlignment.end,
+                                              children: [
+                                                Text(
+                                                  'मिति : ${_formatNepaliDate(dateIso)}',
+                                                  style: const TextStyle(
+                                                    fontSize: 11.5,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Color(0xFF0F172A),
+                                                  ),
                                                 ),
-                                              ),
+                                                const SizedBox(height: 6),
+                                                _buildStampArea(stampImageUrl),
+                                              ],
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                         const SizedBox(height: 14),
 
-                                        // Notice Content Body with Markdown Table Support
-                                        Container(
-                                          padding: isResultsNotice ? const EdgeInsets.all(12) : EdgeInsets.zero,
-                                          decoration: isResultsNotice
-                                              ? BoxDecoration(
-                                                  color: const Color(0xFFF0FDF4),
-                                                  borderRadius: BorderRadius.circular(8),
-                                                  border: Border.all(color: const Color(0xFF86EFAC), width: 1),
-                                                )
-                                              : null,
-                                          child: _buildNoticeRichContent(notice['content'] ?? '', isResultsNotice),
-                                        ),
+                                        // Notice Content Body with Markdown Table Support (Plain & Clean)
+                                        _buildNoticeRichContent(notice['content'] ?? '', isResultsNotice),
                                         const SizedBox(height: 36),
 
                                         // Signatories Block with Count-Based Alignment (1 -> Left, 2+ -> Center)
@@ -1688,11 +1644,16 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
     if (tableLines.length < 2) return const SizedBox.shrink();
 
     // Parse header
-    final headerCells = tableLines[0]
+    final rawHeaderCells = tableLines[0]
         .split('|')
         .map((c) => c.trim())
         .where((c) => c.isNotEmpty)
         .toList();
+
+    final is5Col = rawHeaderCells.length == 5;
+    final headerCells = is5Col
+        ? [rawHeaderCells[0], rawHeaderCells[1], rawHeaderCells[2], 'प्राप्त मत तथा नतिजा (Votes & Status)']
+        : rawHeaderCells;
 
     // Rows (skip index 1 if it's separator)
     final rows = <TableRow>[];
@@ -1717,15 +1678,25 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
       final line = tableLines[i];
       if (line.replaceAll(RegExp(r'[\s\|\:\-]'), '').isEmpty) continue; // skip divider line
 
-      final cells = line
+      final rawCells = line
           .split('|')
           .map((c) => c.trim())
           .where((c) => c.isNotEmpty)
           .toList();
 
-      if (cells.isEmpty) continue;
+      if (rawCells.isEmpty) continue;
 
-      final isElectedRow = line.contains('🏆 ELECTED') || line.contains('विजयी');
+      final List<String> cells;
+      if (is5Col && rawCells.length == 5) {
+        final votes = rawCells[3];
+        final status = rawCells[4];
+        final combined = (status.isNotEmpty && status != '-') ? '$votes  $status' : votes;
+        cells = [rawCells[0], rawCells[1], rawCells[2], combined];
+      } else {
+        cells = rawCells;
+      }
+
+      final isElectedRow = line.contains('🏆 ELECTED') || line.contains('विजयी') || line.contains('UNCONTESTED') || line.contains('निर्विरोध');
       final isTiedRow = line.contains('⚠️ TIED') || line.contains('बराबरी');
 
       Color? rowColor;

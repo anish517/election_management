@@ -800,7 +800,14 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                   flex: 20,
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: _buildStatusBadge(isElected, isLeading, isTie, isNoVoteOrBoycott, score.rank > 0 ? score.rank : (idx + 1)),
+                    child: _buildStatusBadge(
+                      isElected,
+                      isLeading,
+                      isTie,
+                      isNoVoteOrBoycott,
+                      score.rank > 0 ? score.rank : (idx + 1),
+                      isUncontested: score.isUncontested || posResult.isUncontested,
+                    ),
                   ),
                 ),
               ],
@@ -831,7 +838,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
     );
   }
 
-  Widget _buildStatusBadge(bool isElected, bool isLeading, bool isTie, bool isNoVoteOrBoycott, int rank) {
+  Widget _buildStatusBadge(bool isElected, bool isLeading, bool isTie, bool isNoVoteOrBoycott, int rank, {bool isUncontested = false}) {
     if (isNoVoteOrBoycott) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -842,6 +849,30 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
         child: const Text(
           '⚪ NOTA / Abstained',
           style: TextStyle(color: Color(0xFFD97706), fontSize: 11, fontWeight: FontWeight.bold),
+        ),
+      );
+    }
+    if (isUncontested && isElected) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0D9488),
+          borderRadius: BorderRadius.circular(6),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0D9488).withValues(alpha: 0.3),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.verified_rounded, size: 14, color: Colors.white),
+            SizedBox(width: 4),
+            Text('🏆 UNCONTESTED (निर्विरोध)', style: TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.bold)),
+          ],
         ),
       );
     }

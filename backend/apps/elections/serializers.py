@@ -115,6 +115,7 @@ class ElectionSerializer(serializers.ModelSerializer):
             'is_paid_candidacy', 'nominee_charge',
             # Ballot settings
             'is_secret_ballot', 'allow_boycott', 'results_visibility', 'live_turnout_enabled', 'resubmission_allowed',
+            'show_uncontested_on_notice', 'show_uncontested_on_ballot', 'show_uncontested_in_results',
             # Positions
             'positions',
             # Timestamps

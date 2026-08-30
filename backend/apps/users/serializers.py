@@ -331,13 +331,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
     role_display = serializers.SerializerMethodField()
     full_name = serializers.SerializerMethodField()
     photo_url = serializers.SerializerMethodField()
+    enrolled_elections = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             'id', 'email', 'phone', 'role', 'role_display',
             'organization', 'organization_name', 'organization_logo_url', 'organization_cover_image_url',
-            'full_name', 'photo_url',
+            'full_name', 'photo_url', 'enrolled_elections',
             'is_2fa_enabled', 'last_login_at', 'created_at',
         ]
         read_only_fields = fields
@@ -361,3 +362,28 @@ class UserProfileSerializer(serializers.ModelSerializer):
     def get_photo_url(self, obj):
         member = obj.memberships.filter(deleted_at__isnull=True).first()
         return member.photo_url if member else ''
+
+    def get_enrolled_elections(self, obj):
+        from apps.voting.models import VoterRoll
+        from django.db.models import Q
+        user_email = obj.email.strip().lower() if obj.email else ''
+        user_phone = obj.phone.strip() if obj.phone else ''
+        v_filter = Q()
+        if user_email:
+            v_filter |= Q(email__iexact=user_email)
+        if user_phone:
+            v_filter |= Q(phone=user_phone)
+        if not v_filter:
+            return []
+
+        rolls = VoterRoll.objects.filter(v_filter, is_eligible=True).select_related('election')
+        return [
+            {
+                'election_id': str(r.election_id),
+                'election_title': r.election.title,
+                'voter_id': r.voter_id,
+                'has_voted': r.has_voted,
+                'state': r.election.state,
+            }
+            for r in rolls
+        ]

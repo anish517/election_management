@@ -17,13 +17,15 @@ class BallotCandidateSerializer(serializers.ModelSerializer):
 class BallotPositionSerializer(serializers.ModelSerializer):
     candidates = serializers.SerializerMethodField()
     quotas = PositionQuotaSerializer(many=True, read_only=True)
+    is_uncontested = serializers.SerializerMethodField()
     
     class Meta:
         model = Position
         fields = [
             'id', 'title', 'seats_available', 'voting_method', 
             'max_votes_per_voter', 'abstain_allowed', 'none_of_the_above', 
-            'result_order', 'bg_color', 'quota_name', 'quotas', 'candidates'
+            'result_order', 'bg_color', 'quota_name', 'quotas', 'candidates',
+            'is_uncontested',
         ]
         
     def get_candidates(self, obj):
@@ -33,6 +35,13 @@ class BallotPositionSerializer(serializers.ModelSerializer):
             status=NominationStatus.APPROVED
         ).order_by('?') # For now random, could follow obj.ballot_ordering
         return BallotCandidateSerializer(cands, many=True).data
+
+    def get_is_uncontested(self, obj):
+        approved_count = Candidate.objects.filter(
+            position=obj,
+            status=NominationStatus.APPROVED
+        ).count()
+        return 0 < approved_count <= obj.seats_available
 
 
 class VoterRollSerializer(serializers.ModelSerializer):

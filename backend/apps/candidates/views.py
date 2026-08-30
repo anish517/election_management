@@ -1,5 +1,5 @@
 from django.utils import timezone
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from apps.candidates.models import Candidate, NominationStatus
@@ -14,11 +14,13 @@ class CandidateViewSet(viewsets.ModelViewSet):
     serializer_class = CandidateSerializer
     
     def get_permissions(self):
-        from rest_framework.permissions import IsAuthenticated
+        from rest_framework import permissions
+        if self.action in ['id_card', 'id_cards_bulk']:
+            return [permissions.AllowAny()]
         if self.action in ['approve', 'reject']:
             return [IsElectionOfficer()]
         # Anyone can view candidates or submit a nomination (if election state allows)
-        return [IsAuthenticated()]
+        return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
         qs = Candidate.objects.filter(
@@ -230,6 +232,375 @@ class CandidateViewSet(viewsets.ModelViewSet):
             logger.warning(f"Failed to send candidate withdrawal notification: {e}")
 
         return Response(self.get_serializer(candidate).data)
+
+    @action(detail=True, methods=['get'], permission_classes=[permissions.AllowAny], authentication_classes=[])
+    def id_card(self, request, election_pk=None, pk=None):
+        """
+        GET /v1/elections/{election_id}/candidates/{candidate_id}/id_card/
+        Renders official printable Candidate ID Card (उम्मेदवार परिचयपत्र).
+        """
+        from django.http import HttpResponse
+        from apps.elections.models import Election
+
+        from django.shortcuts import get_object_or_404
+        try:
+            election = get_object_or_404(Election, id=election_pk)
+            cand = get_object_or_404(Candidate, id=pk, position__election=election)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
+
+        org = election.organization
+        org_name = org.name if org else 'Election Management'
+        org_logo = election.logo_url or (org.logo_url if org else '')
+        photo_url = cand.candidate_image or ''
+        pos_title = cand.position.title if cand.position else 'Candidate'
+        quota_label = f" ({cand.quota_name})" if cand.quota_name else ''
+
+        qr_data = f"EMS-CAND:{cand.id.hex[:8].upper()}:{election.id}:{cand.email or cand.contact_number}"
+        qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={qr_data}"
+
+        html = f"""<!DOCTYPE html>
+<html lang="ne">
+<head>
+  <meta charset="UTF-8">
+  <title>Candidate ID Card - {cand.full_name}</title>
+  <style>
+    @page {{
+      size: 85.6mm 54mm;
+      margin: 0;
+    }}
+    @media print {{
+      body {{ margin: 0; padding: 0; background: none; }}
+      .no-print {{ display: none !important; }}
+      .card-wrap {{ box-shadow: none !important; margin: 0 auto; page-break-after: always; }}
+    }}
+    body {{
+      font-family: 'Segoe UI', 'Noto Sans Devanagari', -apple-system, sans-serif;
+      background: #F1F5F9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      margin: 0;
+    }}
+    .action-bar {{
+      margin-bottom: 16px;
+      display: flex;
+      gap: 12px;
+    }}
+    .btn {{
+      background: #6366F1;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
+    }}
+    .btn:hover {{ background: #4F46E5; }}
+    .card-wrap {{
+      width: 85.6mm;
+      height: 54mm;
+      background: #FFFFFF;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      border: 1.5px solid #6366F1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      box-sizing: border-box;
+      padding: 6px 10px;
+    }}
+    .header {{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1.5px solid #6366F1;
+      padding-bottom: 4px;
+      margin-bottom: 5px;
+    }}
+    .header-logo {{
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: contain;
+    }}
+    .org-title {{
+      font-size: 10px;
+      font-weight: 900;
+      color: #0F172A;
+      line-height: 1.1;
+      text-transform: uppercase;
+    }}
+    .el-title {{
+      font-size: 8px;
+      font-weight: 700;
+      color: #6366F1;
+      line-height: 1.1;
+    }}
+    .badge-bar {{
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      background: #6366F1;
+      color: white;
+      font-size: 7px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      letter-spacing: 0.3px;
+    }}
+    .card-body {{
+      display: flex;
+      gap: 8px;
+      flex: 1;
+    }}
+    .photo-col {{
+      width: 58px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }}
+    .photo-box {{
+      width: 56px;
+      height: 64px;
+      border-radius: 4px;
+      border: 1.5px solid #6366F1;
+      object-fit: cover;
+      background: #F8FAFC;
+    }}
+    .info-col {{
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }}
+    .cand-name {{
+      font-size: 12px;
+      font-weight: 900;
+      color: #0F172A;
+      margin-bottom: 2px;
+      line-height: 1.2;
+    }}
+    .info-row {{
+      font-size: 8px;
+      color: #334155;
+      margin-bottom: 2px;
+    }}
+    .info-label {{
+      font-weight: bold;
+      color: #64748B;
+    }}
+    .footer-row {{
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: 2px;
+    }}
+    .qr-code {{
+      width: 34px;
+      height: 34px;
+      object-fit: contain;
+    }}
+    .seal-box {{
+      font-size: 7px;
+      text-align: center;
+      color: #DC2626;
+      font-weight: bold;
+      border-top: 1px solid #94A3B8;
+      padding-top: 1px;
+      width: 70px;
+    }}
+  </style>
+</head>
+<body>
+  <div class="action-bar no-print">
+    <button class="btn" onclick="window.print()">🖨️ Print / Save PDF</button>
+    <button class="btn" style="background:#64748B;" onclick="window.close()">Close</button>
+  </div>
+
+  <div class="card-wrap">
+    <div class="badge-bar">CANDIDATE ID (उम्मेदवार)</div>
+    <div class="header">
+      {f'<img src="{org_logo}" class="header-logo">' if org_logo else '<div style="font-size:18px;">🏛️</div>'}
+      <div>
+        <div class="org-title">{org_name}</div>
+        <div class="el-title">{election.title}</div>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <div class="photo-col">
+        {f'<img src="{photo_url}" class="photo-box">' if photo_url else '<div class="photo-box" style="display:flex;align-items:center;justify-content:center;font-size:20px;color:#6366F1;">👤</div>'}
+      </div>
+      <div class="info-col">
+        <div>
+          <div class="cand-name">{cand.full_name}</div>
+          <div class="info-row"><span class="info-label">पद (Position):</span> <b style="color:#4F46E5;">{pos_title}{quota_label}</b></div>
+          <div class="info-row"><span class="info-label">Candidate Code:</span> <b>{cand.id.hex[:8].upper()}</b></div>
+          {f'<div class="info-row"><span class="info-label">Contact:</span> {cand.contact_number}</div>' if cand.contact_number else ''}
+          <div class="info-row"><span class="info-label">Status:</span> <b style="color:#059669;">Approved Candidate</b></div>
+        </div>
+
+        <div class="footer-row">
+          <img src="{qr_url}" class="qr-code" alt="QR">
+          <div class="seal-box">
+            Election Officer<br>निर्वाचन अधिकृत
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>"""
+        return HttpResponse(html, content_type='text/html')
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny], authentication_classes=[])
+    def id_cards_bulk(self, request, election_pk=None):
+        """
+        GET /v1/elections/{election_id}/candidates/id_cards_bulk/
+        Renders a printable sheet of all approved Candidate ID cards.
+        """
+        from django.http import HttpResponse
+        from apps.elections.models import Election
+
+        from django.shortcuts import get_object_or_404
+        try:
+            election = get_object_or_404(Election, id=election_pk)
+            candidates = Candidate.objects.filter(
+                position__election=election,
+                status=NominationStatus.APPROVED
+            ).select_related('position')
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
+
+        org = election.organization
+        org_name = org.name if org else 'Election Management'
+        org_logo = election.logo_url or (org.logo_url if org else '')
+
+        cards_html = ""
+        for c in candidates:
+            qr_data = f"EMS-CAND:{c.id.hex[:8].upper()}:{election.id}:{c.email or c.contact_number}"
+            qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={qr_data}"
+            pos_title = c.position.title if c.position else 'Candidate'
+            cards_html += f"""
+            <div class="card-wrap">
+              <div class="badge-bar">CANDIDATE ID</div>
+              <div class="header">
+                {f'<img src="{org_logo}" class="header-logo">' if org_logo else '<div style="font-size:16px;">🏛️</div>'}
+                <div>
+                  <div class="org-title">{org_name}</div>
+                  <div class="el-title">{election.title}</div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="photo-col">
+                  {f'<img src="{c.candidate_image}" class="photo-box">' if c.candidate_image else '<div class="photo-box" style="display:flex;align-items:center;justify-content:center;font-size:20px;color:#6366F1;">👤</div>'}
+                </div>
+                <div class="info-col">
+                  <div>
+                    <div class="cand-name">{c.full_name}</div>
+                    <div class="info-row"><span class="info-label">पद:</span> <b style="color:#4F46E5;">{pos_title}</b></div>
+                    <div class="info-row"><span class="info-label">Code:</span> <b>{c.id.hex[:8].upper()}</b></div>
+                    <div class="info-row"><span class="info-label">Status:</span> <b style="color:#059669;">Approved</b></div>
+                  </div>
+                  <div class="footer-row">
+                    <img src="{qr_url}" class="qr-code" alt="QR">
+                    <div class="seal-box">Election Officer</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            """
+
+        html = f"""<!DOCTYPE html>
+<html lang="ne">
+<head>
+  <meta charset="UTF-8">
+  <title>Batch Candidate ID Cards - {election.title}</title>
+  <style>
+    @media print {{
+      body {{ margin: 0; padding: 10px; background: none; }}
+      .no-print {{ display: none !important; }}
+    }}
+    body {{
+      font-family: 'Segoe UI', 'Noto Sans Devanagari', -apple-system, sans-serif;
+      background: #F8FAFC;
+      padding: 20px;
+      margin: 0;
+    }}
+    .action-bar {{
+      margin-bottom: 20px;
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }}
+    .btn {{
+      background: #6366F1;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 14px;
+    }}
+    .grid-container {{
+      display: grid;
+      grid-template-columns: repeat(auto-fill, 85.6mm);
+      gap: 12px;
+      justify-content: center;
+    }}
+    .card-wrap {{
+      width: 85.6mm;
+      height: 54mm;
+      background: #FFFFFF;
+      border-radius: 8px;
+      border: 1.5px solid #6366F1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      box-sizing: border-box;
+      padding: 6px 10px;
+      page-break-inside: avoid;
+    }}
+    .header {{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1.5px solid #6366F1;
+      padding-bottom: 4px;
+      margin-bottom: 5px;
+    }}
+    .header-logo {{ width: 28px; height: 28px; border-radius: 50%; object-fit: contain; }}
+    .org-title {{ font-size: 9.5px; font-weight: 900; color: #0F172A; line-height: 1.1; text-transform: uppercase; }}
+    .el-title {{ font-size: 8px; font-weight: 700; color: #6366F1; line-height: 1.1; }}
+    .badge-bar {{ position: absolute; top: 6px; right: 8px; background: #6366F1; color: white; font-size: 7px; font-weight: 800; padding: 2px 6px; border-radius: 4px; }}
+    .card-body {{ display: flex; gap: 8px; flex: 1; }}
+    .photo-col {{ width: 54px; }}
+    .photo-box {{ width: 52px; height: 60px; border-radius: 4px; border: 1px solid #94A3B8; background: #F8FAFC; object-fit: cover; }}
+    .info-col {{ flex: 1; display: flex; flex-direction: column; justify-content: space-between; }}
+    .cand-name {{ font-size: 11px; font-weight: 900; color: #0F172A; margin-bottom: 2px; }}
+    .info-row {{ font-size: 7.5px; color: #334155; margin-bottom: 1.5px; }}
+    .info-label {{ font-weight: bold; color: #64748B; }}
+    .footer-row {{ display: flex; justify-content: space-between; align-items: flex-end; }}
+    .qr-code {{ width: 30px; height: 30px; }}
+    .seal-box {{ font-size: 6.5px; text-align: center; color: #DC2626; font-weight: bold; border-top: 1px solid #94A3B8; width: 65px; }}
+  </style>
+</head>
+<body>
+  <div class="action-bar no-print">
+    <button class="btn" onclick="window.print()">🖨️ Print All Candidate Cards ({len(candidates)} Candidates)</button>
+  </div>
+  <div class="grid-container">
+    {cards_html}
+  </div>
+</body>
+</html>"""
+        return HttpResponse(html, content_type='text/html')
 
 
 class CandidateObjectionViewSet(viewsets.ModelViewSet):

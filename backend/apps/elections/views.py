@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -201,11 +202,35 @@ class ElectionViewSet(viewsets.ModelViewSet):
         return [IsObserver()]
 
     def get_queryset(self):
+        user = self.request.user
+        if not user or not user.is_authenticated or not user.organization:
+            return Election.objects.none()
+
         # Auto advance any due election milestones for this organization
-        if self.request.user and self.request.user.is_authenticated and self.request.user.organization:
-            _advance_due_elections(self.request.user.organization)
-            return Election.objects.filter(organization=self.request.user.organization)
-        return Election.objects.none()
+        _advance_due_elections(user.organization)
+        base_qs = Election.objects.filter(organization=user.organization)
+
+        # Administrative roles can view all elections in their organization
+        admin_roles = {'org_admin', 'election_officer', 'observer', 'auditor', 'super_admin'}
+        user_role = getattr(user, 'role', '')
+        if user_role in admin_roles or user.is_staff or user.is_superuser:
+            return base_qs
+
+        # For Voters & Candidates: Scope strictly to elections they are enrolled in
+        user_email = user.email.strip().lower() if user.email else ''
+        user_phone = getattr(user, 'phone', '').strip() if hasattr(user, 'phone') else ''
+
+        voter_filter = Q()
+        if user_email:
+            voter_filter |= Q(voter_roll__email__iexact=user_email, voter_roll__is_eligible=True)
+            voter_filter |= Q(candidates__email__iexact=user_email)
+        if user_phone:
+            voter_filter |= Q(voter_roll__phone=user_phone, voter_roll__is_eligible=True)
+
+        if not voter_filter:
+            return Election.objects.none()
+
+        return base_qs.filter(voter_filter).distinct()
 
     def perform_create(self, serializer):
         org = self.request.user.organization

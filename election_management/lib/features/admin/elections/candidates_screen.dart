@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/network/api_constants.dart';
 import '../../../shared/models/models.dart';
 import 'create_candidate_screen.dart';
 import '../../candidates/candidate_profile_sheet.dart';
+import '../../shared/digital_id_card_dialog.dart';
 
 class CandidatesScreen extends ConsumerStatefulWidget {
   final String electionId;
@@ -270,46 +273,86 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Column(
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 900;
+            final titleCol = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Nominated Candidates Roster',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'All candidates filed under specific designations with panel affiliations and statutory quotas.',
+                  style: TextStyle(color: isDark ? Colors.white60 : Colors.grey.shade600, fontSize: 12),
+                ),
+              ],
+            );
+
+            final actionBtns = Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () {
+                    final baseUrl = ApiConstants.baseUrl.replaceAll('/v1', '');
+                    final url = '$baseUrl/v1/elections/${widget.electionId}/candidates/id_cards_bulk/';
+                    launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                  },
+                  icon: const Icon(Icons.badge_rounded, size: 16, color: Color(0xFF6366F1)),
+                  label: const Text('Batch ID Cards (PDF)'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF6366F1),
+                    side: const BorderSide(color: Color(0xFF6366F1)),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CreateCandidateScreen(electionId: widget.electionId),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+                  label: const Text('Nominate Candidate'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
+                  ),
+                ),
+              ],
+            );
+
+            if (isNarrow) {
+              return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Nominated Candidates Roster',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'All candidates filed under specific designations with panel affiliations and statutory quotas.',
-                    style: TextStyle(color: isDark ? Colors.white60 : Colors.grey.shade600, fontSize: 12),
-                  ),
+                  titleCol,
+                  const SizedBox(height: 12),
+                  actionBtns,
                 ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => CreateCandidateScreen(electionId: widget.electionId),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
-              label: const Text('Nominate Candidate'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                elevation: 0,
-              ),
-            ),
-          ],
+              );
+            }
+
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(child: titleCol),
+                const SizedBox(width: 16),
+                actionBtns,
+              ],
+            );
+          },
         ),
         const SizedBox(height: 18),
 
@@ -707,6 +750,35 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
               icon: const Icon(Icons.visibility_outlined, size: 16),
               label: const Text('View Dossier'),
               style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+            const SizedBox(width: 8),
+
+            // Candidate Digital ID Card Button
+            OutlinedButton.icon(
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (_) => DigitalIdCardDialog(
+                    cardType: 'candidate',
+                    fullName: cand.name,
+                    idNumber: cand.id.length > 8 ? cand.id.substring(0, 8).toUpperCase() : cand.id,
+                    positionTitle: pos.title,
+                    photoUrl: cand.photoUrl ?? cand.candidateImage,
+                    phone: cand.contactNumber,
+                    electionTitle: electionTitle,
+                    electionId: widget.electionId,
+                    entityId: cand.id,
+                  ),
+                );
+              },
+              icon: const Icon(Icons.badge_outlined, size: 16, color: Color(0xFF6366F1)),
+              label: const Text('ID Card'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF6366F1),
+                side: const BorderSide(color: Color(0xFF6366F1)),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),

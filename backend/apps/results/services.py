@@ -94,26 +94,32 @@ class TallyService:
         else:
             sorted_scores = []
             
-        # Determine elected winners and boundary ties
+        # Determine elected winners, boundary ties, and uncontested wins
         has_tie = False
         tied_cand_ids = set()
-        valid_scores = [item for item in sorted_scores if item[1] > 0]
+        approved_cand_count = len(candidates_map)
+        is_uncontested = 0 < approved_cand_count <= seats
 
-        if is_result_state and total_valid_ballots > 0 and valid_scores:
-            if len(valid_scores) <= seats:
-                # All candidates with non-zero votes fit in available seats
-                winners = [item[0] for item in valid_scores]
-            else:
-                cutoff_score = valid_scores[seats - 1][1]
-                next_score = valid_scores[seats][1]
-                if cutoff_score == next_score:
-                    # Boundary tie for the last seat(s)
-                    has_tie = True
-                    tied_cand_ids = {item[0] for item in valid_scores if item[1] == cutoff_score}
-                    # Winners are candidates strictly above the boundary tie
-                    winners = [item[0] for item in valid_scores if item[1] > cutoff_score]
+        if is_uncontested and is_result_state:
+            # Uncontested positions: all approved candidates win automatically without contest
+            winners = list(candidates_map.keys())
+        else:
+            valid_scores = [item for item in sorted_scores if item[1] > 0]
+            if is_result_state and total_valid_ballots > 0 and valid_scores:
+                if len(valid_scores) <= seats:
+                    # All candidates with non-zero votes fit in available seats
+                    winners = [item[0] for item in valid_scores]
                 else:
-                    winners = [item[0] for item in valid_scores[:seats]]
+                    cutoff_score = valid_scores[seats - 1][1]
+                    next_score = valid_scores[seats][1]
+                    if cutoff_score == next_score:
+                        # Boundary tie for the last seat(s)
+                        has_tie = True
+                        tied_cand_ids = {item[0] for item in valid_scores if item[1] == cutoff_score}
+                        # Winners are candidates strictly above the boundary tie
+                        winners = [item[0] for item in valid_scores if item[1] > cutoff_score]
+                    else:
+                        winners = [item[0] for item in valid_scores[:seats]]
 
         for rank, (cand_id, score) in enumerate(sorted_scores, start=1):
             c_info = candidates_map.get(cand_id, {'name': 'Unknown', 'photo_url': ''})
@@ -122,8 +128,9 @@ class TallyService:
                 'name': c_info['name'],
                 'photo_url': c_info['photo_url'],
                 'score': score,
-                'rank': rank,
-                'is_elected': cand_id in winners,
+                'rank': 1 if is_uncontested else rank,
+                'is_elected': (cand_id in winners) or (is_uncontested and is_result_state),
+                'is_uncontested': is_uncontested,
                 'is_tie': cand_id in tied_cand_ids,
             })
 
@@ -135,6 +142,7 @@ class TallyService:
                 'score': boycott_score,
                 'rank': len(sorted_scores) + 1,
                 'is_elected': False,
+                'is_uncontested': False,
                 'is_tie': False,
             })
 
@@ -143,6 +151,7 @@ class TallyService:
             'title': position.title,
             'seats_available': seats,
             'has_tie': has_tie,
+            'is_uncontested': is_uncontested,
             'total_valid_ballots': total_valid_ballots,
             'winners': winners,
             'breakdown': breakdown

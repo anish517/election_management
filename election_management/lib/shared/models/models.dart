@@ -508,6 +508,7 @@ class PositionResult {
   final String title;
   final int seatsAvailable;
   final bool hasTie;
+  final bool isUncontested;
   final int totalValidBallots;
   final List<String> winners;
   final List<CandidateScore> breakdown;
@@ -517,6 +518,7 @@ class PositionResult {
     required this.title,
     this.seatsAvailable = 1,
     this.hasTie = false,
+    this.isUncontested = false,
     required this.totalValidBallots,
     required this.winners,
     required this.breakdown,
@@ -527,6 +529,7 @@ class PositionResult {
         title: json['title'] as String,
         seatsAvailable: json['seats_available'] as int? ?? 1,
         hasTie: json['has_tie'] as bool? ?? false,
+        isUncontested: json['is_uncontested'] as bool? ?? false,
         totalValidBallots: json['total_valid_ballots'] as int? ?? 0,
         winners: (json['winners'] as List<dynamic>?)
                 ?.map((w) => w as String)
@@ -546,6 +549,7 @@ class CandidateScore {
   final double score;
   final int rank;
   final bool isElected;
+  final bool isUncontested;
   final bool isTie;
 
   const CandidateScore({
@@ -555,6 +559,7 @@ class CandidateScore {
     required this.score,
     this.rank = 0,
     this.isElected = false,
+    this.isUncontested = false,
     this.isTie = false,
   });
 
@@ -565,6 +570,7 @@ class CandidateScore {
         score: double.tryParse(json['score']?.toString() ?? '0.0') ?? 0.0,
         rank: json['rank'] as int? ?? 0,
         isElected: json['is_elected'] as bool? ?? false,
+        isUncontested: json['is_uncontested'] as bool? ?? false,
         isTie: json['is_tie'] as bool? ?? false,
       );
 }

@@ -7,8 +7,10 @@ import '../../../core/providers/admin_providers.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/network/api_client.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/utils/download_helper.dart';
 import '../../voters/dialogs/file_voter_claim_dialog.dart';
+import '../../shared/digital_id_card_dialog.dart';
 import 'add_voter_dialog.dart';
 import 'edit_voter_dialog.dart';
 import 'import_members_dialog.dart';
@@ -128,11 +130,10 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
               ),
 
             // Top Header & Action Suite
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Column(
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 960;
+                final titleCol = Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
@@ -149,8 +150,9 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                       style: TextStyle(color: isDark ? Colors.white60 : AppColors.textMuted, fontSize: 13),
                     ),
                   ],
-                ),
-                Wrap(
+                );
+
+                final actionBtns = Wrap(
                   spacing: 10,
                   runSpacing: 10,
                   children: [
@@ -227,10 +229,46 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                       ),
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          final baseUrl = ApiConstants.baseUrl.replaceAll('/v1', '');
+                          final url = '$baseUrl/v1/elections/${widget.electionId}/voters/id_cards_bulk/';
+                          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                        },
+                        icon: const Icon(Icons.badge_rounded, size: 18, color: Color(0xFF10B981)),
+                        label: const Text('Batch ID Cards (PDF)'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF10B981),
+                          side: const BorderSide(color: Color(0xFF10B981)),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
                     ],
                   ],
-                ),
-              ],
+                );
+
+                if (isNarrow) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      titleCol,
+                      const SizedBox(height: 12),
+                      actionBtns,
+                    ],
+                  );
+                }
+
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(child: titleCol),
+                    const SizedBox(width: 16),
+                    Flexible(child: actionBtns),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 18),
 
@@ -416,7 +454,7 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
           Expanded(flex: 2, child: Text('Contact Phone', style: style)),
           Expanded(flex: 2, child: Text('Council / Reg No', style: style)),
           Expanded(flex: 2, child: Text('Citizenship No', style: style)),
-          SizedBox(width: 150, child: Text('Actions', style: style, textAlign: TextAlign.right)),
+          SizedBox(width: 180, child: Text('Actions', style: style, textAlign: TextAlign.right)),
         ],
       ),
     );
@@ -601,13 +639,39 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
             ),
           ),
           SizedBox(
-            width: 150,
+            width: 180,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 IconButton(
+                  icon: const Icon(Icons.badge_outlined, size: 18, color: Color(0xFF10B981)),
+                  tooltip: 'View / Print Voter ID Card',
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(),
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (_) => DigitalIdCardDialog(
+                        cardType: 'voter',
+                        fullName: fullName,
+                        idNumber: voterId.isNotEmpty ? voterId : (voter['id']?.toString() ?? ''),
+                        councilNumber: voter['council_number']?.toString(),
+                        phone: voter['phone']?.toString(),
+                        electionTitle: 'Official Voter Roll',
+                        electionId: widget.electionId,
+                        entityId: voter['id']?.toString() ?? '',
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(width: 4),
+                IconButton(
                   icon: const Icon(Icons.person_search_rounded, size: 18, color: AppColors.primaryLight),
                   tooltip: 'View Profile Dossier',
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(),
+                  visualDensity: VisualDensity.compact,
                   onPressed: () {
                     showModalBottomSheet(
                       context: context,
@@ -617,9 +681,13 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                     );
                   },
                 ),
+                const SizedBox(width: 4),
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, size: 18, color: Colors.indigo),
                   tooltip: 'Edit Voter',
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(),
+                  visualDensity: VisualDensity.compact,
                   onPressed: () {
                     showDialog(
                       context: context,
@@ -627,9 +695,13 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                     );
                   },
                 ),
+                const SizedBox(width: 4),
                 IconButton(
                   icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
                   tooltip: 'Delete Voter',
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(),
+                  visualDensity: VisualDensity.compact,
                   onPressed: () async {
                     final confirm = await showDialog<bool>(
                       context: context,

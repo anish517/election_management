@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -19,40 +19,22 @@ class VotingViewSet(viewsets.ViewSet):
     def _get_voter_roll(self, request, election_pk):
         try:
             election = Election.objects.get(id=election_pk, organization=request.user.organization)
-            user_email = request.user.email.strip().lower()
-            roll = VoterRoll.objects.filter(election=election, email__iexact=user_email).first()
-            if not roll:
-                from apps.candidates.models import Candidate
-                from apps.members.models import Member
-                # Check if user is a registered candidate in this election
-                cand = Candidate.objects.filter(position__election=election, email__iexact=user_email).first()
-                if cand:
-                    roll, _ = VoterRoll.objects.get_or_create(
-                        election=election,
-                        email=user_email,
-                        defaults={
-                            'first_name': cand.full_name,
-                            'phone': cand.contact_number or '',
-                            'is_eligible': True,
-                            'voter_id': f"CAND-{cand.id.hex[:6].upper()}",
-                        }
-                    )
-                else:
-                    # Check if user is a member of this organization
-                    member = Member.objects.filter(organization=election.organization, email__iexact=user_email).first()
-                    if member:
-                        roll, _ = VoterRoll.objects.get_or_create(
-                            election=election,
-                            email=user_email,
-                            defaults={
-                                'first_name': member.first_name,
-                                'last_name': member.last_name,
-                                'phone': member.phone,
-                                'is_eligible': member.is_eligible_to_vote,
-                                'voter_id': member.member_code or f"MEM-{member.id.hex[:6].upper()}",
-                            }
-                        )
-            return roll
+            user_email = request.user.email.strip().lower() if request.user.email else ''
+            user_phone = (getattr(request.user, 'phone', None) or '').strip()
+
+            from django.db.models import Q
+            qs = VoterRoll.objects.filter(election=election)
+            
+            filter_q = Q()
+            if user_email:
+                filter_q |= Q(email__iexact=user_email)
+            if user_phone:
+                filter_q |= Q(phone=user_phone)
+
+            if not filter_q:
+                return None
+
+            return qs.filter(filter_q).first()
         except Exception:
             return None
 
@@ -82,9 +64,20 @@ class VotingViewSet(viewsets.ViewSet):
 
         # Check voter roll and has_voted status
         roll = self._get_voter_roll(request, election_pk)
-        has_voted = roll.has_voted if roll else False
-        voter_id = roll.voter_id if roll else ''
-        voter_name = (f"{roll.first_name} {roll.last_name}".strip()) if roll else (request.user.full_name if hasattr(request.user, 'full_name') else request.user.email)
+        if not roll or not roll.is_eligible:
+            return Response({
+                'ballot': [],
+                'allow_boycott': False,
+                'is_secret_ballot': election.is_secret_ballot,
+                'not_eligible': True,
+                'not_eligible_reason': 'You are not enrolled in the certified voter roll for this election.' if not roll else (roll.ineligibility_reason or 'You are marked as ineligible to vote in this election.'),
+                'has_voted': False,
+                'voter_info': None,
+            })
+
+        has_voted = roll.has_voted
+        voter_id = roll.voter_id
+        voter_name = f"{roll.first_name} {roll.last_name}".strip() or request.user.email
 
         ballot_data = BallotService.generate_ballot(election)
         return Response({
@@ -173,7 +166,12 @@ class VoterRollViewSet(viewsets.ModelViewSet):
     """
     from apps.voting.serializers import VoterRollSerializer
     serializer_class = VoterRollSerializer
-    permission_classes = [IsAuthenticated] # Could be IsElectionOfficer or IsOrgAdmin for write
+
+    def get_permissions(self):
+        from rest_framework import permissions
+        if self.action in ['id_card', 'id_cards_bulk']:
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
         return VoterRoll.objects.filter(
@@ -574,6 +572,444 @@ class VoterRollViewSet(viewsets.ModelViewSet):
             'skipped': skipped,
             'total_processed': len(parsed_records),
         }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'], permission_classes=[permissions.AllowAny], authentication_classes=[])
+    def id_card(self, request, election_pk=None, pk=None):
+        """
+        GET /v1/elections/{election_id}/voters/{voter_id}/id_card/
+        Renders a printable, official Digital Voter ID Card (CR80 format, photo-free).
+        """
+        from django.http import HttpResponse
+        from apps.elections.models import Election
+
+        from django.shortcuts import get_object_or_404
+        try:
+            election = get_object_or_404(Election, id=election_pk)
+            voter = get_object_or_404(VoterRoll, pk=pk, election=election)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
+
+        org = election.organization
+        org_name = org.name if org else 'Election Management'
+        org_logo = election.logo_url or (org.logo_url if org else '')
+
+        qr_data = f"EMS-VOTER:{voter.voter_id}:{election.id}:{voter.email or voter.phone}"
+        qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=120x120&data={qr_data}"
+
+        html = f"""<!DOCTYPE html>
+<html lang="ne">
+<head>
+  <meta charset="UTF-8">
+  <title>Voter ID Card - {voter.full_name}</title>
+  <style>
+    @page {{
+      size: 85.6mm 54mm;
+      margin: 0;
+    }}
+    @media print {{
+      body {{ margin: 0; padding: 0; background: none; }}
+      .no-print {{ display: none !important; }}
+      .card-wrap {{ box-shadow: none !important; margin: 0 auto; page-break-after: always; }}
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      font-family: 'Segoe UI', 'Noto Sans Devanagari', -apple-system, sans-serif;
+      background: #F1F5F9;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px;
+      margin: 0;
+    }}
+    .action-bar {{
+      margin-bottom: 16px;
+      display: flex;
+      gap: 12px;
+    }}
+    .btn {{
+      background: #059669;
+      color: white;
+      border: none;
+      padding: 9px 18px;
+      border-radius: 6px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 13px;
+      box-shadow: 0 2px 6px rgba(5,150,105,0.3);
+    }}
+    .btn:hover {{ background: #047857; }}
+    .card-wrap {{
+      width: 85.6mm;
+      height: 54mm;
+      background: #FFFFFF;
+      background-image: radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.04) 0%, rgba(255,255,255,1) 70%);
+      border-radius: 8px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+      border: 1.5px solid #059669;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      padding: 7px 10px;
+    }}
+    .top-banner {{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1.5px solid #059669;
+      padding-bottom: 4px;
+    }}
+    .header-left {{
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }}
+    .header-logo {{
+      width: 30px;
+      height: 30px;
+      border-radius: 4px;
+      object-fit: contain;
+    }}
+    .org-title {{
+      font-size: 9.5px;
+      font-weight: 900;
+      color: #065F46;
+      line-height: 1.1;
+      text-transform: uppercase;
+      letter-spacing: 0.2px;
+    }}
+    .el-title {{
+      font-size: 8px;
+      font-weight: 700;
+      color: #1E293B;
+      line-height: 1.1;
+    }}
+    .badge-ribbon {{
+      background: linear-gradient(135deg, #059669, #047857);
+      color: #FFFFFF;
+      font-size: 7.5px;
+      font-weight: 900;
+      padding: 2.5px 6px;
+      border-radius: 4px;
+      letter-spacing: 0.4px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }}
+    .card-body {{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex: 1;
+      padding: 4px 0;
+    }}
+    .elector-info {{
+      flex: 1;
+    }}
+    .elector-name {{
+      font-size: 13.5px;
+      font-weight: 900;
+      color: #0F172A;
+      margin-bottom: 3px;
+      line-height: 1.2;
+    }}
+    .voter-id-pill {{
+      display: inline-block;
+      background: #ECFDF5;
+      color: #065F46;
+      border: 1px solid #A7F3D0;
+      border-radius: 4px;
+      font-size: 8.5px;
+      font-weight: 800;
+      padding: 1.5px 6px;
+      margin-bottom: 4px;
+    }}
+    .meta-grid {{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px 6px;
+      font-size: 7.5px;
+      color: #334155;
+    }}
+    .meta-item {{
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }}
+    .meta-label {{
+      font-weight: bold;
+      color: #64748B;
+    }}
+    .status-verified {{
+      font-size: 7.5px;
+      font-weight: 800;
+      color: #059669;
+      margin-top: 3px;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }}
+    .qr-container {{
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }}
+    .qr-code {{
+      width: 44px;
+      height: 44px;
+      border: 1px solid #CBD5E1;
+      border-radius: 4px;
+      padding: 1px;
+      background: white;
+    }}
+    .qr-text {{
+      font-size: 6px;
+      font-weight: bold;
+      color: #64748B;
+      margin-top: 2px;
+      letter-spacing: 0.3px;
+    }}
+    .card-footer {{
+      border-top: 1px dashed #CBD5E1;
+      padding-top: 3px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }}
+    .footer-stamp {{
+      font-size: 6.5px;
+      color: #64748B;
+      font-weight: 600;
+      line-height: 1.2;
+    }}
+    .officer-sign {{
+      text-align: right;
+      font-size: 6.5px;
+      color: #DC2626;
+      font-weight: 800;
+    }}
+    .officer-line {{
+      width: 60px;
+      border-top: 1px solid #DC2626;
+      margin-top: 1px;
+    }}
+  </style>
+</head>
+<body>
+  <div class="action-bar no-print">
+    <button class="btn" onclick="window.print()">🖨️ Print / Save PDF</button>
+    <button class="btn" style="background:#64748B;" onclick="window.close()">Close</button>
+  </div>
+
+  <div class="card-wrap">
+    <div class="top-banner">
+      <div class="header-left">
+        {f'<img src="{org_logo}" class="header-logo">' if org_logo else '<div style="font-size:20px;">🏛️</div>'}
+        <div>
+          <div class="org-title">{org_name}</div>
+          <div class="el-title">{election.title}</div>
+        </div>
+      </div>
+      <div class="badge-ribbon">VOTER ID<br><span style="font-size:6px;font-weight:normal;">मतदाता परिचय</span></div>
+    </div>
+
+    <div class="card-body">
+      <div class="elector-info">
+        <div class="elector-name">{voter.full_name}</div>
+        <div class="voter-id-pill">मतदाता नं (Voter ID): <b>{voter.voter_id}</b></div>
+        <div class="meta-grid">
+          {f'<div class="meta-item"><span class="meta-label">Council:</span> {voter.council_number}</div>' if voter.council_number else '<div class="meta-item"><span class="meta-label">Franchise:</span> Certified</div>'}
+          {f'<div class="meta-item"><span class="meta-label">Phone:</span> {voter.phone}</div>' if voter.phone else ''}
+          {f'<div class="meta-item"><span class="meta-label">Email:</span> {voter.email}</div>' if voter.email else ''}
+        </div>
+        <div class="status-verified">✓ Statutorily Enrolled & Eligible (योग्य मतदाता)</div>
+      </div>
+
+      <div class="qr-container">
+        <img src="{qr_url}" class="qr-code" alt="QR">
+        <div class="qr-text">EMS VERIFY TOKEN</div>
+      </div>
+    </div>
+
+    <div class="card-footer">
+      <div class="footer-stamp">
+        Election Management System • निर्वाचन आयोग
+      </div>
+      <div class="officer-sign">
+        Election Officer (निर्वाचन अधिकृत)
+        <div class="officer-line"></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>"""
+        return HttpResponse(html, content_type='text/html')
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.AllowAny], authentication_classes=[])
+    def id_cards_bulk(self, request, election_pk=None):
+        """
+        GET /v1/elections/{election_id}/voters/id_cards_bulk/
+        Renders a printable sheet of all certified voter ID cards (photo-free, professional).
+        """
+        from django.http import HttpResponse
+        from apps.elections.models import Election
+
+        from django.shortcuts import get_object_or_404
+        try:
+            election = get_object_or_404(Election, id=election_pk)
+            voters = VoterRoll.objects.filter(election=election, is_eligible=True).order_by('voter_id', 'id')
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
+
+        org = election.organization
+        org_name = org.name if org else 'Election Management'
+        org_logo = election.logo_url or (org.logo_url if org else '')
+
+        cards_html = ""
+        for v in voters:
+            qr_data = f"EMS-VOTER:{v.voter_id}:{election.id}:{v.email or v.phone}"
+            qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=120x120&data={qr_data}"
+            cards_html += f"""
+            <div class="card-wrap">
+              <div class="top-banner">
+                <div class="header-left">
+                  {f'<img src="{org_logo}" class="header-logo">' if org_logo else '<div style="font-size:18px;">🏛️</div>'}
+                  <div>
+                    <div class="org-title">{org_name}</div>
+                    <div class="el-title">{election.title}</div>
+                  </div>
+                </div>
+                <div class="badge-ribbon">VOTER ID<br><span style="font-size:5.5px;font-weight:normal;">मतदाता परिचय</span></div>
+              </div>
+
+              <div class="card-body">
+                <div class="elector-info">
+                  <div class="elector-name">{v.full_name}</div>
+                  <div class="voter-id-pill">मतदाता नं (Voter ID): <b>{v.voter_id}</b></div>
+                  <div class="meta-grid">
+                    {f'<div class="meta-item"><span class="meta-label">Council:</span> {v.council_number}</div>' if v.council_number else '<div class="meta-item"><span class="meta-label">Franchise:</span> Certified</div>'}
+                    {f'<div class="meta-item"><span class="meta-label">Phone:</span> {v.phone}</div>' if v.phone else ''}
+                    {f'<div class="meta-item"><span class="meta-label">Email:</span> {v.email}</div>' if v.email else ''}
+                  </div>
+                  <div class="status-verified">✓ Statutorily Enrolled & Eligible</div>
+                </div>
+
+                <div class="qr-container">
+                  <img src="{qr_url}" class="qr-code" alt="QR">
+                  <div class="qr-text">EMS VERIFY</div>
+                </div>
+              </div>
+
+              <div class="card-footer">
+                <div class="footer-stamp">Election Management System</div>
+                <div class="officer-sign">Election Officer (अधिकृत)<div class="officer-line"></div></div>
+              </div>
+            </div>
+            """
+
+        html = f"""<!DOCTYPE html>
+<html lang="ne">
+<head>
+  <meta charset="UTF-8">
+  <title>Batch Voter ID Cards - {election.title}</title>
+  <style>
+    @page {{
+      size: A4 portrait;
+      margin: 10mm;
+    }}
+    @media print {{
+      body {{ margin: 0; padding: 0; background: none; }}
+      .no-print {{ display: none !important; }}
+      .card-wrap {{ box-shadow: none !important; page-break-inside: avoid; }}
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      font-family: 'Segoe UI', 'Noto Sans Devanagari', -apple-system, sans-serif;
+      background: #F8FAFC;
+      padding: 20px;
+      margin: 0;
+    }}
+    .action-bar {{
+      margin-bottom: 20px;
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }}
+    .btn {{
+      background: #059669;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 14px;
+      box-shadow: 0 2px 6px rgba(5,150,105,0.3);
+    }}
+    .btn:hover {{ background: #047857; }}
+    .grid-container {{
+      display: grid;
+      grid-template-columns: repeat(2, 85.6mm);
+      gap: 8mm;
+      justify-content: center;
+    }}
+    .card-wrap {{
+      width: 85.6mm;
+      height: 54mm;
+      background: #FFFFFF;
+      background-image: radial-gradient(circle at 50% 50%, rgba(16, 185, 129, 0.04) 0%, rgba(255,255,255,1) 70%);
+      border-radius: 8px;
+      border: 1.5px solid #059669;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      padding: 6px 9px;
+      page-break-inside: avoid;
+    }}
+    .top-banner {{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1.5px solid #059669;
+      padding-bottom: 3px;
+    }}
+    .header-left {{ display: flex; align-items: center; gap: 6px; }}
+    .header-logo {{ width: 26px; height: 26px; border-radius: 4px; object-fit: contain; }}
+    .org-title {{ font-size: 9px; font-weight: 900; color: #065F46; line-height: 1.1; text-transform: uppercase; }}
+    .el-title {{ font-size: 7.5px; font-weight: 700; color: #1E293B; line-height: 1.1; }}
+    .badge-ribbon {{ background: linear-gradient(135deg, #059669, #047857); color: white; font-size: 6.5px; font-weight: 900; padding: 2px 5px; border-radius: 3px; }}
+    .card-body {{ display: flex; align-items: center; justify-content: space-between; gap: 6px; flex: 1; padding: 3px 0; }}
+    .elector-info {{ flex: 1; }}
+    .elector-name {{ font-size: 12px; font-weight: 900; color: #0F172A; margin-bottom: 2px; }}
+    .voter-id-pill {{ display: inline-block; background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; border-radius: 3px; font-size: 8px; font-weight: 800; padding: 1px 5px; margin-bottom: 3px; }}
+    .meta-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 1.5px 4px; font-size: 7px; color: #334155; }}
+    .meta-item {{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+    .meta-label {{ font-weight: bold; color: #64748B; }}
+    .status-verified {{ font-size: 7px; font-weight: 800; color: #059669; margin-top: 2px; }}
+    .qr-container {{ display: flex; flex-direction: column; align-items: center; text-align: center; }}
+    .qr-code {{ width: 38px; height: 38px; border: 1px solid #CBD5E1; border-radius: 3px; padding: 1px; background: white; }}
+    .qr-text {{ font-size: 5.5px; font-weight: bold; color: #64748B; margin-top: 1px; }}
+    .card-footer {{ border-top: 1px dashed #CBD5E1; padding-top: 2px; display: flex; justify-content: space-between; align-items: flex-end; }}
+    .footer-stamp {{ font-size: 6px; color: #64748B; }}
+    .officer-sign {{ text-align: right; font-size: 6px; color: #DC2626; font-weight: 800; }}
+    .officer-line {{ width: 50px; border-top: 1px solid #DC2626; margin-top: 1px; }}
+  </style>
+</head>
+<body>
+  <div class="action-bar no-print">
+    <button class="btn" onclick="window.print()">🖨️ Print All Cards ({len(voters)} Voters)</button>
+  </div>
+  <div class="grid-container">
+    {cards_html}
+  </div>
+</body>
+</html>"""
+        return HttpResponse(html, content_type='text/html')
 
 
 class VotingHistoryView(viewsets.ViewSet):

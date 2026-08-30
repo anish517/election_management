@@ -12,7 +12,13 @@ class BallotService:
     def generate_ballot(election):
         """Returns the fully structured ballot for rendering."""
         positions = election.positions.all().order_by('result_order', 'id')
-        return BallotPositionSerializer(positions, many=True).data
+        data = BallotPositionSerializer(positions, many=True).data
+        
+        # If show_uncontested_on_ballot is False, exclude uncontested positions from voting ballots
+        if not getattr(election, 'show_uncontested_on_ballot', False):
+            data = [p for p in data if not p.get('is_uncontested', False)]
+            
+        return data
 
     @staticmethod
     def start_session(voter_roll):

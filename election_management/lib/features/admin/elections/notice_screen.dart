@@ -901,6 +901,15 @@ class _NoticeDialogState extends ConsumerState<_NoticeDialog> {
                         label: const Text('📊 Auto-Insert Results Table (नतिजा तालिका सहित)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF065F46))),
                         onPressed: _importResultsTable,
                       ),
+                      ActionChip(
+                        avatar: const Icon(Icons.verified_rounded, size: 16, color: Color(0xFF0D9488)),
+                        backgroundColor: const Color(0xFF0D9488).withValues(alpha: 0.12),
+                        label: const Text('★ Uncontested Wins (निर्विरोध घोषणा)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF0F766E))),
+                        onPressed: () => _applyTemplate(
+                          'उम्मेदवार निर्विरोध निर्वाचित घोषणा सम्बन्धी आधिकारिक सूचना',
+                          'यस संस्थाको निर्वाचन कार्यतालिका अनुसार तोकिएको समयसीमाभित्र दर्ता तथा प्रमाणित उम्मेदवारीहरूको छानविन गर्दा तोकिएका पदहरूमा आवश्यक संख्या बराबर मात्र उम्मेदवारी कायम हुन आएकाले निर्वाचन निर्देशिका अनुसार सम्बन्धित उम्मेदवारहरूलाई निर्विरोध निर्वाचित घोषणा गरिएको छ।\n\nनिर्विरोध निर्वाचित हुनुभएका सम्पूर्ण पदाधिकारी तथा सदस्यहरूलाई हार्दिक बधाई ज्ञापन गर्दछौं।',
+                        ),
+                      ),
                       const SizedBox(width: 6),
                       ActionChip(
                         avatar: const Icon(Icons.how_to_vote_rounded, size: 16, color: Color(0xFF10B981)),

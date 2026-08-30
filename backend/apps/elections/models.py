@@ -119,6 +119,20 @@ class Election(TimestampedModel):
         help_text='SHA-256 of locked candidate list at voting-open time (doc: 16-Ballot-Builder.md §16.7)'
     )
 
+    # Uncontested ("Nirbirod" / निर्विरोध) display flags
+    show_uncontested_on_notice = models.BooleanField(
+        default=True,
+        help_text='Publish uncontested winners on statutory notice board'
+    )
+    show_uncontested_on_ballot = models.BooleanField(
+        default=False,
+        help_text='Include uncontested positions on the voting ballot paper'
+    )
+    show_uncontested_in_results = models.BooleanField(
+        default=True,
+        help_text='Show uncontested wins in the final results table'
+    )
+
     created_by = models.ForeignKey(
         'users.User', on_delete=models.SET_NULL,
         null=True, related_name='elections_created'

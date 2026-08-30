@@ -10,6 +10,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/network/api_constants.dart';
 import '../../shared/models/models.dart';
 import '../candidates/candidate_profile_sheet.dart';
+import '../shared/digital_id_card_dialog.dart';
 import 'ballot_l10n.dart';
 
 class BallotScreen extends ConsumerStatefulWidget {
@@ -937,8 +938,36 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (_) => DigitalIdCardDialog(
+                                  cardType: 'voter',
+                                  fullName: voterName.isNotEmpty ? voterName : 'Authenticated Voter',
+                                  idNumber: voterId.isNotEmpty ? voterId : 'VOTER-1',
+                                  electionTitle: electionName.isNotEmpty ? electionName : 'Official Election',
+                                  orgName: orgName,
+                                  electionId: widget.electionId,
+                                  entityId: voterId.isNotEmpty ? voterId : widget.electionId,
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.badge_outlined, size: 14, color: Color(0xFF10B981)),
+                            label: const Text('Digital ID Card (परिचयपत्र)'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF10B981),
+                              side: const BorderSide(color: Color(0xFF10B981)),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
                           if (allowBoycott) ...[
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 8),
                             OutlinedButton.icon(
                               onPressed: () => _confirmBoycottAll(context, positions),
                               icon: const Icon(Icons.block_rounded, size: 13, color: Colors.deepOrange),

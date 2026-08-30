@@ -8,6 +8,7 @@ class CandidateResult {
   final double score;
   final int rank;
   final bool isElected;
+  final bool isUncontested;
   final bool isTie;
 
   CandidateResult({
@@ -16,6 +17,7 @@ class CandidateResult {
     required this.score,
     this.rank = 0,
     this.isElected = false,
+    this.isUncontested = false,
     this.isTie = false,
   });
 
@@ -26,6 +28,7 @@ class CandidateResult {
       score: (json['score'] as num).toDouble(),
       rank: json['rank'] as int? ?? 0,
       isElected: json['is_elected'] as bool? ?? false,
+      isUncontested: json['is_uncontested'] as bool? ?? false,
       isTie: json['is_tie'] as bool? ?? false,
     );
   }
@@ -36,6 +39,7 @@ class PositionResult {
   final String title;
   final int seatsAvailable;
   final bool hasTie;
+  final bool isUncontested;
   final int totalValidBallots;
   final List<String> winners;
   final List<CandidateResult> breakdown;
@@ -45,6 +49,7 @@ class PositionResult {
     required this.title,
     this.seatsAvailable = 1,
     this.hasTie = false,
+    this.isUncontested = false,
     required this.totalValidBallots,
     required this.winners,
     required this.breakdown,
@@ -56,6 +61,7 @@ class PositionResult {
       title: json['title'],
       seatsAvailable: json['seats_available'] as int? ?? 1,
       hasTie: json['has_tie'] as bool? ?? false,
+      isUncontested: json['is_uncontested'] as bool? ?? false,
       totalValidBallots: json['total_valid_ballots'] as int,
       winners: List<String>.from(json['winners'] ?? []),
       breakdown: (json['breakdown'] as List)

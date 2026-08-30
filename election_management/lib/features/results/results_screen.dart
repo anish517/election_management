@@ -639,52 +639,67 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
   Widget _buildResultsTable(BuildContext context, PositionResult posResult, bool isLive, bool isDark) {
     final totalVotes = posResult.totalValidBallots;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 72),
-        child: DataTable(
-          headingRowColor: WidgetStateProperty.all(
-            isDark ? AppColors.surfaceVariant.withValues(alpha: 0.5) : const Color(0xFFF1F5F9),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 720;
+        final tableWidth = isNarrow ? 760.0 : constraints.maxWidth;
+
+        final headerRow = Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.6) : const Color(0xFFF1F5F9),
+            border: Border(
+              bottom: BorderSide(color: isDark ? AppColors.surfaceVariant : const Color(0xFFE2E8F0), width: 1.2),
+            ),
           ),
-          columnSpacing: 20,
-          horizontalMargin: 16,
-          columns: const [
-            DataColumn(label: Text('Position (पद)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5))),
-            DataColumn(label: Text('Seats (सिट)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5))),
-            DataColumn(label: Text('Candidate Name (उम्मेदवार)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5))),
-            DataColumn(label: Text('Votes Received (प्राप्त मत)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5))),
-            DataColumn(label: Text('Status / Result (नतिजा)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5))),
-          ],
-          rows: posResult.breakdown.asMap().entries.map((entry) {
-            final idx = entry.key;
-            final score = entry.value;
-            final isNoVoteOrBoycott = score.candidateId == '__BOYCOTT__' ||
-                score.candidateId == '__NO_VOTE__' ||
-                score.candidateId == 'NOTA' ||
-                score.name.toLowerCase().contains('no vote') ||
-                score.name.toLowerCase().contains('boycott');
+          child: const Row(
+            children: [
+              Expanded(flex: 18, child: Text('Position (पद)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5))),
+              Expanded(flex: 12, child: Text('Seats (सिट)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5))),
+              Expanded(flex: 30, child: Text('Candidate Name (उम्मेदवार)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5))),
+              Expanded(flex: 20, child: Text('Votes Received (प्राप्त मत)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5))),
+              Expanded(flex: 20, child: Text('Status / Result (नतिजा)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5))),
+            ],
+          ),
+        );
 
-            final isElected = !isLive && !isNoVoteOrBoycott && (posResult.winners.contains(score.candidateId) || score.isElected) && score.score > 0;
-            final isLeading = isLive && !isNoVoteOrBoycott && (posResult.winners.contains(score.candidateId) || score.isElected) && score.score > 0;
-            final isTie = score.isTie;
-            final pct = totalVotes > 0 ? (score.score / totalVotes * 100) : 0.0;
+        final dataRows = posResult.breakdown.asMap().entries.map((entry) {
+          final idx = entry.key;
+          final score = entry.value;
+          final isNoVoteOrBoycott = score.candidateId == '__BOYCOTT__' ||
+              score.candidateId == '__NO_VOTE__' ||
+              score.candidateId == 'NOTA' ||
+              score.name.toLowerCase().contains('no vote') ||
+              score.name.toLowerCase().contains('boycott');
 
-            Color? rowBg;
-            if (isElected) {
-              rowBg = const Color(0xFF10B981).withValues(alpha: isDark ? 0.15 : 0.08);
-            } else if (isTie) {
-              rowBg = Colors.amber.withValues(alpha: isDark ? 0.15 : 0.08);
-            } else if (isNoVoteOrBoycott) {
-              rowBg = const Color(0xFFD97706).withValues(alpha: isDark ? 0.08 : 0.04);
-            }
+          final isElected = !isLive && !isNoVoteOrBoycott && (posResult.winners.contains(score.candidateId) || score.isElected) && score.score > 0;
+          final isLeading = isLive && !isNoVoteOrBoycott && (posResult.winners.contains(score.candidateId) || score.isElected) && score.score > 0;
+          final isTie = score.isTie;
+          final pct = totalVotes > 0 ? (score.score / totalVotes * 100) : 0.0;
 
-            return DataRow(
-              color: rowBg != null ? WidgetStateProperty.all(rowBg) : null,
-              cells: [
+          Color? rowBg;
+          if (isElected) {
+            rowBg = const Color(0xFF10B981).withValues(alpha: isDark ? 0.15 : 0.08);
+          } else if (isTie) {
+            rowBg = Colors.amber.withValues(alpha: isDark ? 0.15 : 0.08);
+          } else if (isNoVoteOrBoycott) {
+            rowBg = const Color(0xFFD97706).withValues(alpha: isDark ? 0.08 : 0.04);
+          }
+
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: rowBg,
+              border: Border(
+                bottom: BorderSide(color: isDark ? AppColors.surfaceVariant : const Color(0xFFE2E8F0), width: 0.8),
+              ),
+            ),
+            child: Row(
+              children: [
                 // 1. Position Title (only display title text on first row for clean grouping)
-                DataCell(
-                  Text(
+                Expanded(
+                  flex: 18,
+                  child: Text(
                     idx == 0 ? posResult.title : '',
                     style: TextStyle(
                       fontWeight: idx == 0 ? FontWeight.bold : FontWeight.normal,
@@ -694,24 +709,29 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                   ),
                 ),
                 // 2. Position Seats
-                DataCell(
-                  idx == 0
-                      ? Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            '${posResult.seatsAvailable} Seat${posResult.seatsAvailable > 1 ? 's' : ''}',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.primaryLight),
+                Expanded(
+                  flex: 12,
+                  child: idx == 0
+                      ? Align(
+                          alignment: Alignment.centerLeft,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${posResult.seatsAvailable} Seat${posResult.seatsAvailable > 1 ? 's' : ''}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.primaryLight),
+                            ),
                           ),
                         )
                       : const SizedBox.shrink(),
                 ),
-                // 3. Candidate Name
-                DataCell(
-                  Row(
+                // 3. Candidate Name + Avatar
+                Expanded(
+                  flex: 30,
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
@@ -737,9 +757,10 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Flexible(
+                      Expanded(
                         child: Text(
                           score.name,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontWeight: isElected ? FontWeight.bold : (isNoVoteOrBoycott ? FontWeight.w500 : FontWeight.w600),
                             fontSize: 13,
@@ -752,9 +773,10 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                     ],
                   ),
                 ),
-                // 4. Votes Received
-                DataCell(
-                  Row(
+                // 4. Votes Received & %
+                Expanded(
+                  flex: 20,
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
@@ -773,15 +795,39 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                     ],
                   ),
                 ),
-                // 5. Status / Mandate Badge
-                DataCell(
-                  _buildStatusBadge(isElected, isLeading, isTie, isNoVoteOrBoycott, score.rank > 0 ? score.rank : (idx + 1)),
+                // 5. Status / Result Badge
+                Expanded(
+                  flex: 20,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: _buildStatusBadge(isElected, isLeading, isTie, isNoVoteOrBoycott, score.rank > 0 ? score.rank : (idx + 1)),
+                  ),
                 ),
               ],
-            );
-          }).toList(),
-        ),
-      ),
+            ),
+          );
+        }).toList();
+
+        final tableContent = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            headerRow,
+            ...dataRows,
+          ],
+        );
+
+        if (isNarrow) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: tableWidth,
+              child: tableContent,
+            ),
+          );
+        }
+
+        return tableContent;
+      },
     );
   }
 

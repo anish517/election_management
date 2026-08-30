@@ -33,34 +33,95 @@ class BallotL10n {
     return n.toString();
   }
 
-  // Common position designation dictionary
-  static final Map<String, String> _designationTranslations = {
+  // Comprehensive bidirectional position designation dictionary
+  static final Map<String, String> _enToNeDesignations = {
     'president': 'अध्यक्ष',
     'vice president': 'उपाध्यक्ष',
+    'vice-president': 'उपाध्यक्ष',
     'senior vice president': 'वरिष्ठ उपाध्यक्ष',
+    'senior vice-president': 'वरिष्ठ उपाध्यक्ष',
+    'first vice president': 'प्रथम उपाध्यक्ष',
+    'second vice president': 'द्वितीय उपाध्यक्ष',
     'general secretary': 'महासचिव',
     'deputy general secretary': 'उप-महासचिव',
+    'assistant general secretary': 'सहायक महासचिव',
     'secretary': 'सचिव',
     'joint secretary': 'सह-सचिव',
+    'joint-secretary': 'सह-सचिव',
+    'assistant secretary': 'सहायक सचिव',
     'treasurer': 'कोषाध्यक्ष',
     'joint treasurer': 'सह-कोषाध्यक्ष',
+    'joint-treasurer': 'सह-कोषाध्यक्ष',
+    'co-treasurer': 'सह-कोषाध्यक्ष',
+    'deputy treasurer': 'उप-कोषाध्यक्ष',
     'executive member': 'कार्यकारिणी सदस्य',
+    'central executive member': 'केन्द्रीय कार्यकारिणी सदस्य',
     'central committee member': 'केन्द्रीय सदस्य',
+    'committee member': 'समिति सदस्य',
     'member': 'सदस्य',
+    'general member': 'साधारण सदस्य',
     'board member': 'सञ्चालक समिति सदस्य',
+    'board of directors': 'सञ्चालक समिति',
     'auditor': 'लेखा परीक्षक',
+    'internal auditor': 'आन्तरिक लेखा परीक्षक',
     'chairperson': 'सभापति',
+    'chairman': 'अध्यक्ष',
+    'chair': 'अध्यक्ष',
     'vice chairperson': 'उपसभापति',
+    'vice chairman': 'उपाध्यक्ष',
+    'coordinator': 'संयोजक',
+    'co-coordinator': 'सह-संयोजक',
+    'spokesperson': 'प्रवक्ता',
+    'legal advisor': 'कानूनी सल्लाहकार',
+    'advisor': 'सल्लाहकार',
+  };
+
+  static final Map<String, String> _neToEnDesignations = {
+    'अध्यक्ष': 'President',
+    'उपाध्यक्ष': 'Vice President',
+    'वरिष्ठ उपाध्यक्ष': 'Senior Vice President',
+    'महासचिव': 'General Secretary',
+    'उप-महासचिव': 'Deputy General Secretary',
+    'सचिव': 'Secretary',
+    'सह-सचिव': 'Joint Secretary',
+    'कोषाध्यक्ष': 'Treasurer',
+    'सह-कोषाध्यक्ष': 'Joint Treasurer',
+    'कार्यकारिणी सदस्य': 'Executive Member',
+    'केन्द्रीय सदस्य': 'Central Committee Member',
+    'सदस्य': 'Member',
+    'सञ्चालक समिति सदस्य': 'Board Member',
+    'लेखा परीक्षक': 'Auditor',
+    'सभापति': 'Chairperson',
+    'उपसभापति': 'Vice Chairperson',
+    'संयोजक': 'Coordinator',
+    'सह-संयोजक': 'Co-Coordinator',
+    'प्रवक्ता': 'Spokesperson',
   };
 
   String translatePositionTitle(String title) {
-    final lower = title.trim().toLowerCase();
-    final nepaliTitle = _designationTranslations[lower];
-    if (nepaliTitle == null) return title;
+    final clean = title.trim();
+    if (clean.isEmpty) return clean;
 
-    if (isEnglish) return title;
-    if (isNepali) return nepaliTitle;
-    return '$title ($nepaliTitle)';
+    final lower = clean.toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+
+    // Check English -> Nepali
+    if (_enToNeDesignations.containsKey(lower)) {
+      final nepaliTitle = _enToNeDesignations[lower]!;
+      if (isEnglish) return clean;
+      if (isNepali) return nepaliTitle;
+      return '$clean ($nepaliTitle)';
+    }
+
+    // Check Nepali -> English
+    if (_neToEnDesignations.containsKey(clean)) {
+      final englishTitle = _neToEnDesignations[clean]!;
+      if (isEnglish) return englishTitle;
+      if (isNepali) return clean;
+      return '$clean ($englishTitle)';
+    }
+
+    // If custom or unlisted title
+    return clean;
   }
 
   // Header & AppBar

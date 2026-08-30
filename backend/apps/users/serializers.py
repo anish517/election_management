@@ -27,10 +27,10 @@ class RegisterSerializer(serializers.Serializer):
     council_number = serializers.CharField(max_length=100, required=False, allow_blank=True, default='')
     org_email = serializers.EmailField(required=False, allow_blank=True, default='')
     org_phone = serializers.CharField(max_length=30, required=False, allow_blank=True, default='')
-    website = serializers.URLField(required=False, allow_blank=True, default='')
+    website = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
     address = serializers.CharField(required=False, allow_blank=True, default='')
-    logo_url = serializers.URLField(required=False, allow_blank=True, default='')
-    cover_image_url = serializers.URLField(required=False, allow_blank=True, default='')
+    logo_url = serializers.CharField(required=False, allow_blank=True, default='')
+    cover_image_url = serializers.CharField(required=False, allow_blank=True, default='')
 
     # Bank Details (all optional)
     bank_name = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
@@ -38,7 +38,7 @@ class RegisterSerializer(serializers.Serializer):
     bank_account_number = serializers.CharField(max_length=50, required=False, allow_blank=True, default='')
     bank_account_name = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
     bank_swift_code = serializers.CharField(max_length=20, required=False, allow_blank=True, default='')
-    bank_qr_url = serializers.URLField(required=False, allow_blank=True, default='')
+    bank_qr_url = serializers.CharField(required=False, allow_blank=True, default='')
 
     # Type-specific metadata (optional JSON)
     type_metadata = serializers.DictField(required=False, default=dict)

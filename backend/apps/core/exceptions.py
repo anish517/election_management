@@ -58,8 +58,17 @@ def _get_error_message(response):
         if 'non_field_errors' in data and data['non_field_errors']:
             err = data['non_field_errors']
             return err[0] if isinstance(err, list) else str(err)
-        if 'message' in data:
+        if 'message' in data and data['message'] != 'An error occurred.':
             return str(data['message'])
+        # Fall back to first field error
+        for key, val in data.items():
+            if key not in ('detail', 'non_field_errors', 'message'):
+                if isinstance(val, list) and val:
+                    first_err = str(val[0])
+                    # If the error doesn't already contain the field name, prefix it
+                    return first_err
+                elif isinstance(val, str) and val:
+                    return val
     elif isinstance(data, list) and data:
         return data[0] if isinstance(data[0], str) else str(data[0])
     return 'An error occurred.'

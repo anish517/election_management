@@ -382,11 +382,36 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           typeMetadata: meta,
         );
 
-    if (mounted)
+    if (mounted) {
       setState(() {
         _isLoading = false;
         _error = error;
       });
+
+      if (error != null) {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            0,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutCubic,
+          );
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white, size: 18),
+                const SizedBox(width: 10),
+                Expanded(child: Text(error)),
+              ],
+            ),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
   }
 
   // ---- ORG TYPE choices ----

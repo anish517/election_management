@@ -27,11 +27,11 @@ class _VoterTurnoutScreenState extends ConsumerState<VoterTurnoutScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Voter Turnout & Telemetry', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            Text('प्रत्यक्ष मतदान सहभागिता तथा विवरण', style: TextStyle(fontSize: 11, color: Colors.white70)),
+            const Text('Voter Turnout & Telemetry', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text('प्रत्यक्ष मतदान सहभागिता तथा विवरण', style: TextStyle(fontSize: 11, color: Theme.of(context).appBarTheme.foregroundColor?.withValues(alpha: 0.65) ?? Colors.white70)),
           ],
         ),
         actions: [

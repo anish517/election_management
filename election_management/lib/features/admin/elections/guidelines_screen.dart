@@ -186,11 +186,11 @@ class _GuidelinesScreenState extends ConsumerState<GuidelinesScreen> {
       return Scaffold(
         backgroundColor: isDark ? AppColors.background : const Color(0xFFF8FAFC),
         appBar: AppBar(
-          title: const Column(
+          title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Election Guidelines (निर्देशिका)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              Text('आधिकारिक आचारसंहिता तथा नियमहरू', style: TextStyle(fontSize: 11, color: Colors.white70)),
+              const Text('Election Guidelines (निर्देशिका)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              Text('आधिकारिक आचारसंहिता तथा नियमहरू', style: TextStyle(fontSize: 11, color: Theme.of(context).appBarTheme.foregroundColor?.withValues(alpha: 0.65) ?? Colors.white70)),
             ],
           ),
           leading: IconButton(

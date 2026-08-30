@@ -80,11 +80,11 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
     return Scaffold(
       backgroundColor: isDark ? AppColors.background : const Color(0xFFF8F9FA),
       appBar: AppBar(
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Voter Roll (मतदाता नामावली)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            Text('Electoral roll directory & franchise administration', style: TextStyle(fontSize: 11, color: Colors.white70)),
+            const Text('Voter Roll (मतदाता नामावली)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text('Electoral roll directory & franchise administration', style: TextStyle(fontSize: 11, color: Theme.of(context).appBarTheme.foregroundColor?.withValues(alpha: 0.65) ?? Colors.white70)),
           ],
         ),
         leading: IconButton(

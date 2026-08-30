@@ -260,11 +260,11 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
       return Scaffold(
         backgroundColor: isDark ? AppColors.background : const Color(0xFFF8FAFC),
         appBar: AppBar(
-          title: const Column(
+          title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Official Election Notices (सूचनाहरू)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              Text('आधिकारिक लेटरहेड तथा सूचना पाटी', style: TextStyle(fontSize: 11, color: Colors.white70)),
+              const Text('Official Election Notices (सूचनाहरू)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              Text('आधिकारिक लेटरहेड तथा सूचना पाटी', style: TextStyle(fontSize: 11, color: Theme.of(context).appBarTheme.foregroundColor?.withValues(alpha: 0.65) ?? Colors.white70)),
             ],
           ),
           leading: IconButton(

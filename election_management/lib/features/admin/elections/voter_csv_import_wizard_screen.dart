@@ -232,11 +232,11 @@ class _VoterCsvImportWizardScreenState extends ConsumerState<VoterCsvImportWizar
 
     return Scaffold(
       appBar: AppBar(
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Bulk CSV Voter Roll Importer', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            Text('मतदाता सूची CSV आयात विगार्ड', style: TextStyle(fontSize: 11, color: Colors.white70)),
+            const Text('Bulk CSV Voter Roll Importer', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text('मतदाता सूची CSV आयात विगार्ड', style: TextStyle(fontSize: 11, color: Theme.of(context).appBarTheme.foregroundColor?.withValues(alpha: 0.65) ?? Colors.white70)),
           ],
         ),
         leading: IconButton(

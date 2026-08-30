@@ -366,11 +366,17 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Nominate Candidate', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            Text('उम्मेदवार मनोनयन तथा दर्ता', style: TextStyle(fontSize: 11, color: Colors.white70)),
+            const Text('Nominate Candidate', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(
+              'उम्मेदवार मनोनयन तथा दर्ता',
+              style: TextStyle(
+                fontSize: 11,
+                color: (Theme.of(context).appBarTheme.foregroundColor ?? (isDark ? Colors.white : AppColors.primary)).withValues(alpha: 0.65),
+              ),
+            ),
           ],
         ),
         leading: IconButton(

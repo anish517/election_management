@@ -96,7 +96,7 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
             ),
             Text(
               isLive ? 'प्रत्यक्ष मतगणना तथा नतिजा' : 'अन्तिम निर्वाचन नतिजा तथा विवरण',
-              style: const TextStyle(fontSize: 11, color: Colors.white70),
+              style: TextStyle(fontSize: 11, color: Theme.of(context).appBarTheme.foregroundColor?.withValues(alpha: 0.65) ?? Colors.white70),
             ),
           ],
         ),

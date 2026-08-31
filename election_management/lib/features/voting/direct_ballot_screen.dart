@@ -446,9 +446,24 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
           ),
         ),
         error: (err, stack) {
-          final isUsedOrExpired = err.toString().contains('410') ||
-              err.toString().toLowerCase().contains('used') ||
-              err.toString().toLowerCase().contains('expired');
+          final errStr = err.toString().toLowerCase();
+          final isNotFound = errStr.contains('404') || errStr.contains('not found');
+          final isUsedOrExpired = errStr.contains('410') ||
+              errStr.contains('used') ||
+              errStr.contains('expired');
+
+          String displayTitle = 'Unable to Open Ballot';
+          String displayMsg;
+
+          if (isUsedOrExpired) {
+            displayTitle = 'Single-Use Link Deactivated';
+            displayMsg = 'This single-use ballot link has already been used or has expired. To maintain electoral integrity, each ballot token can only be cast once.';
+          } else if (isNotFound) {
+            displayTitle = 'Invalid Ballot Token';
+            displayMsg = 'This single-use ballot link is invalid or was not found. Please request a fresh verification link from the election overview page.';
+          } else {
+            displayMsg = 'Unable to securely connect to the election server. Please check your network connection and try again.';
+          }
 
           return Center(
             child: ConstrainedBox(
@@ -465,26 +480,24 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: isUsedOrExpired ? Colors.amber.withValues(alpha: 0.12) : Colors.red.withValues(alpha: 0.12),
+                          color: (isUsedOrExpired || isNotFound) ? Colors.amber.withValues(alpha: 0.12) : Colors.red.withValues(alpha: 0.12),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          isUsedOrExpired ? Icons.lock_clock_rounded : Icons.error_outline_rounded,
-                          color: isUsedOrExpired ? Colors.amber.shade800 : Colors.red,
+                          (isUsedOrExpired || isNotFound) ? Icons.lock_clock_rounded : Icons.error_outline_rounded,
+                          color: (isUsedOrExpired || isNotFound) ? Colors.amber.shade800 : Colors.red,
                           size: 48,
                         ),
                       ),
                       const SizedBox(height: 18),
                       Text(
-                        isUsedOrExpired ? 'Single-Use Link Deactivated' : 'Unable to Open Ballot',
+                        displayTitle,
                         style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        isUsedOrExpired
-                            ? 'This single-use ballot link has already been used or has expired. To maintain electoral integrity, each ballot token can only be cast once.'
-                            : err.toString().replaceAll('Exception: ', ''),
+                        displayMsg,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 13.5,

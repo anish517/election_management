@@ -824,11 +824,11 @@ class ElectionDetailScreen extends ConsumerWidget {
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateResults, foregroundColor: Colors.white),
           ),
 
-        if (user?.canManageElections == true || election.isVenueElection)
+        if (user?.canManageElections == true && (election.isVenueElection || election.isHybrid))
           ElevatedButton.icon(
             onPressed: () => context.pushNamed('venue-kiosk', pathParameters: {'electionId': electionId}),
             icon: const Icon(Icons.storefront_rounded),
-            label: const Text('Launch Voting Kiosk Mode (मतदान बुथ)'),
+            label: const Text('Launch Voting Kiosk Mode (मतदान बुथ सुरु)'),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.purple.shade700, foregroundColor: Colors.white),
           ),
 

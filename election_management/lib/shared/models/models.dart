@@ -182,8 +182,10 @@ class ElectionModel {
   bool get isOnlineElection => electionMethod == 'online';
   bool get isVenueElection => electionMethod == 'venue';
   bool get isMobileAppOnly => isOnlineElection && onlineType == 'mobile_app';
+  bool get isAppBasedOnly => isMobileAppOnly;
   bool get isWebBasedOnly => isOnlineElection && onlineType == 'web_based';
   bool get isHybridDelivery => isOnlineElection && onlineType == 'hybrid';
+  bool get isHybrid => isHybridDelivery;
 }
 
 

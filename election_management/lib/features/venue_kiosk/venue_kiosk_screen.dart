@@ -3,6 +3,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:nepali_date_picker/nepali_date_picker.dart';
+import 'package:intl/intl.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_constants.dart';
 import '../../core/providers/app_providers.dart';
@@ -867,179 +869,466 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
     );
   }
 
-  // 4. Fullscreen Ballot Casting
+  // 4. Fullscreen Official Ballot Casting (Matches BallotScreen aesthetic)
   Widget _buildBallotCastingView(ElectionModel election) {
-    return Card(
-      color: const Color(0xFF1E293B),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFF334155))),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            // Top Voter Banner
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0F172A),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF334155)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.person_rounded, color: AppColors.primaryLight, size: 20),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Voter: $_voterName',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(6)),
-                    child: const Text('BOOTH UNLOCKED', style: TextStyle(color: Color(0xFF34D399), fontWeight: FontWeight.bold, fontSize: 10)),
-                  ),
-                ],
-              ),
+    final now = DateTime.now();
+    final nepaliNow = now.toNepaliDateTime();
+    final nepaliDateStr = '${NepaliDateFormat('yyyy/MM/dd').format(nepaliNow)} BS';
+    final votingTime = DateFormat('hh:mm a').format(now);
+
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Official Red Stamp Header Banner
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E293B),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFFB91C1C).withValues(alpha: 0.5), width: 1.2),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 14, offset: const Offset(0, 4)),
+              ],
             ),
-            const SizedBox(height: 16),
-
-            // Scrollable Position List
-            Expanded(
-              child: ListView.separated(
-                itemCount: _ballotPositions.length,
-                separatorBuilder: (context, i) => const SizedBox(height: 20),
-                itemBuilder: (context, index) {
-                  final pos = _ballotPositions[index];
-                  final posId = pos['id'].toString();
-                  final title = pos['title'] as String? ?? 'Designation';
-                  final seats = pos['seats_available'] as int? ?? 1;
-                  final candidates = pos['candidates'] as List<dynamic>? ?? [];
-                  final isBoycotted = _boycottedPositions.contains(posId);
-                  final selectedList = _selectedCandidates[posId] ?? [];
-
-                  return Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0F172A),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: selectedList.isNotEmpty ? AppColors.primary : const Color(0xFF334155),
-                        width: selectedList.isNotEmpty ? 1.5 : 1,
-                      ),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF331317), Color(0xFF1E293B)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(17)),
+                    border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+                  ),
+                  child: Row(
+                    children: [
+                      SizedBox(width: 36, height: 36, child: CustomPaint(painter: const _KioskSwastikPainter(color: Color(0xFFB91C1C)))),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
                           children: [
-                            Expanded(
-                              child: Text(
-                                '$title (${seats > 1 ? "$seats Seats" : "1 Seat"})',
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2.5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFB91C1C).withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: const Color(0xFFB91C1C).withValues(alpha: 0.4)),
+                              ),
+                              child: const Text(
+                                'मतपत्र — OFFICIAL BALLOT',
+                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12.5, color: Color(0xFFFCA5A5), letterSpacing: 1.2),
                               ),
                             ),
-                            if (isBoycotted)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(6)),
-                                child: const Text('ABSTAINED', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 11)),
-                              ),
+                            const SizedBox(height: 4),
+                            Text(
+                              election.title,
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                              textAlign: TextAlign.center,
+                            ),
                           ],
                         ),
-                        const SizedBox(height: 12),
-                        const Divider(color: Color(0xFF334155), height: 1),
-                        const SizedBox(height: 12),
+                      ),
+                      const SizedBox(width: 14),
+                      SizedBox(width: 36, height: 36, child: CustomPaint(painter: const _KioskSwastikPainter(color: Color(0xFFB91C1C)))),
+                    ],
+                  ),
+                ),
 
-                        // Candidate List
-                        ...candidates.map((cand) {
-                          final cid = cand['id'].toString();
-                          final name = '${cand["first_name"]} ${cand["last_name"]}'.trim();
-                          final isSelected = selectedList.contains(cid);
-
-                          return InkWell(
-                            onTap: () => _toggleCandidate(posId, cid, seats),
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: isSelected ? AppColors.primary.withValues(alpha: 0.2) : const Color(0xFF1E293B),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: isSelected ? AppColors.primary : const Color(0xFF334155),
-                                  width: isSelected ? 2 : 1,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    seats == 1
-                                        ? (isSelected ? Icons.radio_button_checked : Icons.radio_button_off)
-                                        : (isSelected ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded),
-                                    color: isSelected ? AppColors.primaryLight : const Color(0xFF64748B),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      name,
-                                      style: TextStyle(
-                                        color: isSelected ? Colors.white : const Color(0xFFCBD5E1),
-                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                                        fontSize: 14.5,
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                // 4-Column Voter Info Strip
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(child: _buildKioskInfoTile('VOTER NAME (मतदाता)', _voterName.isNotEmpty ? _voterName : 'Authenticated Voter', Icons.person_rounded)),
+                          const SizedBox(width: 10),
+                          Expanded(child: _buildKioskInfoTile('VOTER ID (परिचयपत्र नं.)', _voterId.isNotEmpty ? _voterId : '—', Icons.badge_outlined)),
+                          const SizedBox(width: 10),
+                          Expanded(child: _buildKioskInfoTile('VOTING DATE (मिति)', nepaliDateStr, Icons.calendar_today_outlined)),
+                          const SizedBox(width: 10),
+                          Expanded(child: _buildKioskInfoTile('VOTING TIME (समय)', votingTime, Icons.access_time_rounded)),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.04),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.white10),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.verified_user_outlined, size: 15, color: Color(0xFF38BDF8)),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'End-to-End Cryptographically Sealed In-Person Kiosk Ballot • Station #1',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF94A3B8)),
                               ),
                             ),
-                          );
-                        }),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
 
-                        // Boycott Toggle
-                        if (_allowBoycott) ...[
-                          const SizedBox(height: 6),
-                          InkWell(
-                            onTap: () => _toggleBoycott(posId),
-                            borderRadius: BorderRadius.circular(8),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(isBoycotted ? Icons.check_circle_rounded : Icons.circle_outlined, size: 16, color: Colors.orange),
-                                  const SizedBox(width: 6),
-                                  const Text('Abstain / Boycott this position (रिक्त राख्नुहोस्)', style: TextStyle(color: Colors.orange, fontSize: 12.5)),
-                                ],
+          // Contests
+          ..._ballotPositions.map((pos) {
+            final posId = pos['id'].toString();
+            final title = pos['title'] as String? ?? 'Designation';
+            final seats = pos['seats_available'] as int? ?? 1;
+            final candidates = pos['candidates'] as List<dynamic>? ?? [];
+            final isBoycotted = _boycottedPositions.contains(posId);
+            final selectedList = _selectedCandidates[posId] ?? [];
+            final isComplete = selectedList.length == seats;
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFF334155)),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 12, offset: const Offset(0, 4)),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Position Header
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF0F172A),
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(19)),
+                      border: Border(bottom: BorderSide(color: Color(0xFF334155))),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.military_tech_rounded, color: AppColors.primaryLight, size: 22),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Colors.white),
                               ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Select up to $seats candidate(s) for this designation',
+                                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isBoycotted
+                                ? Colors.orange.withValues(alpha: 0.2)
+                                : (isComplete ? Colors.green.withValues(alpha: 0.2) : Colors.white10),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isBoycotted ? Colors.orange : (isComplete ? Colors.green : Colors.white24),
                             ),
                           ),
-                        ],
+                          child: Text(
+                            isBoycotted ? 'ABSTAINED' : '${selectedList.length}/$seats Selected',
+                            style: TextStyle(
+                              color: isBoycotted ? Colors.orange : (isComplete ? const Color(0xFF34D399) : Colors.white70),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 16),
+                  ),
 
-            // Submit Button
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton.icon(
-                onPressed: _isLoading ? null : _submitKioskBallot,
-                icon: _isLoading
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Icon(Icons.how_to_vote_rounded, size: 20),
-                label: const Text('Cast Official Secret Ballot', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.success,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                ),
+                  // Candidate Cards Grid
+                  Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final itemWidth = constraints.maxWidth > 700 ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth;
+                        return Wrap(
+                          spacing: 16,
+                          runSpacing: 16,
+                          children: candidates.asMap().entries.map((entry) {
+                            final idx = entry.key;
+                            final cand = entry.value;
+                            final cid = cand['id'].toString();
+                            final name = '${cand["name"] ?? cand["first_name"] ?? ""} ${cand["last_name"] ?? ""}'.trim();
+                            final manifesto = cand['manifesto'] as String? ?? '';
+                            final photoUrl = cand['photo_url'] as String? ?? '';
+                            final isSelected = selectedList.contains(cid);
+                            final letterBadge = String.fromCharCode(65 + (idx % 26));
+
+                            return SizedBox(
+                              width: itemWidth,
+                              child: InkWell(
+                                onTap: () => _toggleCandidate(posId, cid, seats),
+                                borderRadius: BorderRadius.circular(16),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? const Color(0xFFB91C1C).withValues(alpha: 0.15)
+                                        : const Color(0xFF0F172A),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: isSelected ? const Color(0xFFB91C1C) : const Color(0xFF334155),
+                                      width: isSelected ? 2 : 1,
+                                    ),
+                                    boxShadow: [
+                                      if (isSelected)
+                                        BoxShadow(color: const Color(0xFFB91C1C).withValues(alpha: 0.25), blurRadius: 10, offset: const Offset(0, 3)),
+                                    ],
+                                  ),
+                                  child: Stack(
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.all(16),
+                                        child: Row(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            // Letter Badge / Photo
+                                            Container(
+                                              width: 60,
+                                              height: 60,
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF1E293B),
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                              child: ClipRRect(
+                                                borderRadius: BorderRadius.circular(12),
+                                                child: photoUrl.isNotEmpty
+                                                    ? Image.network(
+                                                        ApiConstants.getFullImageUrl(photoUrl) ?? photoUrl,
+                                                        fit: BoxFit.cover,
+                                                        errorBuilder: (ctx, err, stack) => _buildKioskLetterAvatar(letterBadge),
+                                                      )
+                                                    : _buildKioskLetterAvatar(letterBadge),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 14),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    name.isNotEmpty ? name : 'Candidate $letterBadge',
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 15,
+                                                      color: isSelected ? const Color(0xFFFCA5A5) : Colors.white,
+                                                    ),
+                                                  ),
+                                                  if (manifesto.isNotEmpty) ...[
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      manifesto,
+                                                      maxLines: 2,
+                                                      overflow: TextOverflow.ellipsis,
+                                                      style: const TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8), height: 1.3),
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      // Stamp Indicator on Selection
+                                      Positioned(
+                                        top: 10,
+                                        right: 10,
+                                        child: isSelected
+                                            ? Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFFB91C1C).withValues(alpha: 0.2),
+                                                  borderRadius: BorderRadius.circular(8),
+                                                  border: Border.all(color: const Color(0xFFB91C1C), width: 1.5),
+                                                ),
+                                                child: const Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    SizedBox(
+                                                      width: 14,
+                                                      height: 14,
+                                                      child: CustomPaint(painter: _KioskSwastikPainter(color: Color(0xFFB91C1C))),
+                                                    ),
+                                                    SizedBox(width: 4),
+                                                    Text('छाप लगाइयो', style: TextStyle(color: Color(0xFFFCA5A5), fontSize: 10, fontWeight: FontWeight.bold)),
+                                                  ],
+                                                ),
+                                              )
+                                            : Container(
+                                                width: 22,
+                                                height: 22,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  border: Border.all(color: const Color(0xFF64748B), width: 1.5),
+                                                ),
+                                              ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      },
+                    ),
+                  ),
+
+                  // NOTA / Abstain Card
+                  if (_allowBoycott)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                      child: InkWell(
+                        onTap: () => _toggleBoycott(posId),
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: isBoycotted ? const Color(0xFFD97706).withValues(alpha: 0.15) : const Color(0xFF0F172A),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: isBoycotted ? const Color(0xFFD97706) : const Color(0xFF334155),
+                              width: isBoycotted ? 1.5 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: isBoycotted ? const Color(0xFFD97706) : Colors.grey.withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(Icons.do_not_disturb_alt_rounded, size: 18, color: isBoycotted ? Colors.white : Colors.grey),
+                              ),
+                              const SizedBox(width: 14),
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('No Vote / None of the Above (NOTA)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Colors.white)),
+                                    SizedBox(height: 2),
+                                    Text('I choose to abstain from casting a vote for this position.', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11.5)),
+                                  ],
+                                ),
+                              ),
+                              Checkbox(
+                                value: isBoycotted,
+                                activeColor: const Color(0xFFD97706),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                onChanged: (_) => _toggleBoycott(posId),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          }),
+
+          const SizedBox(height: 16),
+
+          // Submit Action Button
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: ElevatedButton.icon(
+              onPressed: _isLoading ? null : _submitKioskBallot,
+              icon: _isLoading
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Icon(Icons.how_to_vote_rounded, size: 22),
+              label: const Text('Review & Cast Official Ballot (मतपत्र समीक्षा एवं मतदान)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
             ),
-          ],
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKioskInfoTile(String label, String value, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F172A),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF334155)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: const Color(0xFFB91C1C).withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 16, color: const Color(0xFFFCA5A5)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: Color(0xFF94A3B8)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 2),
+                Text(value, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Colors.white), overflow: TextOverflow.ellipsis),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKioskLetterAvatar(String letter) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Center(
+        child: Text(
+          letter,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24),
         ),
       ),
     );
@@ -1162,3 +1451,35 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
     );
   }
 }
+
+class _KioskSwastikPainter extends CustomPainter {
+  final Color color;
+  const _KioskSwastikPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final double w = size.width;
+    final double h = size.height;
+    final double t = w / 3;
+    final double c = w / 3;
+
+    final path = Path();
+    path.addRect(Rect.fromLTWH(t, t, c, c));
+    path.addRect(Rect.fromLTWH(t, 0, c, t));
+    path.addRect(Rect.fromLTWH(t, h - t, c, t));
+    path.addRect(Rect.fromLTWH(0, t, t, c));
+    path.addRect(Rect.fromLTWH(w - t, t, t, c));
+    path.addRect(Rect.fromLTWH(w - t, 0, t, t));
+    path.addRect(Rect.fromLTWH(0, h - t, t, t));
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_KioskSwastikPainter old) => old.color != color;
+}
+

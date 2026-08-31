@@ -26,8 +26,8 @@ class BallotService:
         if voter_roll.has_voted:
             raise ValueError("Voter has already cast a ballot.")
             
-        # Revoke any old active sessions
-        VotingSession.objects.filter(voter_roll=voter_roll, is_used=False).delete()
+        # Revoke any old sessions for this voter roll
+        VotingSession.objects.filter(voter_roll=voter_roll).delete()
         
         session = VotingSession.objects.create(
             voter_roll=voter_roll,

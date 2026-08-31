@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -1878,9 +1879,19 @@ class _WebBallotRequestDialogState extends ConsumerState<_WebBallotRequestDialog
         _isLoading = false;
       });
     } catch (e) {
+      String msg = 'Failed to request verification code.';
+      if (e is DioException) {
+        if (e.response?.data is Map) {
+          msg = e.response!.data['error']?.toString() ?? e.response!.data['detail']?.toString() ?? msg;
+        } else if (e.response?.data is String && (e.response!.data as String).isNotEmpty) {
+          msg = e.response!.data as String;
+        }
+      } else {
+        msg = e.toString().replaceAll('Exception: ', '');
+      }
       setState(() {
         _isLoading = false;
-        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _errorMessage = msg;
       });
     }
   }
@@ -1913,9 +1924,19 @@ class _WebBallotRequestDialogState extends ConsumerState<_WebBallotRequestDialog
         _isLoading = false;
       });
     } catch (e) {
+      String msg = 'Invalid or expired verification code.';
+      if (e is DioException) {
+        if (e.response?.data is Map) {
+          msg = e.response!.data['error']?.toString() ?? e.response!.data['detail']?.toString() ?? msg;
+        } else if (e.response?.data is String && (e.response!.data as String).isNotEmpty) {
+          msg = e.response!.data as String;
+        }
+      } else {
+        msg = e.toString().replaceAll('Exception: ', '');
+      }
       setState(() {
         _isLoading = false;
-        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _errorMessage = msg;
       });
     }
   }

@@ -1603,6 +1603,12 @@ class KioskUnlockView(APIView):
         if not election_id or not identifier:
             return Response({'error': 'election_id and voter identifier are required.'}, status=400)
 
+        # Automatically parse standard EMS QR Code payloads: EMS-VOTER:<voter_id>:<election_id>:<email/phone>
+        if identifier.startswith('EMS-VOTER:'):
+            parts = identifier.split(':')
+            if len(parts) >= 2:
+                identifier = parts[1].strip()
+
         try:
             election = Election.objects.get(id=election_id)
         except Election.DoesNotExist:

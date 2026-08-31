@@ -40,6 +40,7 @@ dependencies:
   nepali_date_picker: ^6.0.2
   nepali_utils: ^3.0.8
   flutter_colorpicker: ^1.1.0
+  web: ^1.1.1
 
 dev_dependencies:
   flutter_test:

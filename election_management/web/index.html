@@ -35,6 +35,92 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- HTML5 QR Code Scanner Library for Web Live Webcam Scanning -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script>
+    window.startQrScanner = function(elementId, onSuccess, onError) {
+      if (!window.Html5Qrcode) {
+        if (onError) onError("Html5Qrcode library not loaded yet.");
+        return;
+      }
+      try {
+        if (window._currentQrScanner) {
+          window._currentQrScanner.stop().catch(function(){}).finally(function(){
+            window._currentQrScanner = null;
+            window._initAndStartScanner(elementId, onSuccess, onError);
+          });
+        } else {
+          window._initAndStartScanner(elementId, onSuccess, onError);
+        }
+      } catch (err) {
+        if (onError) onError(err.toString());
+      }
+    };
+
+    window._initAndStartScanner = function(elementId, onSuccess, onError, attempts) {
+      attempts = attempts || 0;
+      var el = document.getElementById(elementId);
+      if (!el) {
+        if (attempts < 60) {
+          setTimeout(function() {
+            window._initAndStartScanner(elementId, onSuccess, onError, attempts + 1);
+          }, 80);
+          return;
+        } else {
+          if (onError) onError("Camera container element not found. Please try again.");
+          return;
+        }
+      }
+
+      var html5QrCode = new Html5Qrcode(elementId);
+      window._currentQrScanner = html5QrCode;
+      html5QrCode.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 200, height: 200 }
+        },
+        function(decodedText, decodedResult) {
+          if (onSuccess) onSuccess(decodedText);
+        },
+        function(errorMessage) {
+          // per-frame ignore
+        }
+      ).catch(function(err) {
+        console.warn("Camera start failed, falling back to facingMode user or first camera:", err);
+        Html5Qrcode.getCameras().then(function(cameras) {
+          if (cameras && cameras.length) {
+            var cameraId = cameras[0].id;
+            html5QrCode.start(
+              cameraId,
+              { fps: 10, qrbox: { width: 220, height: 220 } },
+              function(decodedText) { if (onSuccess) onSuccess(decodedText); },
+              function(err) {}
+            ).catch(function(e) {
+              if (onError) onError("Camera access error: " + e.toString());
+            });
+          } else {
+            if (onError) onError("No cameras found on this device.");
+          }
+        }).catch(function(e) {
+          if (onError) onError("Camera permission denied or not available: " + e.toString());
+        });
+      });
+    };
+
+    window.stopQrScanner = function() {
+      if (window._currentQrScanner) {
+        var scanner = window._currentQrScanner;
+        window._currentQrScanner = null;
+        scanner.stop().then(function() {
+          scanner.clear();
+        }).catch(function(err) {
+          console.warn("Failed to stop QR scanner:", err);
+        });
+      }
+    };
+  </script>
 </head>
 <body>
   <!--

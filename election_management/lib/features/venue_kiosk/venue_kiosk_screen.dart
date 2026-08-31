@@ -10,6 +10,7 @@ import '../../core/network/api_constants.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/models.dart';
+import 'qr_scanner_view.dart';
 
 enum KioskStage {
   stationPin,       // Officer station unlock PIN
@@ -94,10 +95,15 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
   }
 
   Future<void> _checkInVoter() async {
-    final identifier = _voterIdController.text.trim();
+    var identifier = _voterIdController.text.trim();
     if (identifier.isEmpty) {
       setState(() => _errorMessage = 'Please enter Voter ID or Membership number');
       return;
+    }
+
+    if (identifier.startsWith('EMS-VOTER:')) {
+      final parts = identifier.split(':');
+      if (parts.length >= 2) identifier = parts[1].trim();
     }
 
     setState(() {
@@ -418,76 +424,95 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
 
   void _showQrScannerModal() {
     final qrInputController = TextEditingController();
+    String? cameraError;
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFF334155))),
-        title: const Row(
-          children: [
-            Icon(Icons.qr_code_scanner_rounded, color: Color(0xFFD8B4FE)),
-            SizedBox(width: 10),
-            Text('Scan Voter QR Code', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              height: 160,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: const Color(0xFF0F172A),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.5)),
-              ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF1E293B),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFF334155))),
+            title: const Row(
+              children: [
+                Icon(Icons.qr_code_scanner_rounded, color: Color(0xFFD8B4FE)),
+                SizedBox(width: 10),
+                Text('Live Camera QR Scanner', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.qr_code_2_rounded, size: 64, color: Color(0xFFD8B4FE)),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Position QR Code under camera scanner',
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
+                  // Live Camera Stream Container
+                  Container(
+                    height: 240,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.5)),
+                    ),
+                    child: buildLiveQrScanner(
+                      onScanned: (decodedCode) {
+                        Navigator.pop(ctx);
+                        _voterIdController.text = decodedCode;
+                        _checkInVoter();
+                      },
+                      onError: (err) {
+                        setModalState(() {
+                          cameraError = err;
+                        });
+                      },
+                    ),
+                  ),
+                  if (cameraError != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      cameraError!,
+                      style: const TextStyle(color: Colors.orangeAccent, fontSize: 11.5),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: qrInputController,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: 'Or Paste / Scan Code directly',
+                      labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
+                      hintText: 'e.g. V009 or EMS-VOTER:V009:...',
+                      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.2)),
+                      filled: true,
+                      fillColor: const Color(0xFF0F172A),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: qrInputController,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: 'Or Paste / Scan Code directly',
-                labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
-                hintText: 'e.g. NEA-VOTE-101',
-                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.2)),
-                filled: true,
-                fillColor: const Color(0xFF0F172A),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFF94A3B8))),
-          ),
-          ElevatedButton.icon(
-            onPressed: () {
-              final val = qrInputController.text.trim();
-              if (val.isNotEmpty) {
-                _voterIdController.text = val;
-                Navigator.pop(ctx);
-                _checkInVoter();
-              }
-            },
-            icon: const Icon(Icons.check_rounded, size: 18),
-            label: const Text('Process QR Check-in'),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-          ),
-        ],
+              ElevatedButton.icon(
+                onPressed: () {
+                  final val = qrInputController.text.trim();
+                  if (val.isNotEmpty) {
+                    _voterIdController.text = val;
+                    Navigator.pop(ctx);
+                    _checkInVoter();
+                  }
+                },
+                icon: const Icon(Icons.check_rounded, size: 18),
+                label: const Text('Process Check-in'),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

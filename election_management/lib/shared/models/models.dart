@@ -87,6 +87,13 @@ class ElectionModel {
   // Payment
   final bool isPaidCandidacy;
   final double nomineeCharge;
+  // Election Methods (doc: Election-Methods.pdf)
+  final String electionMethod; // 'online' or 'venue'
+  final String onlineType;     // 'mobile_app', 'web_based', 'hybrid'
+  final String venueName;
+  final String venueAddress;
+  final bool requireVenueOtp;
+  final String venueOtpChannel; // 'none', 'sms', 'email', 'both'
   // Positions
   final List<PositionModel> positions;
   final String createdAt;
@@ -116,6 +123,12 @@ class ElectionModel {
     this.votingEndAt,
     required this.isPaidCandidacy,
     required this.nomineeCharge,
+    this.electionMethod = 'online',
+    this.onlineType = 'hybrid',
+    this.venueName = '',
+    this.venueAddress = '',
+    this.requireVenueOtp = false,
+    this.venueOtpChannel = 'none',
     required this.positions,
     required this.createdAt,
   });
@@ -145,6 +158,12 @@ class ElectionModel {
         votingEndAt: json['voting_end_at'] as String?,
         isPaidCandidacy: json['is_paid_candidacy'] as bool? ?? false,
         nomineeCharge: double.tryParse(json['nominee_charge']?.toString() ?? '0.0') ?? 0.0,
+        electionMethod: json['election_method'] as String? ?? 'online',
+        onlineType: json['online_type'] as String? ?? 'hybrid',
+        venueName: json['venue_name'] as String? ?? '',
+        venueAddress: json['venue_address'] as String? ?? '',
+        requireVenueOtp: json['require_venue_otp'] as bool? ?? false,
+        venueOtpChannel: json['venue_otp_channel'] as String? ?? 'none',
         positions: (json['positions'] as List<dynamic>?)
                 ?.map((p) => PositionModel.fromJson(p as Map<String, dynamic>))
                 .toList() ??
@@ -159,6 +178,12 @@ class ElectionModel {
   bool get isPublished => state == 'published';
   bool get hasResults =>
       state == 'results_provisional' || state == 'results_final';
+
+  bool get isOnlineElection => electionMethod == 'online';
+  bool get isVenueElection => electionMethod == 'venue';
+  bool get isMobileAppOnly => isOnlineElection && onlineType == 'mobile_app';
+  bool get isWebBasedOnly => isOnlineElection && onlineType == 'web_based';
+  bool get isHybridDelivery => isOnlineElection && onlineType == 'hybrid';
 }
 
 

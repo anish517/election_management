@@ -314,6 +314,7 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                         // Franchise Filter Choice Chips
                         Wrap(
                           spacing: 8,
+                          runSpacing: 6,
                           children: [
                             ChoiceChip(
                               label: Text('All ($totalVoters)', style: const TextStyle(fontSize: 12)),
@@ -325,6 +326,24 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                               selected: _eligibilityFilter == 'eligible',
                               selectedColor: Colors.green.withValues(alpha: 0.2),
                               onSelected: (val) => setState(() => _eligibilityFilter = 'eligible'),
+                            ),
+                            ChoiceChip(
+                              label: const Text('📱 App', style: TextStyle(fontSize: 12)),
+                              selected: _eligibilityFilter == 'mobile_app',
+                              selectedColor: Colors.indigo.withValues(alpha: 0.2),
+                              onSelected: (val) => setState(() => _eligibilityFilter = 'mobile_app'),
+                            ),
+                            ChoiceChip(
+                              label: const Text('🌐 Web', style: TextStyle(fontSize: 12)),
+                              selected: _eligibilityFilter == 'web_email',
+                              selectedColor: Colors.blue.withValues(alpha: 0.2),
+                              onSelected: (val) => setState(() => _eligibilityFilter = 'web_email'),
+                            ),
+                            ChoiceChip(
+                              label: const Text('🏛️ Venue', style: TextStyle(fontSize: 12)),
+                              selected: _eligibilityFilter == 'venue_kiosk',
+                              selectedColor: Colors.purple.withValues(alpha: 0.2),
+                              onSelected: (val) => setState(() => _eligibilityFilter = 'venue_kiosk'),
                             ),
                             if (ineligibleCount > 0)
                               ChoiceChip(
@@ -377,9 +396,13 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                             final councilNo = (map['council_number'] ?? '').toString().toLowerCase();
                             final citizenNo = (map['citizenship_number'] ?? '').toString().toLowerCase();
                             final isEligible = map['is_eligible'] == true;
+                            final channel = (map['verification_channel'] ?? 'unverified').toString();
 
                             if (_eligibilityFilter == 'eligible' && !isEligible) return false;
                             if (_eligibilityFilter == 'ineligible' && isEligible) return false;
+                            if (_eligibilityFilter == 'mobile_app' && channel != 'mobile_app') return false;
+                            if (_eligibilityFilter == 'web_email' && channel != 'web_email') return false;
+                            if (_eligibilityFilter == 'venue_kiosk' && channel != 'venue_kiosk') return false;
 
                             if (_searchQuery.isNotEmpty) {
                               final q = _searchQuery.toLowerCase();
@@ -452,8 +475,8 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
           Expanded(flex: 3, child: Text('Elector Name', style: style)),
           Expanded(flex: 3, child: Text('Email Address', style: style)),
           Expanded(flex: 2, child: Text('Contact Phone', style: style)),
-          Expanded(flex: 2, child: Text('Council / Reg No', style: style)),
-          Expanded(flex: 2, child: Text('Citizenship No', style: style)),
+          Expanded(flex: 2, child: Text('Verification', style: style)),
+          Expanded(flex: 2, child: Text('Council / Reg', style: style)),
           SizedBox(width: 180, child: Text('Actions', style: style, textAlign: TextAlign.right)),
         ],
       ),
@@ -624,16 +647,12 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
           ),
           Expanded(
             flex: 2,
-            child: Text(
-              voter['council_number']?.toString().isNotEmpty == true ? voter['council_number'] : '-',
-              style: const TextStyle(fontSize: 12),
-              overflow: TextOverflow.ellipsis,
-            ),
+            child: _buildVerificationChannelBadge(voter['verification_channel']?.toString()),
           ),
           Expanded(
             flex: 2,
             child: Text(
-              voter['citizenship_number']?.toString().isNotEmpty == true ? voter['citizenship_number'] : '-',
+              voter['council_number']?.toString().isNotEmpty == true ? voter['council_number'] : (voter['citizenship_number']?.toString().isNotEmpty == true ? voter['citizenship_number'] : '-'),
               style: const TextStyle(fontSize: 12),
               overflow: TextOverflow.ellipsis,
             ),
@@ -731,4 +750,49 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
       ),
     );
   }
+
+  Widget _buildVerificationChannelBadge(String? channel) {
+    switch (channel) {
+      case 'mobile_app':
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.indigo.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: Colors.indigo.withValues(alpha: 0.3)),
+          ),
+          child: const Text('📱 App', style: TextStyle(color: Colors.indigo, fontSize: 10.5, fontWeight: FontWeight.bold)),
+        );
+      case 'web_email':
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.blue.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+          ),
+          child: const Text('🌐 Web', style: TextStyle(color: Colors.blue, fontSize: 10.5, fontWeight: FontWeight.bold)),
+        );
+      case 'venue_kiosk':
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.purple.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: Colors.purple.withValues(alpha: 0.3)),
+          ),
+          child: const Text('🏛️ Venue', style: TextStyle(color: Colors.purple, fontSize: 10.5, fontWeight: FontWeight.bold)),
+        );
+      default:
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: Colors.grey.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: const Text('⏳ Pending', style: TextStyle(color: Colors.grey, fontSize: 10.5, fontWeight: FontWeight.w600)),
+        );
+    }
+  }
 }
+

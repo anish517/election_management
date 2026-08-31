@@ -117,8 +117,9 @@ class _ImagePickerTileState extends State<_ImagePickerTile> {
     );
     if (result == null ||
         result.files.isEmpty ||
-        result.files.first.bytes == null)
+        result.files.first.bytes == null) {
       return;
+    }
     setState(() => _uploading = true);
     final url = await widget.onUpload(
       result.files.first.bytes!,
@@ -353,8 +354,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     final meta = <String, dynamic>{};
     for (final entry in _metaCtrls.entries) {
-      if (entry.value.text.isNotEmpty)
+      if (entry.value.text.isNotEmpty) {
         meta[entry.key] = entry.value.text.trim();
+      }
     }
 
     setState(() {
@@ -798,8 +800,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                   validator: (v) {
                     if (v == null || v.isEmpty) return 'Required';
-                    if (v != _passwordCtrl.text)
+                    if (v != _passwordCtrl.text) {
                       return 'Passwords do not match';
+                    }
                     return null;
                   },
                 ),

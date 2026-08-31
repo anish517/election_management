@@ -245,6 +245,10 @@ class _VoterTurnoutScreenState extends ConsumerState<VoterTurnoutScreen> {
                               );
                             },
                           ),
+                          const SizedBox(height: 20),
+
+                          // Verification Status Breakdown Card (Method 1 & 2 Admin Telemetry)
+                          _VerificationStatusCard(electionId: widget.electionId),
                           const SizedBox(height: 24),
 
                           // Search & Status Filter Toolbar
@@ -592,3 +596,251 @@ class _StatCard extends StatelessWidget {
     );
   }
 }
+
+class _VerificationStatusCard extends ConsumerWidget {
+  final String electionId;
+  const _VerificationStatusCard({required this.electionId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final statsAsync = ref.watch(electionVerificationStatsProvider(electionId));
+
+    return statsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (err, stack) => const SizedBox.shrink(),
+      data: (stats) {
+        final totalVoters = stats['total_voters'] as int? ?? 0;
+        if (totalVoters == 0) return const SizedBox.shrink();
+
+        final totalVerified = stats['total_verified'] as int? ?? 0;
+        final verificationRate = (stats['verification_rate'] as num?)?.toDouble() ?? 0.0;
+        final breakdown = stats['breakdown'] as Map<String, dynamic>? ?? {};
+
+        final appCount = (breakdown['mobile_app']?['count'] as int?) ?? 0;
+        final appPct = (breakdown['mobile_app']?['percentage'] as num?)?.toDouble() ?? 0.0;
+
+        final webCount = (breakdown['web_email']?['count'] as int?) ?? 0;
+        final webPct = (breakdown['web_email']?['percentage'] as num?)?.toDouble() ?? 0.0;
+
+        final venueCount = (breakdown['venue_kiosk']?['count'] as int?) ?? 0;
+        final venuePct = (breakdown['venue_kiosk']?['percentage'] as num?)?.toDouble() ?? 0.0;
+
+        final unverifiedCount = (breakdown['unverified']?['count'] as int?) ?? 0;
+        final unverifiedPct = (breakdown['unverified']?['percentage'] as num?)?.toDouble() ?? 0.0;
+
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.5) : Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: isDark ? Colors.white12 : Colors.grey.shade200),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.verified_user_rounded, color: AppColors.primary, size: 20),
+                      ),
+                      const SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Voter Verification Status Breakdown',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5),
+                          ),
+                          Text(
+                            'प्रमाणीकरण अवस्था (App vs Web vs Pending)',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: isDark ? Colors.white54 : Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      '$totalVerified / $totalVoters ($verificationRate% Verified)',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Segmented Distribution Bar
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  height: 12,
+                  child: Row(
+                    children: [
+                      if (appCount > 0)
+                        Expanded(
+                          flex: appCount,
+                          child: Container(color: Colors.blue.shade600),
+                        ),
+                      if (webCount > 0)
+                        Expanded(
+                          flex: webCount,
+                          child: Container(color: Colors.teal.shade600),
+                        ),
+                      if (venueCount > 0)
+                        Expanded(
+                          flex: venueCount,
+                          child: Container(color: Colors.purple.shade600),
+                        ),
+                      if (unverifiedCount > 0)
+                        Expanded(
+                          flex: unverifiedCount,
+                          child: Container(color: isDark ? Colors.white24 : Colors.grey.shade300),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // 4 Channel Metric Badges
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isSmall = constraints.maxWidth < 600;
+                  return Wrap(
+                    spacing: 12,
+                    runSpacing: 10,
+                    children: [
+                      _ChannelBadge(
+                        label: 'Mobile App',
+                        count: appCount,
+                        percentage: appPct,
+                        color: Colors.blue.shade600,
+                        icon: Icons.phone_android_rounded,
+                        width: isSmall ? (constraints.maxWidth - 12) / 2 : (constraints.maxWidth - 36) / 4,
+                      ),
+                      _ChannelBadge(
+                        label: 'Web / Email',
+                        count: webCount,
+                        percentage: webPct,
+                        color: Colors.teal.shade600,
+                        icon: Icons.language_rounded,
+                        width: isSmall ? (constraints.maxWidth - 12) / 2 : (constraints.maxWidth - 36) / 4,
+                      ),
+                      _ChannelBadge(
+                        label: 'Venue Kiosk',
+                        count: venueCount,
+                        percentage: venuePct,
+                        color: Colors.purple.shade600,
+                        icon: Icons.tablet_mac_rounded,
+                        width: isSmall ? (constraints.maxWidth - 12) / 2 : (constraints.maxWidth - 36) / 4,
+                      ),
+                      _ChannelBadge(
+                        label: 'Pending',
+                        count: unverifiedCount,
+                        percentage: unverifiedPct,
+                        color: Colors.amber.shade800,
+                        icon: Icons.hourglass_top_rounded,
+                        width: isSmall ? (constraints.maxWidth - 12) / 2 : (constraints.maxWidth - 36) / 4,
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ChannelBadge extends StatelessWidget {
+  final String label;
+  final int count;
+  final double percentage;
+  final Color color;
+  final IconData icon;
+  final double width;
+
+  const _ChannelBadge({
+    required this.label,
+    required this.count,
+    required this.percentage,
+    required this.color,
+    required this.icon,
+    required this.width,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      width: width,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white70 : Colors.grey.shade700,
+                  ),
+                ),
+                Text(
+                  '$count ($percentage%)',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+

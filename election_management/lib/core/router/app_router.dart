@@ -12,6 +12,7 @@ import '../../features/elections/election_list_screen.dart';
 import '../../features/admin/elections/election_dashboard_screen.dart';
 import '../../features/elections/election_detail_screen.dart';
 import '../../features/voting/ballot_screen.dart';
+import '../../features/voting/direct_ballot_screen.dart';
 import '../../features/voting/vote_confirmation_screen.dart';
 import '../../features/voting/receipt_screen.dart';
 import '../../features/admin/elections/create_election_screen.dart';
@@ -26,6 +27,7 @@ import '../../features/admin/payments/payment_management_screen.dart';
 import '../../features/results/results_screen.dart';
 import '../../features/profile/user_profile_screen.dart';
 import '../../features/analytics/analytics_screen.dart';
+import '../../features/venue_kiosk/venue_kiosk_screen.dart';
 
 /// Bridges Riverpod auth state into a ChangeNotifier so GoRouter
 /// can call [refreshListenable] and re-run the redirect logic whenever
@@ -59,8 +61,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           loc.startsWith('/forgot-password') ||
           loc.startsWith('/reset-password');
 
-      // Not logged in → always go to login
-      if (!isLoggedIn && !isOnAuth) return '/login';
+      final isDirectVoteRoute = loc.startsWith('/vote/direct') ||
+          loc.startsWith('/vote/receipt');
+
+      // Unauthenticated users are allowed on auth pages and direct ballot link pages
+      if (!isLoggedIn && !isOnAuth && !isDirectVoteRoute) return '/login';
 
       // Already logged in and on an auth page → route by role
       if (isLoggedIn && isOnAuth && user != null) {
@@ -204,6 +209,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
           ),
           GoRoute(
+            path: ':electionId/kiosk',
+            name: 'venue-kiosk',
+            builder: (context, state) => VenueKioskScreen(
+              electionId: state.pathParameters['electionId']!,
+            ),
+          ),
+          GoRoute(
             path: ':electionId/confirm',
             name: 'vote-confirm',
             builder: (context, state) => VoteConfirmationScreen(
@@ -247,6 +259,26 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
           ),
         ],
+      ),
+
+      // ─── Direct Tokenized Voting Routes (Method 1 Type 2) ──────────────────
+      GoRoute(
+        path: '/vote/direct/:token',
+        name: 'direct-ballot',
+        builder: (context, state) => DirectBallotScreen(
+          directToken: state.pathParameters['token']!,
+        ),
+      ),
+      GoRoute(
+        path: '/vote/receipt',
+        name: 'direct-receipt',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          return ReceiptScreen(
+            electionId: extra['election_id'] ?? '',
+            receiptHash: extra['receipt_hash'] ?? state.uri.queryParameters['receipt'] ?? '',
+          );
+        },
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

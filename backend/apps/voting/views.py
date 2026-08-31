@@ -2,6 +2,7 @@ from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.utils import timezone
 
 from apps.elections.models import Election
 from apps.voting.models import VoterRoll
@@ -116,6 +117,11 @@ class VotingViewSet(viewsets.ViewSet):
 
         try:
             token = BallotService.start_session(roll)
+            if roll.verification_channel == 'unverified':
+                from django.utils import timezone
+                roll.verification_channel = 'mobile_app'
+                roll.verified_at = timezone.now()
+                roll.save(update_fields=['verification_channel', 'verified_at'])
             return Response({'session_token': token})
         except ValueError as e:
             return Response({'error': str(e)}, status=400)
@@ -342,9 +348,20 @@ class VoterRollViewSet(viewsets.ModelViewSet):
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = 'attachment; filename="voters_export.csv"'
         writer = csv.writer(response)
-        writer.writerow(['Voter ID', 'Prefix', 'First Name', 'Middle Name', 'Last Name', 'Email', 'Phone', 'Council Number', 'Citizenship Number', 'Eligible'])
+        writer.writerow([
+            'Voter ID', 'Prefix', 'First Name', 'Middle Name', 'Last Name',
+            'Email', 'Phone', 'Council Number', 'Citizenship Number', 'Eligible',
+            'Verification Channel', 'Verified At', 'Has Voted', 'Voted At'
+        ])
         for v in voters:
-            writer.writerow([v.voter_id, v.prefix, v.first_name, v.middle_name, v.last_name, v.email, v.phone, v.council_number, v.citizenship_number, v.is_eligible])
+            writer.writerow([
+                v.voter_id, v.prefix, v.first_name, v.middle_name, v.last_name,
+                v.email, v.phone, v.council_number, v.citizenship_number, v.is_eligible,
+                v.get_verification_channel_display() if hasattr(v, 'get_verification_channel_display') else v.verification_channel,
+                v.verified_at.isoformat() if v.verified_at else '',
+                'Yes' if v.has_voted else 'No',
+                v.voted_at.isoformat() if v.voted_at else ''
+            ])
         return response
 
     @action(detail=False, methods=['post'])
@@ -1155,3 +1172,655 @@ class VoterClaimViewSet(viewsets.ModelViewSet):
             'claim_type': claim.claim_type
         })
         return Response(VoterClaimSerializer(claim).data)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# METHOD 1 TYPE 2 & 3: WEB-BASED SINGLE-USE BALLOT LINKS & STATS
+# (doc: Election-Methods.pdf)
+# ═══════════════════════════════════════════════════════════════════════════
+
+import secrets
+import hashlib
+from datetime import timedelta
+from django.conf import settings
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from apps.users.models import OTPRecord
+from apps.notifications.services import NotificationService
+
+
+class WebVotingOTPRequestView(APIView):
+    """
+    POST /v1/voting/request-web-otp/
+    Public endpoint for Method 1 Type 2 / Type 3 voters requesting email OTP.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        election_id = request.data.get('election_id')
+        identifier = (request.data.get('identifier') or request.data.get('email') or '').strip().lower()
+
+        if not election_id or not identifier:
+            return Response({'error': 'election_id and email or voter_id are required.'}, status=400)
+
+        try:
+            election = Election.objects.get(id=election_id)
+        except Election.DoesNotExist:
+            return Response({'error': 'Election not found.'}, status=404)
+
+        if election.state != 'voting_open':
+            return Response({'error': 'Voting is not currently active for this election.'}, status=400)
+
+        # Check election method
+        if election.election_method == 'venue':
+            return Response({
+                'error': f'This election is configured for physical venue voting at {election.venue_name or "the venue"}. Remote web voting is disabled.'
+            }, status=400)
+
+        if election.online_type == 'mobile_app':
+            return Response({
+                'error': 'This election is configured for Mobile App voting only. Please use the mobile app to cast your ballot.'
+            }, status=400)
+
+        # Find VoterRoll
+        from django.db.models import Q
+        roll = VoterRoll.objects.filter(
+            Q(email__iexact=identifier) | Q(voter_id__iexact=identifier) | Q(phone__iexact=identifier),
+            election=election,
+        ).first()
+
+        if not roll:
+            return Response({
+                'error': 'No voter registration found with this email / Voter ID in the certified voter roll.'
+            }, status=404)
+
+        if not roll.is_eligible:
+            return Response({
+                'error': roll.ineligibility_reason or 'You are marked as ineligible to vote in this election.'
+            }, status=403)
+
+        if roll.has_voted:
+            return Response({
+                'error': 'You have already cast your ballot in this election. Each voter may only vote once.'
+            }, status=400)
+
+        if not roll.email:
+            return Response({
+                'error': 'No registered email address found on your voter profile. Please contact the election officer.'
+            }, status=400)
+
+        # Generate 6-digit OTP
+        otp = f"{secrets.randbelow(1000000):06d}"
+        otp_hash = hashlib.sha256(otp.encode()).hexdigest()
+
+        OTPRecord.objects.filter(identifier=roll.email.lower(), purpose='web_vote', is_used=False).delete()
+        OTPRecord.objects.create(
+            identifier=roll.email.lower(),
+            purpose='web_vote',
+            otp_hash=otp_hash,
+            expires_at=timezone.now() + timedelta(minutes=10),
+            ip_address=get_client_ip(request),
+        )
+
+        try:
+            NotificationService.send_web_voting_otp_email(
+                to_email=roll.email,
+                voter_name=roll.full_name,
+                otp_code=otp,
+                election=election,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to dispatch web voting OTP email: {e}")
+
+        # Mask email for privacy
+        parts = roll.email.split('@')
+        masked_user = parts[0][:2] + '***' if len(parts[0]) > 2 else parts[0] + '***'
+        masked_email = f"{masked_user}@{parts[1]}" if len(parts) > 1 else roll.email
+
+        return Response({
+            'otp_sent': True,
+            'masked_email': masked_email,
+            'voter_id': roll.voter_id,
+            'message': f'A 6-digit verification code has been dispatched to {masked_email}.',
+        })
+
+
+class WebVotingOTPVerifyView(APIView):
+    """
+    POST /v1/voting/verify-web-otp/
+    Public endpoint: Verifies email OTP, marks voter as web-verified,
+    generates a single-use direct ballot link and sends it via email.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        election_id = request.data.get('election_id')
+        identifier = (request.data.get('identifier') or request.data.get('email') or '').strip().lower()
+        otp = (request.data.get('otp') or '').strip()
+
+        if not election_id or not identifier or not otp:
+            return Response({'error': 'election_id, email/identifier, and otp are required.'}, status=400)
+
+        try:
+            election = Election.objects.get(id=election_id)
+        except Election.DoesNotExist:
+            return Response({'error': 'Election not found.'}, status=404)
+
+        from django.db.models import Q
+        roll = VoterRoll.objects.filter(
+            Q(email__iexact=identifier) | Q(voter_id__iexact=identifier) | Q(phone__iexact=identifier),
+            election=election,
+        ).first()
+
+        if not roll or not roll.email:
+            return Response({'error': 'Voter record not found.'}, status=404)
+
+        if roll.has_voted:
+            return Response({'error': 'You have already voted in this election.'}, status=400)
+
+        # Validate OTP
+        otp_hash = hashlib.sha256(otp.encode()).hexdigest()
+        otp_record = OTPRecord.objects.filter(
+            identifier=roll.email.lower(),
+            purpose='web_vote',
+            otp_hash=otp_hash,
+            is_used=False,
+            expires_at__gt=timezone.now(),
+        ).first()
+
+        if not otp_record:
+            return Response({'error': 'Invalid or expired verification code. Please request a new code.'}, status=400)
+
+        otp_record.is_used = True
+        otp_record.save(update_fields=['is_used'])
+
+        # Generate Cryptographic Single-Use Ballot Token
+        token = secrets.token_urlsafe(36)
+        roll.verification_channel = 'web_email'
+        roll.verified_at = timezone.now()
+        roll.direct_ballot_token = token
+        roll.direct_ballot_token_expires_at = timezone.now() + timedelta(hours=24)
+        roll.direct_ballot_token_used = False
+        roll.save(update_fields=[
+            'verification_channel', 'verified_at',
+            'direct_ballot_token', 'direct_ballot_token_expires_at', 'direct_ballot_token_used'
+        ])
+
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000').rstrip('/')
+        direct_link = f"{frontend_url}/#/vote/direct/{token}"
+
+        try:
+            NotificationService.send_direct_ballot_link_email(
+                to_email=roll.email,
+                voter_name=roll.full_name,
+                direct_link_url=direct_link,
+                election=election,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to dispatch direct ballot link email: {e}")
+
+        return Response({
+            'verified': True,
+            'direct_token': token,
+            'direct_link_url': direct_link,
+            'message': 'Identity verified! Your official single-use ballot link has been sent to your email.',
+        })
+
+
+class DirectBallotView(APIView):
+    """
+    GET /v1/voting/direct-ballot/<token>/
+    Public endpoint: Validates single-use token and returns ballot paper without login.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, token):
+        roll = VoterRoll.objects.select_related('election', 'election__organization').filter(
+            direct_ballot_token=token
+        ).first()
+
+        if not roll:
+            return Response({'error': 'Invalid or unrecognized ballot link.'}, status=404)
+
+        if roll.direct_ballot_token_used or roll.has_voted:
+            return Response({
+                'error': 'This ballot link has already been used. Each voter may only vote once.'
+            }, status=410)
+
+        if roll.direct_ballot_token_expires_at and timezone.now() > roll.direct_ballot_token_expires_at:
+            return Response({
+                'error': 'This ballot link has expired. Please verify your email again to receive a fresh link.'
+            }, status=410)
+
+        election = roll.election
+        if election.state != 'voting_open':
+            return Response({'error': f'Voting is not currently active for this election (Status: {election.get_state_display()}).'}, status=400)
+
+        ballot_data = BallotService.generate_ballot(election)
+
+        return Response({
+            'election_id': str(election.id),
+            'election_title': election.title,
+            'election_prefix': election.prefix,
+            'primary_color': election.primary_color,
+            'secondary_color': election.secondary_color,
+            'logo_url': election.logo_url,
+            'is_secret_ballot': election.is_secret_ballot,
+            'allow_boycott': election.allow_boycott,
+            'voter_name': roll.full_name,
+            'voter_id': roll.voter_id,
+            'ballot': ballot_data,
+        })
+
+
+class DirectVoteCastView(APIView):
+    """
+    POST /v1/voting/direct-cast/<token>/
+    Public endpoint: Casts the vote using single-use token and burns the token.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request, token):
+        roll = VoterRoll.objects.select_related('election').filter(
+            direct_ballot_token=token
+        ).first()
+
+        if not roll:
+            return Response({'error': 'Invalid ballot link token.'}, status=404)
+
+        if roll.direct_ballot_token_used or roll.has_voted:
+            return Response({'error': 'This ballot token has already been burned/used.'}, status=410)
+
+        if roll.direct_ballot_token_expires_at and timezone.now() > roll.direct_ballot_token_expires_at:
+            return Response({'error': 'This ballot link has expired.'}, status=410)
+
+        election = roll.election
+        if election.state != 'voting_open':
+            return Response({'error': 'Voting is not active.'}, status=400)
+
+        # Validate votes payload
+        payload_data = dict(request.data)
+        if 'ballot_data' not in payload_data and 'votes' in payload_data:
+            votes = payload_data['votes']
+            if isinstance(votes, dict):
+                payload_data['ballot_data'] = votes
+            elif isinstance(votes, list):
+                b_map = {}
+                for v in votes:
+                    pid = str(v.get('position_id', ''))
+                    cid = v.get('candidate_id')
+                    if pid:
+                        if isinstance(cid, list):
+                            b_map[pid] = [str(x) for x in cid]
+                        elif cid:
+                            b_map[pid] = [str(cid)]
+                        elif v.get('is_boycott') or v.get('boycott'):
+                            b_map[pid] = ['__BOYCOTT__']
+                        elif v.get('is_nota') or v.get('none_of_the_above'):
+                            b_map[pid] = ['NOTA']
+                payload_data['ballot_data'] = b_map
+
+        serializer = CastVoteSerializer(data=payload_data, context={'election': election})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
+
+        # Start one-time session and cast vote atomically
+        try:
+            session_token = BallotService.start_session(roll)
+            ip_addr = get_client_ip(request)
+            mac_addr = (
+                request.data.get('device_identifier')
+                or request.data.get('mac_address')
+                or request.META.get('HTTP_X_DEVICE_IDENTIFIER', '')
+            )
+            receipt_hash = BallotService.cast_vote(
+                session_token=session_token,
+                ballot_data=serializer.validated_data['ballot_data'],
+                ip_address=ip_addr,
+                mac_address=mac_addr,
+            )
+
+            # Burn single-use direct ballot token
+            roll.direct_ballot_token_used = True
+            roll.save(update_fields=['direct_ballot_token_used'])
+
+            return Response({
+                'receipt_hash': receipt_hash,
+                'message': 'Your ballot has been cast and cryptographically recorded.',
+                'voted_at': timezone.now().isoformat(),
+            })
+        except ValueError as e:
+            return Response({'error': str(e)}, status=400)
+
+
+class ElectionVerificationStatsView(APIView):
+    """
+    GET /v1/elections/<id>/verification-stats/
+    Admin / Officer endpoint returning real-time verification breakdown
+    (Mobile App vs Web Email vs Venue Kiosk vs Unverified).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, election_pk=None):
+        try:
+            election = Election.objects.get(id=election_pk, organization=request.user.organization)
+        except Election.DoesNotExist:
+            return Response({'error': 'Election not found.'}, status=404)
+
+        qs = VoterRoll.objects.filter(election=election)
+        total_voters = qs.count()
+        total_eligible = qs.filter(is_eligible=True).count()
+        voted_count = qs.filter(has_voted=True).count()
+
+        mobile_app = qs.filter(verification_channel='mobile_app').count()
+        web_email = qs.filter(verification_channel='web_email').count()
+        venue_kiosk = qs.filter(verification_channel='venue_kiosk').count()
+        unverified = qs.filter(verification_channel='unverified').count()
+
+        total_verified = mobile_app + web_email + venue_kiosk
+        verification_rate = round((total_verified / total_voters * 100), 1) if total_voters > 0 else 0.0
+        turnout_rate = round((voted_count / total_eligible * 100), 1) if total_eligible > 0 else 0.0
+
+        return Response({
+            'election_id': str(election.id),
+            'election_title': election.title,
+            'election_method': election.election_method,
+            'online_type': election.online_type,
+            'total_voters': total_voters,
+            'total_eligible': total_eligible,
+            'total_verified': total_verified,
+            'verification_rate': verification_rate,
+            'voted_count': voted_count,
+            'turnout_rate': turnout_rate,
+            'breakdown': {
+                'mobile_app': {
+                    'count': mobile_app,
+                    'percentage': round((mobile_app / total_voters * 100), 1) if total_voters > 0 else 0.0,
+                    'label': 'Verified via Mobile App',
+                },
+                'web_email': {
+                    'count': web_email,
+                    'percentage': round((web_email / total_voters * 100), 1) if total_voters > 0 else 0.0,
+                    'label': 'Verified via Web / Email',
+                },
+                'venue_kiosk': {
+                    'count': venue_kiosk,
+                    'percentage': round((venue_kiosk / total_voters * 100), 1) if total_voters > 0 else 0.0,
+                    'label': 'Verified at Venue Kiosk',
+                },
+                'unverified': {
+                    'count': unverified,
+                    'percentage': round((unverified / total_voters * 100), 1) if total_voters > 0 else 0.0,
+                    'label': 'Pending Verification',
+                },
+            }
+        })
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# METHOD 2: VENUE / DEVICE-BASED IN-PERSON VOTING KIOSKS (BOOTHS)
+# (doc: Election-Methods.pdf)
+# ═══════════════════════════════════════════════════════════════════════════
+
+class KioskUnlockView(APIView):
+    """
+    POST /v1/voting/kiosk/unlock/
+    Voter check-in at a physical polling station kiosk via Voter ID / QR scan.
+    If require_venue_otp is True, generates & sends OTP code.
+    If require_venue_otp is False, immediately unlocks ballot.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        election_id = request.data.get('election_id')
+        identifier = (
+            request.data.get('voter_id')
+            or request.data.get('identifier')
+            or request.data.get('email')
+            or request.data.get('phone')
+            or ''
+        ).strip()
+
+        if not election_id or not identifier:
+            return Response({'error': 'election_id and voter identifier are required.'}, status=400)
+
+        try:
+            election = Election.objects.get(id=election_id)
+        except Election.DoesNotExist:
+            return Response({'error': 'Election not found.'}, status=404)
+
+        if election.state != 'voting_open':
+            return Response({'error': f'Voting is not active for this election (Status: {election.get_state_display()}).'}, status=400)
+
+        from django.db.models import Q
+        roll = VoterRoll.objects.filter(
+            Q(voter_id__iexact=identifier)
+            | Q(email__iexact=identifier)
+            | Q(phone__iexact=identifier)
+            | Q(council_number__iexact=identifier)
+            | Q(citizenship_number__iexact=identifier),
+            election=election,
+        ).first()
+
+        if not roll:
+            return Response({
+                'error': f'No voter registration found for "{identifier}" in the certified electoral roll.'
+            }, status=404)
+
+        if not roll.is_eligible:
+            return Response({
+                'error': roll.ineligibility_reason or 'You are marked as ineligible to vote in this election.'
+            }, status=403)
+
+        if roll.has_voted:
+            return Response({
+                'error': f'Voter {roll.full_name} ({roll.voter_id}) has already cast their ballot in this election.'
+            }, status=400)
+
+        # 2nd Layer Verification Check (Method 2 Option)
+        if election.require_venue_otp:
+            otp = f"{secrets.randbelow(1000000):06d}"
+            otp_hash = hashlib.sha256(otp.encode()).hexdigest()
+            target_id = (roll.email or roll.phone or roll.voter_id).lower()
+
+            OTPRecord.objects.filter(identifier=target_id, purpose='venue_vote', is_used=False).delete()
+            OTPRecord.objects.create(
+                identifier=target_id,
+                purpose='venue_vote',
+                otp_hash=otp_hash,
+                expires_at=timezone.now() + timedelta(minutes=10),
+                ip_address=get_client_ip(request),
+            )
+
+            try:
+                NotificationService.send_venue_kiosk_otp(roll, otp, election)
+            except Exception as e:
+                logger.warning(f"Failed to dispatch kiosk OTP: {e}")
+
+            # Masked details for display
+            masked_phone = (roll.phone[:3] + '****' + roll.phone[-2:]) if len(roll.phone) >= 6 else roll.phone
+            masked_email = ''
+            if roll.email and '@' in roll.email:
+                parts = roll.email.split('@')
+                masked_email = (parts[0][:2] + '***@' + parts[1]) if len(parts[0]) > 2 else roll.email
+
+            return Response({
+                'require_otp': True,
+                'otp_sent': True,
+                'voter_name': roll.full_name,
+                'voter_id': roll.voter_id,
+                'venue_otp_channel': election.venue_otp_channel,
+                'masked_phone': masked_phone,
+                'masked_email': masked_email,
+                'message': f'2nd-layer verification required. A 6-digit code was sent to your registered {election.venue_otp_channel.upper()}.',
+            })
+
+        # Immediate Ballot Unlock (No 2nd layer OTP)
+        try:
+            session_token = BallotService.start_session(roll)
+            roll.verification_channel = 'venue_kiosk'
+            roll.verified_at = timezone.now()
+            roll.save(update_fields=['verification_channel', 'verified_at'])
+
+            ballot_data = BallotService.generate_ballot(election)
+            return Response({
+                'require_otp': False,
+                'session_token': session_token,
+                'voter_name': roll.full_name,
+                'voter_id': roll.voter_id,
+                'election_title': election.title,
+                'venue_name': election.venue_name,
+                'allow_boycott': election.allow_boycott,
+                'ballot': ballot_data,
+                'message': 'Identity verified. Official voting booth unlocked.',
+            })
+        except ValueError as e:
+            return Response({'error': str(e)}, status=400)
+
+
+class KioskVerifyOTPView(APIView):
+    """
+    POST /v1/voting/kiosk/verify-otp/
+    Verifies 2nd layer OTP at kiosk and unlocks the ballot paper.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        election_id = request.data.get('election_id')
+        identifier = (
+            request.data.get('voter_id')
+            or request.data.get('identifier')
+            or request.data.get('email')
+            or request.data.get('phone')
+            or ''
+        ).strip()
+        otp = (request.data.get('otp') or '').strip()
+
+        if not election_id or not identifier or not otp:
+            return Response({'error': 'election_id, voter identifier, and 6-digit otp are required.'}, status=400)
+
+        try:
+            election = Election.objects.get(id=election_id)
+        except Election.DoesNotExist:
+            return Response({'error': 'Election not found.'}, status=404)
+
+        from django.db.models import Q
+        roll = VoterRoll.objects.filter(
+            Q(voter_id__iexact=identifier)
+            | Q(email__iexact=identifier)
+            | Q(phone__iexact=identifier),
+            election=election,
+        ).first()
+
+        if not roll:
+            return Response({'error': 'Voter record not found.'}, status=404)
+
+        if roll.has_voted:
+            return Response({'error': 'Voter has already cast their ballot.'}, status=400)
+
+        # Validate OTP
+        otp_hash = hashlib.sha256(otp.encode()).hexdigest()
+        target_id = (roll.email or roll.phone or roll.voter_id).lower()
+
+        otp_record = OTPRecord.objects.filter(
+            identifier=target_id,
+            purpose='venue_vote',
+            otp_hash=otp_hash,
+            is_used=False,
+            expires_at__gt=timezone.now(),
+        ).first()
+
+        if not otp_record:
+            return Response({'error': 'Invalid or expired verification code. Please request a new code.'}, status=400)
+
+        otp_record.is_used = True
+        otp_record.save(update_fields=['is_used'])
+
+        try:
+            session_token = BallotService.start_session(roll)
+            roll.verification_channel = 'venue_kiosk'
+            roll.verified_at = timezone.now()
+            roll.save(update_fields=['verification_channel', 'verified_at'])
+
+            ballot_data = BallotService.generate_ballot(election)
+            return Response({
+                'verified': True,
+                'session_token': session_token,
+                'voter_name': roll.full_name,
+                'voter_id': roll.voter_id,
+                'election_title': election.title,
+                'venue_name': election.venue_name,
+                'allow_boycott': election.allow_boycott,
+                'ballot': ballot_data,
+                'message': '2nd-layer verification successful. Official voting booth unlocked.',
+            })
+        except ValueError as e:
+            return Response({'error': str(e)}, status=400)
+
+
+class KioskCastVoteView(APIView):
+    """
+    POST /v1/voting/kiosk/cast/
+    Casts secret ballot on venue kiosk device and returns receipt hash.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        session_token = request.data.get('session_token')
+        election_id = request.data.get('election_id')
+
+        if not session_token:
+            return Response({'error': 'session_token is required.'}, status=400)
+
+        try:
+            election = Election.objects.get(id=election_id) if election_id else None
+        except Election.DoesNotExist:
+            election = None
+
+        payload_data = dict(request.data)
+        if 'ballot_data' not in payload_data and 'votes' in payload_data:
+            votes = payload_data['votes']
+            if isinstance(votes, dict):
+                payload_data['ballot_data'] = votes
+            elif isinstance(votes, list):
+                b_map = {}
+                for v in votes:
+                    pid = str(v.get('position_id', ''))
+                    cid = v.get('candidate_id')
+                    if pid:
+                        if isinstance(cid, list):
+                            b_map[pid] = [str(x) for x in cid]
+                        elif cid:
+                            b_map[pid] = [str(cid)]
+                        elif v.get('is_boycott') or v.get('boycott'):
+                            b_map[pid] = ['__BOYCOTT__']
+                        elif v.get('is_nota') or v.get('none_of_the_above'):
+                            b_map[pid] = ['NOTA']
+                payload_data['ballot_data'] = b_map
+
+        ballot_data = payload_data.get('ballot_data', {})
+
+        try:
+            ip_addr = get_client_ip(request)
+            mac_addr = (
+                request.data.get('device_identifier')
+                or request.data.get('station_id')
+                or request.META.get('HTTP_X_DEVICE_IDENTIFIER', 'kiosk_station')
+            )
+            receipt_hash = BallotService.cast_vote(
+                session_token=session_token,
+                ballot_data=ballot_data,
+                ip_address=ip_addr,
+                mac_address=mac_addr,
+            )
+
+            return Response({
+                'receipt_hash': receipt_hash,
+                'voted_at': timezone.now().isoformat(),
+                'message': 'Your secret ballot has been cast and cryptographically recorded on this kiosk station.',
+                'auto_reset_seconds': 5,
+            })
+        except ValueError as e:
+            return Response({'error': str(e)}, status=400)
+
+

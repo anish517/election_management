@@ -276,6 +276,90 @@ Widget _sectionCard(
 }
 
 // ---------------------------------------------------------------------------
+// Delivery Type Selection Tile
+// ---------------------------------------------------------------------------
+Widget _deliveryTypeTile({
+  required String type,
+  required String title,
+  required String subtitle,
+  String? badge,
+  required bool isSelected,
+  required VoidCallback onTap,
+}) {
+  return Builder(
+    builder: (context) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.primary.withValues(alpha: 0.12)
+                : (isDark ? Colors.white10 : Colors.grey.shade100),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? AppColors.primary : Colors.transparent,
+              width: 1.5,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected
+                            ? (isDark ? Colors.white : AppColors.primary)
+                            : (isDark ? Colors.white70 : Colors.black87),
+                      ),
+                    ),
+                  ),
+                  if (badge != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        badge,
+                        style: const TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.success,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isDark ? Colors.white60 : Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Create Election Screen Implementation
 // ---------------------------------------------------------------------------
 class CreateElectionScreen extends ConsumerStatefulWidget {
@@ -315,6 +399,14 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
   DateTime? _candidacyClaim;
   DateTime? _candidacyFinal;
 
+  // --- Election Delivery Method (doc: Election-Methods.pdf) ---
+  String _electionMethod = 'online'; // 'online' or 'venue'
+  String _onlineType = 'hybrid'; // 'mobile_app', 'web_based', 'hybrid'
+  final _venueNameCtrl = TextEditingController();
+  final _venueAddressCtrl = TextEditingController();
+  bool _requireVenueOtp = false;
+  String _venueOtpChannel = 'sms'; // 'sms', 'email', 'both'
+
   // --- Payment ---
   bool _isPaid = false;
 
@@ -328,6 +420,8 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
     _descCtrl.dispose();
     _prefixCtrl.dispose();
     _contactCtrl.dispose();
+    _venueNameCtrl.dispose();
+    _venueAddressCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
   }
@@ -473,6 +567,12 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
             allowBoycott: _allowBoycott,
             isPaidCandidacy: _isPaid,
             nomineeCharge: 0,
+            electionMethod: _electionMethod,
+            onlineType: _onlineType,
+            venueName: _venueNameCtrl.text.trim(),
+            venueAddress: _venueAddressCtrl.text.trim(),
+            requireVenueOtp: _requireVenueOtp,
+            venueOtpChannel: _requireVenueOtp ? _venueOtpChannel : 'none',
           );
       if (mounted) {
         if (context.canPop()) {
@@ -940,11 +1040,268 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
                 ),
 
                 // ══════════════════════════════════════════════════════════
-                // 2. VOTER LIST SCHEDULE (Step 1)
+                // 2. ELECTION METHOD & DELIVERY (Method 1 vs Method 2)
                 // ══════════════════════════════════════════════════════════
                 _sectionCard(
                   context,
                   step: 'STEP 2',
+                  title: 'Election Method & Voting Delivery (मतदान प्रणाली तथा माध्यम)',
+                  subtitle:
+                      'Choose between Online/Remote Voting (Method 1) or Physical Venue Booths (Method 2)',
+                  icon: Icons.hub_rounded,
+                  children: [
+                    // Method 1 vs Method 2 Toggle Cards
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setState(() => _electionMethod = 'online'),
+                            borderRadius: BorderRadius.circular(14),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: _electionMethod == 'online'
+                                    ? AppColors.primary.withValues(alpha: 0.12)
+                                    : (isDark ? Colors.white10 : Colors.grey.shade100),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: _electionMethod == 'online'
+                                      ? AppColors.primary
+                                      : Colors.transparent,
+                                  width: 2,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.language_rounded,
+                                        color: _electionMethod == 'online'
+                                            ? AppColors.primary
+                                            : Colors.grey,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Method 1: Online / Remote',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13.5,
+                                            color: _electionMethod == 'online'
+                                                ? (isDark ? Colors.white : AppColors.primary)
+                                                : (isDark ? Colors.white70 : Colors.black87),
+                                          ),
+                                        ),
+                                      ),
+                                      Icon(
+                                        _electionMethod == 'online'
+                                            ? Icons.check_circle_rounded
+                                            : Icons.radio_button_off,
+                                        color: _electionMethod == 'online'
+                                            ? AppColors.primary
+                                            : Colors.grey,
+                                        size: 20,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Voters cast ballots remotely via internet using mobile app or web browser.',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      color: isDark ? Colors.white60 : Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setState(() => _electionMethod = 'venue'),
+                            borderRadius: BorderRadius.circular(14),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: _electionMethod == 'venue'
+                                    ? AppColors.primary.withValues(alpha: 0.12)
+                                    : (isDark ? Colors.white10 : Colors.grey.shade100),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: _electionMethod == 'venue'
+                                      ? AppColors.primary
+                                      : Colors.transparent,
+                                  width: 2,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.storefront_rounded,
+                                        color: _electionMethod == 'venue'
+                                            ? AppColors.primary
+                                            : Colors.grey,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Method 2: Venue / Device',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13.5,
+                                            color: _electionMethod == 'venue'
+                                                ? (isDark ? Colors.white : AppColors.primary)
+                                                : (isDark ? Colors.white70 : Colors.black87),
+                                          ),
+                                        ),
+                                      ),
+                                      Icon(
+                                        _electionMethod == 'venue'
+                                            ? Icons.check_circle_rounded
+                                            : Icons.radio_button_off,
+                                        color: _electionMethod == 'venue'
+                                            ? AppColors.primary
+                                            : Colors.grey,
+                                        size: 20,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Supervised on-site voting on laptops/iPads provided at the physical election venue.',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      color: isDark ? Colors.white60 : Colors.grey.shade600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+
+                    // Method 1 Sub-types (Online Options)
+                    if (_electionMethod == 'online') ...[
+                      Text(
+                        'Select Online Delivery Type (अनलाइन प्रकार)',
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _deliveryTypeTile(
+                              type: 'hybrid',
+                              title: 'Type 3: Hybrid',
+                              subtitle: 'Auto-routes App vs Web voters',
+                              badge: 'Recommended',
+                              isSelected: _onlineType == 'hybrid',
+                              onTap: () => setState(() => _onlineType = 'hybrid'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _deliveryTypeTile(
+                              type: 'mobile_app',
+                              title: 'Type 1: Mobile App',
+                              subtitle: 'SMS + Email OTP in-app',
+                              isSelected: _onlineType == 'mobile_app',
+                              onTap: () => setState(() => _onlineType = 'mobile_app'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _deliveryTypeTile(
+                              type: 'web_based',
+                              title: 'Type 2: Web Based',
+                              subtitle: 'Email OTP + Single-use link',
+                              isSelected: _onlineType == 'web_based',
+                              onTap: () => setState(() => _onlineType = 'web_based'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+
+                    // Method 2 Venue Configuration
+                    if (_electionMethod == 'venue') ...[
+                      TextFormField(
+                        controller: _venueNameCtrl,
+                        decoration: _dec(
+                          'Election Venue Location Name *',
+                          hint: 'e.g. Birendra International Convention Centre / City Hall',
+                          prefix: const Icon(Icons.location_on_outlined),
+                        ),
+                        validator: (v) => (_electionMethod == 'venue' && (v == null || v.trim().isEmpty))
+                            ? 'Venue name is required for Venue-based voting'
+                            : null,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _venueAddressCtrl,
+                        maxLines: 2,
+                        decoration: _dec(
+                          'Full Physical Venue Address',
+                          hint: 'e.g. New Baneshwor, Ward 10, Kathmandu, Nepal',
+                          prefix: const Icon(Icons.map_outlined),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SwitchListTile(
+                        value: _requireVenueOtp,
+                        onChanged: (val) => setState(() => _requireVenueOtp = val),
+                        title: const Text(
+                          'Require 2nd Layer OTP at Booth (दोस्रो तहको सुरक्षा OTP)',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                        ),
+                        subtitle: const Text(
+                          'Baseline is Unique Voter ID. Enable this for an additional SMS OTP or Email check at the booth.',
+                          style: TextStyle(fontSize: 11.5),
+                        ),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      if (_requireVenueOtp) ...[
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          initialValue: _venueOtpChannel,
+                          decoration: _dec(
+                            'Secondary Verification Channel',
+                            prefix: const Icon(Icons.lock_outline_rounded),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'sms', child: Text('SMS OTP to Voter Mobile')),
+                            DropdownMenuItem(value: 'email', child: Text('Email Confirmation Link')),
+                            DropdownMenuItem(value: 'both', child: Text('Both SMS OTP & Email Confirmation')),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) setState(() => _venueOtpChannel = val);
+                          },
+                        ),
+                      ],
+                    ],
+                  ],
+                ),
+
+                // ══════════════════════════════════════════════════════════
+                // 3. VOTER LIST SCHEDULE (Step 3)
+                // ══════════════════════════════════════════════════════════
+                _sectionCard(
+                  context,
+                  step: 'STEP 3',
                   title: 'Voter List Schedule (नामावली तालिका)',
                   subtitle:
                       'Initial publication, voter claims & objections, and certified final list',
@@ -977,11 +1334,11 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
                 ),
 
                 // ══════════════════════════════════════════════════════════
-                // 3. CANDIDACY SCHEDULE (Step 2)
+                // 4. CANDIDACY SCHEDULE (Step 4)
                 // ══════════════════════════════════════════════════════════
                 _sectionCard(
                   context,
-                  step: 'STEP 3',
+                  step: 'STEP 4',
                   title: 'Candidacy & Nomination Schedule (उम्मेदवारी तालिका)',
                   subtitle:
                       'Filing period, scrutiny / objections, and certified candidate roster',
@@ -1040,11 +1397,11 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
                 ),
 
                 // ══════════════════════════════════════════════════════════
-                // 4. VOTING SCHEDULE (Step 3 - Core Required)
+                // 5. VOTING SCHEDULE (Step 5 - Core Required)
                 // ══════════════════════════════════════════════════════════
                 _sectionCard(
                   context,
-                  step: 'STEP 4',
+                  step: 'STEP 5',
                   title: 'Voting & Polling Window (मतदान अवधि)',
                   subtitle: 'Official balloting start and end dates (Required)',
                   icon: Icons.how_to_vote_rounded,
@@ -1076,11 +1433,11 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
                 ),
 
                 // ══════════════════════════════════════════════════════════
-                // 5. PAID STATUS
+                // 6. PAID STATUS
                 // ══════════════════════════════════════════════════════════
                 _sectionCard(
                   context,
-                  step: 'STEP 5',
+                  step: 'STEP 6',
                   title: 'Candidacy Nomination Fee',
                   subtitle:
                       'Configure whether candidates are charged a nomination fee',
@@ -1210,11 +1567,11 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
                 ),
 
                 // ══════════════════════════════════════════════════════════
-                // 6. BALLOT & VOTING RULES
+                // 7. BALLOT & VOTING RULES
                 // ══════════════════════════════════════════════════════════
                 _sectionCard(
                   context,
-                  step: 'STEP 6',
+                  step: 'STEP 7',
                   title: 'Electoral Privacy & Ballot Rules',
                   subtitle:
                       'Cryptographic secrecy, anonymity, and boycott configurations',

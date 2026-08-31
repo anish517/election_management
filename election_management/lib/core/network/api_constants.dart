@@ -89,6 +89,18 @@ class ApiConstants {
   static String votingSession(String eid) => '/elections/$eid/voting/session/';
   static String castVote(String eid) => '/elections/$eid/voting/cast/';
 
+  // Method 1 (Online/Remote) Web & Direct Token Voting (doc: Election-Methods.pdf)
+  static const String requestWebOtp = '/voting/request-web-otp/';
+  static const String verifyWebOtp = '/voting/verify-web-otp/';
+  static String directBallot(String token) => '/voting/direct-ballot/$token/';
+  static String directVoteCast(String token) => '/voting/direct-cast/$token/';
+  static String electionVerificationStats(String eid) => '/elections/$eid/verification-stats/';
+
+  // Method 2 (Venue / Device-Based In-Person Voting Kiosks) (doc: Election-Methods.pdf)
+  static const String kioskUnlock = '/voting/kiosk/unlock/';
+  static const String kioskVerifyOtp = '/voting/kiosk/verify-otp/';
+  static const String kioskCast = '/voting/kiosk/cast/';
+
   // Results
   static String results(String eid) => '/elections/$eid/results/results/';
 

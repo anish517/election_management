@@ -116,6 +116,9 @@ class ElectionSerializer(serializers.ModelSerializer):
             # Ballot settings
             'is_secret_ballot', 'allow_boycott', 'results_visibility', 'live_turnout_enabled', 'resubmission_allowed',
             'show_uncontested_on_notice', 'show_uncontested_on_ballot', 'show_uncontested_in_results',
+            # Election Methods (doc: Election-Methods.pdf)
+            'election_method', 'online_type', 'venue_name', 'venue_address',
+            'require_venue_otp', 'venue_otp_channel',
             # Positions
             'positions',
             # Timestamps

@@ -78,6 +78,12 @@ class AuditExportView(APIView):
                 'title': election.title,
                 'organization': election.organization.name,
                 'state': election.state,
+                'election_method': election.election_method,
+                'online_type': election.online_type,
+                'venue_name': election.venue_name,
+                'venue_address': election.venue_address,
+                'require_venue_otp': election.require_venue_otp,
+                'venue_otp_channel': election.venue_otp_channel,
                 'ballot_snapshot_hash': election.ballot_snapshot_hash or '(not generated)',
                 'is_secret_ballot': election.is_secret_ballot,
                 'voting_start_at': election.voting_start_at.isoformat() if election.voting_start_at else None,
@@ -88,6 +94,12 @@ class AuditExportView(APIView):
                 'total_ballots_cast': total_voted,
                 'turnout_percent': round((total_voted / total_eligible * 100), 2) if total_eligible else 0,
                 'total_vote_records': votes.count(),
+                'verification_channels': {
+                    'mobile_app': voter_roll.filter(verification_channel='mobile_app').count(),
+                    'web_email': voter_roll.filter(verification_channel='web_email').count(),
+                    'venue_kiosk': voter_roll.filter(verification_channel='venue_kiosk').count(),
+                    'unverified': voter_roll.filter(verification_channel='unverified').count(),
+                },
             },
             'integrity': {
                 'note': 'The receipt_hash for each ballot is a SHA-256 of the ballot contents + a random salt. '

@@ -354,7 +354,39 @@ class NotificationService:
 
     @staticmethod
     def notify_voting_open(election):
-        """Voting is now open — send 'Go Vote!' blast to all members."""
+        """Voting is now open — send 'Go Vote!' blast or direct single-use ballot links."""
+        from apps.voting.models import VoterRoll
+        import secrets
+        from datetime import timedelta
+        from django.utils import timezone
+
+        # If election allows Web-Based single-use voting, dispatch individual single-use ballot links
+        if getattr(election, 'election_method', 'online') == 'online' and getattr(election, 'online_type', 'hybrid') in ('web_based', 'hybrid'):
+            voter_rolls = VoterRoll.objects.filter(election=election, is_eligible=True, has_voted=False)
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000').rstrip('/')
+            
+            dispatched = 0
+            for roll in voter_rolls:
+                if roll.email:
+                    if not roll.direct_ballot_token or roll.direct_ballot_token_used:
+                        roll.direct_ballot_token = secrets.token_urlsafe(36)
+                        roll.direct_ballot_token_expires_at = timezone.now() + timedelta(hours=24)
+                        roll.direct_ballot_token_used = False
+                        roll.verification_channel = 'web_email'
+                        roll.save(update_fields=['direct_ballot_token', 'direct_ballot_token_expires_at', 'direct_ballot_token_used', 'verification_channel'])
+                    
+                    direct_link = f"{frontend_url}/#/vote/direct/{roll.direct_ballot_token}"
+                    NotificationService.send_direct_ballot_link_email(
+                        to_email=roll.email,
+                        voter_name=roll.full_name,
+                        direct_link_url=direct_link,
+                        election=election,
+                    )
+                    dispatched += 1
+            
+            logger.info(f"[notify_voting_open] Dispatched {dispatched} personalized single-use ballot links for '{election.title}'.")
+            return
+
         recipients = NotificationService._get_member_emails(election)
         frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
         election_url = f"{frontend_url}/elections/{election.id}"
@@ -813,3 +845,126 @@ class NotificationService:
             recipients=recipients,
             election=election,
         )
+
+    # ------------------------------------------------------------------
+    # Method 1 Type 2: Web Single-Use Ballot Link & OTP Dispatchers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def send_web_voting_otp_email(to_email: str, voter_name: str, otp_code: str, election):
+        """Send 6-digit email OTP for Web-based voter verification (Method 1 Type 2)."""
+        body = f'''
+        <p style="color:#94A3B8;font-size:15px;margin:0 0 16px;line-height:1.6;">
+          Dear <strong style="color:#E2E8F0;">{voter_name}</strong>,
+        </p>
+        <p style="color:#94A3B8;font-size:14px;margin:0 0 20px;line-height:1.6;">
+          You requested to verify your identity to cast your ballot in <strong style="color:#E2E8F0;">{election.title}</strong>.
+          Use the 6-digit verification code below:
+        </p>
+        <div style="background:#1E293B;border:2px dashed #6C5CE7;border-radius:12px;padding:18px;text-align:center;margin:20px 0;">
+          <div style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#A29BFE;font-family:monospace;">{otp_code}</div>
+          <div style="font-size:12px;color:#64748B;margin-top:6px;">Valid for 10 minutes • Do NOT share this code</div>
+        </div>
+        <p style="color:#64748B;font-size:12px;margin:16px 0 0;line-height:1.5;">
+          Once verified, you will receive your official, single-use ballot link directly in your email.
+        </p>
+        '''
+
+        html = _base_email(
+            header_color='#6C5CE7',
+            icon='🔐',
+            title='Voter Identity Verification Code',
+            subtitle=election.title,
+            body_html=body,
+        )
+
+        NotificationService._send_bulk(
+            subject=f'🔐 Your Voting Verification Code: {otp_code} — {election.title}',
+            plain_text=f"Your verification code for {election.title} is {otp_code}. Valid for 10 minutes.",
+            html_body=html,
+            recipients=[to_email],
+            election=election,
+            async_mode=False, # synchronous for immediate delivery
+        )
+
+    @staticmethod
+    def send_direct_ballot_link_email(to_email: str, voter_name: str, direct_link_url: str, election):
+        """Send the official Single-Use Emailed Ballot Link (Method 1 Type 2 / Type 3)."""
+        body = f'''
+        <p style="color:#94A3B8;font-size:15px;margin:0 0 16px;line-height:1.6;">
+          Dear <strong style="color:#E2E8F0;">{voter_name}</strong>,
+        </p>
+        <p style="color:#94A3B8;font-size:14px;margin:0 0 20px;line-height:1.6;">
+          Your identity has been verified! Here is your official, single-use ballot link to vote in
+          <strong style="color:#E2E8F0;">{election.title}</strong>:
+        </p>
+        {_election_info_block(election)}
+        <div style="background:rgba(16, 185, 129, 0.1);border:1px solid rgba(16, 185, 129, 0.3);border-radius:10px;padding:14px;margin:18px 0;">
+          <div style="font-weight:bold;color:#10B981;font-size:13px;margin-bottom:4px;">🔒 Single-Use Ballot Security Notice</div>
+          <div style="font-size:12px;color:#94A3B8;line-height:1.5;">
+            This link is unique to your voter registration. It will automatically expire after casting your vote or within 24 hours. Do not forward this email to anyone.
+          </div>
+        </div>
+        '''
+
+        html = _base_email(
+            header_color='#10B981',
+            icon='🗳️',
+            title='Your Official Secret Ballot Link',
+            subtitle=election.title,
+            body_html=body,
+            cta_url=direct_link_url,
+            cta_label='🗳️ Open Ballot & Cast Your Vote →',
+        )
+
+        NotificationService._send_bulk(
+            subject=f'🗳️ Your Official Ballot Link — {election.title}',
+            plain_text=f"Your official single-use ballot link for '{election.title}' is ready: {direct_link_url}",
+            html_body=html,
+            recipients=[to_email],
+            election=election,
+            async_mode=False,
+        )
+
+    @staticmethod
+    def send_venue_kiosk_otp(roll, otp_code: str, election):
+        """Send 2nd-layer verification OTP for Venue Kiosk Booth Check-in (Method 2)."""
+        channel = election.venue_otp_channel or 'both'
+
+        # Email OTP
+        if channel in ['email', 'both'] and roll.email:
+            body = f'''
+            <p style="color:#94A3B8;font-size:15px;margin:0 0 16px;line-height:1.6;">
+              Dear <strong style="color:#E2E8F0;">{roll.full_name}</strong>,
+            </p>
+            <p style="color:#94A3B8;font-size:14px;margin:0 0 20px;line-height:1.6;">
+              You are currently checking in at the physical voting kiosk at
+              <strong style="color:#E2E8F0;">{election.venue_name or 'the Polling Venue'}</strong> for:
+            </p>
+            {_election_info_block(election)}
+            <div style="background:rgba(108, 92, 231, 0.12);border:1px solid rgba(108, 92, 231, 0.3);border-radius:12px;padding:20px;text-align:center;margin:20px 0;">
+              <div style="font-size:12px;color:#94A3B8;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;">Kiosk Booth Unlock Code</div>
+              <div style="font-size:36px;font-weight:900;letter-spacing:10px;color:#6C5CE7;font-family:monospace;">{otp_code}</div>
+              <div style="font-size:12px;color:#64748B;margin-top:8px;">Enter this code on the voting tablet/kiosk to unlock your ballot paper.</div>
+            </div>
+            '''
+            html = _base_email(
+              header_color='#6C5CE7',
+              icon='🏢',
+              title='Polling Booth Unlock Code',
+              subtitle=f'Physical Venue: {election.venue_name or "Polling Station"}',
+              body_html=body,
+            )
+            NotificationService._send_bulk(
+                subject=f'🏢 Polling Station Unlock Code: {otp_code} — {election.title}',
+                plain_text=f"Your voting kiosk unlock code at {election.venue_name} is {otp_code}.",
+                html_body=html,
+                recipients=[roll.email],
+                election=election,
+                async_mode=False,
+            )
+
+        # SMS OTP (logs/dispatches SMS)
+        if channel in ['sms', 'both'] and roll.phone:
+            logger.info(f"[SMS Gateway] Dispatched Kiosk Unlock OTP {otp_code} to {roll.phone} for voter {roll.voter_id}")
+

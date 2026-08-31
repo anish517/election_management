@@ -34,11 +34,26 @@ class _EditElectionDialogState extends ConsumerState<EditElectionDialog> {
   DateTime? _candidacyClaimDate;
   DateTime? _candidacyFinalDate;
 
+  // Election Method & Delivery
+  late String _electionMethod;
+  late String _onlineType;
+  late TextEditingController _venueNameController;
+  late TextEditingController _venueAddressController;
+  late bool _requireVenueOtp;
+  late String _venueOtpChannel;
+
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.election.title);
     _descController = TextEditingController(text: widget.election.description);
+
+    _electionMethod = widget.election.electionMethod;
+    _onlineType = widget.election.onlineType;
+    _venueNameController = TextEditingController(text: widget.election.venueName);
+    _venueAddressController = TextEditingController(text: widget.election.venueAddress);
+    _requireVenueOtp = widget.election.requireVenueOtp;
+    _venueOtpChannel = widget.election.venueOtpChannel;
 
     // Pre-fill existing dates if they exist
     _votingStartAt = _parseDate(widget.election.votingStartAt);
@@ -65,6 +80,8 @@ class _EditElectionDialogState extends ConsumerState<EditElectionDialog> {
   void dispose() {
     _titleController.dispose();
     _descController.dispose();
+    _venueNameController.dispose();
+    _venueAddressController.dispose();
     super.dispose();
   }
 
@@ -119,6 +136,12 @@ class _EditElectionDialogState extends ConsumerState<EditElectionDialog> {
       final payload = <String, dynamic>{
         'title': _titleController.text.trim(),
         'description': _descController.text.trim(),
+        'election_method': _electionMethod,
+        'online_type': _onlineType,
+        'venue_name': _venueNameController.text.trim(),
+        'venue_address': _venueAddressController.text.trim(),
+        'require_venue_otp': _requireVenueOtp,
+        'venue_otp_channel': _venueOtpChannel,
         'voting_start_at': _votingStartAt?.toUtc().toIso8601String(),
         'voting_end_at': _votingEndAt?.toUtc().toIso8601String(),
         'first_voter_list_date': _firstVoterListDate?.toUtc().toIso8601String(),
@@ -278,6 +301,132 @@ class _EditElectionDialogState extends ConsumerState<EditElectionDialog> {
                           isDark: isDark,
                         ),
                         maxLines: 2,
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Voting Method & Delivery Settings
+                      _buildScheduleGroupCard(
+                        title: 'Voting Method & Delivery (मतदान प्रणाली तथा माध्यम)',
+                        subtitle: 'Select Online Remote vs Physical Venue voting',
+                        icon: Icons.how_to_vote_rounded,
+                        isDark: isDark,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () => setState(() => _electionMethod = 'online'),
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: _electionMethod == 'online'
+                                          ? AppColors.primary.withValues(alpha: 0.12)
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: _electionMethod == 'online' ? AppColors.primary : Colors.grey.shade300,
+                                        width: _electionMethod == 'online' ? 2 : 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.wifi_tethering_rounded,
+                                          color: _electionMethod == 'online' ? AppColors.primary : Colors.grey,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Expanded(
+                                          child: Text(
+                                            'Method 1: Online / Remote (अनलाइन)',
+                                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () => setState(() => _electionMethod = 'venue'),
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: _electionMethod == 'venue'
+                                          ? Colors.purple.withValues(alpha: 0.12)
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: _electionMethod == 'venue' ? Colors.purple : Colors.grey.shade300,
+                                        width: _electionMethod == 'venue' ? 2 : 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.storefront_rounded,
+                                          color: _electionMethod == 'venue' ? Colors.purple : Colors.grey,
+                                          size: 20,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Expanded(
+                                          child: Text(
+                                            'Method 2: Venue / Booth (भौतिक)',
+                                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (_electionMethod == 'online') ...[
+                            const SizedBox(height: 12),
+                            DropdownButtonFormField<String>(
+                              initialValue: _onlineType,
+                              decoration: _dec(
+                                'Online Voting Type (प्रणाली प्रकार)',
+                                prefix: const Icon(Icons.devices_rounded),
+                                isDark: isDark,
+                              ),
+                              items: const [
+                                DropdownMenuItem(value: 'mobile_app', child: Text('Type 1: Mobile App Based (SMS + Email OTP)')),
+                                DropdownMenuItem(value: 'web_based', child: Text('Type 2: Web Based (Single-use Ballot Link)')),
+                                DropdownMenuItem(value: 'hybrid', child: Text('Type 3: Hybrid (App + Web Smart Routing)')),
+                              ],
+                              onChanged: (v) {
+                                if (v != null) setState(() => _onlineType = v);
+                              },
+                            ),
+                          ] else ...[
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _venueNameController,
+                              decoration: _dec(
+                                'Physical Venue / Polling Station Name *',
+                                hint: 'e.g. Nepal Pragya Pratishthan Hall A',
+                                prefix: const Icon(Icons.location_city_rounded),
+                                isDark: isDark,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            TextFormField(
+                              controller: _venueAddressController,
+                              decoration: _dec(
+                                'Venue Full Address',
+                                hint: 'e.g. Kamaladi, Kathmandu',
+                                prefix: const Icon(Icons.pin_drop_rounded),
+                                isDark: isDark,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: 20),
 

@@ -17,7 +17,12 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from apps.elections.views import ElectionViewSet, PositionViewSet, PositionQuotaViewSet, ElectionNoticeViewSet
 from apps.candidates.views import CandidateViewSet, CandidateObjectionViewSet
 from apps.billing.views import PaymentViewSet
-from apps.voting.views import VotingViewSet, VotingHistoryView, VoterRollViewSet, VoterClaimViewSet
+from apps.voting.views import (
+    VotingViewSet, VotingHistoryView, VoterRollViewSet, VoterClaimViewSet,
+    WebVotingOTPRequestView, WebVotingOTPVerifyView, DirectBallotView, DirectVoteCastView,
+    ElectionVerificationStatsView,
+    KioskUnlockView, KioskVerifyOTPView, KioskCastVoteView,
+)
 from apps.results.views import ElectionResultsViewSet
 from apps.organizations.views import OrganizationView, OrganizationStatsView
 from apps.core.views import FileUploadView
@@ -64,6 +69,19 @@ urlpatterns = [
     
     # Core endpoints (REST)
     path('v1/upload/', FileUploadView.as_view(), name='file-upload'),
+
+    # Method 1 (Online/Remote) Web Ballot Link & Verification (doc: Election-Methods.pdf)
+    path('v1/voting/request-web-otp/', WebVotingOTPRequestView.as_view(), name='voting-request-web-otp'),
+    path('v1/voting/verify-web-otp/', WebVotingOTPVerifyView.as_view(), name='voting-verify-web-otp'),
+    path('v1/voting/direct-ballot/<str:token>/', DirectBallotView.as_view(), name='voting-direct-ballot'),
+    path('v1/voting/direct-cast/<str:token>/', DirectVoteCastView.as_view(), name='voting-direct-cast'),
+    path('v1/elections/<uuid:election_pk>/verification-stats/', ElectionVerificationStatsView.as_view(), name='election-verification-stats'),
+
+    # Method 2 (Venue / Device-Based In-Person Voting Kiosks) (doc: Election-Methods.pdf)
+    path('v1/voting/kiosk/unlock/', KioskUnlockView.as_view(), name='kiosk-unlock'),
+    path('v1/voting/kiosk/verify-otp/', KioskVerifyOTPView.as_view(), name='kiosk-verify-otp'),
+    path('v1/voting/kiosk/cast/', KioskCastVoteView.as_view(), name='kiosk-cast'),
+
     path('v1/', include(router.urls)),
     path('v1/', include(election_router.urls)),
 

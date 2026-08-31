@@ -31,6 +31,19 @@ class VotingMethod(models.TextChoices):
     YES_NO = 'yes_no', 'Yes/No (Referendum)'
 
 
+class ElectionMethod(models.TextChoices):
+    """Method 1 (Online/Remote) vs Method 2 (Venue/Device-Based)."""
+    ONLINE = 'online', 'Method 1: Online / Remote Voting'
+    VENUE = 'venue', 'Method 2: Venue / Device-Based Voting'
+
+
+class OnlineVotingType(models.TextChoices):
+    """Method 1 delivery types."""
+    MOBILE_APP = 'mobile_app', 'Type 1: Mobile App Based'
+    WEB_BASED = 'web_based', 'Type 2: Web Based (Email OTP + Ballot Link)'
+    HYBRID = 'hybrid', 'Type 3: Hybrid (Both Mobile & Web)'
+
+
 class ResultsVisibility(models.TextChoices):
     ADMIN_ONLY = 'admin_only', 'Admin Only'
     ORG_MEMBERS = 'org_members', 'Organization Members'
@@ -131,6 +144,41 @@ class Election(TimestampedModel):
     show_uncontested_in_results = models.BooleanField(
         default=True,
         help_text='Show uncontested wins in the final results table'
+    )
+
+    # Election Methods (doc: Election-Methods.pdf)
+    # Method 1 (Online / Remote) vs Method 2 (Venue / Device-Based)
+    election_method = models.CharField(
+        max_length=20, choices=ElectionMethod.choices,
+        default=ElectionMethod.ONLINE,
+        help_text='Method 1: Online/Remote vs Method 2: Venue/Device-Based'
+    )
+    online_type = models.CharField(
+        max_length=20, choices=OnlineVotingType.choices,
+        default=OnlineVotingType.HYBRID,
+        help_text='Type 1: Mobile App, Type 2: Web Based, Type 3: Hybrid'
+    )
+    venue_name = models.CharField(
+        max_length=255, blank=True, default='',
+        help_text='Physical location name for Method 2 elections'
+    )
+    venue_address = models.TextField(
+        blank=True, default='',
+        help_text='Full physical address for Method 2 elections'
+    )
+    require_venue_otp = models.BooleanField(
+        default=False,
+        help_text='Require SMS OTP or email confirmation at venue booth (Method 2 optional layer)'
+    )
+    venue_otp_channel = models.CharField(
+        max_length=20, default='none',
+        choices=[
+            ('none', 'None (Voter ID Only)'),
+            ('sms', 'SMS OTP'),
+            ('email', 'Email Confirmation Link'),
+            ('both', 'Both SMS & Email')
+        ],
+        help_text='Secondary verification channel for venue voting'
     )
 
     created_by = models.ForeignKey(

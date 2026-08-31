@@ -51,9 +51,14 @@ class VoterRollSerializer(serializers.ModelSerializer):
             'id', 'election', 'voter_id', 'prefix', 'first_name', 'middle_name', 'last_name',
             'full_name', 'email', 'phone', 'council_number', 'citizenship_number',
             'is_eligible', 'ineligibility_reason', 'has_voted', 'voted_at',
-            'voted_ip_address', 'voted_mac_address'
+            'voted_ip_address', 'voted_mac_address',
+            'verification_channel', 'verified_at', 'direct_ballot_token_used',
         ]
-        read_only_fields = ['id', 'election', 'full_name', 'has_voted', 'voted_at', 'voted_ip_address', 'voted_mac_address']
+        read_only_fields = [
+            'id', 'election', 'full_name', 'has_voted', 'voted_at',
+            'voted_ip_address', 'voted_mac_address',
+            'verification_channel', 'verified_at', 'direct_ballot_token_used',
+        ]
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)

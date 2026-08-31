@@ -389,25 +389,34 @@ class _ElectionListTile extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: 14),
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
                   children: [
+                    _InfoChip(
+                      icon: election.isVenueElection ? Icons.storefront_rounded : Icons.language_rounded,
+                      label: election.isVenueElection
+                          ? (election.venueName.isNotEmpty ? 'Venue: ${election.venueName}' : 'Physical Venue')
+                          : election.onlineType == 'mobile_app'
+                              ? 'Mobile App'
+                              : election.onlineType == 'web_based'
+                                  ? 'Web-Based'
+                                  : 'Hybrid',
+                    ),
                     _InfoChip(
                       icon: Icons.work_outline_rounded,
                       label: '${election.positions.length} Position(s)',
                     ),
-                    const SizedBox(width: 8),
                     if (election.isSecretBallot)
                       const _InfoChip(
                         icon: Icons.lock_outline_rounded,
                         label: 'Secret Ballot',
                       ),
-                    if (election.isPaidCandidacy) ...[
-                      const SizedBox(width: 8),
+                    if (election.isPaidCandidacy)
                       const _InfoChip(
                         icon: Icons.payments_outlined,
                         label: 'Paid Nomination',
                       ),
-                    ],
                   ],
                 ),
 

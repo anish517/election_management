@@ -40,6 +40,13 @@ class CreateElectionNotifier extends AsyncNotifier<void> {
     // Payment
     bool isPaidCandidacy = false,
     double nomineeCharge = 0,
+    // Election Methods (doc: Election-Methods.pdf)
+    String electionMethod = 'online',
+    String onlineType = 'hybrid',
+    String venueName = '',
+    String venueAddress = '',
+    bool requireVenueOtp = false,
+    String venueOtpChannel = 'none',
   }) async {
     if (state.isLoading) return;
     state = const AsyncValue.loading();
@@ -67,6 +74,12 @@ class CreateElectionNotifier extends AsyncNotifier<void> {
         if (candidacyFinalDate != null) 'candidacy_final_date': candidacyFinalDate.toUtc().toIso8601String(),
         'is_paid_candidacy': isPaidCandidacy,
         'nominee_charge': nomineeCharge,
+        'election_method': electionMethod,
+        'online_type': onlineType,
+        if (venueName.isNotEmpty) 'venue_name': venueName,
+        if (venueAddress.isNotEmpty) 'venue_address': venueAddress,
+        'require_venue_otp': requireVenueOtp,
+        'venue_otp_channel': venueOtpChannel,
       };
       await dio.post(ApiConstants.elections, data: data);
       

@@ -382,10 +382,114 @@ class ElectionDetailScreen extends ConsumerWidget {
             ),
           ],
           const SizedBox(height: 16),
+
+          // Election Method & Voting Delivery Specification Banner
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: election.isVenueElection
+                  ? (isDark ? Colors.purple.withValues(alpha: 0.15) : const Color(0xFFFAF5FF))
+                  : (isDark ? Colors.blue.withValues(alpha: 0.15) : const Color(0xFFEFF6FF)),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: election.isVenueElection
+                    ? (isDark ? Colors.purple.withValues(alpha: 0.4) : const Color(0xFFE9D5FF))
+                    : (isDark ? Colors.blue.withValues(alpha: 0.4) : const Color(0xFFBFDBFE)),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: election.isVenueElection
+                        ? Colors.purple.withValues(alpha: 0.2)
+                        : Colors.blue.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    election.isVenueElection ? Icons.storefront_rounded : Icons.wifi_tethering_rounded,
+                    color: election.isVenueElection ? Colors.purple : Colors.blue.shade700,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            election.isVenueElection
+                                ? 'Method 2: Venue / Device-Based (भौतिक बुथ)'
+                                : 'Method 1: Online / Remote (अनलाइन मतदान)',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13.5,
+                              color: election.isVenueElection
+                                  ? (isDark ? const Color(0xFFD8B4FE) : const Color(0xFF6B21A8))
+                                  : (isDark ? const Color(0xFF93C5FD) : const Color(0xFF1E40AF)),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: (election.isVenueElection ? Colors.purple : Colors.blue).withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              election.isVenueElection
+                                  ? 'Physical Kiosk'
+                                  : election.onlineType == 'mobile_app'
+                                      ? 'Type 1: Mobile App'
+                                      : election.onlineType == 'web_based'
+                                          ? 'Type 2: Web-Based'
+                                          : 'Type 3: Hybrid',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.bold,
+                                color: election.isVenueElection ? Colors.purple : Colors.blue.shade800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        election.isVenueElection
+                            ? 'Polling Location: ${election.venueName.isNotEmpty ? election.venueName : "Venue Polling Booth"}${election.venueAddress.isNotEmpty ? " • ${election.venueAddress}" : ""}${election.requireVenueOtp ? " • 2nd Layer OTP (${election.venueOtpChannel.toUpperCase()})" : " • Direct Check-in"}'
+                            : election.onlineType == 'mobile_app'
+                                ? 'Mobile App Based: Voters authenticate via Mobile App with SMS & Email OTP.'
+                                : election.onlineType == 'web_based'
+                                    ? 'Web Based: Voters verify email on web to receive a single-use direct ballot link.'
+                                    : 'Hybrid Delivery: Smart auto-routing based on voter device (Mobile App vs Web Browser).',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.white70 : Colors.black87,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           Wrap(
             spacing: 14,
             runSpacing: 10,
             children: [
+              _MetaItem(
+                icon: election.isVenueElection ? Icons.storefront_outlined : Icons.language_rounded,
+                label: election.isVenueElection
+                    ? 'Venue: ${election.venueName.isNotEmpty ? election.venueName : "In-Person Polling"}'
+                    : 'Delivery: ${election.onlineType == "mobile_app" ? "Mobile App" : election.onlineType == "web_based" ? "Web Single-Use" : "Hybrid (App+Web)"}',
+              ),
               _MetaItem(icon: Icons.how_to_vote_outlined,
                   label: election.isSecretBallot ? 'Secret Ballot (गोप्य मतदान)' : 'Open Ballot (खुला मतदान)'),
               _MetaItem(icon: Icons.bar_chart_rounded,
@@ -670,16 +774,45 @@ class ElectionDetailScreen extends ConsumerWidget {
             label: const Text('Review Nominations'),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateNominations, foregroundColor: Colors.white),
           ),
-        if (election.isVotingActive && user != null && !user.canManageElections && !user.isObserver && !user.isAuditor)
-          ElevatedButton.icon(
-            onPressed: () => context.pushNamed('ballot',
-                pathParameters: {'electionId': electionId}),
-            icon: const Icon(Icons.how_to_vote_rounded),
-            label: const Text('Vote Now (मतदान गर्नुहोस्)'),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateVoting, foregroundColor: Colors.white),
-          )
-          .animate(onPlay: (controller) => controller.repeat(reverse: true))
-          .scale(begin: const Offset(1, 1), end: const Offset(1.03, 1.03), duration: 800.ms),
+        if (election.isVotingActive && user != null && !user.canManageElections && !user.isObserver && !user.isAuditor) ...[
+          if (election.isVenueElection)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.purple.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.purple.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.storefront_rounded, color: Colors.purple, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    'In-Person Booth Voting at ${election.venueName.isNotEmpty ? election.venueName : "Venue"}',
+                    style: const TextStyle(color: Colors.purple, fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ],
+              ),
+            )
+          else if (election.isWebBasedOnly)
+            ElevatedButton.icon(
+              onPressed: () => _showRequestWebBallotDialog(context, election, user),
+              icon: const Icon(Icons.mark_email_read_rounded),
+              label: const Text('Get Web Ballot Link (मतदान लिङ्क पाउनुहोस्)'),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateVoting, foregroundColor: Colors.white),
+            )
+          else
+            ElevatedButton.icon(
+              onPressed: () => context.pushNamed('ballot',
+                  pathParameters: {'electionId': electionId}),
+              icon: const Icon(Icons.how_to_vote_rounded),
+              label: const Text('Vote Now (मतदान गर्नुहोस्)'),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateVoting, foregroundColor: Colors.white),
+            )
+            .animate(onPlay: (controller) => controller.repeat(reverse: true))
+            .scale(begin: const Offset(1, 1), end: const Offset(1.03, 1.03), duration: 800.ms),
+        ],
         if (election.hasResults ||
             election.state == 'voting_closed' ||
             (election.state == 'voting_open' && user?.canManageElections == true))
@@ -691,6 +824,13 @@ class ElectionDetailScreen extends ConsumerWidget {
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateResults, foregroundColor: Colors.white),
           ),
 
+        if (user?.canManageElections == true || election.isVenueElection)
+          ElevatedButton.icon(
+            onPressed: () => context.pushNamed('venue-kiosk', pathParameters: {'electionId': electionId}),
+            icon: const Icon(Icons.storefront_rounded),
+            label: const Text('Launch Voting Kiosk Mode (मतदान बुथ)'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.purple.shade700, foregroundColor: Colors.white),
+          ),
 
         if (election.hasResults || user?.isAuditor == true || user?.canManageElections == true)
           OutlinedButton.icon(
@@ -1671,3 +1811,303 @@ class _SingleMilestoneBlock extends StatelessWidget {
     );
   }
 }
+
+void _showRequestWebBallotDialog(BuildContext context, ElectionModel election, UserModel? user) {
+  showDialog(
+    context: context,
+    builder: (ctx) => _WebBallotRequestDialog(election: election, initialEmail: user?.email ?? ''),
+  );
+}
+
+class _WebBallotRequestDialog extends ConsumerStatefulWidget {
+  final ElectionModel election;
+  final String initialEmail;
+  const _WebBallotRequestDialog({required this.election, required this.initialEmail});
+
+  @override
+  ConsumerState<_WebBallotRequestDialog> createState() => _WebBallotRequestDialogState();
+}
+
+class _WebBallotRequestDialogState extends ConsumerState<_WebBallotRequestDialog> {
+  late TextEditingController _identifierController;
+  final TextEditingController _otpController = TextEditingController();
+  bool _otpSent = false;
+  bool _isLoading = false;
+  String? _maskedEmail;
+  String? _directToken;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _identifierController = TextEditingController(text: widget.initialEmail);
+  }
+
+  @override
+  void dispose() {
+    _identifierController.dispose();
+    _otpController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _requestOtp() async {
+    final identifier = _identifierController.text.trim();
+    if (identifier.isEmpty) {
+      setState(() => _errorMessage = 'Please enter your registered email or Voter ID');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final dio = ref.read(apiClientProvider);
+      final resp = await dio.post(
+        ApiConstants.requestWebOtp,
+        data: {
+          'election_id': widget.election.id,
+          'identifier': identifier,
+        },
+      );
+
+      setState(() {
+        _otpSent = true;
+        _maskedEmail = resp.data['masked_email'] as String? ?? identifier;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      });
+    }
+  }
+
+  Future<void> _verifyOtp() async {
+    final otp = _otpController.text.trim();
+    if (otp.length != 6) {
+      setState(() => _errorMessage = 'Please enter the 6-digit verification code');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final dio = ref.read(apiClientProvider);
+      final resp = await dio.post(
+        ApiConstants.verifyWebOtp,
+        data: {
+          'election_id': widget.election.id,
+          'identifier': _identifierController.text.trim(),
+          'otp': otp,
+        },
+      );
+
+      setState(() {
+        _directToken = resp.data['direct_token'] as String?;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      backgroundColor: isDark ? AppColors.surface : Colors.white,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.mark_email_read_rounded, color: AppColors.primary, size: 24),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Web Ballot Verification',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        Text(
+                          'Method 1 Type 2 • Single-Use Direct Ballot Link',
+                          style: TextStyle(color: isDark ? Colors.white60 : Colors.grey.shade600, fontSize: 11.5),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              const SizedBox(height: 16),
+
+              if (_errorMessage != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline, color: Colors.red, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(_errorMessage!, style: const TextStyle(color: Colors.red, fontSize: 12.5)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ],
+
+              if (_directToken != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.check_circle_rounded, color: Colors.green, size: 36),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Ballot Link Generated & Emailed!',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.green),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Your single-use direct ballot link has been sent to $_maskedEmail. You can also open the ballot immediately below.',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 12.5),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      context.push('/vote/direct/$_directToken');
+                    },
+                    icon: const Icon(Icons.how_to_vote_rounded, size: 18),
+                    label: const Text('Open Ballot Paper Now (मतदान गर्नुहोस्)'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.success,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+              ] else if (!_otpSent) ...[
+                Text(
+                  'Enter your registered email address or Voter ID to receive a 6-digit verification code.',
+                  style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.grey.shade700),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _identifierController,
+                  decoration: InputDecoration(
+                    labelText: 'Email Address / Voter ID *',
+                    hintText: 'e.g. voter@example.com or VOTER-001',
+                    prefixIcon: const Icon(Icons.email_outlined),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton.icon(
+                    onPressed: _isLoading ? null : _requestOtp,
+                    icon: _isLoading
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.send_rounded, size: 18),
+                    label: const Text('Send Verification Code'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+              ] else ...[
+                Text(
+                  'A 6-digit code has been dispatched to $_maskedEmail. Please enter it below:',
+                  style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.grey.shade700),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _otpController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 8),
+                  decoration: InputDecoration(
+                    hintText: '------',
+                    counterText: '',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: _isLoading ? null : () => setState(() => _otpSent = false),
+                      child: const Text('Change Email'),
+                    ),
+                    const Spacer(),
+                    ElevatedButton.icon(
+                      onPressed: _isLoading ? null : _verifyOtp,
+                      icon: _isLoading
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.verified_rounded, size: 18),
+                      label: const Text('Verify & Get Ballot Link'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+

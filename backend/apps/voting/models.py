@@ -43,6 +43,24 @@ class VoterRoll(TimestampedModel):
     
     voted_ip_address = models.GenericIPAddressField(null=True, blank=True)
     voted_mac_address = models.CharField(max_length=255, blank=True, default='')
+
+    # Verification Status & Delivery Tracking (doc: Election-Methods.pdf)
+    verification_channel = models.CharField(
+        max_length=20, default='unverified',
+        choices=[
+            ('unverified', 'Pending Verification'),
+            ('mobile_app', 'Verified via Mobile App'),
+            ('web_email', 'Verified via Web / Email'),
+            ('venue_kiosk', 'Verified at Venue Kiosk'),
+        ],
+        help_text='Channel through which the voter verified identity'
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+
+    # Method 1 Type 2: Single-use Emailed Direct Ballot Link
+    direct_ballot_token = models.CharField(max_length=64, blank=True, default='', db_index=True)
+    direct_ballot_token_expires_at = models.DateTimeField(null=True, blank=True)
+    direct_ballot_token_used = models.BooleanField(default=False)
     
     class Meta:
         db_table = 'voter_rolls'

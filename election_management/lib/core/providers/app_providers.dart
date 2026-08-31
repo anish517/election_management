@@ -268,8 +268,85 @@ class VotingService {
     final resp = await _dio.post(ApiConstants.castVote(electionId), data: data);
     return resp.data['receipt_hash'] as String;
   }
+
+  Future<String> directCastVote({
+    required String directToken,
+    required Map<String, List<String>> ballotData,
+    String? deviceIdentifier,
+  }) async {
+    final data = <String, dynamic>{
+      'ballot_data': ballotData,
+    };
+    if (deviceIdentifier != null) {
+      data['device_identifier'] = deviceIdentifier;
+    }
+    final resp = await _dio.post(ApiConstants.directVoteCast(directToken), data: data);
+    return resp.data['receipt_hash'] as String;
+  }
 }
 
 final votingServiceProvider = Provider<VotingService>((ref) {
   return VotingService(ref.watch(apiClientProvider));
 });
+
+// ─── Direct Tokenized Ballot Provider (Method 1 Type 2) ──────────────────────
+
+class DirectBallotData {
+  final String electionId;
+  final String electionTitle;
+  final String electionPrefix;
+  final String primaryColor;
+  final String secondaryColor;
+  final String logoUrl;
+  final bool isSecretBallot;
+  final bool allowBoycott;
+  final String voterName;
+  final String voterId;
+  final List<PositionModel> positions;
+
+  const DirectBallotData({
+    required this.electionId,
+    required this.electionTitle,
+    required this.electionPrefix,
+    required this.primaryColor,
+    required this.secondaryColor,
+    required this.logoUrl,
+    required this.isSecretBallot,
+    required this.allowBoycott,
+    required this.voterName,
+    required this.voterId,
+    required this.positions,
+  });
+
+  factory DirectBallotData.fromJson(Map<String, dynamic> json) {
+    final list = (json['ballot'] as List<dynamic>?) ?? [];
+    return DirectBallotData(
+      electionId: json['election_id'] as String? ?? '',
+      electionTitle: json['election_title'] as String? ?? '',
+      electionPrefix: json['election_prefix'] as String? ?? '',
+      primaryColor: json['primary_color'] as String? ?? '#6C5CE7',
+      secondaryColor: json['secondary_color'] as String? ?? '#A29BFE',
+      logoUrl: json['logo_url'] as String? ?? '',
+      isSecretBallot: json['is_secret_ballot'] as bool? ?? true,
+      allowBoycott: json['allow_boycott'] as bool? ?? true,
+      voterName: json['voter_name'] as String? ?? '',
+      voterId: json['voter_id'] as String? ?? '',
+      positions: list.map((p) => PositionModel.fromJson(p as Map<String, dynamic>)).toList(),
+    );
+  }
+}
+
+final directBallotProvider = FutureProvider.autoDispose.family<DirectBallotData, String>((ref, token) async {
+  final dio = ref.watch(apiClientProvider);
+  final resp = await dio.get(ApiConstants.directBallot(token));
+  return DirectBallotData.fromJson(resp.data as Map<String, dynamic>);
+});
+
+// ─── Verification Stats Provider (Method 1 Admin Visibility) ─────────────────
+
+final electionVerificationStatsProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String>((ref, electionId) async {
+  final dio = ref.watch(apiClientProvider);
+  final resp = await dio.get(ApiConstants.electionVerificationStats(electionId));
+  return resp.data as Map<String, dynamic>;
+});
+

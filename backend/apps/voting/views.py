@@ -63,6 +63,19 @@ class VotingViewSet(viewsets.ViewSet):
                 'voter_info': None,
             })
 
+        # Check if election is configured for in-person venue voting only
+        if getattr(election, 'election_method', 'online') == 'venue':
+            venue_str = f"at {election.venue_name}" if election.venue_name else "at the physical polling booth station"
+            return Response({
+                'ballot': [],
+                'allow_boycott': False,
+                'is_secret_ballot': election.is_secret_ballot,
+                'not_eligible': True,
+                'not_eligible_reason': f'Remote online voting is disabled for this election. This is a Method 2 (Physical In-Person Venue) election. Please cast your ballot in person {venue_str}.',
+                'has_voted': False,
+                'voter_info': None,
+            })
+
         # Check voter roll and has_voted status
         roll = self._get_voter_roll(request, election_pk)
         if not roll or not roll.is_eligible:
@@ -108,6 +121,12 @@ class VotingViewSet(viewsets.ViewSet):
         roll = self._get_voter_roll(request, election_pk)
         if not roll:
             return Response({'error': 'You are not eligible to vote in this election.'}, status=403)
+
+        if getattr(roll.election, 'election_method', 'online') == 'venue':
+            return Response(
+                {'error': 'Remote in-app voting is disabled for this in-person venue election. Please cast your ballot at the venue polling booth.'},
+                status=403
+            )
 
         if roll.has_voted:
             return Response({'error': 'You have already cast your ballot in this election. Each voter may only vote once.'}, status=403)

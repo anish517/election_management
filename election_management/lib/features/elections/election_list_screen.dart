@@ -423,22 +423,71 @@ class _ElectionListTile extends StatelessWidget {
                 // Active Buttons
                 if (election.isVotingActive && user != null && !user!.canManageElections && !user!.isObserver && !user!.isAuditor) ...[
                   const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () => context.pushNamed(
-                        'ballot',
-                        pathParameters: {'electionId': election.id},
+                  if (election.isVenueElection)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.purple.withValues(alpha: 0.3)),
                       ),
-                      icon: const Icon(Icons.how_to_vote_rounded, size: 18),
-                      label: const Text('Vote Now (मतदान गर्नुहोस्)', style: TextStyle(fontWeight: FontWeight.bold)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.stateVoting,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.storefront_rounded, color: Colors.purple, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'In-Person Booth Voting ${election.venueName.isNotEmpty ? "at ${election.venueName}" : "at Venue"} (भौतिक मतदान मात्र)',
+                              style: const TextStyle(color: Colors.purple, fontWeight: FontWeight.bold, fontSize: 12.5),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (election.isWebBasedOnly)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.mark_email_read_rounded, color: Colors.blue, size: 18),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Web Single-Use Ballot Link (इमेल लिङ्क मार्फत मतदान)',
+                              style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 12.5),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => context.pushNamed(
+                          'ballot',
+                          pathParameters: {'electionId': election.id},
+                        ),
+                        icon: const Icon(Icons.how_to_vote_rounded, size: 18),
+                        label: const Text('Vote Now (मतदान गर्नुहोस्)', style: TextStyle(fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.stateVoting,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
                       ),
                     ),
-                  ),
                 ],
                 if (election.hasResults) ...[
                   const SizedBox(height: 14),

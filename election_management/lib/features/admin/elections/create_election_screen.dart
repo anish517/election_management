@@ -602,12 +602,37 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
         );
       }
     } catch (e) {
+      String msg = 'Failed to create election.';
+      if (e is DioException) {
+        if (e.response?.data is Map) {
+          final data = e.response!.data as Map;
+          final errorList = <String>[];
+          data.forEach((key, val) {
+            final fieldName = key.toString().replaceAll('_', ' ');
+            if (val is List) {
+              errorList.add('• $fieldName: ${val.join(", ")}');
+            } else {
+              errorList.add('• $fieldName: $val');
+            }
+          });
+          if (errorList.isNotEmpty) {
+            msg = errorList.join('\n');
+          } else {
+            msg = data['error']?.toString() ?? data['detail']?.toString() ?? msg;
+          }
+        } else if (e.response?.data is String && (e.response!.data as String).isNotEmpty) {
+          msg = e.response!.data as String;
+        }
+      } else {
+        msg = e.toString().replaceAll('Exception: ', '');
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error creating election: $e'),
+            content: Text('Error creating election:\n$msg'),
             backgroundColor: Colors.red.shade600,
             behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 5),
           ),
         );
       }

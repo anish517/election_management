@@ -941,7 +941,7 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
             try:
                 import nepali_datetime
                 ndt = nepali_datetime.date.from_datetime_date(notice.created_at.date())
-                nepali_date = f"{ndt.year}/{ndt.month:02d}/{ndt.day:02d} ({ndt.strftime('%K %N')})"
+                nepali_date = f"{ndt.year}/{ndt.month:02d}/{ndt.day:02d}"
                 english_date = notice.created_at.strftime('%B %d, %Y')
             except Exception:
                 nepali_date = str(notice.created_at.date())

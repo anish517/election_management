@@ -1187,7 +1187,7 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
     try {
       final dt = DateTime.parse(iso).toLocal();
       final nepali = dt.toNepaliDateTime();
-      return NepaliDateFormat('yyyy/MM/dd (yyyy MMMM d)').format(nepali);
+      return NepaliDateFormat('yyyy/MM/dd').format(nepali);
     } catch (_) {
       return iso;
     }
@@ -1538,20 +1538,13 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
                                               ),
                                             ),
                                             const SizedBox(width: 12),
-                                            Column(
-                                              crossAxisAlignment: CrossAxisAlignment.end,
-                                              children: [
-                                                Text(
-                                                  'मिति : ${_formatNepaliDate(dateIso)}',
-                                                  style: const TextStyle(
-                                                    fontSize: 11.5,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Color(0xFF0F172A),
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 6),
-                                                _buildStampArea(stampImageUrl),
-                                              ],
+                                            Text(
+                                              'मिति : ${_formatNepaliDate(dateIso)}',
+                                              style: const TextStyle(
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.bold,
+                                                color: Color(0xFF0F172A),
+                                              ),
                                             ),
                                           ],
                                         ),

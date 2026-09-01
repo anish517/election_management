@@ -1039,7 +1039,7 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
             else:
                 headers = raw_headers
 
-            th_cells = ''.join([f'<th style="background:#F1F5F9; font-weight:bold; font-size:11px; padding:5px 8px; border:1px solid #CBD5E1; color:#0F172A;">{h}</th>' for h in headers])
+            th_cells = ''.join([f'<th style="background:#F1F5F9; font-weight:bold; font-size:11px; padding:6px 8px; border:1px solid #CBD5E1; color:#0F172A; text-align:center;">{h}</th>' for h in headers])
             rows_html = ''
             for l in t_lines[1:]:
                 clean = l.replace('-', '').replace(':', '').replace('|', '').strip()
@@ -1065,9 +1065,9 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
                     is_last_col = (idx == len(cells) - 1)
                     color = '#059669' if is_win and is_last_col else ('#B45309' if is_tie and is_last_col else '#1E293B')
                     weight = 'bold' if is_win or is_tie or idx == 0 else 'normal'
-                    tds += f'<td style="padding:4.5px 8px; border:1px solid #E2E8F0; font-size:10.5px; font-weight:{weight}; color:{color}; line-height:1.35;">{c}</td>'
+                    tds += f'<td style="padding:5px 8px; border:1px solid #E2E8F0; font-size:10.5px; font-weight:{weight}; color:{color}; line-height:1.35; text-align:center;">{c}</td>'
                 rows_html += f'<tr style="{bg_style}">{tds}</tr>'
-            return f'<table style="width:100%; border-collapse:collapse; margin:8px 0; border:1px solid #CBD5E1; text-align:left;"><thead><tr>{th_cells}</tr></thead><tbody>{rows_html}</tbody></table>'
+            return f'<table style="width:100%; border-collapse:collapse; margin:10px auto; border:1px solid #CBD5E1; text-align:center;"><thead><tr>{th_cells}</tr></thead><tbody>{rows_html}</tbody></table>'
 
         def format_notice_content_html(raw_content):
             if not raw_content:
@@ -1088,11 +1088,11 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
                             table_lines = []
                             in_table = False
                         if trimmed:
-                            out.append(f'<p style="margin: 0 0 6px 0; line-height: 1.5; font-size: 11.5px;">{trimmed}</p>')
+                            out.append(f'<p style="margin: 0 0 8px 0; line-height: 1.6; font-size: 12px; text-align: center;">{trimmed}</p>')
                 if in_table and table_lines:
                     out.append(render_markdown_table(table_lines))
                 return ''.join(out)
-            return raw_content.replace('\n', '<br>')
+            return f'<div style="text-align: center; line-height: 1.6; font-size: 12px;">{raw_content.replace(chr(10), "<br>")}</div>'
 
         notice_content = format_notice_content_html(notice.content or '')
         logo_html = f'<img src="{org_logo}" class="header-logo" alt="Logo">' if org_logo else '<div class="header-logo" style="background:#EEF2FF; border:1px solid #C7D2FE; display:flex; align-items:center; justify-content:center; font-size:24px;">🏛️</div>'
@@ -1105,7 +1105,7 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
   <style>
     @page {{
       size: A4 portrait;
-      margin: 8mm 10mm 8mm 10mm;
+      margin: 8mm 10mm 12mm 10mm;
     }}
     @media print {{
       body {{
@@ -1123,6 +1123,17 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
         margin: 0 !important;
         max-width: 100% !important;
       }}
+      .doc-print-table {{
+        width: 100% !important;
+        border-collapse: collapse !important;
+        border: none !important;
+      }}
+      .doc-print-table tfoot {{
+        display: table-footer-group !important;
+      }}
+      .signatories-block-repeating {{
+        page-break-inside: avoid !important;
+      }}
       table {{
         page-break-inside: auto;
       }}
@@ -1136,9 +1147,6 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
       tbody {{
         display: table-row-group;
       }}
-      .signatories-block {{
-        page-break-inside: avoid;
-      }}
     }}
     * {{ box-sizing: border-box; }}
     body {{
@@ -1149,7 +1157,7 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
       padding: 16px;
     }}
     .action-bar {{
-      max-width: 820px;
+      max-width: 840px;
       margin: 0 auto 12px auto;
       display: flex;
       justify-content: flex-end;
@@ -1170,7 +1178,7 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
     }}
     .btn:hover {{ background: #4338CA; }}
     .letterhead {{
-      max-width: 820px;
+      max-width: 840px;
       margin: 0 auto;
       background: #FFFFFF;
       padding: 20px 24px;
@@ -1256,25 +1264,24 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
       font-weight: bold;
       font-size: 11px;
       color: #0F172A;
-      margin-bottom: 6px;
     }}
     .notice-title-box {{
       text-align: center;
-      font-size: 16px;
+      font-size: 17px;
       font-weight: 900;
       color: #0F172A;
-      margin: 2px 0 6px 0;
+      margin: 0 0 4px 0;
       letter-spacing: 0.4px;
     }}
     .content-body {{
-      font-size: 11.5px;
-      line-height: 1.5;
-      text-align: justify;
+      font-size: 12px;
+      line-height: 1.6;
+      text-align: center;
       color: #1E293B;
     }}
     .stamp-digital {{
-      width: 78px;
-      height: 78px;
+      width: 76px;
+      height: 76px;
       border: 1.5px solid #DC2626;
       border-radius: 50%;
       display: flex;
@@ -1288,8 +1295,8 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
       line-height: 1.1;
     }}
     .stamp-manual {{
-      width: 78px;
-      height: 78px;
+      width: 76px;
+      height: 76px;
       border: 1.2px dashed #94A3B8;
       border-radius: 50%;
       display: flex;
@@ -1304,7 +1311,7 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
       display: flex;
       flex-wrap: wrap;
       gap: 16px;
-      justify-content: {'flex-start' if len(signatories) <= 1 else 'center'};
+      justify-content: center;
     }}
     .signatory-card {{
       text-align: center;
@@ -1366,55 +1373,85 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
     <!-- Solid Divider Line -->
     <div class="divider-solid"></div>
 
-    <!-- 2-Column Statutory Body Layout -->
-    <div class="main-grid">
-      <!-- Left Column: Election Committee Roster -->
-      <div class="left-sidebar">
-        <div style="font-weight: 900; font-size: 11px; color: #4F46E5; text-transform: uppercase; margin-bottom: 2px; letter-spacing: 0.2px;">
-          ELECTION COMMITTEE
-        </div>
-        <div style="font-weight: 800; font-size: 10.5px; color: #4F46E5; margin-bottom: 12px;">
-          {tenure_range}
-        </div>
+    <!-- Document Print Wrapper Table (repeats tfoot on every printed page) -->
+    <table class="doc-print-table" style="width: 100%; border-collapse: collapse; border: none;">
+      <tbody>
+        <tr>
+          <td style="border: none; padding: 0; vertical-align: top;">
+            <!-- 2-Column Statutory Body Layout -->
+            <div class="main-grid">
+              <!-- Left Column: Election Committee Roster -->
+              <div class="left-sidebar">
+                <div style="font-weight: 900; font-size: 11px; color: #4F46E5; text-transform: uppercase; margin-bottom: 2px; letter-spacing: 0.2px;">
+                  ELECTION COMMITTEE
+                </div>
+                <div style="font-weight: 800; font-size: 10.5px; color: #4F46E5; margin-bottom: 12px;">
+                  {tenure_range}
+                </div>
 
-        {committee_sidebar_html}
-      </div>
-
-      <!-- Right Column: Notice Body -->
-      <div class="right-content">
-        <div>
-          <!-- Notice Top Section: Notice Title/Subject and Date + Stamp to the right -->
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-            <div style="flex: 1; padding-right: 12px;">
-              <div class="notice-title-box" style="text-align: center; margin: 0 0 4px 0;">
-                सूचना !
+                {committee_sidebar_html}
               </div>
-              {f'<div style="font-weight:bold; font-size:12.5px; text-align:center; margin: 4px 0 6px 0;">विषय: {notice.title}</div>' if notice.title != 'सूचना' and notice.title != 'सूचना !' else ''}
+
+              <!-- Right Column: Notice Body -->
+              <div class="right-content">
+                <div>
+                  <!-- Notice Sub-Header: Left Stamp + Center Title/Subject + Right Date -->
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 12px;">
+                    <!-- LEFT: Official Stamp -->
+                    <div style="flex-shrink: 0; display: flex; justify-content: flex-start;">
+                      {stamp_html}
+                    </div>
+
+                    <!-- CENTER: Notice Title & Subject -->
+                    <div style="flex: 1; text-align: center;">
+                      <div class="notice-title-box">
+                        सूचना !
+                      </div>
+                      {f'<div style="font-weight:bold; font-size:13px; text-align:center; margin: 4px 0 2px 0; color:#0F172A;">विषय: {notice.title}</div>' if notice.title != 'सूचना' and notice.title != 'सूचना !' else ''}
+                    </div>
+
+                    <!-- RIGHT: Date -->
+                    <div style="flex-shrink: 0; text-align: right; min-width: 80px;">
+                      <div class="date-text">
+                        मिति: {nepali_date}
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Notice Body Paragraphs (Center-Aligned) -->
+                  <div class="content-body">
+                    {notice_content}
+                  </div>
+                </div>
+
+                <!-- On-Screen Signatories Block -->
+                <div style="margin-top: 24px; display: flex; justify-content: center;">
+                  <div class="signatories-block">
+                    {signatories_html}
+                  </div>
+                </div>
+              </div>
             </div>
-            <div style="flex-shrink: 0; text-align: right;">
-              <div class="date-text" style="margin-bottom: 4px;">
-                मिति: {nepali_date}
+          </td>
+        </tr>
+      </tbody>
+
+      <!-- Multi-Page Print Repeating Footer (repeats signatures at the bottom of every printed page) -->
+      <tfoot class="print-repeating-footer no-screen" style="border-top: 1px solid #CBD5E1;">
+        <tr>
+          <td style="border: none; padding-top: 12px; padding-bottom: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid #E2E8F0; padding-top: 8px;">
+              <div style="font-size: 9px; color: #64748B; font-style: italic;">
+                {org_name} • निर्वाचन समिति • {notice.title}
               </div>
-              <div style="display: flex; justify-content: flex-end;">
-                {stamp_html}
+              <div class="signatories-block-repeating" style="display: flex; gap: 14px; justify-content: flex-end;">
+                {signatories_html}
               </div>
             </div>
-          </div>
-
-          <!-- Notice Body Paragraphs -->
-          <div class="content-body">
-            {notice_content}
-          </div>
-        </div>
-
-        <!-- Bottom Signatories -->
-        <div style="margin-top: 18px; display: flex; justify-content: flex-end;">
-          <div class="signatories-block">
-            {signatories_html}
-          </div>
-        </div>
-      </div>
-    </div>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
   </div>
 
   <script>

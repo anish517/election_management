@@ -1497,14 +1497,20 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
                                   child: Padding(
                                     padding: const EdgeInsets.only(left: 20, top: 6),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.center,
                                       children: [
-                                        // Notice Top Row: Notice Title & Subject (Center) with Date & Stamp (Right)
+                                        // Notice Top Row: Left Stamp + Center Title & Subject + Right Date
                                         Row(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment: CrossAxisAlignment.center,
                                           children: [
+                                            // LEFT: Official Stamp
+                                            _buildStampArea(stampImageUrl),
+                                            const SizedBox(width: 12),
+
+                                            // CENTER: Notice Title & Subject
                                             Expanded(
                                               child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.center,
                                                 children: [
                                                   const Text(
                                                     'सूचना !',
@@ -1612,7 +1618,7 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
               padding: const EdgeInsets.only(bottom: 10),
               child: Text(
                 trimmed,
-                textAlign: TextAlign.justify,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 13,
                   height: 1.8,
@@ -1626,16 +1632,18 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
       if (inTable && tableLines.isNotEmpty) {
         widgets.add(_renderMarkdownTable(tableLines));
       }
-      return Column(crossAxisAlignment: CrossAxisAlignment.start, children: widgets);
+      return Column(crossAxisAlignment: CrossAxisAlignment.center, children: widgets);
     }
 
-    return Text(
-      content,
-      textAlign: TextAlign.justify,
-      style: const TextStyle(
-        fontSize: 13,
-        height: 1.85,
-        color: Color(0xFF1E293B),
+    return Center(
+      child: Text(
+        content,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontSize: 13,
+          height: 1.85,
+          color: Color(0xFF1E293B),
+        ),
       ),
     );
   }

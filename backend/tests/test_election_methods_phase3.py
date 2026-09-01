@@ -236,3 +236,53 @@ class TestElectionMethodsPhase3(TestCase):
 
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('Voting is not active', res.data['error'])
+
+    def test_polling_station_initialization_and_unique_pins(self):
+        """Requirement 3: Polling station initialization generates 100% collision-free unique PINs for all voters."""
+        self.client.force_authenticate(user=self.admin)
+        init_url = f'/v1/elections/{self.venue_election.id}/polling-stations/initialize/'
+
+        res = self.client.post(init_url, {
+            'station_name': 'Kathmandu Central Booth A',
+            'station_code': 'KTM-BOOTH-01',
+            'regenerate_all': True,
+        }, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['status'], 'success')
+        self.assertEqual(res.data['station_code'], 'KTM-BOOTH-01')
+
+        # Check all voters have unique non-empty PINs
+        voters = list(VoterRoll.objects.filter(election=self.venue_election))
+        pins = [v.voter_pin for v in voters]
+        self.assertTrue(all(len(p) >= 6 for p in pins))
+        # Ensure zero duplicates across all voters
+        self.assertEqual(len(pins), len(set(pins)))
+
+    def test_kiosk_unlock_via_unique_voter_pin(self):
+        """Requirement 3: Voter can enter their unique PIN at the kiosk to unlock their secret ballot."""
+        self.voter1.voter_pin = '492810'
+        self.voter1.save()
+
+        self.client.force_authenticate(user=None)
+        res = self.client.post('/v1/voting/kiosk/unlock/', {
+            'election_id': str(self.venue_election.id),
+            'voter_id': '492810',  # Entering the 6-digit voter PIN directly
+        }, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['voter_id'], self.voter1.voter_id)
+        self.assertIn('session_token', res.data)
+        self.assertIn('ballot', res.data)
+        self.assertEqual(res.data['require_otp'], False)
+
+    def test_voter_pin_slips_html_view(self):
+        """Requirement 3: Printable voter PIN slips letterhead renders successfully."""
+        self.voter1.voter_pin = '558899'
+        self.voter1.save()
+
+        res = self.client.get(f'/v1/elections/{self.venue_election.id}/voter-pins/print-slips/')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('558899', res.content.decode('utf-8'))
+        self.assertIn('OFFICIAL VOTER PIN SLIP', res.content.decode('utf-8'))
+

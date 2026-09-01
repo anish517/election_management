@@ -1592,7 +1592,8 @@ class KioskUnlockView(APIView):
 
     def post(self, request):
         election_id = request.data.get('election_id')
-        identifier = (
+        voter_pin = (request.data.get('voter_pin') or request.data.get('pin') or '').strip()
+        raw_identifier = (
             request.data.get('voter_id')
             or request.data.get('identifier')
             or request.data.get('email')
@@ -1600,14 +1601,14 @@ class KioskUnlockView(APIView):
             or ''
         ).strip()
 
-        if not election_id or not identifier:
-            return Response({'error': 'election_id and voter identifier are required.'}, status=400)
+        if not election_id or (not raw_identifier and not voter_pin):
+            return Response({'error': 'election_id and voter identifier or PIN are required.'}, status=400)
 
         # Automatically parse standard EMS QR Code payloads: EMS-VOTER:<voter_id>:<election_id>:<email/phone>
-        if identifier.startswith('EMS-VOTER:'):
-            parts = identifier.split(':')
+        if raw_identifier.startswith('EMS-VOTER:'):
+            parts = raw_identifier.split(':')
             if len(parts) >= 2:
-                identifier = parts[1].strip()
+                raw_identifier = parts[1].strip()
 
         try:
             election = Election.objects.get(id=election_id)
@@ -1618,18 +1619,24 @@ class KioskUnlockView(APIView):
             return Response({'error': f'Voting is not active for this election (Status: {election.get_state_display()}).'}, status=400)
 
         from django.db.models import Q
-        roll = VoterRoll.objects.filter(
-            Q(voter_id__iexact=identifier)
-            | Q(email__iexact=identifier)
-            | Q(phone__iexact=identifier)
-            | Q(council_number__iexact=identifier)
-            | Q(citizenship_number__iexact=identifier),
-            election=election,
-        ).first()
+
+        roll = None
+        if raw_identifier:
+            roll = VoterRoll.objects.filter(
+                Q(voter_id__iexact=raw_identifier)
+                | Q(email__iexact=raw_identifier)
+                | Q(phone__iexact=raw_identifier)
+                | Q(council_number__iexact=raw_identifier)
+                | Q(citizenship_number__iexact=raw_identifier)
+                | Q(voter_pin__iexact=raw_identifier),
+                election=election,
+            ).first()
+        elif voter_pin:
+            roll = VoterRoll.objects.filter(election=election, voter_pin=voter_pin).first()
 
         if not roll:
             return Response({
-                'error': f'No voter registration found for "{identifier}" in the certified electoral roll.'
+                'error': f'No voter record found for "{raw_identifier or voter_pin}" in the electoral roll.'
             }, status=404)
 
         if not roll.is_eligible:
@@ -1731,7 +1738,8 @@ class KioskVerifyOTPView(APIView):
 
         from django.db.models import Q
         roll = VoterRoll.objects.filter(
-            Q(voter_id__iexact=identifier)
+            Q(voter_pin__iexact=identifier)
+            | Q(voter_id__iexact=identifier)
             | Q(email__iexact=identifier)
             | Q(phone__iexact=identifier),
             election=election,
@@ -1847,5 +1855,247 @@ class KioskCastVoteView(APIView):
             })
         except ValueError as e:
             return Response({'error': str(e)}, status=400)
+
+
+class PollingStationInitializeView(APIView):
+    """
+    POST /v1/elections/<uuid:election_pk>/polling-stations/initialize/
+    Initializes physical polling station and generates guaranteed unique, collision-free PINs for all voters.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, election_pk):
+        try:
+            election = Election.objects.get(id=election_pk)
+        except Election.DoesNotExist:
+            return Response({'error': 'Election not found.'}, status=404)
+
+        if request.user.organization_id != election.organization_id and not request.user.is_superuser:
+            return Response({'error': 'Permission denied.'}, status=403)
+
+        regenerate_all = bool(request.data.get('regenerate_all', False))
+        station_name = str(request.data.get('station_name', '')).strip() or election.venue_name or 'Main Polling Booth'
+        station_code = str(request.data.get('station_code', '')).strip() or 'STATION-01'
+
+        voters = list(VoterRoll.objects.filter(election=election))
+        if not voters:
+            return Response({
+                'error': 'No voters found in this election roll. Please import or register voters first before initializing the polling station.'
+            }, status=400)
+
+        existing_pins = set() if regenerate_all else set(
+            VoterRoll.objects.filter(election=election)
+            .exclude(voter_pin='')
+            .values_list('voter_pin', flat=True)
+        )
+
+        updated_voters = []
+        pins_generated = 0
+
+        for voter in voters:
+            if regenerate_all or not voter.voter_pin:
+                pin = VoterRoll.generate_unique_pin_for_election(election, existing_pins=existing_pins)
+                voter.voter_pin = pin
+                updated_voters.append(voter)
+                pins_generated += 1
+
+        if updated_voters:
+            VoterRoll.objects.bulk_update(updated_voters, ['voter_pin'], batch_size=500)
+
+        return Response({
+            'status': 'success',
+            'message': f'Polling station "{station_name}" ({station_code}) initialized successfully. {pins_generated} unique voter PIN(s) generated.',
+            'station_name': station_name,
+            'station_code': station_code,
+            'total_voters': len(voters),
+            'pins_generated': pins_generated,
+            'initialized_at': timezone.now().isoformat(),
+        }, status=200)
+
+
+class VoterPinSlipsPrintView(APIView):
+    """
+    GET /v1/elections/<uuid:election_pk>/voter-pins/print-slips/
+    Returns a printable A4 letterhead of official voter PIN slips (8 slips per page) for station distribution.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request, election_pk):
+        from django.http import HttpResponse
+        try:
+            election = Election.objects.get(id=election_pk)
+        except Election.DoesNotExist:
+            return HttpResponse('Election not found', status=404)
+
+        org = election.organization
+        org_name = org.name if org else 'Election Authority'
+        voters = VoterRoll.objects.filter(election=election, is_eligible=True).order_by('voter_id', 'first_name')
+
+        slips_html = ""
+        for v in voters:
+            pin_display = v.voter_pin or 'NOT-SET'
+            slips_html += f"""
+            <div class="pin-slip">
+              <div class="slip-header">
+                <div class="org-name">{org_name}</div>
+                <div class="election-title">{election.title}</div>
+              </div>
+              <div class="slip-badge">मतदाता मतदान टोकन • OFFICIAL VOTER PIN SLIP</div>
+              <div class="slip-body">
+                <div class="slip-row"><span class="lbl">मतदाता (Name):</span> <span class="val">{v.full_name}</span></div>
+                <div class="slip-row"><span class="lbl">मतदाता नं. (Voter ID):</span> <span class="val">{v.voter_id or '—'}</span></div>
+                {f'<div class="slip-row"><span class="lbl">काउन्सिल/सदस्य नं.:</span> <span class="val">{v.council_number}</span></div>' if v.council_number else ''}
+                {f'<div class="slip-row"><span class="lbl">नागरिकता नं.:</span> <span class="val">{v.citizenship_number}</span></div>' if v.citizenship_number else ''}
+              </div>
+              <div class="pin-box">
+                <div class="pin-label">तपाईंको गोप्य मतदान पिन (SECRET VOTING PIN)</div>
+                <div class="pin-value">{pin_display}</div>
+              </div>
+              <div class="slip-footer">
+                मतदान बुथको स्क्रिनमा यो पिन प्रविष्ट गरी मतदान गर्नुहोस्। (One-time secure access)
+              </div>
+            </div>
+            """
+
+        html = f"""<!DOCTYPE html>
+<html lang="ne">
+<head>
+  <meta charset="UTF-8">
+  <title>Voter PIN Slips - {election.title}</title>
+  <style>
+    @page {{
+      size: A4 portrait;
+      margin: 8mm;
+    }}
+    @media print {{
+      body {{ margin: 0; padding: 0; background: white; }}
+      .no-print {{ display: none !important; }}
+    }}
+    body {{
+      font-family: 'Segoe UI', 'Noto Sans Devanagari', Arial, sans-serif;
+      background: #F1F5F9;
+      margin: 0;
+      padding: 16px;
+      color: #0F172A;
+    }}
+    .action-bar {{
+      max-width: 860px;
+      margin: 0 auto 16px auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }}
+    .btn {{
+      background: #4F46E5;
+      color: white;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 13px;
+    }}
+    .btn:hover {{ background: #4338CA; }}
+    .grid-container {{
+      max-width: 860px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }}
+    .pin-slip {{
+      background: white;
+      border: 1.5px dashed #64748B;
+      border-radius: 8px;
+      padding: 10px 12px;
+      box-sizing: border-box;
+      page-break-inside: avoid;
+    }}
+    .slip-header {{
+      text-align: center;
+      border-bottom: 1px solid #E2E8F0;
+      padding-bottom: 3px;
+      margin-bottom: 4px;
+    }}
+    .org-name {{
+      font-size: 10.5px;
+      font-weight: 800;
+      color: #0F172A;
+    }}
+    .election-title {{
+      font-size: 9.5px;
+      font-weight: 600;
+      color: #4F46E5;
+    }}
+    .slip-badge {{
+      background: #EFF6FF;
+      color: #1E40AF;
+      font-size: 8px;
+      font-weight: bold;
+      text-align: center;
+      padding: 2px 4px;
+      border-radius: 4px;
+      margin-bottom: 5px;
+    }}
+    .slip-body {{
+      font-size: 10px;
+      line-height: 1.35;
+      margin-bottom: 6px;
+    }}
+    .slip-row {{
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 2px;
+    }}
+    .lbl {{
+      color: #64748B;
+      font-size: 9px;
+    }}
+    .val {{
+      font-weight: bold;
+      color: #0F172A;
+    }}
+    .pin-box {{
+      background: #FFFBEB;
+      border: 1.2px solid #F59E0B;
+      border-radius: 6px;
+      padding: 4px 6px;
+      text-align: center;
+      margin-bottom: 5px;
+    }}
+    .pin-label {{
+      font-size: 7.5px;
+      font-weight: bold;
+      color: #B45309;
+      letter-spacing: 0.3px;
+    }}
+    .pin-value {{
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: 3px;
+      color: #B91C1C;
+      font-family: monospace;
+      margin-top: 1px;
+    }}
+    .slip-footer {{
+      font-size: 7.5px;
+      color: #64748B;
+      text-align: center;
+      font-style: italic;
+    }}
+  </style>
+</head>
+<body>
+  <div class="action-bar no-print">
+    <div style="font-weight: bold; font-size: 14px;">Total Eligible Voters: {voters.count()}</div>
+    <button class="btn" onclick="window.print()">🖨️ Print All Voter PIN Slips</button>
+  </div>
+  <div class="grid-container">
+    {slips_html}
+  </div>
+</body>
+</html>"""
+        return HttpResponse(html, content_type='text/html')
+
 
 

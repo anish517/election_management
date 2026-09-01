@@ -100,6 +100,8 @@ class ApiConstants {
   static const String kioskUnlock = '/voting/kiosk/unlock/';
   static const String kioskVerifyOtp = '/voting/kiosk/verify-otp/';
   static const String kioskCast = '/voting/kiosk/cast/';
+  static String initializePollingStation(String eid) => '/elections/$eid/polling-stations/initialize/';
+  static String voterPinSlips(String eid) => '/elections/$eid/voter-pins/print-slips/';
 
   // Results
   static String results(String eid) => '/elections/$eid/results/results/';

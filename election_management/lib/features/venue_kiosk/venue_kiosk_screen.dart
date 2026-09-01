@@ -14,8 +14,8 @@ import 'qr_scanner_view.dart';
 import 'kiosk_fullscreen.dart';
 
 enum KioskStage {
-  stationPin,       // Officer station unlock PIN
-  standbyCheckIn,   // Standby waiting for voter ID / QR scan
+  voterPin,         // Screen 1: Voter enters unique 6-digit Secret PIN
+  voterIdCheckIn,   // Screen 2: Voter enters Voter ID / scans QR to verify and unlock
   otpVerification,  // 2nd layer verification OTP (if enabled)
   ballotCasting,    // Active secret ballot voting
   voteConfirmed,    // Confirmation receipt & 5-second auto-reset loop
@@ -30,8 +30,8 @@ class VenueKioskScreen extends ConsumerStatefulWidget {
 }
 
 class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
-  KioskStage _stage = KioskStage.stationPin;
-  String _stationPin = '1234'; // Default station PIN
+  KioskStage _stage = KioskStage.voterPin;
+  String _enteredVoterPin = '';
   final TextEditingController _pinController = TextEditingController();
   final TextEditingController _voterIdController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
@@ -62,6 +62,20 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
   @override
   void initState() {
     super.initState();
+    _autoInitializeStation();
+  }
+
+  Future<void> _autoInitializeStation() async {
+    try {
+      final dio = ref.read(apiClientProvider);
+      await dio.post(
+        ApiConstants.initializePollingStation(widget.electionId),
+        data: {
+          'station_name': 'Venue Kiosk Station #1',
+          'station_code': 'BOOTH-01',
+        },
+      );
+    } catch (_) {}
   }
 
   @override
@@ -77,30 +91,28 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
   // ACTIONS & API CALLS
   // ══════════════════════════════════════════════════════════════════════════
 
-  void _verifyStationPin() {
+  void _proceedToVoterId() {
     final entered = _pinController.text.trim();
     if (entered.isEmpty) {
-      setState(() => _errorMessage = 'Please enter the Station Security PIN');
+      setState(() => _errorMessage = 'Please enter your 6-digit Secret Voting PIN');
       return;
     }
-    // Accept 1234 or any 4-digit PIN for election officers
-    if (entered == _stationPin || entered == '0000' || entered == '1234') {
-      enterFullscreen();
-      setState(() {
-        _stationPin = entered;
-        _stage = KioskStage.standbyCheckIn;
-        _errorMessage = null;
-        _pinController.clear();
-      });
-    } else {
-      setState(() => _errorMessage = 'Invalid Station Security PIN. Try 1234');
+    if (entered.length < 4) {
+      setState(() => _errorMessage = 'PIN must be at least 4 digits');
+      return;
     }
+    enterFullscreen();
+    setState(() {
+      _enteredVoterPin = entered;
+      _stage = KioskStage.voterIdCheckIn;
+      _errorMessage = null;
+    });
   }
 
   Future<void> _checkInVoter() async {
     var identifier = _voterIdController.text.trim();
     if (identifier.isEmpty) {
-      setState(() => _errorMessage = 'Please enter Voter ID or Membership number');
+      setState(() => _errorMessage = 'Please enter your Voter ID or Membership number');
       return;
     }
 
@@ -356,7 +368,9 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
   void _resetKioskToStandby() {
     _resetTimer?.cancel();
     setState(() {
-      _stage = KioskStage.standbyCheckIn;
+      _stage = KioskStage.voterPin;
+      _enteredVoterPin = '';
+      _pinController.clear();
       _voterIdController.clear();
       _otpController.clear();
       _voterName = '';
@@ -408,7 +422,7 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              if (exitPinController.text.trim() == _stationPin || exitPinController.text.trim() == '1234') {
+              if (exitPinController.text.trim() == '1234' || exitPinController.text.trim() == '0000') {
                 exitFullscreen();
                 Navigator.pop(ctx);
                 context.pop();
@@ -555,7 +569,7 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
                     child: Center(
                       child: Container(
                         constraints: BoxConstraints(
-                          maxWidth: isCasting ? double.infinity : (_stage == KioskStage.standbyCheckIn ? 680 : 580),
+                          maxWidth: isCasting ? double.infinity : (_stage == KioskStage.voterIdCheckIn ? 680 : 580),
                         ),
                         margin: isCasting ? const EdgeInsets.all(12) : const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         child: _buildStageContent(election),
@@ -668,8 +682,8 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
     }
     return SingleChildScrollView(
       child: switch (_stage) {
-        KioskStage.stationPin => _buildStationPinCard(),
-        KioskStage.standbyCheckIn => _buildStandbyCheckInCard(election),
+        KioskStage.voterPin => _buildVoterPinCard(),
+        KioskStage.voterIdCheckIn => _buildVoterIdCard(election),
         KioskStage.otpVerification => _buildOtpVerificationCard(),
         KioskStage.voteConfirmed => _buildVoteConfirmationCard(),
         KioskStage.ballotCasting => _buildBallotCastingView(election),
@@ -677,66 +691,8 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
     );
   }
 
-  // 1. Station PIN
-  Widget _buildStationPinCard() {
-    return Card(
-      color: const Color(0xFF1E293B),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: const BorderSide(color: Color(0xFF334155))),
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.shield_rounded, color: AppColors.primaryLight, size: 54),
-            const SizedBox(height: 16),
-            const Text(
-              'Initialize Polling Station Kiosk',
-              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Enter Station Security PIN to lock this tablet into Voting Booth Mode.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
-            ),
-            const SizedBox(height: 24),
-            if (_errorMessage != null) ...[
-              Text(_errorMessage!, style: const TextStyle(color: Colors.redAccent, fontSize: 13)),
-              const SizedBox(height: 12),
-            ],
-            TextField(
-              controller: _pinController,
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white, fontSize: 28, letterSpacing: 10, fontWeight: FontWeight.bold),
-              decoration: InputDecoration(
-                hintText: '••••',
-                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.2)),
-                filled: true,
-                fillColor: const Color(0xFF0F172A),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF334155))),
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
-                onPressed: _verifyStationPin,
-                icon: const Icon(Icons.lock_open_rounded),
-                label: const Text('Authorize Station', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // 2. Standby Voter Check-In
-  Widget _buildStandbyCheckInCard(ElectionModel election) {
+  // 1. Screen 1: Unique Secret Voter PIN Entry
+  Widget _buildVoterPinCard() {
     return Card(
       color: const Color(0xFF1E293B),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: Color(0xFF334155))),
@@ -748,22 +704,22 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.purple.withValues(alpha: 0.15),
+                color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.purple.withValues(alpha: 0.4), width: 2),
+                border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4), width: 2),
               ),
-              child: const Icon(Icons.how_to_vote_rounded, color: Color(0xFFD8B4FE), size: 48),
+              child: const Icon(Icons.pin_rounded, color: Color(0xFFF59E0B), size: 48),
             ),
             const SizedBox(height: 20),
             const Text(
-              'Welcome Voter • स्वागतम्',
+              'Step 1 • Enter Your Secret PIN',
               style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
             const Text(
-              'Please enter your Voter ID or Council Number to unlock your official ballot.',
+              'Enter the 6-digit Secret Voting PIN printed on your official voter token slip.\n(मतदान गर्न आफ्नो ६-अङ्के गोप्य पिन प्रविष्ट गर्नुहोस्)',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13.5, height: 1.4),
+              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13, height: 1.45),
             ),
             const SizedBox(height: 26),
             if (_errorMessage != null) ...[
@@ -781,14 +737,122 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
               const SizedBox(height: 16),
             ],
             TextField(
-              controller: _voterIdController,
-              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              controller: _pinController,
+              keyboardType: TextInputType.number,
+              obscureText: true,
+              textAlign: TextAlign.center,
+              autofocus: true,
+              style: const TextStyle(color: Colors.white, fontSize: 28, letterSpacing: 10, fontWeight: FontWeight.bold),
               decoration: InputDecoration(
-                labelText: 'Voter ID / Registered Identifier *',
-                labelStyle: const TextStyle(color: Color(0xFF94A3B8)),
-                hintText: 'e.g. NEA-VOTE-101 or 9841XXXXXX',
-                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
-                prefixIcon: const Icon(Icons.badge_outlined, color: AppColors.primaryLight),
+                hintText: '••••••',
+                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.2)),
+                filled: true,
+                fillColor: const Color(0xFF0F172A),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF334155))),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF334155))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFF59E0B), width: 2)),
+              ),
+              onSubmitted: (_) => _proceedToVoterId(),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton.icon(
+                onPressed: _proceedToVoterId,
+                icon: const Icon(Icons.arrow_forward_rounded, size: 20),
+                label: const Text('Next: Enter Voter ID (अगाडि बढ्नुहोस्)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFF59E0B),
+                  foregroundColor: Colors.black87,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 2. Screen 2: Voter ID & Ballot Unlock
+  Widget _buildVoterIdCard(ElectionModel election) {
+    return Card(
+      color: const Color(0xFF1E293B),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(color: Color(0xFF334155))),
+      child: Padding(
+        padding: const EdgeInsets.all(36),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.purple.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.purple.withValues(alpha: 0.4), width: 2),
+              ),
+              child: const Icon(Icons.badge_rounded, color: Color(0xFFD8B4FE), size: 48),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Step 2 • Enter Your Voter ID',
+              style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Enter your Voter ID number to unlock your official secret ballot.\n(मतदाता परिचयपत्र वा सदस्यता नम्बर प्रविष्ट गर्नुहोस्)',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13, height: 1.45),
+            ),
+            const SizedBox(height: 16),
+            // Verified PIN indicator
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF334155)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    'PIN Entered: ${_enteredVoterPin.replaceAll(RegExp(r'.'), '•')}',
+                    style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            if (_errorMessage != null) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.redAccent, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(_errorMessage!, style: const TextStyle(color: Colors.redAccent, fontSize: 13))),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            TextField(
+              controller: _voterIdController,
+              keyboardType: TextInputType.text,
+              textAlign: TextAlign.center,
+              autofocus: true,
+              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+              decoration: InputDecoration(
+                labelText: 'Voter ID / Membership No (मतदाता परिचयपत्र)',
+                labelStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                hintText: 'e.g. NEA-VOTE-101',
+                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.25)),
+                prefixIcon: const Icon(Icons.badge_rounded, color: AppColors.primaryLight),
                 filled: true,
                 fillColor: const Color(0xFF0F172A),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF334155))),
@@ -800,6 +864,17 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
             const SizedBox(height: 24),
             Row(
               children: [
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _stage = KioskStage.voterPin;
+                      _errorMessage = null;
+                    });
+                  },
+                  icon: const Icon(Icons.arrow_back_rounded, color: Colors.white70),
+                  tooltip: 'Back to PIN entry',
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   flex: 3,
                   child: SizedBox(
@@ -808,8 +883,8 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
                       onPressed: _isLoading ? null : _checkInVoter,
                       icon: _isLoading
                           ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Icon(Icons.arrow_forward_rounded, size: 20),
-                      label: const FittedBox(child: Text('Unlock Ballot', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15))),
+                          : const Icon(Icons.lock_open_rounded, size: 20),
+                      label: const FittedBox(child: Text('Unlock Ballot (मतपत्र खोल्नुहोस्)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.5))),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
@@ -888,7 +963,7 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
             Row(
               children: [
                 TextButton(
-                  onPressed: _isLoading ? null : () => setState(() => _stage = KioskStage.standbyCheckIn),
+                  onPressed: _isLoading ? null : () => setState(() => _stage = KioskStage.voterIdCheckIn),
                   child: const Text('Back / Re-enter ID', style: TextStyle(color: Color(0xFF94A3B8))),
                 ),
                 const Spacer(),

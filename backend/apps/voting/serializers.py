@@ -48,7 +48,7 @@ class VoterRollSerializer(serializers.ModelSerializer):
     class Meta:
         model = VoterRoll
         fields = [
-            'id', 'election', 'voter_id', 'prefix', 'first_name', 'middle_name', 'last_name',
+            'id', 'election', 'voter_id', 'voter_pin', 'prefix', 'first_name', 'middle_name', 'last_name',
             'full_name', 'email', 'phone', 'council_number', 'citizenship_number',
             'is_eligible', 'ineligibility_reason', 'has_voted', 'voted_at',
             'voted_ip_address', 'voted_mac_address',

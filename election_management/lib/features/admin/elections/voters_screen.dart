@@ -69,6 +69,122 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
     }
   }
 
+  void _showInitializeStationDialog() {
+    final nameCtrl = TextEditingController(text: 'Main Polling Station');
+    final codeCtrl = TextEditingController(text: 'BOOTH-01');
+    bool regenAll = false;
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.how_to_vote_rounded, color: Color(0xFF059669)),
+                SizedBox(width: 10),
+                Text('Initialize Polling Station', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              ],
+            ),
+            content: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Initializing the station generates a guaranteed unique, collision-free PIN for every voter in the roll to unlock touch-screen voting booths.',
+                    style: TextStyle(fontSize: 13, color: Color(0xFF64748B), height: 1.4),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Station / Venue Name',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: codeCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'Station Code',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  CheckboxListTile(
+                    value: regenAll,
+                    onChanged: (val) => setModalState(() => regenAll = val ?? false),
+                    title: const Text('Regenerate All PINs', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    subtitle: const Text('Generates fresh unique PINs for all voters', style: TextStyle(fontSize: 11)),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton.icon(
+                onPressed: isSubmitting ? null : () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  setModalState(() => isSubmitting = true);
+                  try {
+                    final dio = ref.read(apiClientProvider);
+                    final res = await dio.post(
+                      ApiConstants.initializePollingStation(widget.electionId),
+                      data: {
+                        'station_name': nameCtrl.text.trim(),
+                        'station_code': codeCtrl.text.trim(),
+                        'regenerate_all': regenAll,
+                      },
+                    );
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    ref.invalidate(votersProvider(widget.electionId));
+                    if (mounted) {
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text(res.data['message'] ?? 'Polling station initialized successfully.'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    setModalState(() => isSubmitting = false);
+                    if (mounted) {
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to initialize: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                },
+                icon: isSubmitting
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Icon(Icons.check_circle_rounded, size: 18),
+                label: const Text('Initialize & Generate PINs'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF059669),
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final votersAsync = ref.watch(votersProvider(widget.electionId));
@@ -240,6 +356,32 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                         style: OutlinedButton.styleFrom(
                           foregroundColor: const Color(0xFF10B981),
                           side: const BorderSide(color: Color(0xFF10B981)),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                      FilledButton.icon(
+                        onPressed: _showInitializeStationDialog,
+                        icon: const Icon(Icons.how_to_vote_rounded, size: 18),
+                        label: const Text('Initialize Station & PINs'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF059669),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () {
+                          final baseUrl = ApiConstants.baseUrl.replaceAll('/v1', '');
+                          final url = '$baseUrl/v1/elections/${widget.electionId}/voter-pins/print-slips/';
+                          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                        },
+                        icon: const Icon(Icons.pin_rounded, size: 18, color: Color(0xFFD97706)),
+                        label: const Text('Print PIN Slips (पर्ची प्रिन्ट)'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFFD97706),
+                          side: const BorderSide(color: Color(0xFFD97706)),
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
@@ -588,6 +730,8 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
       );
     }
 
+    final voterPin = voter['voter_pin']?.toString() ?? '';
+
     // Admin Row with full controls (Edit / Delete / Profile)
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 10.0),
@@ -596,17 +740,43 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
           SizedBox(width: 48, child: Text(sn.toString(), style: const TextStyle(fontSize: 13))),
           Expanded(
             flex: 2,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                voterId.isNotEmpty ? voterId : '-',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primaryLight),
-                overflow: TextOverflow.ellipsis,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    voterId.isNotEmpty ? voterId : '-',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppColors.primaryLight),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (voterPin.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.pin_rounded, size: 11, color: Color(0xFFD97706)),
+                      const SizedBox(width: 2),
+                      Text(
+                        voterPin,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 11,
+                          color: Color(0xFFD97706),
+                          fontFamily: 'monospace',
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
             ),
           ),
           Expanded(

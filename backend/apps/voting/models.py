@@ -61,11 +61,18 @@ class VoterRoll(TimestampedModel):
     direct_ballot_token = models.CharField(max_length=64, blank=True, default='', db_index=True)
     direct_ballot_token_expires_at = models.DateTimeField(null=True, blank=True)
     direct_ballot_token_used = models.BooleanField(default=False)
+
+    # Method 2 (Polling Station / Venue Kiosk): Guaranteed Unique Voter PIN
+    voter_pin = models.CharField(
+        max_length=32, blank=True, default='', db_index=True,
+        help_text='Unique collision-free PIN for polling station booth check-in'
+    )
     
     class Meta:
         db_table = 'voter_rolls'
         indexes = [
             models.Index(fields=['election', 'has_voted']),
+            models.Index(fields=['election', 'voter_pin']),
         ]
 
     def __str__(self):
@@ -75,6 +82,33 @@ class VoterRoll(TimestampedModel):
     def full_name(self):
         parts = [self.prefix, self.first_name, self.middle_name, self.last_name]
         return " ".join([p for p in parts if p])
+
+    @classmethod
+    def generate_unique_pin_for_election(cls, election, existing_pins=None):
+        """
+        Generates a cryptographically random, non-duplicative 6-digit PIN.
+        Guarantees 100% uniqueness across the entire election voter roll.
+        """
+        if existing_pins is None:
+            existing_pins = set(
+                cls.objects.filter(election=election)
+                .exclude(voter_pin='')
+                .values_list('voter_pin', flat=True)
+            )
+
+        for _ in range(1000):
+            # 6-digit numeric PIN (100,000 to 999,999)
+            candidate_pin = f"{secrets.randbelow(900000) + 100000:06d}"
+            if candidate_pin not in existing_pins:
+                existing_pins.add(candidate_pin)
+                return candidate_pin
+
+        # Fallback to 8-character alphanumeric token in extreme density
+        while True:
+            candidate_pin = secrets.token_hex(4).upper()
+            if candidate_pin not in existing_pins:
+                existing_pins.add(candidate_pin)
+                return candidate_pin
 
 
 class VotingSession(models.Model):

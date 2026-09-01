@@ -22,6 +22,7 @@ from apps.voting.views import (
     WebVotingOTPRequestView, WebVotingOTPVerifyView, DirectBallotView, DirectVoteCastView,
     ElectionVerificationStatsView,
     KioskUnlockView, KioskVerifyOTPView, KioskCastVoteView,
+    PollingStationInitializeView, VoterPinSlipsPrintView,
 )
 from apps.results.views import ElectionResultsViewSet
 from apps.organizations.views import OrganizationView, OrganizationStatsView
@@ -40,13 +41,12 @@ election_router = routers.NestedSimpleRouter(router, r'elections', lookup='elect
 election_router.register(r'positions', PositionViewSet, basename='election-positions')
 election_router.register(r'quotas', PositionQuotaViewSet, basename='election-quotas')
 election_router.register(r'candidates', CandidateViewSet, basename='election-candidates')
-election_router.register(r'payments', PaymentViewSet, basename='election-payments')
+election_router.register(r'objections', CandidateObjectionViewSet, basename='election-objections')
+election_router.register(r'voters', VoterRollViewSet, basename='election-voters')
+election_router.register(r'claims', VoterClaimViewSet, basename='election-claims')
 election_router.register(r'voting', VotingViewSet, basename='election-voting')
 election_router.register(r'results', ElectionResultsViewSet, basename='election-results')
-election_router.register(r'voters', VoterRollViewSet, basename='election-voters')
 election_router.register(r'notices', ElectionNoticeViewSet, basename='election-notices')
-election_router.register(r'voter-claims', VoterClaimViewSet, basename='election-voter-claims')
-election_router.register(r'candidate-objections', CandidateObjectionViewSet, basename='election-candidate-objections')
 
 urlpatterns = [
     # Django admin (Super Admin support tool)
@@ -63,9 +63,11 @@ urlpatterns = [
     path('v1/auth/password-reset/request/', PasswordResetRequestView.as_view(), name='password-reset-request'),
     path('v1/auth/password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
     
-    # Organization Settings
+    # Organization Settings (supports both /organization/ and /organizations/)
     path('v1/organization/', OrganizationView.as_view(), name='organization-profile'),
     path('v1/organization/stats/', OrganizationStatsView.as_view(), name='organization-stats'),
+    path('v1/organizations/me/', OrganizationView.as_view(), name='org-me'),
+    path('v1/organizations/stats/', OrganizationStatsView.as_view(), name='org-stats'),
     
     # Core endpoints (REST)
     path('v1/upload/', FileUploadView.as_view(), name='file-upload'),
@@ -81,6 +83,8 @@ urlpatterns = [
     path('v1/voting/kiosk/unlock/', KioskUnlockView.as_view(), name='kiosk-unlock'),
     path('v1/voting/kiosk/verify-otp/', KioskVerifyOTPView.as_view(), name='kiosk-verify-otp'),
     path('v1/voting/kiosk/cast/', KioskCastVoteView.as_view(), name='kiosk-cast'),
+    path('v1/elections/<uuid:election_pk>/polling-stations/initialize/', PollingStationInitializeView.as_view(), name='polling-station-initialize'),
+    path('v1/elections/<uuid:election_pk>/voter-pins/print-slips/', VoterPinSlipsPrintView.as_view(), name='voter-pins-print-slips'),
 
     path('v1/', include(router.urls)),
     path('v1/', include(election_router.urls)),

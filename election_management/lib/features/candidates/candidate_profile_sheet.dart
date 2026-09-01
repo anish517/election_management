@@ -187,14 +187,30 @@ class _HeroHeader extends StatelessWidget {
                 backgroundColor: isDark ? const Color(0xFF27272A) : const Color(0xFFF0F3F8),
                 backgroundImage: hasPhoto ? NetworkImage(candidate.photoUrl!) : null,
                 child: !hasPhoto
-                    ? Text(
-                        _initials(candidate.name),
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.primaryLight,
-                        ),
-                      )
+                    ? (candidate.symbolImage.isNotEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Image.network(
+                              candidate.symbolImage,
+                              fit: BoxFit.contain,
+                              errorBuilder: (ctx, err, stack) => Text(
+                                _initials(candidate.name),
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.primaryLight,
+                                ),
+                              ),
+                            ),
+                          )
+                        : Text(
+                            _initials(candidate.name),
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primaryLight,
+                            ),
+                          ))
                     : null,
               ),
             ),
@@ -235,7 +251,9 @@ class _HeroHeader extends StatelessWidget {
                 ],
 
                 const SizedBox(height: 8),
-                Row(
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
                   children: [
                     if (candidate.status != null)
                       Container(
@@ -265,6 +283,94 @@ class _HeroHeader extends StatelessWidget {
                           ],
                         ),
                       ).animate().fadeIn(duration: 350.ms, delay: 250.ms),
+                    if (candidate.partyName.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E3A8A).withValues(alpha: 0.35) : const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: isDark ? const Color(0xFF3B82F6).withValues(alpha: 0.4) : const Color(0xFF93C5FD)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.flag_rounded, size: 12, color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB)),
+                            const SizedBox(width: 4),
+                            Text(
+                              candidate.partyName,
+                              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: isDark ? const Color(0xFFBFDBFE) : const Color(0xFF1D4ED8)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (candidate.panelName.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF581C87).withValues(alpha: 0.35) : const Color(0xFFFAF5FF),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: isDark ? const Color(0xFF8B5CF6).withValues(alpha: 0.4) : const Color(0xFFC4B5FD)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.groups_rounded, size: 12, color: isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED)),
+                            const SizedBox(width: 4),
+                            Text(
+                              candidate.panelName,
+                              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: isDark ? const Color(0xFFE9D5FF) : const Color(0xFF6D28D9)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (candidate.symbolName.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.2 : 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (candidate.symbolImage.isNotEmpty) ...[
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(3),
+                                child: Image.network(candidate.symbolImage, width: 14, height: 14, fit: BoxFit.contain, errorBuilder: (ctx, err, stack) => const Icon(Icons.how_to_vote_rounded, size: 12, color: Color(0xFFD97706))),
+                              ),
+                              const SizedBox(width: 4),
+                            ] else ...[
+                              const Icon(Icons.how_to_vote_rounded, size: 12, color: Color(0xFFD97706)),
+                              const SizedBox(width: 4),
+                            ],
+                            Text(
+                              candidate.symbolName,
+                              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (candidate.prRank > 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF312E81).withValues(alpha: 0.35) : const Color(0xFFEEF2FF),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: isDark ? const Color(0xFF6366F1).withValues(alpha: 0.4) : const Color(0xFFA5B4FC)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.format_list_numbered_rounded, size: 12, color: isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5)),
+                            const SizedBox(width: 4),
+                            Text(
+                              'PR Rank #${candidate.prRank}',
+                              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: isDark ? const Color(0xFFC7D2FE) : const Color(0xFF3730A3)),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ],

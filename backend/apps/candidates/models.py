@@ -72,8 +72,13 @@ class Candidate(TimestampedModel):
     review_notes = models.TextField(blank=True, default='')
     reviewed_at = models.DateTimeField(null=True, blank=True)
     
-    # Support for team/slate voting (future feature, but good to have column ready)
+    # Support for team/slate voting & affiliations (Requirements 4, 5, 6, 8)
     slate_name = models.CharField(max_length=100, blank=True, default='')
+    party_name = models.CharField(max_length=150, blank=True, default='', db_index=True)
+    panel_name = models.CharField(max_length=150, blank=True, default='', db_index=True)
+    symbol_name = models.CharField(max_length=100, blank=True, default='')
+    symbol_image = models.URLField(blank=True, default='')
+    pr_rank = models.PositiveIntegerField(default=1, help_text='Rank/Priority order on party PR closed list')
 
     class Meta:
         db_table = 'candidates'

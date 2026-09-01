@@ -160,7 +160,7 @@ class _AnalyticsBody extends StatelessWidget {
                         children: [
                           _SectionHeader(
                             icon: Icons.leaderboard_rounded,
-                            title: isLive ? 'Live Candidate Momentum (अग्रता तालिका)' : 'Candidate Results Breakdown (नतिजा विवरण)',
+                            title: isLive ? 'Live Candidate & Party Momentum (अग्रता तालिका)' : 'Candidate & Party Results Breakdown (नतिजा विवरण)',
                             badge: isLive ? 'LIVE' : null,
                           ),
                           const SizedBox(height: 12),
@@ -202,7 +202,7 @@ class _AnalyticsBody extends StatelessWidget {
                   ],
                   _SectionHeader(
                     icon: Icons.leaderboard_rounded,
-                    title: isLive ? 'Live Candidate Momentum (अग्रता तालिका)' : 'Candidate Results Breakdown (नतिजा विवरण)',
+                    title: isLive ? 'Live Candidate & Party Momentum (अग्रता तालिका)' : 'Candidate & Party Results Breakdown (नतिजा विवरण)',
                     badge: isLive ? 'LIVE' : null,
                   ),
                   const SizedBox(height: 12),

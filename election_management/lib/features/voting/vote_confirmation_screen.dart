@@ -531,7 +531,7 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      l10n.selectedCounter(selectedCandidates.length, position.seatsAvailable),
+                      l10n.selectedCounter(selectedCandidates.length, position.effectiveMaxVotes),
                       style: const TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -603,18 +603,34 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                       ),
                       child: Row(
                         children: [
-                          CircleAvatar(
-                            radius: 18,
-                            backgroundColor: const Color(0xFF4F46E5).withValues(alpha: 0.12),
-                            backgroundImage: c.photoUrl != null && c.photoUrl!.isNotEmpty
-                                ? NetworkImage(ApiConstants.getFullImageUrl(c.photoUrl) ?? c.photoUrl!)
-                                : null,
-                            child: (c.photoUrl == null || c.photoUrl!.isEmpty)
-                                ? Text(
-                                    c.name.isNotEmpty ? c.name[0].toUpperCase() : '?',
-                                    style: const TextStyle(color: Color(0xFF4F46E5), fontSize: 14, fontWeight: FontWeight.bold),
-                                  )
-                                : null,
+                          // Avatar / Symbol container
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: SizedBox(
+                              width: 38,
+                              height: 38,
+                              child: c.photoUrl != null && c.photoUrl!.isNotEmpty
+                                  ? Image.network(
+                                      ApiConstants.getFullImageUrl(c.photoUrl) ?? c.photoUrl!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => _buildFallbackAvatar(c),
+                                    )
+                                  : (c.symbolImage.isNotEmpty
+                                      ? Container(
+                                          padding: const EdgeInsets.all(3),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(color: const Color(0xFF0D9488).withValues(alpha: 0.3)),
+                                          ),
+                                          child: Image.network(
+                                            ApiConstants.getFullImageUrl(c.symbolImage) ?? c.symbolImage,
+                                            fit: BoxFit.contain,
+                                            errorBuilder: (context, error, stackTrace) => _buildFallbackAvatar(c),
+                                          ),
+                                        )
+                                      : _buildFallbackAvatar(c)),
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -625,13 +641,41 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                                   c.name,
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                 ),
-                                if (c.quotaName != null && c.quotaName!.isNotEmpty) ...[
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Quota: ${c.quotaName}',
-                                    style: TextStyle(fontSize: 11, color: isDark ? Colors.white54 : Colors.grey.shade600),
-                                  ),
-                                ],
+                                const SizedBox(height: 4),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 4,
+                                  children: [
+                                    if (c.partyName.isNotEmpty)
+                                      _buildPill(
+                                        icon: Icons.flag_rounded,
+                                        label: c.partyName,
+                                        color: const Color(0xFF2563EB),
+                                        isDark: isDark,
+                                      ),
+                                    if (c.panelName.isNotEmpty)
+                                      _buildPill(
+                                        icon: Icons.groups_rounded,
+                                        label: c.panelName,
+                                        color: const Color(0xFF7C3AED),
+                                        isDark: isDark,
+                                      ),
+                                    if (c.symbolName.isNotEmpty)
+                                      _buildPill(
+                                        icon: Icons.how_to_vote_rounded,
+                                        label: c.symbolName,
+                                        color: const Color(0xFF0D9488),
+                                        isDark: isDark,
+                                      ),
+                                    if (c.quotaName != null && c.quotaName!.isNotEmpty)
+                                      _buildPill(
+                                        icon: Icons.pie_chart_outline_rounded,
+                                        label: c.quotaName!,
+                                        color: const Color(0xFFD97706),
+                                        isDark: isDark,
+                                      ),
+                                  ],
+                                ),
                               ],
                             ),
                           ),
@@ -751,6 +795,56 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildFallbackAvatar(CandidateModel c) {
+    return Container(
+      color: const Color(0xFF4F46E5).withValues(alpha: 0.12),
+      alignment: Alignment.center,
+      child: Text(
+        c.name.isNotEmpty ? c.name[0].toUpperCase() : '?',
+        style: const TextStyle(
+          color: Color(0xFF4F46E5),
+          fontWeight: FontWeight.bold,
+          fontSize: 14,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPill({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+      decoration: BoxDecoration(
+        color: isDark ? color.withValues(alpha: 0.22) : color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: isDark ? color.withValues(alpha: 0.6) : color.withValues(alpha: 0.4),
+          width: 1.1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: isDark ? color.withValues(alpha: 0.95) : color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white : color,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -69,6 +69,11 @@ class PositionSerializer(serializers.ModelSerializer):
                 'position_title': obj.title,
                 'quota': str(c.quota_id) if c.quota_id else None,
                 'quota_name': c.quota_name,
+                'party_name': c.party_name,
+                'panel_name': c.panel_name,
+                'symbol_name': c.symbol_name,
+                'symbol_image': c.symbol_image,
+                'pr_rank': c.pr_rank,
                 'email': c.email,
                 'contact_number': c.contact_number,
                 'gender': c.gender,
@@ -119,6 +124,10 @@ class ElectionSerializer(serializers.ModelSerializer):
             # Election Methods (doc: Election-Methods.pdf)
             'election_method', 'online_type', 'venue_name', 'venue_address',
             'require_venue_otp', 'venue_otp_channel',
+            # Requirements 4, 5, 6, 7, 8, 9 Settings
+            'election_type', 'enable_party', 'enable_panel', 'enable_symbol', 'enable_candidate_photo',
+            'is_partial_election', 'target_branches',
+            'total_pr_seats', 'pr_threshold_percent', 'pr_allocation_method',
             # Positions
             'positions',
             # Timestamps

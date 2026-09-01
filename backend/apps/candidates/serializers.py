@@ -26,6 +26,7 @@ class CandidateSerializer(serializers.ModelSerializer):
         model = Candidate
         fields = [
             'id', 'election', 'position', 'position_title', 'quota', 'quota_name',
+            'party_name', 'panel_name', 'symbol_name', 'symbol_image', 'pr_rank',
             'first_name', 'middle_name', 'last_name', 'full_name',
             'email', 'contact_number', 'gender', 'date_of_birth', 'address',
             'candidate_image', 'personal_description', 'contribution_to_org',
@@ -58,11 +59,37 @@ class CandidateSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         request = self.context.get('request')
-        if request and request.method == 'POST':
-            user_email = request.user.email.strip().lower()
-            election = self.context.get('election') or attrs.get('election')
-            if election:
-                from apps.candidates.models import NominationStatus
+        election = self.context.get('election') or attrs.get('election')
+        
+        if election:
+            from apps.candidates.models import NominationStatus
+            from apps.elections.models import Position
+
+            # If Samanupatik election, ensure position and require party name
+            if getattr(election, 'election_type', 'fptp') == 'samanupatik':
+                if not attrs.get('position') and (not self.instance or not self.instance.position):
+                    pos = election.positions.first()
+                    if not pos:
+                        pos = Position.objects.create(
+                            election=election,
+                            title="Samānupātik PR Representative (समानुपातिक प्रतिनिधि)",
+                            seats_available=getattr(election, 'total_pr_seats', 10) or 10,
+                            voting_method='samanupatik',
+                            max_votes_per_voter=1,
+                            result_order=1,
+                        )
+                    attrs['position'] = pos
+
+                party = (attrs.get('party_name') or (self.instance.party_name if self.instance else '')).strip()
+                if not party:
+                    raise serializers.ValidationError({
+                        "party_name": "Political Party affiliation (राजनीतिक दल) is strictly required for Samānupātik closed-list candidates."
+                    })
+                if attrs.get('pr_rank', 0) < 1:
+                    attrs['pr_rank'] = 1
+
+            if request and request.method == 'POST':
+                user_email = request.user.email.strip().lower()
                 existing = Candidate.objects.filter(
                     election=election,
                     email__iexact=user_email,

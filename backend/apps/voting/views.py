@@ -89,6 +89,22 @@ class VotingViewSet(viewsets.ViewSet):
                 'voter_info': None,
             })
 
+        # Partial Election Branch Verification (Requirement 7)
+        if getattr(election, 'is_partial_election', False) and election.target_branches:
+            target_branches_clean = [str(b).strip().lower() for b in election.target_branches if str(b).strip()]
+            voter_branch = (roll.branch or '').strip().lower()
+            if target_branches_clean and voter_branch not in target_branches_clean:
+                branches_str = ", ".join(election.target_branches)
+                return Response({
+                    'ballot': [],
+                    'allow_boycott': False,
+                    'is_secret_ballot': election.is_secret_ballot,
+                    'not_eligible': True,
+                    'not_eligible_reason': f'This is a partial election for [{branches_str}] branches only. Your registered branch is "{roll.branch or "Unassigned"}".',
+                    'has_voted': False,
+                    'voter_info': None,
+                })
+
         has_voted = roll.has_voted
         voter_id = roll.voter_id
         voter_name = f"{roll.first_name} {roll.last_name}".strip() or request.user.email
@@ -100,10 +116,20 @@ class VotingViewSet(viewsets.ViewSet):
             'is_secret_ballot': election.is_secret_ballot,
             'not_eligible': False,
             'has_voted': has_voted,
+            'election_type': getattr(election, 'election_type', 'fptp'),
+            'enable_party': getattr(election, 'enable_party', True),
+            'enable_panel': getattr(election, 'enable_panel', True),
+            'enable_symbol': getattr(election, 'enable_symbol', True),
+            'enable_candidate_photo': getattr(election, 'enable_candidate_photo', True),
+            'is_partial_election': getattr(election, 'is_partial_election', False),
+            'total_pr_seats': getattr(election, 'total_pr_seats', 10),
+            'pr_threshold_percent': float(getattr(election, 'pr_threshold_percent', 0.00)),
+            'pr_allocation_method': getattr(election, 'pr_allocation_method', 'modified_sainte_lague'),
             'voter_info': {
                 'voter_id': voter_id,
                 'full_name': voter_name,
                 'email': request.user.email,
+                'branch': roll.branch or '',
             },
         })
 
@@ -122,6 +148,15 @@ class VotingViewSet(viewsets.ViewSet):
         if not roll:
             return Response({'error': 'You are not eligible to vote in this election.'}, status=403)
 
+        if getattr(roll.election, 'is_partial_election', False) and roll.election.target_branches:
+            target_branches_clean = [str(b).strip().lower() for b in roll.election.target_branches if str(b).strip()]
+            voter_branch = (roll.branch or '').strip().lower()
+            if target_branches_clean and voter_branch not in target_branches_clean:
+                branches_str = ", ".join(roll.election.target_branches)
+                return Response({
+                    'error': f'This is a partial election for [{branches_str}] branches only. Your registered branch is "{roll.branch or "Unassigned"}".'
+                }, status=403)
+
         if getattr(roll.election, 'election_method', 'online') == 'venue':
             return Response(
                 {'error': 'Remote in-app voting is disabled for this in-person venue election. Please cast your ballot at the venue polling booth.'},
@@ -138,7 +173,12 @@ class VotingViewSet(viewsets.ViewSet):
             token = BallotService.start_session(roll)
             if roll.verification_channel == 'unverified':
                 from django.utils import timezone
-                roll.verification_channel = 'mobile_app'
+                ua = request.META.get('HTTP_USER_AGENT', '').lower()
+                # If requested via Web Browser (Windows, Mac, Linux, Chrome, Firefox, Edge, Safari)
+                if any(k in ua for k in ['windows', 'macintosh', 'linux', 'mozilla', 'chrome', 'safari', 'firefox', 'edge']) and not any(k in ua for k in ['okhttp', 'dart/']):
+                    roll.verification_channel = 'web_email'
+                else:
+                    roll.verification_channel = 'mobile_app'
                 roll.verified_at = timezone.now()
                 roll.save(update_fields=['verification_channel', 'verified_at'])
             return Response({'session_token': token})
@@ -1258,6 +1298,16 @@ class WebVotingOTPRequestView(APIView):
                 'error': roll.ineligibility_reason or 'You are marked as ineligible to vote in this election.'
             }, status=403)
 
+        # Partial Election Branch Verification (Requirement 7)
+        if getattr(election, 'is_partial_election', False) and election.target_branches:
+            target_branches_clean = [str(b).strip().lower() for b in election.target_branches if str(b).strip()]
+            voter_branch = (roll.branch or '').strip().lower()
+            if target_branches_clean and voter_branch not in target_branches_clean:
+                branches_str = ", ".join(election.target_branches)
+                return Response({
+                    'error': f'This is a partial election for [{branches_str}] branches only. Your registered branch is "{roll.branch or "Unassigned"}".'
+                }, status=403)
+
         if roll.has_voted:
             return Response({
                 'error': 'You have already cast your ballot in this election. Each voter may only vote once.'
@@ -1415,6 +1465,16 @@ class DirectBallotView(APIView):
         if election.state != 'voting_open':
             return Response({'error': f'Voting is not currently active for this election (Status: {election.get_state_display()}).'}, status=400)
 
+        # Partial Election Branch Verification (Requirement 7)
+        if getattr(election, 'is_partial_election', False) and election.target_branches:
+            target_branches_clean = [str(b).strip().lower() for b in election.target_branches if str(b).strip()]
+            voter_branch = (roll.branch or '').strip().lower()
+            if target_branches_clean and voter_branch not in target_branches_clean:
+                branches_str = ", ".join(election.target_branches)
+                return Response({
+                    'error': f'This is a partial election for [{branches_str}] branches only. Your registered branch is "{roll.branch or "Unassigned"}".'
+                }, status=403)
+
         ballot_data = BallotService.generate_ballot(election)
 
         return Response({
@@ -1426,8 +1486,18 @@ class DirectBallotView(APIView):
             'logo_url': election.logo_url,
             'is_secret_ballot': election.is_secret_ballot,
             'allow_boycott': election.allow_boycott,
+            'election_type': getattr(election, 'election_type', 'fptp'),
+            'enable_party': getattr(election, 'enable_party', True),
+            'enable_panel': getattr(election, 'enable_panel', True),
+            'enable_symbol': getattr(election, 'enable_symbol', True),
+            'enable_candidate_photo': getattr(election, 'enable_candidate_photo', True),
+            'is_partial_election': getattr(election, 'is_partial_election', False),
+            'total_pr_seats': getattr(election, 'total_pr_seats', 10),
+            'pr_threshold_percent': float(getattr(election, 'pr_threshold_percent', 0.00)),
+            'pr_allocation_method': getattr(election, 'pr_allocation_method', 'modified_sainte_lague'),
             'voter_name': roll.full_name,
             'voter_id': roll.voter_id,
+            'branch': roll.branch or '',
             'ballot': ballot_data,
         })
 
@@ -1644,6 +1714,16 @@ class KioskUnlockView(APIView):
                 'error': roll.ineligibility_reason or 'You are marked as ineligible to vote in this election.'
             }, status=403)
 
+        # Partial Election Branch Verification (Requirement 7)
+        if getattr(election, 'is_partial_election', False) and election.target_branches:
+            target_branches_clean = [str(b).strip().lower() for b in election.target_branches if str(b).strip()]
+            voter_branch = (roll.branch or '').strip().lower()
+            if target_branches_clean and voter_branch not in target_branches_clean:
+                branches_str = ", ".join(election.target_branches)
+                return Response({
+                    'error': f'This is a partial election for [{branches_str}] branches only. Your registered branch is "{roll.branch or "Unassigned"}".'
+                }, status=403)
+
         if roll.has_voted:
             return Response({
                 'error': f'Voter {roll.full_name} ({roll.voter_id}) has already cast their ballot in this election.'
@@ -1700,9 +1780,19 @@ class KioskUnlockView(APIView):
                 'session_token': session_token,
                 'voter_name': roll.full_name,
                 'voter_id': roll.voter_id,
+                'branch': roll.branch or '',
                 'election_title': election.title,
                 'venue_name': election.venue_name,
                 'allow_boycott': election.allow_boycott,
+                'election_type': getattr(election, 'election_type', 'fptp'),
+                'enable_party': getattr(election, 'enable_party', True),
+                'enable_panel': getattr(election, 'enable_panel', True),
+                'enable_symbol': getattr(election, 'enable_symbol', True),
+                'enable_candidate_photo': getattr(election, 'enable_candidate_photo', True),
+                'is_partial_election': getattr(election, 'is_partial_election', False),
+                'total_pr_seats': getattr(election, 'total_pr_seats', 10),
+                'pr_threshold_percent': float(getattr(election, 'pr_threshold_percent', 0.00)),
+                'pr_allocation_method': getattr(election, 'pr_allocation_method', 'modified_sainte_lague'),
                 'ballot': ballot_data,
                 'message': 'Identity verified. Official voting booth unlocked.',
             })

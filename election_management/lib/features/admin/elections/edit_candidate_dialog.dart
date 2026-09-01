@@ -23,8 +23,13 @@ class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
   late TextEditingController _manifestoController;
   late TextEditingController _personalDescController;
   late TextEditingController _contributionController;
+  late TextEditingController _partyController;
+  late TextEditingController _panelController;
+  late TextEditingController _symbolNameController;
+  late TextEditingController _prRankController;
   late String _status;
   String _photoUrl = '';
+  String _symbolImageUrl = '';
   bool _isLoading = false;
 
   @override
@@ -33,8 +38,13 @@ class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
     _manifestoController = TextEditingController(text: widget.candidate.manifesto);
     _personalDescController = TextEditingController(text: widget.candidate.personalDescription);
     _contributionController = TextEditingController(text: widget.candidate.contributionToOrg);
+    _partyController = TextEditingController(text: widget.candidate.partyName);
+    _panelController = TextEditingController(text: widget.candidate.panelName);
+    _symbolNameController = TextEditingController(text: widget.candidate.symbolName);
+    _prRankController = TextEditingController(text: widget.candidate.prRank.toString());
     _status = widget.candidate.status ?? 'pending';
     _photoUrl = widget.candidate.photoUrl ?? (widget.candidate.candidateImage ?? '');
+    _symbolImageUrl = widget.candidate.symbolImage;
   }
 
   @override
@@ -42,6 +52,10 @@ class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
     _manifestoController.dispose();
     _personalDescController.dispose();
     _contributionController.dispose();
+    _partyController.dispose();
+    _panelController.dispose();
+    _symbolNameController.dispose();
+    _prRankController.dispose();
     super.dispose();
   }
 
@@ -90,6 +104,11 @@ class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
           'status': _status,
           'photo_url': _photoUrl,
           'candidate_image': _photoUrl,
+          'party_name': _partyController.text.trim(),
+          'panel_name': _panelController.text.trim(),
+          'symbol_name': _symbolNameController.text.trim(),
+          'symbol_image': _symbolImageUrl,
+          'pr_rank': int.tryParse(_prRankController.text.trim()) ?? 1,
         },
       );
       ref.invalidate(electionProvider(widget.electionId));
@@ -157,6 +176,7 @@ class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final statusColor = _getStatusColor(_status);
+    final election = ref.watch(electionProvider(widget.electionId)).valueOrNull;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -335,6 +355,90 @@ class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
                         ],
                       ),
                       const SizedBox(height: 16),
+
+                      if (election?.enableParty == true || election?.enablePanel == true) ...[
+                        // Affiliation Row (Party & Panel)
+                        Row(
+                          children: [
+                            if (election?.enableParty == true)
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _partyController,
+                                  decoration: _dec(
+                                    'Political Party (राजनीतिक दल)',
+                                    hint: 'e.g. Democratic Alliance',
+                                    prefix: const Icon(Icons.flag_outlined),
+                                    isDark: isDark,
+                                  ),
+                                ),
+                              ),
+                            if (election?.enableParty == true && election?.enablePanel == true)
+                              const SizedBox(width: 12),
+                            if (election?.enablePanel == true)
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _panelController,
+                                  decoration: _dec(
+                                    'Panel / Slate (प्यानल / समूह)',
+                                    hint: 'e.g. Progressive Panel',
+                                    prefix: const Icon(Icons.group_work_outlined),
+                                    isDark: isDark,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      if (election?.enableSymbol == true) ...[
+                        // Symbol Row (Symbol Name & Image)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: TextFormField(
+                                controller: _symbolNameController,
+                                decoration: _dec(
+                                  'Election Symbol Name (चुनाव चिन्ह)',
+                                  hint: 'e.g. Sun, Tree',
+                                  prefix: const Icon(Icons.star_outline_rounded),
+                                  isDark: isDark,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 2,
+                              child: Center(
+                                child: ImageUploadWidget(
+                                  initialImageUrl: _symbolImageUrl,
+                                  placeholderText: 'Symbol Icon',
+                                  radius: 24,
+                                  onImageUploaded: (url) => setState(() => _symbolImageUrl = url),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      if (election?.hasPrSystem == true) ...[
+                        // PR Closed List Rank
+                        TextFormField(
+                          controller: _prRankController,
+                          keyboardType: TextInputType.number,
+                          decoration: _dec(
+                            'PR Closed List Priority Rank (समानुपातिक वरियता क्रम)',
+                            hint: '1, 2, 3...',
+                            prefix: const Icon(Icons.format_list_numbered_rounded),
+                            isDark: isDark,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
 
                       // Personal Description
                       TextFormField(

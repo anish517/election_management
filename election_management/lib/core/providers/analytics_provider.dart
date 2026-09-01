@@ -88,7 +88,7 @@ final analyticsProvider =
         // Non-admin — silently skip
       }
 
-      // 3. Candidate scores from results endpoint
+      // 3. Candidate & Party scores from results endpoint
       List<AnalyticsCandidateScore> topCandidates = [];
       try {
         final resultsResp = await dio.get(ApiConstants.results(electionId));
@@ -115,6 +115,36 @@ final analyticsProvider =
             ));
           }
         }
+
+        // Also check for Samānupātik party scores
+        final prScores = (resultsData['party_results'] as List<dynamic>?) ??
+            ((resultsData['samanupatik_results'] as Map<String, dynamic>?)?['party_scores'] as List<dynamic>? ?? []);
+        for (final party in prScores) {
+          final pMap = party as Map<String, dynamic>;
+          final partyName = pMap['party_name'] as String? ?? '';
+          final photo = (pMap['symbol_image'] as String?) ?? '';
+          final seatsWon = (pMap['seats_allocated'] as num?)?.toInt() ??
+              (pMap['allocated_seats'] as num?)?.toInt() ??
+              0;
+          final votes = (pMap['votes'] as num?)?.toDouble() ??
+              (pMap['valid_votes'] as num?)?.toDouble() ??
+              (pMap['score'] as num?)?.toDouble() ??
+              0.0;
+          final isWinner = (pMap['is_winner'] == true || seatsWon > 0 || pMap['is_qualified'] == true) && votes > 0;
+          final posTitle = seatsWon > 0
+              ? 'Samānupātik PR ($seatsWon seats won / $seatsWon सिट विजयी)'
+              : 'Samānupātik Party Slate (समानुपातिक दल)';
+
+          topCandidates.add(AnalyticsCandidateScore(
+            candidateId: partyName,
+            name: partyName,
+            photoUrl: photo,
+            score: votes,
+            isWinner: isWinner,
+            positionTitle: posTitle,
+          ));
+        }
+
         topCandidates.sort((a, b) => b.score.compareTo(a.score));
       } catch (_) {
         // Results not available yet — fine

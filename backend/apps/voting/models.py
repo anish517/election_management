@@ -33,6 +33,10 @@ class VoterRoll(TimestampedModel):
     phone = models.CharField(max_length=20, blank=True, default='')
     council_number = models.CharField(max_length=100, blank=True, default='')
     citizenship_number = models.CharField(max_length=100, blank=True, default='')
+    branch = models.CharField(
+        max_length=100, blank=True, default='', db_index=True,
+        help_text='Branch/Chapter of the voter (e.g. Kathmandu Branch, Chitwan Branch)'
+    )
     
     # State flags
     is_eligible = models.BooleanField(default=True)

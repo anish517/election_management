@@ -94,6 +94,17 @@ class ElectionModel {
   final String venueAddress;
   final bool requireVenueOtp;
   final String venueOtpChannel; // 'none', 'sms', 'email', 'both'
+  // Requirements 4, 5, 6, 7, 8, 9 Settings
+  final String electionType;   // 'fptp' vs 'samanupatik'
+  final bool enableParty;
+  final bool enablePanel;
+  final bool enableSymbol;
+  final bool enableCandidatePhoto;
+  final bool isPartialElection;
+  final List<String> targetBranches;
+  final int totalPrSeats;
+  final double prThresholdPercent;
+  final String prAllocationMethod;
   // Positions
   final List<PositionModel> positions;
   final String createdAt;
@@ -129,6 +140,16 @@ class ElectionModel {
     this.venueAddress = '',
     this.requireVenueOtp = false,
     this.venueOtpChannel = 'none',
+    this.electionType = 'fptp',
+    this.enableParty = true,
+    this.enablePanel = true,
+    this.enableSymbol = true,
+    this.enableCandidatePhoto = true,
+    this.isPartialElection = false,
+    this.targetBranches = const [],
+    this.totalPrSeats = 10,
+    this.prThresholdPercent = 0.0,
+    this.prAllocationMethod = 'sainte_lague',
     required this.positions,
     required this.createdAt,
   });
@@ -164,12 +185,28 @@ class ElectionModel {
         venueAddress: json['venue_address'] as String? ?? '',
         requireVenueOtp: json['require_venue_otp'] as bool? ?? false,
         venueOtpChannel: json['venue_otp_channel'] as String? ?? 'none',
+        electionType: json['election_type'] as String? ?? 'fptp',
+        enableParty: json['enable_party'] as bool? ?? true,
+        enablePanel: json['enable_panel'] as bool? ?? true,
+        enableSymbol: json['enable_symbol'] as bool? ?? true,
+        enableCandidatePhoto: json['enable_candidate_photo'] as bool? ?? true,
+        isPartialElection: json['is_partial_election'] as bool? ?? false,
+        targetBranches: (json['target_branches'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
+        totalPrSeats: json['total_pr_seats'] as int? ?? 10,
+        prThresholdPercent: double.tryParse(json['pr_threshold_percent']?.toString() ?? '0.0') ?? 0.0,
+        prAllocationMethod: json['pr_allocation_method'] as String? ?? 'modified_sainte_lague',
         positions: (json['positions'] as List<dynamic>?)
                 ?.map((p) => PositionModel.fromJson(p as Map<String, dynamic>))
                 .toList() ??
             [],
         createdAt: json['created_at'] as String,
       );
+
+  bool get isSamanupatik => electionType == 'samanupatik';
+  bool get isMixed => electionType == 'mixed';
+  bool get isFptp => electionType == 'fptp' || (electionType != 'samanupatik' && electionType != 'mixed');
+  bool get hasPrSystem => isSamanupatik || isMixed;
+  bool get hasFptpSystem => isFptp || isMixed;
 
   bool get isVotingActive => state == 'voting_open';
   bool get isNominationOpen => state == 'nomination_open' || state == 'nominations_open';
@@ -297,6 +334,13 @@ class PositionModel {
   bool get isWeighted => votingMethod == 'weighted';
   bool get isProxy => votingMethod == 'proxy';
   bool get isYesNo => votingMethod == 'yes_no';
+  bool get isSamanupatik => votingMethod == 'samanupatik' || id == 'pr_ballot';
+
+  int get effectiveMaxVotes {
+    if (isSamanupatik || maxVotesPerVoter == 1) return 1;
+    if (maxVotesPerVoter > 0) return maxVotesPerVoter;
+    return seatsAvailable > 0 ? seatsAvailable : 1;
+  }
 }
 
 class CandidateEndorsementModel {
@@ -348,6 +392,11 @@ class CandidateModel {
   final String contributionToOrg;
   final String manifesto;
   final String slateName;
+  final String partyName;
+  final String panelName;
+  final String symbolName;
+  final String symbolImage;
+  final int prRank;
   final String? status;
   final String? positionId;
   final String? positionTitle;
@@ -375,6 +424,11 @@ class CandidateModel {
     this.contributionToOrg = '',
     required this.manifesto,
     this.slateName = '',
+    this.partyName = '',
+    this.panelName = '',
+    this.symbolName = '',
+    this.symbolImage = '',
+    this.prRank = 1,
     this.status,
     this.positionId,
     this.positionTitle,
@@ -401,6 +455,11 @@ class CandidateModel {
         contributionToOrg: json['contribution_to_org'] as String? ?? '',
         manifesto: json['manifesto'] as String? ?? '',
         slateName: json['slate_name'] as String? ?? '',
+        partyName: json['party_name'] as String? ?? '',
+        panelName: json['panel_name'] as String? ?? '',
+        symbolName: json['symbol_name'] as String? ?? '',
+        symbolImage: json['symbol_image'] as String? ?? '',
+        prRank: json['pr_rank'] as int? ?? 1,
         status: json['status'] as String?,
         positionId: json['position'] as String?,
         positionTitle: json['position_title'] as String?,
@@ -504,30 +563,66 @@ class MemberModel {
 class TallyResult {
   final String electionId;
   final String electionTitle;
+  final String electionType;
   final int totalVoters;
   final int ballotsCast;
   final double turnoutPercentage;
   final List<PositionResult> results;
+  final int totalPrSeats;
+  final double prThresholdPercent;
+  final String prAllocationMethod;
+  final double totalValidPartyVotes;
+  final double boycottScore;
+  final List<PartyPRScore> partyResults;
+  final List<dynamic> seatAllocationTable;
 
   const TallyResult({
     required this.electionId,
     required this.electionTitle,
+    this.electionType = 'fptp',
     this.totalVoters = 0,
     this.ballotsCast = 0,
     this.turnoutPercentage = 0.0,
     required this.results,
+    this.totalPrSeats = 10,
+    this.prThresholdPercent = 0.0,
+    this.prAllocationMethod = 'sainte_lague',
+    this.totalValidPartyVotes = 0.0,
+    this.boycottScore = 0.0,
+    this.partyResults = const [],
+    this.seatAllocationTable = const [],
   });
 
-  factory TallyResult.fromJson(Map<String, dynamic> json) => TallyResult(
-        electionId: json['election_id'] as String,
-        electionTitle: json['election_title'] as String,
-        totalVoters: json['total_voters'] as int? ?? 0,
-        ballotsCast: json['ballots_cast'] as int? ?? 0,
-        turnoutPercentage: double.tryParse(json['turnout_percentage']?.toString() ?? '0.0') ?? 0.0,
-        results: (json['results'] as List<dynamic>)
-            .map((r) => PositionResult.fromJson(r as Map<String, dynamic>))
-            .toList(),
-      );
+  bool get isSamanupatik => electionType == 'samanupatik';
+  bool get isMixed => electionType == 'mixed';
+  bool get isFptp => electionType == 'fptp';
+  bool get hasPrSystem => isSamanupatik || isMixed;
+  bool get hasFptpSystem => isFptp || isMixed;
+
+  factory TallyResult.fromJson(Map<String, dynamic> json) {
+    final prJson = (json['samanupatik_results'] as Map<String, dynamic>?) ?? json;
+
+    return TallyResult(
+      electionId: json['election_id'] as String? ?? '',
+      electionTitle: json['election_title'] as String? ?? '',
+      electionType: json['election_type'] as String? ?? 'fptp',
+      totalVoters: json['total_voters'] as int? ?? 0,
+      ballotsCast: json['ballots_cast'] as int? ?? 0,
+      turnoutPercentage: double.tryParse(json['turnout_percentage']?.toString() ?? '0.0') ?? 0.0,
+      results: (json['results'] as List<dynamic>? ?? [])
+          .map((r) => PositionResult.fromJson(r as Map<String, dynamic>))
+          .toList(),
+      totalPrSeats: prJson['total_pr_seats'] as int? ?? 10,
+      prThresholdPercent: (prJson['pr_threshold_percent'] as num?)?.toDouble() ?? 0.0,
+      prAllocationMethod: prJson['pr_allocation_method'] as String? ?? 'modified_sainte_lague',
+      totalValidPartyVotes: (prJson['total_valid_party_votes'] as num?)?.toDouble() ?? 0.0,
+      boycottScore: (prJson['boycott_score'] as num?)?.toDouble() ?? 0.0,
+      partyResults: (prJson['party_results'] as List<dynamic>? ?? [])
+          .map((p) => PartyPRScore.fromJson(p as Map<String, dynamic>))
+          .toList(),
+      seatAllocationTable: prJson['seat_allocation_table'] as List<dynamic>? ?? const [],
+    );
+  }
 }
 
 class PositionResult {
@@ -573,6 +668,11 @@ class CandidateScore {
   final String candidateId;
   final String name;
   final String photoUrl;
+  final String partyName;
+  final String panelName;
+  final String symbolName;
+  final String symbolImage;
+  final int prRank;
   final double score;
   final int rank;
   final bool isElected;
@@ -583,6 +683,11 @@ class CandidateScore {
     required this.candidateId,
     required this.name,
     required this.photoUrl,
+    this.partyName = '',
+    this.panelName = '',
+    this.symbolName = '',
+    this.symbolImage = '',
+    this.prRank = 1,
     required this.score,
     this.rank = 0,
     this.isElected = false,
@@ -594,11 +699,112 @@ class CandidateScore {
         candidateId: json['candidate_id'] as String,
         name: json['name'] as String? ?? json['candidate_name'] as String? ?? '',
         photoUrl: json['photo_url'] as String? ?? '',
+        partyName: json['party_name'] as String? ?? '',
+        panelName: json['panel_name'] as String? ?? '',
+        symbolName: json['symbol_name'] as String? ?? '',
+        symbolImage: json['symbol_image'] as String? ?? '',
+        prRank: json['pr_rank'] as int? ?? 1,
         score: double.tryParse(json['score']?.toString() ?? '0.0') ?? 0.0,
         rank: json['rank'] as int? ?? 0,
         isElected: json['is_elected'] as bool? ?? false,
         isUncontested: json['is_uncontested'] as bool? ?? false,
         isTie: json['is_tie'] as bool? ?? false,
+      );
+}
+
+class PartyPRScore {
+  final String partyName;
+  final String panelName;
+  final String symbolName;
+  final String symbolImage;
+  final double votes;
+  final double votePercentage;
+  final bool isQualified;
+  final int seatsAllocated;
+  final List<CandidateModel> electedCandidates;
+  final List<CandidateModel> allCandidates;
+
+  const PartyPRScore({
+    required this.partyName,
+    this.panelName = '',
+    this.symbolName = '',
+    this.symbolImage = '',
+    required this.votes,
+    required this.votePercentage,
+    required this.isQualified,
+    required this.seatsAllocated,
+    this.electedCandidates = const [],
+    this.allCandidates = const [],
+  });
+
+  factory PartyPRScore.fromJson(Map<String, dynamic> json) => PartyPRScore(
+        partyName: json['party_name'] as String? ?? 'Independent',
+        panelName: json['panel_name'] as String? ?? '',
+        symbolName: json['symbol_name'] as String? ?? '',
+        symbolImage: json['symbol_image'] as String? ?? '',
+        votes: double.tryParse(json['votes']?.toString() ?? '0.0') ?? 0.0,
+        votePercentage: double.tryParse(json['vote_percentage']?.toString() ?? '0.0') ?? 0.0,
+        isQualified: json['is_qualified'] as bool? ?? true,
+        seatsAllocated: json['seats_allocated'] as int? ?? 0,
+        electedCandidates: (json['elected_candidates'] as List<dynamic>?)
+                ?.map((c) => CandidateModel.fromJson(c as Map<String, dynamic>))
+                .toList() ??
+            [],
+        allCandidates: (json['all_candidates'] as List<dynamic>?)
+                ?.map((c) => CandidateModel.fromJson(c as Map<String, dynamic>))
+                .toList() ??
+            [],
+      );
+}
+
+class SamanupatikResult {
+  final String electionId;
+  final String electionTitle;
+  final String electionType;
+  final int totalPrSeats;
+  final double prThresholdPercent;
+  final String prAllocationMethod;
+  final int totalVoters;
+  final int ballotsCast;
+  final double turnoutPercentage;
+  final double totalValidPartyVotes;
+  final double boycottScore;
+  final List<PartyPRScore> partyResults;
+  final List<dynamic> seatAllocationTable;
+
+  const SamanupatikResult({
+    required this.electionId,
+    required this.electionTitle,
+    this.electionType = 'samanupatik',
+    required this.totalPrSeats,
+    required this.prThresholdPercent,
+    required this.prAllocationMethod,
+    required this.totalVoters,
+    required this.ballotsCast,
+    required this.turnoutPercentage,
+    required this.totalValidPartyVotes,
+    this.boycottScore = 0.0,
+    this.partyResults = const [],
+    this.seatAllocationTable = const [],
+  });
+
+  factory SamanupatikResult.fromJson(Map<String, dynamic> json) => SamanupatikResult(
+        electionId: json['election_id'] as String? ?? '',
+        electionTitle: json['election_title'] as String? ?? '',
+        electionType: json['election_type'] as String? ?? 'samanupatik',
+        totalPrSeats: json['total_pr_seats'] as int? ?? 10,
+        prThresholdPercent: double.tryParse(json['pr_threshold_percent']?.toString() ?? '0.0') ?? 0.0,
+        prAllocationMethod: json['pr_allocation_method'] as String? ?? 'modified_sainte_lague',
+        totalVoters: json['total_voters'] as int? ?? 0,
+        ballotsCast: json['ballots_cast'] as int? ?? 0,
+        turnoutPercentage: double.tryParse(json['turnout_percentage']?.toString() ?? '0.0') ?? 0.0,
+        totalValidPartyVotes: double.tryParse(json['total_valid_party_votes']?.toString() ?? '0.0') ?? 0.0,
+        boycottScore: double.tryParse(json['boycott_score']?.toString() ?? '0.0') ?? 0.0,
+        partyResults: (json['party_results'] as List<dynamic>?)
+                ?.map((p) => PartyPRScore.fromJson(p as Map<String, dynamic>))
+                .toList() ??
+            [],
+        seatAllocationTable: (json['seat_allocation_table'] as List<dynamic>?) ?? [],
       );
 }
 

@@ -585,6 +585,11 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
                     child: _DirectPositionCard(
                       position: p,
                       allowBoycott: data.allowBoycott,
+                      enableParty: data.enableParty,
+                      enablePanel: data.enablePanel,
+                      enableSymbol: data.enableSymbol,
+                      enableCandidatePhoto: data.enableCandidatePhoto,
+                      electionType: data.electionType,
                       l10n: l10n,
                     ),
                   ),
@@ -733,6 +738,11 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
                     _DirectPositionCard(
                       position: positions[i],
                       allowBoycott: data.allowBoycott,
+                      enableParty: data.enableParty,
+                      enablePanel: data.enablePanel,
+                      enableSymbol: data.enableSymbol,
+                      enableCandidatePhoto: data.enableCandidatePhoto,
+                      electionType: data.electionType,
                       l10n: l10n,
                     ),
                   ],
@@ -956,11 +966,21 @@ class _DirectPositionCard extends ConsumerStatefulWidget {
   final PositionModel position;
   final bool allowBoycott;
   final BallotL10n l10n;
+  final bool enableParty;
+  final bool enablePanel;
+  final bool enableSymbol;
+  final bool enableCandidatePhoto;
+  final String electionType;
 
   const _DirectPositionCard({
     required this.position,
     required this.allowBoycott,
     required this.l10n,
+    this.enableParty = true,
+    this.enablePanel = true,
+    this.enableSymbol = true,
+    this.enableCandidatePhoto = true,
+    this.electionType = 'fptp',
   });
 
   @override
@@ -1016,7 +1036,16 @@ class _DirectPositionCardState extends ConsumerState<_DirectPositionCard> {
                     children: [
                       Text(l10n.translatePositionTitle(position.title), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
                       const SizedBox(height: 2),
-                      Text(l10n.selectionInstruction(position.seatsAvailable), style: TextStyle(color: isDark ? Colors.white60 : AppColors.textMuted, fontSize: 12)),
+                      Text(
+                        position.isSamanupatik
+                            ? (l10n.isEnglish
+                                ? 'Select 1 Political Party / Symbol'
+                                : (l10n.isNepali
+                                    ? '१ राजनीतिक दल वा चुनाव चिन्ह छनोट गर्नुहोस्'
+                                    : 'Select 1 Political Party / Symbol (१ राजनीतिक दल वा चुनाव चिन्ह छनोट गर्नुहोस्)'))
+                            : l10n.selectionInstruction(position.effectiveMaxVotes),
+                        style: TextStyle(color: isDark ? Colors.white60 : AppColors.textMuted, fontSize: 12),
+                      ),
                     ],
                   ),
                 ),
@@ -1024,20 +1053,20 @@ class _DirectPositionCardState extends ConsumerState<_DirectPositionCard> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: positionSelections.length == position.seatsAvailable
+                    color: positionSelections.length == position.effectiveMaxVotes
                         ? Colors.green.withValues(alpha: 0.15)
                         : (positionSelections.isNotEmpty ? AppColors.primaryLight.withValues(alpha: 0.12) : (isDark ? Colors.white10 : Colors.grey.shade100)),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: positionSelections.length == position.seatsAvailable
+                      color: positionSelections.length == position.effectiveMaxVotes
                           ? Colors.green
                           : (positionSelections.isNotEmpty ? AppColors.primaryLight.withValues(alpha: 0.3) : (isDark ? Colors.white24 : Colors.grey.shade300)),
                     ),
                   ),
                   child: Text(
-                    l10n.selectedCounter(positionSelections.length, position.seatsAvailable),
+                    l10n.selectedCounter(positionSelections.length, position.effectiveMaxVotes),
                     style: TextStyle(
-                      color: positionSelections.length == position.seatsAvailable ? Colors.green : (positionSelections.isNotEmpty ? AppColors.primaryLight : (isDark ? Colors.white60 : Colors.grey.shade700)),
+                      color: positionSelections.length == position.effectiveMaxVotes ? Colors.green : (positionSelections.isNotEmpty ? AppColors.primaryLight : (isDark ? Colors.white60 : Colors.grey.shade700)),
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -1127,11 +1156,16 @@ class _DirectPositionCardState extends ConsumerState<_DirectPositionCard> {
                         candidate: candidate,
                         isSelected: isSelected,
                         l10n: l10n,
+                        enableParty: widget.enableParty,
+                        enablePanel: widget.enablePanel,
+                        enableSymbol: widget.enableSymbol,
+                        enableCandidatePhoto: widget.enableCandidatePhoto,
+                        electionType: widget.electionType,
                         onTap: () {
                           ref.read(ballotSelectionsProvider.notifier).toggleCandidate(
                                 positionId: position.id,
                                 candidateId: candidate.id,
-                                maxSeats: position.seatsAvailable,
+                                maxSeats: position.effectiveMaxVotes,
                               );
                         },
                       ),
@@ -1164,18 +1198,40 @@ class _DirectCandidateTile extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
   final BallotL10n l10n;
+  final bool enableParty;
+  final bool enablePanel;
+  final bool enableSymbol;
+  final bool enableCandidatePhoto;
+  final String electionType;
 
   const _DirectCandidateTile({
     required this.candidate,
     required this.isSelected,
     required this.onTap,
     required this.l10n,
+    this.enableParty = true,
+    this.enablePanel = true,
+    this.enableSymbol = true,
+    this.enableCandidatePhoto = true,
+    this.electionType = 'fptp',
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     const stampColor = Color(0xFFB91C1C);
+    final primaryColor = isSelected ? stampColor : AppColors.primary;
+
+    final fullPhotoUrl = ApiConstants.getFullImageUrl(candidate.photoUrl);
+    final hasValidPhoto = enableCandidatePhoto && (fullPhotoUrl != null && fullPhotoUrl.isNotEmpty);
+    final hasSymbolImage = enableSymbol && candidate.symbolImage.trim().isNotEmpty;
+    final hasSymbolName = enableSymbol && candidate.symbolName.trim().isNotEmpty;
+    final hasParty = enableParty && candidate.partyName.trim().isNotEmpty;
+    final panelText = candidate.panelName.trim().isNotEmpty
+        ? candidate.panelName.trim()
+        : candidate.slateName.trim();
+    final hasPanel = enablePanel && panelText.isNotEmpty;
+    final isSamanupatik = electionType.toLowerCase() == 'samanupatik' || electionType.toLowerCase() == 'pr';
 
     return InkWell(
       onTap: onTap,
@@ -1207,52 +1263,152 @@ class _DirectCandidateTile extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.surfaceVariant : Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: ApiConstants.getFullImageUrl(candidate.photoUrl) != null
-                          ? Image.network(
-                              ApiConstants.getFullImageUrl(candidate.photoUrl)!,
-                              fit: BoxFit.cover,
-                              errorBuilder: (ctx, err, stack) => _buildPlaceholder(),
-                            )
-                          : _buildPlaceholder(),
-                    ),
-                  ),
+                  // Candidate Portrait / Large Symbol Box
+                  _buildVisualBox(context, isDark, hasValidPhoto, fullPhotoUrl, hasSymbolImage, hasSymbolName),
                   const SizedBox(width: 14),
+
+                  // Candidate Details
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          candidate.name,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: isSelected ? stampColor : (isDark ? Colors.white : Colors.black87),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        // Name & Symbol Badge
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                candidate.name,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15.5,
+                                  letterSpacing: -0.2,
+                                  color: isSelected ? stampColor : (isDark ? Colors.white : const Color(0xFF0F172A)),
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (hasSymbolName) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.2 : 0.12),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.how_to_vote_rounded, size: 12, color: Color(0xFFD97706)),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      candidate.symbolName,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
-                        if (candidate.manifesto.isNotEmpty) ...[
+
+                        // Badges Row: Party, Slate/Panel, Quota, PR Rank
+                        if (hasParty || hasPanel || (candidate.quotaName != null && candidate.quotaName!.isNotEmpty) || (isSamanupatik && candidate.prRank > 0)) ...[
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 5,
+                            children: [
+                              if (hasParty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? const Color(0xFF1E3A8A).withValues(alpha: 0.35) : const Color(0xFFEFF6FF),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: isDark ? const Color(0xFF3B82F6).withValues(alpha: 0.5) : const Color(0xFF93C5FD)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.flag_rounded, size: 12, color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB)),
+                                      const SizedBox(width: 4.5),
+                                      Text(
+                                        candidate.partyName,
+                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: isDark ? const Color(0xFFBFDBFE) : const Color(0xFF1D4ED8)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              if (hasPanel)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? const Color(0xFF581C87).withValues(alpha: 0.35) : const Color(0xFFFAF5FF),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: isDark ? const Color(0xFF8B5CF6).withValues(alpha: 0.5) : const Color(0xFFC4B5FD)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.groups_rounded, size: 12, color: isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED)),
+                                      const SizedBox(width: 4.5),
+                                      Text(
+                                        panelText,
+                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: isDark ? const Color(0xFFE9D5FF) : const Color(0xFF6D28D9)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              if (candidate.quotaName != null && candidate.quotaName!.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                                  decoration: BoxDecoration(
+                                    color: Colors.teal.withValues(alpha: isDark ? 0.2 : 0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: Colors.teal.withValues(alpha: 0.4)),
+                                  ),
+                                  child: Text(
+                                    candidate.quotaName!,
+                                    style: TextStyle(color: isDark ? Colors.teal.shade200 : Colors.teal.shade800, fontSize: 10.5, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              if (isSamanupatik && candidate.prRank > 0)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                                  decoration: BoxDecoration(
+                                    color: Colors.indigo.withValues(alpha: isDark ? 0.25 : 0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: Colors.indigo.withValues(alpha: 0.4)),
+                                  ),
+                                  child: Text(
+                                    l10n.isNepali ? 'समानुपातिक #${BallotL10n.toNepaliDigits(candidate.prRank)}' : 'PR Rank #${candidate.prRank}',
+                                    style: TextStyle(color: isDark ? Colors.indigo.shade200 : Colors.indigo.shade800, fontSize: 10.5, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+
+                        if (candidate.manifesto.trim().isNotEmpty) ...[
                           const SizedBox(height: 6),
                           Text(
-                            candidate.manifesto,
+                            candidate.manifesto.trim(),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 11.5,
-                              color: isDark ? Colors.white60 : Colors.grey.shade600,
+                              fontSize: 12,
+                              color: isDark ? Colors.white70 : const Color(0xFF475569),
                               height: 1.35,
                             ),
                           ),
                         ],
+
                         const SizedBox(height: 8),
                         InkWell(
                           onTap: () => showCandidateProfile(context, candidate),
@@ -1260,13 +1416,13 @@ class _DirectCandidateTile extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.info_outline_rounded, size: 13, color: isSelected ? stampColor : AppColors.primary),
+                              Icon(Icons.info_outline_rounded, size: 13, color: primaryColor),
                               const SizedBox(width: 4),
                               Text(
                                 l10n.viewCandidateDossier,
                                 style: TextStyle(
-                                  fontSize: 11,
-                                  color: isSelected ? stampColor : AppColors.primary,
+                                  fontSize: 11.5,
+                                  color: primaryColor,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -1299,9 +1455,9 @@ class _DirectCandidateTile extends StatelessWidget {
                             child: CustomPaint(painter: const _SwastikPainter(color: stampColor)),
                           ),
                           const SizedBox(width: 4),
-                          const Text(
-                            'छाप लगाइयो',
-                            style: TextStyle(color: stampColor, fontSize: 10, fontWeight: FontWeight.bold),
+                          Text(
+                            l10n.isNepali ? 'छाप लगाइयो' : 'VOTED',
+                            style: const TextStyle(color: stampColor, fontSize: 10.5, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
@@ -1321,6 +1477,146 @@ class _DirectCandidateTile extends StatelessWidget {
     );
   }
 
+  Widget _buildVisualBox(
+    BuildContext context,
+    bool isDark,
+    bool hasValidPhoto,
+    String? fullPhotoUrl,
+    bool hasSymbolImage,
+    bool hasSymbolName,
+  ) {
+    const boxSize = 76.0;
+
+    // Case 1: Photo enabled & available
+    if (hasValidPhoto) {
+      return Stack(
+        children: [
+          Container(
+            width: boxSize,
+            height: boxSize,
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surfaceVariant : Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: isDark ? Colors.white24 : Colors.grey.shade300, width: 1),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(13),
+              child: Image.network(
+                fullPhotoUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (ctx, err, stack) => _buildPlaceholder(),
+              ),
+            ),
+          ),
+          if (hasSymbolImage)
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 4),
+                  ],
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+                child: ClipOval(
+                  child: Padding(
+                    padding: const EdgeInsets.all(2.5),
+                    child: Image.network(
+                      candidate.symbolImage,
+                      fit: BoxFit.contain,
+                      errorBuilder: (ctx, err, stack) => const Icon(Icons.star, size: 14, color: Colors.amber),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      );
+    }
+
+    // Case 2: Candidate photo toggled off -> LARGE PARTY/ELECTION SYMBOL IMAGE
+    if (hasSymbolImage) {
+      return Container(
+        width: boxSize,
+        height: boxSize,
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.network(
+            candidate.symbolImage,
+            fit: BoxFit.contain,
+            errorBuilder: (ctx, err, stack) => _buildPlaceholder(),
+          ),
+        ),
+      );
+    }
+
+    // Case 3: Symbol name only
+    if (hasSymbolName) {
+      return Container(
+        width: boxSize,
+        height: boxSize,
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFFFFBEB),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: const Color(0xFFF59E0B).withValues(alpha: 0.5),
+            width: 1.5,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.how_to_vote_rounded, size: 28, color: Color(0xFFD97706)),
+            const SizedBox(height: 2),
+            Text(
+              candidate.symbolName,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309),
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      width: boxSize,
+      height: boxSize,
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(14)),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: _buildPlaceholder(),
+      ),
+    );
+  }
+
   Widget _buildPlaceholder() {
     return Container(
       decoration: const BoxDecoration(
@@ -1333,7 +1629,7 @@ class _DirectCandidateTile extends StatelessWidget {
       child: Center(
         child: Text(
           candidate.name.isNotEmpty ? candidate.name[0].toUpperCase() : '?',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 26),
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 28),
         ),
       ),
     );

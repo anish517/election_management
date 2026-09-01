@@ -71,6 +71,11 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
   final _manifestoController = TextEditingController();
   final _txnRefCtrl = TextEditingController();
   final _paymentNotesCtrl = TextEditingController();
+  final _partyCtrl = TextEditingController();
+  final _panelCtrl = TextEditingController();
+  final _symbolNameCtrl = TextEditingController();
+  String _symbolImageUrl = '';
+  final _prRankCtrl = TextEditingController(text: '1');
   String _voucherImageUrl = '';
   bool _isUploadingVoucher = false;
   String _selectedPaymentChannel = 'fonepay';
@@ -95,6 +100,10 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
     _manifestoController.dispose();
     _txnRefCtrl.dispose();
     _paymentNotesCtrl.dispose();
+    _partyCtrl.dispose();
+    _panelCtrl.dispose();
+    _symbolNameCtrl.dispose();
+    _prRankCtrl.dispose();
     for (final p in _proposers) {
       p.dispose();
     }
@@ -313,10 +322,26 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
   }
 
   Future<void> _submit() async {
+    final election = ref.read(electionProvider(widget.electionId)).valueOrNull;
+    final isSam = election?.isSamanupatik ?? false;
+
+    if (isSam && _selectedPositionId == null && (election?.positions.isNotEmpty ?? false)) {
+      _selectedPositionId = election!.positions.first.id;
+    }
+
     if (!_formKey.currentState!.validate()) return;
-    if (_selectedPositionId == null) {
+    if (_selectedPositionId == null && !isSam) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Please select a position.')));
+      return;
+    }
+    if (isSam && _partyCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Political Party affiliation is strictly required for Samānupātik nomination.'),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
 
@@ -338,7 +363,6 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
       return;
     }
 
-    final election = ref.read(electionProvider(widget.electionId)).valueOrNull;
     final org = ref.read(orgProfileProvider).valueOrNull;
 
     // Check fee calculation directly from designation
@@ -406,6 +430,11 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
         'quota': _selectedQuotaId,
         'manifesto': _manifestoController.text.trim(),
         'candidate_image': _photoUrl,
+        'party_name': _partyCtrl.text.trim(),
+        'panel_name': _panelCtrl.text.trim(),
+        'symbol_name': _symbolNameCtrl.text.trim(),
+        'symbol_image': _symbolImageUrl,
+        'pr_rank': int.tryParse(_prRankCtrl.text.trim()) ?? 1,
         'election': widget.electionId,
         'endorsements': endorsements,
         if (isPaymentEnabled) ...{
@@ -672,6 +701,13 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
               .toSet();
           final hasActiveNomination = myActiveNominations.isNotEmpty;
 
+          if (election.isSamanupatik && _selectedPositionId == null && election.positions.isNotEmpty) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && _selectedPositionId == null) {
+                setState(() => _selectedPositionId = election.positions.first.id);
+              }
+            });
+          }
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24),
@@ -767,9 +803,86 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                                         ),
                                       ],
                                     ),
+                                    if (c.partyName.isNotEmpty || c.panelName.isNotEmpty || c.symbolName.isNotEmpty || c.prRank > 0) ...[
+                                      const SizedBox(height: 6),
+                                      Wrap(
+                                        spacing: 6,
+                                        runSpacing: 4,
+                                        children: [
+                                          if (c.partyName.isNotEmpty)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: isDark ? const Color(0xFF1E3A8A).withValues(alpha: 0.35) : const Color(0xFFEFF6FF),
+                                                borderRadius: BorderRadius.circular(5),
+                                                border: Border.all(color: isDark ? const Color(0xFF3B82F6).withValues(alpha: 0.4) : const Color(0xFF93C5FD)),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(Icons.flag_rounded, size: 11, color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB)),
+                                                  const SizedBox(width: 4),
+                                                  Text(c.partyName, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: isDark ? const Color(0xFFBFDBFE) : const Color(0xFF1D4ED8))),
+                                                ],
+                                              ),
+                                            ),
+                                          if (c.panelName.isNotEmpty)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: isDark ? const Color(0xFF581C87).withValues(alpha: 0.35) : const Color(0xFFFAF5FF),
+                                                borderRadius: BorderRadius.circular(5),
+                                                border: Border.all(color: isDark ? const Color(0xFF8B5CF6).withValues(alpha: 0.4) : const Color(0xFFC4B5FD)),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(Icons.groups_rounded, size: 11, color: isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED)),
+                                                  const SizedBox(width: 4),
+                                                  Text(c.panelName, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: isDark ? const Color(0xFFE9D5FF) : const Color(0xFF6D28D9))),
+                                                ],
+                                              ),
+                                            ),
+                                          if (c.symbolName.isNotEmpty)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.2 : 0.12),
+                                                borderRadius: BorderRadius.circular(5),
+                                                border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(Icons.how_to_vote_rounded, size: 11, color: Color(0xFFD97706)),
+                                                  const SizedBox(width: 4),
+                                                  Text(c.symbolName, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309))),
+                                                ],
+                                              ),
+                                            ),
+                                          if (c.prRank > 0)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: isDark ? const Color(0xFF312E81).withValues(alpha: 0.35) : const Color(0xFFEEF2FF),
+                                                borderRadius: BorderRadius.circular(5),
+                                                border: Border.all(color: isDark ? const Color(0xFF6366F1).withValues(alpha: 0.4) : const Color(0xFFA5B4FC)),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(Icons.format_list_numbered_rounded, size: 11, color: isDark ? const Color(0xFF818CF8) : const Color(0xFF4F46E5)),
+                                                  const SizedBox(width: 4),
+                                                  Text('PR Rank #${c.prRank}', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: isDark ? const Color(0xFFC7D2FE) : const Color(0xFF3730A3))),
+                                                ],
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
                                     if (c.manifesto.isNotEmpty) ...[
                                       const SizedBox(height: 8),
-                                      Text('Manifesto: ${c.manifesto}', style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
+                                      Text('Manifesto: ${c.manifesto}', style: TextStyle(color: isDark ? Colors.white70 : Colors.grey.shade700, fontSize: 13)),
                                     ],
                                     if (c.latestPayment != null || c.paymentStatus == 'paid' || c.paymentStatus == 'waived') ...[
                                       const SizedBox(height: 10),
@@ -991,20 +1104,57 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                                 ),
                                 const SizedBox(height: 24),
                                 
-                                Center(
-                                  child: ImageUploadWidget(
-                                    initialImageUrl: _photoUrl,
-                                    placeholderText: 'Upload Candidate Photo',
-                                    radius: 50,
-                                    onImageUploaded: (url) => setState(() => _photoUrl = url),
+                                if (election.enableCandidatePhoto) ...[
+                                  Center(
+                                    child: ImageUploadWidget(
+                                      initialImageUrl: _photoUrl,
+                                      placeholderText: 'Upload Candidate Photo (उम्मेदवार फोटो)',
+                                      radius: 50,
+                                      onImageUploaded: (url) => setState(() => _photoUrl = url),
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 24),
+                                  const SizedBox(height: 24),
+                                ],
+
+                                if (election.isSamanupatik) ...[
+                                  Container(
+                                    padding: const EdgeInsets.all(14),
+                                    margin: const EdgeInsets.only(bottom: 16),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? const Color(0xFF1E1B4B) : const Color(0xFFEEF2FF),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: isDark ? const Color(0xFF6366F1).withValues(alpha: 0.4) : const Color(0xFFA5B4FC)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.how_to_vote_rounded, color: Color(0xFF4F46E5), size: 24),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Text(
+                                                'Samānupātik Closed-List System (समानुपातिक निर्वाचन प्रणाली)',
+                                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                'Candidates are registered to the Political Party\'s Closed List (बन्दसूची) with priority ranking. Total Seats: ${election.totalPrSeats}.',
+                                                style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white70 : const Color(0xFF3730A3)),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
 
                                 DropdownButtonFormField<String>(
-                                  decoration: const InputDecoration(
-                                    labelText: 'Position / Designation *',
-                                    prefixIcon: Icon(Icons.military_tech_outlined),
+                                  isExpanded: true,
+                                  decoration: InputDecoration(
+                                    labelText: election.isSamanupatik ? 'Samānupātik List (समानुपातिक सूची) *' : 'Position / Designation *',
+                                    prefixIcon: const Icon(Icons.military_tech_outlined),
                                   ),
                                   items: election.positions.map((p) {
                                     final isAlreadyNominated = myActiveNominatedPosIds.contains(p.id);
@@ -1022,6 +1172,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                                         isAlreadyNominated
                                             ? '${p.title} (Already Nominated — पहिले नै दर्ता)'
                                             : '${p.title}$feeText',
+                                        overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
                                           fontWeight: FontWeight.w600,
                                           color: isAlreadyNominated ? Colors.grey : (isDark ? Colors.white : Colors.black87),
@@ -1029,7 +1180,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                                       ),
                                     );
                                   }).toList(),
-                                  initialValue: _selectedPositionId,
+                                  initialValue: _selectedPositionId ?? (election.isSamanupatik ? election.positions.firstOrNull?.id : null),
                                   onChanged: (val) {
                                     if (val == null) return;
                                     setState(() {
@@ -1037,33 +1188,122 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                                       _selectedQuotaId = null;
                                     });
                                   },
-                                  validator: (val) => val == null ? 'Please select an available position' : null,
+                                  validator: (val) {
+                                    if (election.isSamanupatik && election.positions.isEmpty) return null;
+                                    return val == null ? 'Please select an available position' : null;
+                                  },
                                 ),
-                      const SizedBox(height: 16),
-                      
-                      if (_selectedPositionId != null) ...[
-                        () {
-                          final pos = election.positions.firstWhere((p) => p.id == _selectedPositionId);
-                          if (pos.quotas.isEmpty) return const SizedBox.shrink();
-                          return Column(
-                            children: [
-                              DropdownButtonFormField<String>(
-                                decoration: const InputDecoration(labelText: 'Target Quota (Optional)'),
-                                items: [
-                                  const DropdownMenuItem(value: null, child: Text('Open / No Quota')),
-                                  ...pos.quotas.map((q) => DropdownMenuItem(
-                                    value: q.id,
-                                    child: Text('${q.name} (${q.seats} seats)'),
-                                  )),
+                                const SizedBox(height: 16),
+                                
+                                if (_selectedPositionId != null || (election.isSamanupatik && election.positions.isNotEmpty)) ...[
+                                  () {
+                                    final posId = _selectedPositionId ?? election.positions.firstOrNull?.id;
+                                    final pos = election.positions.where((p) => p.id == posId).firstOrNull;
+                                    if (pos == null || pos.quotas.isEmpty) return const SizedBox.shrink();
+                                    return Column(
+                                      children: [
+                                        DropdownButtonFormField<String>(
+                                          decoration: const InputDecoration(labelText: 'Affirmative Action Quota / समावेशी समूह (Optional)'),
+                                          items: [
+                                            const DropdownMenuItem(value: null, child: Text('Open / General (खुल्ला)')),
+                                            ...pos.quotas.map((q) => DropdownMenuItem(
+                                              value: q.id,
+                                              child: Text('${q.name} (${q.seats} seats)'),
+                                            )),
+                                          ],
+                                          initialValue: _selectedQuotaId,
+                                          onChanged: (val) => setState(() => _selectedQuotaId = val),
+                                        ),
+                                        const SizedBox(height: 16),
+                                      ],
+                                    );
+                                  }(),
                                 ],
-                                initialValue: _selectedQuotaId,
-                                onChanged: (val) => setState(() => _selectedQuotaId = val),
-                              ),
-                              const SizedBox(height: 16),
-                            ],
-                          );
-                        }(),
-                      ],
+
+                                if (election.enableParty || election.enablePanel || election.isSamanupatik) ...[
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      if (election.enableParty || election.isSamanupatik)
+                                        Expanded(
+                                          child: TextFormField(
+                                            controller: _partyCtrl,
+                                            decoration: InputDecoration(
+                                              labelText: election.isSamanupatik ? 'Political Party (राजनीतिक दल) *' : 'Party Affiliation (दल / पार्टी)',
+                                              hintText: 'e.g. Nepali Congress, UML, RPP...',
+                                              prefixIcon: const Icon(Icons.flag_outlined),
+                                            ),
+                                            validator: (election.isSamanupatik)
+                                                ? (v) => (v == null || v.trim().isEmpty) ? 'Party affiliation is strictly required for Samānupātik' : null
+                                                : null,
+                                          ),
+                                        ),
+                                      if ((election.enableParty || election.isSamanupatik) && election.enablePanel)
+                                        const SizedBox(width: 12),
+                                      if (election.enablePanel)
+                                        Expanded(
+                                          child: TextFormField(
+                                            controller: _panelCtrl,
+                                            decoration: const InputDecoration(
+                                              labelText: 'Panel / Slate (प्यानल / समूह)',
+                                              prefixIcon: Icon(Icons.group_work_outlined),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                ],
+
+                                if (election.enableSymbol || election.isSamanupatik) ...[
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        flex: 3,
+                                        child: TextFormField(
+                                          controller: _symbolNameCtrl,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Election Symbol Name (चुनाव चिन्ह)',
+                                            hintText: 'e.g. Sun (सूर्य), Tree (रुख), Pen (कलम)',
+                                            prefixIcon: Icon(Icons.how_to_vote_outlined),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        flex: 2,
+                                        child: Center(
+                                          child: ImageUploadWidget(
+                                            initialImageUrl: _symbolImageUrl,
+                                            placeholderText: 'Symbol Icon',
+                                            radius: 28,
+                                            onImageUploaded: (url) => setState(() => _symbolImageUrl = url),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                ],
+
+                                if (election.hasPrSystem || election.isSamanupatik) ...[
+                                  TextFormField(
+                                    controller: _prRankCtrl,
+                                    keyboardType: TextInputType.number,
+                                    decoration: InputDecoration(
+                                      labelText: election.isSamanupatik ? 'PR Closed List Rank (बन्दसूची वरीयता क्रम) *' : 'PR Closed List Rank (समानुपातिक सूची वरीयता क्रम)',
+                                      hintText: '1 for Top candidate, 2, 3...',
+                                      prefixIcon: const Icon(Icons.format_list_numbered_rounded),
+                                      helperText: 'Determines election priority order on the party\'s list',
+                                    ),
+                                    validator: (election.isSamanupatik)
+                                        ? (v) => (v == null || v.trim().isEmpty) ? 'PR list rank (e.g. 1, 2, 3) is required' : null
+                                        : null,
+                                  ),
+                                  const SizedBox(height: 16),
+                                ],
+
                       TextFormField(
                         controller: _manifestoController,
                         decoration: const InputDecoration(
@@ -1249,8 +1489,9 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
     required OrganizationModel? org,
     required ElectionModel? election,
   }) {
+    final effectivePositionId = _selectedPositionId ?? (election?.isSamanupatik == true ? election?.positions.firstOrNull?.id : null);
     // If no position selected yet, show an inviting helper banner
-    if (_selectedPositionId == null) {
+    if (effectivePositionId == null) {
       return Container(
         margin: const EdgeInsets.only(bottom: 24),
         padding: const EdgeInsets.all(16),
@@ -1284,7 +1525,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
       );
     }
 
-    final pos = election?.positions.where((p) => p.id == _selectedPositionId).firstOrNull;
+    final pos = election?.positions.where((p) => p.id == effectivePositionId).firstOrNull;
     final positionTitle = pos?.title ?? 'Selected Designation';
     final fee = pos?.nomineeCharge ?? 0.0;
 

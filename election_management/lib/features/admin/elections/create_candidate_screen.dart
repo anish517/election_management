@@ -81,6 +81,13 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
   final _personalDescriptionController = TextEditingController();
   final _manifestoController = TextEditingController();
 
+  // Affiliation, Symbol & PR Rank
+  final _partyController = TextEditingController();
+  final _panelController = TextEditingController();
+  final _symbolNameController = TextEditingController();
+  String _symbolImageUrl = '';
+  final _prRankController = TextEditingController(text: '1');
+
   // Dynamic Multi-Proposers & Multi-Supporters
   late List<_EndorsementItem> _proposers;
   late List<_EndorsementItem> _supporters;
@@ -105,6 +112,10 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
     _addressController.dispose();
     _personalDescriptionController.dispose();
     _manifestoController.dispose();
+    _partyController.dispose();
+    _panelController.dispose();
+    _symbolNameController.dispose();
+    _prRankController.dispose();
     for (final p in _proposers) {
       p.dispose();
     }
@@ -115,6 +126,13 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
   }
 
   void _submit() async {
+    final election = ref.read(electionProvider(widget.electionId)).valueOrNull;
+    final isSamanupatik = election?.isSamanupatik ?? false;
+
+    if (isSamanupatik && _selectedPositionId == null && (election?.positions.isNotEmpty ?? false)) {
+      _selectedPositionId = election!.positions.first.id;
+    }
+
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -124,10 +142,20 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
       );
       return;
     }
-    if (_selectedPositionId == null) {
+    if (_selectedPositionId == null && !isSamanupatik) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please select a designation.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    if (isSamanupatik && _partyController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Political Party affiliation is strictly required for Samānupātik nomination.'),
+          backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -178,6 +206,11 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
           'personal_description': _personalDescriptionController.text.trim(),
           'manifesto': _manifestoController.text.trim(),
           'status': 'approved', // Auto approve for admin creation
+          'party_name': _partyController.text.trim(),
+          'panel_name': _panelController.text.trim(),
+          'symbol_name': _symbolNameController.text.trim(),
+          'symbol_image': _symbolImageUrl,
+          'pr_rank': int.tryParse(_prRankController.text.trim()) ?? 1,
           if (endorsements.isNotEmpty) 'endorsements': endorsements,
         },
       );
@@ -541,8 +574,12 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
                   // ════════════════════════════════════════════════════════
                   _buildSectionCard(
                     context,
-                    title: '2. Contested Office & Quota Allocation (पद तथा कोटा विवरण)',
-                    subtitle: 'Electoral designation and affirmative action quota allocation',
+                    title: (electionAsync.valueOrNull?.isSamanupatik ?? false)
+                        ? '2. Samānupātik Closed List Allocation (समानुपातिक बन्दसूची)'
+                        : '2. Contested Office & Quota Allocation (पद तथा कोटा विवरण)',
+                    subtitle: (electionAsync.valueOrNull?.isSamanupatik ?? false)
+                        ? 'Electoral candidate registration to the party closed list and inclusion quotas'
+                        : 'Electoral designation and affirmative action quota allocation',
                     icon: Icons.military_tech_rounded,
                     isDark: isDark,
                     children: [
@@ -554,22 +591,40 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
                             child: electionAsync.when(
                               loading: () => const LinearProgressIndicator(),
                               error: (_, _) => const Text('Error loading designations', style: TextStyle(color: Colors.red)),
-                              data: (election) => DropdownButtonFormField<String>(
-                                initialValue: _selectedPositionId,
-                                isExpanded: true,
-                                decoration: _dec('Contested Designation *', prefix: const Icon(Icons.badge_outlined), isDark: isDark),
-                                items: election.positions.map((p) => DropdownMenuItem(
-                                  value: p.id,
-                                  child: Text('${p.title} (${p.seatsAvailable} seat${p.seatsAvailable > 1 ? "s" : ""})', style: const TextStyle(fontSize: 13)),
-                                )).toList(),
-                                onChanged: (val) {
-                                  setState(() {
-                                    _selectedPositionId = val;
-                                    _selectedQuotaId = null;
+                              data: (election) {
+                                final isSam = election.isSamanupatik;
+                                final initialVal = _selectedPositionId ?? (isSam ? election.positions.firstOrNull?.id : null);
+                                if (isSam && _selectedPositionId == null && election.positions.isNotEmpty) {
+                                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                                    if (mounted && _selectedPositionId == null) {
+                                      setState(() => _selectedPositionId = election.positions.first.id);
+                                    }
                                   });
-                                },
-                                validator: (v) => v == null ? 'Designation is required' : null,
-                              ),
+                                }
+                                return DropdownButtonFormField<String>(
+                                  initialValue: initialVal,
+                                  isExpanded: true,
+                                  decoration: _dec(
+                                    isSam ? 'Samānupātik List (समानुपातिक सूची) *' : 'Contested Designation *',
+                                    prefix: const Icon(Icons.badge_outlined),
+                                    isDark: isDark,
+                                  ),
+                                  items: election.positions.map((p) => DropdownMenuItem(
+                                    value: p.id,
+                                    child: Text('${p.title} (${p.seatsAvailable} seat${p.seatsAvailable > 1 ? "s" : ""})', style: const TextStyle(fontSize: 13)),
+                                  )).toList(),
+                                  onChanged: (val) {
+                                    setState(() {
+                                      _selectedPositionId = val;
+                                      _selectedQuotaId = null;
+                                    });
+                                  },
+                                  validator: (v) {
+                                    if (isSam && election.positions.isEmpty) return null;
+                                    return v == null ? 'Designation is required' : null;
+                                  },
+                                );
+                              },
                             ),
                           ),
                           // Dynamic Quota Dropdown
@@ -710,31 +765,149 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
-
-                      // Official Portrait Uploader
-                      Center(
-                        child: Column(
-                          children: [
-                            Text(
-                              'Candidate Official Portrait (उम्मेदवार फोटो)',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : Colors.grey.shade700),
-                            ),
-                            const SizedBox(height: 10),
-                            ImageUploadWidget(
-                              initialImageUrl: _candidateImageUrl,
-                              placeholderText: _firstNameController.text.isNotEmpty
-                                  ? _firstNameController.text[0].toUpperCase()
-                                  : 'C',
-                              radius: 40,
-                              onImageUploaded: (url) => setState(() => _candidateImageUrl = url),
-                            ),
-                          ],
+                      if (electionAsync.valueOrNull?.enableCandidatePhoto == true) ...[
+                        const SizedBox(height: 20),
+                        Center(
+                          child: Column(
+                            children: [
+                              Text(
+                                'Candidate Official Portrait (उम्मेदवार फोटो)',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : Colors.grey.shade700),
+                              ),
+                              const SizedBox(height: 10),
+                              ImageUploadWidget(
+                                initialImageUrl: _candidateImageUrl,
+                                placeholderText: _firstNameController.text.isNotEmpty
+                                    ? _firstNameController.text[0].toUpperCase()
+                                    : 'C',
+                                radius: 40,
+                                onImageUploaded: (url) => setState(() => _candidateImageUrl = url),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 20),
+
+                  // ════════════════════════════════════════════════════════
+                  // AFFILIATION, SYMBOL & PR RANK
+                  // ════════════════════════════════════════════════════════
+                  if (electionAsync.valueOrNull?.enableParty == true ||
+                      electionAsync.valueOrNull?.enablePanel == true ||
+                      electionAsync.valueOrNull?.enableSymbol == true ||
+                      electionAsync.valueOrNull?.hasPrSystem == true ||
+                      (electionAsync.valueOrNull?.isSamanupatik ?? false)) ...[
+                    _buildSectionCard(
+                      context,
+                      title: 'Affiliation & Election Symbol (दल, प्यानल तथा चुनाव चिन्ह)',
+                      subtitle: 'Configure political party, group panel, election symbol, and PR list rank',
+                      icon: Icons.flag_rounded,
+                      isDark: isDark,
+                      children: [
+                        if (electionAsync.valueOrNull?.enableParty == true ||
+                            electionAsync.valueOrNull?.enablePanel == true ||
+                            (electionAsync.valueOrNull?.isSamanupatik ?? false)) ...[
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (electionAsync.valueOrNull?.enableParty == true ||
+                                  (electionAsync.valueOrNull?.isSamanupatik ?? false))
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _partyController,
+                                    decoration: _dec(
+                                      (electionAsync.valueOrNull?.isSamanupatik ?? false)
+                                          ? 'Political Party (राजनीतिक दल) *'
+                                          : 'Political Party (राजनीतिक दल)',
+                                      hint: 'e.g. Nepali Congress, UML, RPP...',
+                                      prefix: const Icon(Icons.flag_outlined),
+                                      isDark: isDark,
+                                    ),
+                                    validator: (electionAsync.valueOrNull?.isSamanupatik ?? false)
+                                        ? (v) => (v == null || v.trim().isEmpty) ? 'Party affiliation is required for Samānupātik' : null
+                                        : null,
+                                  ),
+                                ),
+                              if ((electionAsync.valueOrNull?.enableParty == true ||
+                                      (electionAsync.valueOrNull?.isSamanupatik ?? false)) &&
+                                  electionAsync.valueOrNull?.enablePanel == true)
+                                const SizedBox(width: 14),
+                              if (electionAsync.valueOrNull?.enablePanel == true)
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _panelController,
+                                    decoration: _dec(
+                                      'Panel / Slate (प्यानल / समूह)',
+                                      hint: 'e.g. Progressive Slate',
+                                      prefix: const Icon(Icons.group_work_outlined),
+                                      isDark: isDark,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
+                        if (electionAsync.valueOrNull?.enableSymbol == true ||
+                            (electionAsync.valueOrNull?.isSamanupatik ?? false)) ...[
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 3,
+                                child: TextFormField(
+                                  controller: _symbolNameController,
+                                  decoration: _dec(
+                                    'Election Symbol Name (चुनाव चिन्ह)',
+                                    hint: 'e.g. Sun (सूर्य), Tree (रुख)',
+                                    prefix: const Icon(Icons.how_to_vote_outlined),
+                                    isDark: isDark,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                flex: 2,
+                                child: Center(
+                                  child: ImageUploadWidget(
+                                    initialImageUrl: _symbolImageUrl,
+                                    placeholderText: 'Symbol Icon',
+                                    radius: 28,
+                                    onImageUploaded: (url) => setState(() => _symbolImageUrl = url),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
+                        if (electionAsync.valueOrNull?.hasPrSystem == true ||
+                            (electionAsync.valueOrNull?.isSamanupatik ?? false)) ...[
+                          TextFormField(
+                            controller: _prRankController,
+                            keyboardType: TextInputType.number,
+                            decoration: _dec(
+                              (electionAsync.valueOrNull?.isSamanupatik ?? false)
+                                  ? 'PR Closed List Priority Rank (समानुपातिक सूची वरियता क्रम) *'
+                                  : 'PR Closed List Priority Rank (समानुपातिक सूची वरियता क्रम)',
+                              hint: 'e.g. 1 for Top candidate, 2, 3...',
+                              prefix: const Icon(Icons.format_list_numbered_rounded),
+                              helper: 'Determines election order on the party\'s closed list',
+                              isDark: isDark,
+                            ),
+                            validator: (electionAsync.valueOrNull?.isSamanupatik ?? false)
+                                ? (v) => (v == null || v.trim().isEmpty) ? 'PR list rank (e.g. 1, 2, 3) is required' : null
+                                : null,
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                  ],
 
                   // ════════════════════════════════════════════════════════
                   // 4. PLATFORM, MANIFESTO & VISION

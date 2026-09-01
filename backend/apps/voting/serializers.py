@@ -11,7 +11,10 @@ class BallotCandidateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Candidate
-        fields = ['id', 'name', 'photo_url', 'manifesto', 'quota_name']
+        fields = [
+            'id', 'name', 'photo_url', 'manifesto', 'quota_name',
+            'party_name', 'panel_name', 'slate_name', 'symbol_name', 'symbol_image', 'pr_rank'
+        ]
 
 
 class BallotPositionSerializer(serializers.ModelSerializer):
@@ -33,7 +36,7 @@ class BallotPositionSerializer(serializers.ModelSerializer):
         cands = Candidate.objects.filter(
             position=obj, 
             status=NominationStatus.APPROVED
-        ).order_by('?') # For now random, could follow obj.ballot_ordering
+        ).order_by('pr_rank', 'id') # ordered by PR rank / priority
         return BallotCandidateSerializer(cands, many=True).data
 
     def get_is_uncontested(self, obj):
@@ -49,7 +52,7 @@ class VoterRollSerializer(serializers.ModelSerializer):
         model = VoterRoll
         fields = [
             'id', 'election', 'voter_id', 'voter_pin', 'prefix', 'first_name', 'middle_name', 'last_name',
-            'full_name', 'email', 'phone', 'council_number', 'citizenship_number',
+            'full_name', 'email', 'phone', 'council_number', 'citizenship_number', 'branch',
             'is_eligible', 'ineligibility_reason', 'has_voted', 'voted_at',
             'voted_ip_address', 'voted_mac_address',
             'verification_channel', 'verified_at', 'direct_ballot_token_used',
@@ -102,6 +105,15 @@ class CastVoteSerializer(serializers.Serializer):
         positions = {str(p.id): p for p in election.positions.all()}
         
         for pos_id, cand_ids in ballot_data.items():
+            if pos_id == 'pr_ballot':
+                if getattr(election, 'election_type', 'fptp') not in ['mixed', 'samanupatik']:
+                    raise serializers.ValidationError("PR ballot is not enabled for this election.")
+                if not isinstance(cand_ids, list):
+                    raise serializers.ValidationError("PR ballot selections must be a list.")
+                if len(cand_ids) > 1:
+                    raise serializers.ValidationError("Too many selections for Samānupātik PR ballot. Max allowed: 1")
+                continue
+
             if pos_id not in positions:
                 raise serializers.ValidationError(f"Invalid position ID: {pos_id}")
             

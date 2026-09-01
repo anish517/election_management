@@ -286,3 +286,122 @@ class TestElectionMethodsPhase3(TestCase):
         self.assertIn('558899', res.content.decode('utf-8'))
         self.assertIn('OFFICIAL VOTER PIN SLIP', res.content.decode('utf-8'))
 
+    def test_party_panel_and_symbol_photo_settings(self):
+        """Requirements 4 & 5: Election settings for Party, Panel, Symbol, Photo."""
+        self.venue_election.enable_party = False
+        self.venue_election.enable_panel = False
+        self.venue_election.enable_symbol = True
+        self.venue_election.enable_candidate_photo = False
+        self.venue_election.save()
+
+        # Update candidate with party, panel, and symbol
+        self.cand1.party_name = 'Progressive Alliance'
+        self.cand1.panel_name = 'Democratic Panel'
+        self.cand1.symbol_name = 'Sun (सूर्य)'
+        self.cand1.symbol_image = 'https://example.com/sun.png'
+        self.cand1.save()
+
+        # Unlock kiosk ballot and verify payload includes election flags & candidate metadata
+        res = self.client.post('/v1/voting/kiosk/unlock/', {
+            'election_id': str(self.venue_election.id),
+            'voter_id': self.voter1.voter_id,
+        }, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['enable_party'], False)
+        self.assertEqual(res.data['enable_panel'], False)
+        self.assertEqual(res.data['enable_symbol'], True)
+        self.assertEqual(res.data['enable_candidate_photo'], False)
+
+        ballot_cands = res.data['ballot'][0]['candidates']
+        c_found = next(c for c in ballot_cands if c['id'] == str(self.cand1.id))
+        self.assertEqual(c_found['symbol_name'], 'Sun (सूर्य)')
+        self.assertEqual(c_found['party_name'], 'Progressive Alliance')
+
+    def test_partial_election_branch_separation(self):
+        """Requirement 7: Partial election restricts voting strictly to target branches."""
+        self.venue_election.is_partial_election = True
+        self.venue_election.target_branches = ['Kathmandu Central', 'Lalitpur']
+        self.venue_election.save()
+
+        # Voter 1 belongs to Kathmandu Central -> Allowed
+        self.voter1.branch = 'Kathmandu Central'
+        self.voter1.save()
+
+        res_ok = self.client.post('/v1/voting/kiosk/unlock/', {
+            'election_id': str(self.venue_election.id),
+            'voter_id': self.voter1.voter_id,
+        }, format='json')
+        self.assertEqual(res_ok.status_code, status.HTTP_200_OK)
+
+        # Voter 2 belongs to Pokhara Branch -> Blocked
+        self.voter2.branch = 'Pokhara Branch'
+        self.voter2.save()
+
+        res_blocked = self.client.post('/v1/voting/kiosk/unlock/', {
+            'election_id': str(self.venue_election.id),
+            'voter_id': self.voter2.voter_id,
+        }, format='json')
+        self.assertEqual(res_blocked.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('partial election', res_blocked.data['error'].lower())
+
+    def test_samanupatik_pr_sainte_lague_tally(self):
+        """Requirement 8: Samānupātik Proportional Representation seat allocation via Sainte-Laguë method."""
+        from apps.results.services import TallyService
+        from apps.voting.models import Vote
+
+        pr_election = Election.objects.create(
+            organization=self.org,
+            title='Central Council Proportional Election 2083',
+            election_type='samanupatik',
+            total_pr_seats=5,
+            pr_threshold_percent=3.0,
+            pr_allocation_method='modified_sainte_lague',
+            state='results_final',
+        )
+
+        pos = Position.objects.create(
+            election=pr_election,
+            title='Samānupātik Central Committee',
+            seats_available=5,
+        )
+
+        # 3 Parties with candidates
+        # Party A candidates (3 seats worth)
+        c_a1 = Candidate.objects.create(election=pr_election, position=pos, first_name='A1', party_name='Party Red', status=NominationStatus.APPROVED, pr_rank=1)
+        c_a2 = Candidate.objects.create(election=pr_election, position=pos, first_name='A2', party_name='Party Red', status=NominationStatus.APPROVED, pr_rank=2)
+        c_a3 = Candidate.objects.create(election=pr_election, position=pos, first_name='A3', party_name='Party Red', status=NominationStatus.APPROVED, pr_rank=3)
+
+        # Party B candidates
+        c_b1 = Candidate.objects.create(election=pr_election, position=pos, first_name='B1', party_name='Party Blue', status=NominationStatus.APPROVED, pr_rank=1)
+        c_b2 = Candidate.objects.create(election=pr_election, position=pos, first_name='B2', party_name='Party Blue', status=NominationStatus.APPROVED, pr_rank=2)
+
+        # Party C candidates
+        c_c1 = Candidate.objects.create(election=pr_election, position=pos, first_name='C1', party_name='Party Green', status=NominationStatus.APPROVED, pr_rank=1)
+
+        # Simulate Votes: Party Red: 100 votes, Party Blue: 55 votes, Party Green: 35 votes (Total: 190)
+        # Sainte-Laguë quotients:
+        # Round 1: Red 100/1=100 (Red gets seat 1)
+        # Round 2: Blue 55/1=55 (Blue gets seat 2)
+        # Round 3: Green 35/1=35 vs Red 100/3=33.3 (Green gets seat 3)
+        # Round 4: Red 100/3=33.3 vs Blue 55/3=18.3 (Red gets seat 4)
+        # Round 5: Red 100/5=20 vs Blue 55/3=18.3 (Red gets seat 5)
+        # Total seats: Red: 3, Blue: 1, Green: 1.
+        import secrets
+        Vote.objects.create(election=pr_election, ballot_data={str(pos.id): [str(c_a1.id)]}, weight=100.0, receipt_hash=secrets.token_hex(32))
+        Vote.objects.create(election=pr_election, ballot_data={str(pos.id): [str(c_b1.id)]}, weight=55.0, receipt_hash=secrets.token_hex(32))
+        Vote.objects.create(election=pr_election, ballot_data={str(pos.id): [str(c_c1.id)]}, weight=35.0, receipt_hash=secrets.token_hex(32))
+
+        tally = TallyService.tally_election(pr_election)
+        self.assertEqual(tally['election_type'], 'samanupatik')
+        self.assertEqual(tally['total_pr_seats'], 5)
+
+        party_results = {p['party_name']: p for p in tally['party_results']}
+        self.assertEqual(party_results['Party Red']['seats_allocated'], 3)
+        self.assertEqual(party_results['Party Blue']['seats_allocated'], 1)
+        self.assertEqual(party_results['Party Green']['seats_allocated'], 1)
+
+        # Verify elected candidates list
+        red_elected = [c['id'] for c in party_results['Party Red']['elected_candidates']]
+        self.assertEqual(red_elected, [str(c_a1.id), str(c_a2.id), str(c_a3.id)])
+

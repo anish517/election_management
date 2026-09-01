@@ -40,6 +40,12 @@ class BallotData {
   final String notEligibleReason;
   final Map<String, dynamic>? voterInfo;
   final bool allowBoycott;
+  final bool enableParty;
+  final bool enablePanel;
+  final bool enableSymbol;
+  final bool enableCandidatePhoto;
+  final String electionType;
+
   const BallotData({
     required this.positions,
     required this.hasVoted,
@@ -47,6 +53,11 @@ class BallotData {
     required this.notEligibleReason,
     this.voterInfo,
     required this.allowBoycott,
+    this.enableParty = true,
+    this.enablePanel = true,
+    this.enableSymbol = true,
+    this.enableCandidatePhoto = true,
+    this.electionType = 'fptp',
   });
 }
 
@@ -62,6 +73,12 @@ final ballotDataProvider = FutureProvider.autoDispose.family<BallotData, String>
   String notEligibleReason = '';
   Map<String, dynamic>? voterInfo;
   bool allowBoycott = true;
+  bool enableParty = true;
+  bool enablePanel = true;
+  bool enableSymbol = true;
+  bool enableCandidatePhoto = true;
+  String electionType = 'fptp';
+
   if (data is Map) {
     list = (data['ballot'] as List<dynamic>?) ?? [];
     hasVoted = data['has_voted'] as bool? ?? false;
@@ -69,6 +86,11 @@ final ballotDataProvider = FutureProvider.autoDispose.family<BallotData, String>
     notEligibleReason = data['not_eligible_reason'] as String? ?? '';
     voterInfo = data['voter_info'] as Map<String, dynamic>?;
     allowBoycott = data['allow_boycott'] as bool? ?? true;
+    enableParty = data['enable_party'] as bool? ?? true;
+    enablePanel = data['enable_panel'] as bool? ?? true;
+    enableSymbol = data['enable_symbol'] as bool? ?? true;
+    enableCandidatePhoto = data['enable_candidate_photo'] as bool? ?? true;
+    electionType = data['election_type'] as String? ?? 'fptp';
   } else if (data is List) {
     list = data;
   } else {
@@ -84,6 +106,11 @@ final ballotDataProvider = FutureProvider.autoDispose.family<BallotData, String>
     notEligibleReason: notEligibleReason,
     voterInfo: voterInfo,
     allowBoycott: allowBoycott,
+    enableParty: enableParty,
+    enablePanel: enablePanel,
+    enableSymbol: enableSymbol,
+    enableCandidatePhoto: enableCandidatePhoto,
+    electionType: electionType,
   );
 });
 
@@ -302,6 +329,11 @@ class DirectBallotData {
   final bool allowBoycott;
   final String voterName;
   final String voterId;
+  final bool enableParty;
+  final bool enablePanel;
+  final bool enableSymbol;
+  final bool enableCandidatePhoto;
+  final String electionType;
   final List<PositionModel> positions;
 
   const DirectBallotData({
@@ -315,6 +347,11 @@ class DirectBallotData {
     required this.allowBoycott,
     required this.voterName,
     required this.voterId,
+    this.enableParty = true,
+    this.enablePanel = true,
+    this.enableSymbol = true,
+    this.enableCandidatePhoto = true,
+    this.electionType = 'fptp',
     required this.positions,
   });
 
@@ -331,6 +368,11 @@ class DirectBallotData {
       allowBoycott: json['allow_boycott'] as bool? ?? true,
       voterName: json['voter_name'] as String? ?? '',
       voterId: json['voter_id'] as String? ?? '',
+      enableParty: json['enable_party'] as bool? ?? true,
+      enablePanel: json['enable_panel'] as bool? ?? true,
+      enableSymbol: json['enable_symbol'] as bool? ?? true,
+      enableCandidatePhoto: json['enable_candidate_photo'] as bool? ?? true,
+      electionType: json['election_type'] as String? ?? 'fptp',
       positions: list.map((p) => PositionModel.fromJson(p as Map<String, dynamic>)).toList(),
     );
   }

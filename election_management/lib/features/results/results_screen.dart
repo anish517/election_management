@@ -24,6 +24,7 @@ class ResultsScreen extends ConsumerStatefulWidget {
 class _ResultsScreenState extends ConsumerState<ResultsScreen> {
   Timer? _pollingTimer;
   bool _showTableView = true;
+  int _mixedActiveTab = 0; // 0 = Direct FPTP Posts, 1 = Samānupātik PR Party Allocation
 
   @override
   void initState() {
@@ -243,8 +244,89 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          ...tally.results.map((posResult) => _buildPositionResult(context, posResult, isLive, isDark)),
+          if (tally.isMixed) ...[
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.6) : Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => setState(() => _mixedActiveTab = 0),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: _mixedActiveTab == 0 ? AppColors.primary : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: _mixedActiveTab == 0
+                              ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 4, offset: const Offset(0, 2))]
+                              : null,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.person_pin_circle_rounded, size: 16, color: _mixedActiveTab == 0 ? Colors.white : (isDark ? Colors.white70 : Colors.black87)),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Direct FPTP Posts (प्रत्यक्ष नतिजा)',
+                              style: TextStyle(
+                                color: _mixedActiveTab == 0 ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => setState(() => _mixedActiveTab = 1),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: _mixedActiveTab == 1 ? AppColors.primary : Colors.transparent,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: _mixedActiveTab == 1
+                              ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 4, offset: const Offset(0, 2))]
+                              : null,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.pie_chart_rounded, size: 16, color: _mixedActiveTab == 1 ? Colors.white : (isDark ? Colors.white70 : Colors.black87)),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Samānupātik PR (समानुपातिक नतिजा)',
+                              style: TextStyle(
+                                color: _mixedActiveTab == 1 ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          if (tally.isSamanupatik || (tally.isMixed && _mixedActiveTab == 1))
+            _buildSamanupatikResults(context, tally, isLive, isDark)
+          else ...[
+            ...tally.results.map((posResult) => _buildPositionResult(context, posResult, isLive, isDark)),
+          ],
         ],
       ),
     );
@@ -737,46 +819,189 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                         )
                       : const SizedBox.shrink(),
                 ),
-                // 3. Candidate Name + Avatar
+                // 3. Candidate Name + Avatar + Symbol / Party / Panel
                 Expanded(
                   flex: 30,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: 32,
-                        height: 32,
+                        width: 38,
+                        height: 38,
                         decoration: BoxDecoration(
                           color: isNoVoteOrBoycott
                               ? const Color(0xFFD97706).withValues(alpha: 0.15)
-                              : (isDark ? AppColors.surfaceVariant : Colors.grey.shade200),
+                              : (isDark ? const Color(0xFF1E293B) : Colors.white),
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isDark ? Colors.white12 : Colors.grey.shade300,
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            if (!isDark)
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                          ],
                         ),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(7),
                           child: isNoVoteOrBoycott
-                              ? const Center(child: Icon(Icons.do_not_disturb_alt_rounded, color: Color(0xFFD97706), size: 16))
+                              ? const Center(child: Icon(Icons.do_not_disturb_alt_rounded, color: Color(0xFFD97706), size: 18))
                               : (score.photoUrl.isNotEmpty
                                   ? Image.network(
                                       score.photoUrl,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.person_rounded, size: 18),
+                                      errorBuilder: (context, error, stackTrace) => (score.symbolImage.isNotEmpty
+                                          ? Padding(
+                                              padding: const EdgeInsets.all(3.0),
+                                              child: Image.network(score.symbolImage, fit: BoxFit.contain),
+                                            )
+                                          : const Icon(Icons.person_rounded, size: 20)),
                                     )
-                                  : const Icon(Icons.person_rounded, size: 18)),
+                                  : (score.symbolImage.isNotEmpty
+                                      ? Padding(
+                                          padding: const EdgeInsets.all(3.0),
+                                          child: Image.network(
+                                            score.symbolImage,
+                                            fit: BoxFit.contain,
+                                            errorBuilder: (context, error, stackTrace) => const Icon(Icons.how_to_vote_rounded, size: 18, color: Colors.amber),
+                                          ),
+                                        )
+                                      : (score.symbolName.isNotEmpty
+                                          ? const Center(child: Icon(Icons.how_to_vote_rounded, size: 18, color: Color(0xFFD97706)))
+                                          : const Center(child: Icon(Icons.person_rounded, size: 20, color: Colors.grey))))),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: Text(
-                          score.name,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontWeight: isElected ? FontWeight.bold : (isNoVoteOrBoycott ? FontWeight.w500 : FontWeight.w600),
-                            fontSize: 13,
-                            color: isElected
-                                ? const Color(0xFF10B981)
-                                : (isDark ? Colors.white : Colors.black87),
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    score.name,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontWeight: isElected ? FontWeight.bold : (isNoVoteOrBoycott ? FontWeight.w500 : FontWeight.w700),
+                                      fontSize: 13.5,
+                                      color: isElected
+                                          ? const Color(0xFF10B981)
+                                          : (isDark ? Colors.white : const Color(0xFF0F172A)),
+                                    ),
+                                  ),
+                                ),
+                                if (score.symbolName.isNotEmpty) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.2 : 0.12),
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.how_to_vote_rounded, size: 10, color: Color(0xFFD97706)),
+                                        const SizedBox(width: 3),
+                                        Text(
+                                          score.symbolName,
+                                          style: TextStyle(
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            if (score.partyName.isNotEmpty || score.panelName.isNotEmpty) ...[
+                              const SizedBox(height: 3),
+                              Wrap(
+                                spacing: 5,
+                                runSpacing: 3,
+                                children: [
+                                  if (score.partyName.isNotEmpty)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                      decoration: BoxDecoration(
+                                        color: isDark
+                                            ? const Color(0xFF1E3A8A).withValues(alpha: 0.35)
+                                            : const Color(0xFFEFF6FF),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(
+                                          color: isDark
+                                              ? const Color(0xFF3B82F6).withValues(alpha: 0.4)
+                                              : const Color(0xFF93C5FD),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.flag_rounded,
+                                            size: 9.5,
+                                            color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                                          ),
+                                          const SizedBox(width: 3),
+                                          Text(
+                                            score.partyName,
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: isDark ? const Color(0xFFBFDBFE) : const Color(0xFF1D4ED8),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  if (score.panelName.isNotEmpty)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                      decoration: BoxDecoration(
+                                        color: isDark
+                                            ? const Color(0xFF581C87).withValues(alpha: 0.35)
+                                            : const Color(0xFFFAF5FF),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(
+                                          color: isDark
+                                              ? const Color(0xFF8B5CF6).withValues(alpha: 0.4)
+                                              : const Color(0xFFC4B5FD),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.groups_rounded,
+                                            size: 9.5,
+                                            color: isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED),
+                                          ),
+                                          const SizedBox(width: 3),
+                                          Text(
+                                            score.panelName,
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: isDark ? const Color(0xFFE9D5FF) : const Color(0xFF6D28D9),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                     ],
@@ -844,6 +1069,409 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
 
         return tableContent;
       },
+    );
+  }
+
+  Widget _buildSamanupatikResults(BuildContext context, TallyResult tally, bool isLive, bool isDark) {
+    const methodDisplay = 'Modified Sainte-Laguë / नेपाल मापदण्ड (1.4, 3, 5, 7...)';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Electoral System Summary Card ──
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 20),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surface : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: isDark ? AppColors.surfaceVariant : Colors.grey.shade200),
+            boxShadow: [
+              if (!isDark)
+                BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4)),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.indigo.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.pie_chart_rounded, color: Colors.indigoAccent, size: 22),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Samānupātik (Proportional Representation) Tally',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+                        ),
+                        Text(
+                          'समानुपातिक निर्वाचन प्रणाली — दलगत मत तथा सिट बाँडफाँड',
+                          style: TextStyle(color: isDark ? Colors.white60 : AppColors.textMuted, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 12,
+                runSpacing: 10,
+                children: [
+                  _buildPrBadge('Total PR Seats (कुल सिट)', '${tally.totalPrSeats} Seats', Icons.event_seat_rounded, Colors.purple, isDark),
+                  _buildPrBadge('Threshold (न्यूनतम थ्रेसहोल्ड)', '${tally.prThresholdPercent}%', Icons.filter_alt_rounded, Colors.orange, isDark),
+                  _buildPrBadge('Allocation Method (विधि)', methodDisplay, Icons.calculate_rounded, Colors.blue, isDark),
+                  _buildPrBadge('Valid Party Votes (सदर मत)', '${tally.totalValidPartyVotes.toInt()} Votes', Icons.how_to_vote_rounded, Colors.green, isDark),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        // ── Party Vote Share & Seat Allocation Cards ──
+        const Text(
+          'Party Vote Share & Seat Distribution (दलगत मत परिणाम तथा सिट सङ्ख्या)',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+        ),
+        const SizedBox(height: 12),
+
+        if (tally.partyResults.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surface : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Center(child: Text('No party votes tallied yet.')),
+          )
+        else
+          ...tally.partyResults.map((party) {
+            final isMetThreshold = party.isQualified;
+            final seatsWon = party.seatsAllocated;
+            final isWinner = seatsWon > 0;
+            final pct = party.votePercentage;
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surface : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isWinner
+                      ? const Color(0xFF10B981).withValues(alpha: 0.5)
+                      : (isDark ? AppColors.surfaceVariant : Colors.grey.shade200),
+                  width: isWinner ? 1.5 : 1,
+                ),
+                boxShadow: [
+                  if (isWinner && !isDark)
+                    BoxShadow(color: const Color(0xFF10B981).withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 3)),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Party Symbol Avatar
+                      Container(
+                        width: 52,
+                        height: 52,
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: isDark ? Colors.white24 : const Color(0xFFCBD5E1), width: 1.5),
+                          boxShadow: [
+                            if (!isDark)
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: party.symbolImage.isNotEmpty
+                              ? Image.network(
+                                  party.symbolImage,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (ctx, err, stack) => const Icon(Icons.flag_rounded, color: Colors.blue),
+                                )
+                              : const Icon(Icons.flag_rounded, color: Colors.blue),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+
+                      // Party Info & Stats
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    party.partyName,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: isWinner
+                                        ? const Color(0xFF10B981).withValues(alpha: 0.15)
+                                        : (isDark ? Colors.white10 : Colors.grey.shade100),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: isWinner ? const Color(0xFF10B981) : Colors.grey.shade400,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    '$seatsWon Seat${seatsWon == 1 ? '' : 's'} Won ($seatsWon सिट)',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12.5,
+                                      color: isWinner ? const Color(0xFF10B981) : (isDark ? Colors.white70 : Colors.black87),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (party.symbolName.isNotEmpty || party.panelName.isNotEmpty) ...[
+                              const SizedBox(height: 5),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 4,
+                                children: [
+                                  if (party.symbolName.isNotEmpty)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.2 : 0.12),
+                                        borderRadius: BorderRadius.circular(5),
+                                        border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.how_to_vote_rounded, size: 11, color: Color(0xFFD97706)),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            party.symbolName,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  if (party.panelName.isNotEmpty)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: isDark ? const Color(0xFF581C87).withValues(alpha: 0.35) : const Color(0xFFFAF5FF),
+                                        borderRadius: BorderRadius.circular(5),
+                                        border: Border.all(color: isDark ? const Color(0xFF8B5CF6).withValues(alpha: 0.4) : const Color(0xFFC4B5FD)),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.groups_rounded, size: 11, color: isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED)),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            party.panelName,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: isDark ? const Color(0xFFE9D5FF) : const Color(0xFF6D28D9),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                            const SizedBox(height: 8),
+
+                            // Threshold & Votes Row
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '${party.votes.toInt()} votes (${pct.toStringAsFixed(2)}%)',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                                  decoration: BoxDecoration(
+                                    color: isMetThreshold ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    isMetThreshold ? 'Threshold Met (थ्रेसहोल्ड पार)' : 'Below Threshold (< ${tally.prThresholdPercent}%)',
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: isMetThreshold ? Colors.green : Colors.orange,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: (pct / 100).clamp(0.0, 1.0),
+                                backgroundColor: isDark ? AppColors.surfaceVariant : Colors.grey.shade200,
+                                valueColor: AlwaysStoppedAnimation<Color>(isWinner ? const Color(0xFF10B981) : Colors.blue),
+                                minHeight: 6,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Elected Candidates Closed List
+                  if (party.electedCandidates.isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: isDark ? 0.08 : 0.05),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.how_to_reg_rounded, size: 15, color: Color(0xFF10B981)),
+                              SizedBox(width: 6),
+                              Text(
+                                'Elected PR Candidates (निर्वाचित समानुपातिक उम्मेदवारहरू):',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF10B981)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            children: party.electedCandidates.map((c) {
+                              final name = c.name.isNotEmpty ? c.name : 'Candidate';
+                              final rank = c.prRank;
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: isDark ? AppColors.surface : Colors.white,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+                                ),
+                                child: Text(
+                                  '#$rank $name',
+                                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }),
+
+        // ── Round-by-Round Quotient Allocation Matrix ──
+        if (tally.seatAllocationTable.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          const Text(
+            'Seat Allocation Divisor Matrix (सिट बाँडफाँड हिसाब तालिका)',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+          const SizedBox(height: 10),
+          Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surface : Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: isDark ? AppColors.surfaceVariant : Colors.grey.shade200),
+            ),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                headingRowColor: WidgetStateProperty.all(
+                  isDark ? AppColors.surfaceVariant.withValues(alpha: 0.6) : const Color(0xFFF1F5F9),
+                ),
+                columns: const [
+                  DataColumn(label: Text('Seat / Round #', style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text('Winning Party (विजयी दल)', style: TextStyle(fontWeight: FontWeight.bold))),
+                  DataColumn(label: Text('Winning Quotient (भागफल)', style: TextStyle(fontWeight: FontWeight.bold))),
+                ],
+                rows: tally.seatAllocationTable.map((row) {
+                  final map = row as Map<String, dynamic>;
+                  return DataRow(
+                    cells: [
+                      DataCell(Text('Round #${map["seat_number"] ?? map["seat_round"] ?? map["round"] ?? ""}', style: const TextStyle(fontWeight: FontWeight.bold))),
+                      DataCell(Text(map["allocated_to_party"]?.toString() ?? map["winning_party"]?.toString() ?? map["party"]?.toString() ?? "", style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold))),
+                      DataCell(Text(((map["highest_quotient"] as num?)?.toDouble() ?? (map["winning_quotient"] as num?)?.toDouble() ?? (map["quotient"] as num?)?.toDouble() ?? 0.0).toStringAsFixed(2))),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  Widget _buildPrBadge(String title, String val, IconData icon, Color col, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: col.withValues(alpha: isDark ? 0.15 : 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: col.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: col),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(title, style: TextStyle(fontSize: 10, color: isDark ? Colors.white60 : Colors.grey.shade600)),
+              Text(val, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: col)),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -1016,25 +1644,29 @@ class _CandidateResultTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Candidate Photo / Avatar / No Vote Icon
+          // Candidate Photo / Symbol / Avatar
           Container(
             width: 64,
             height: 64,
             decoration: BoxDecoration(
               color: isNoVoteOrBoycott
                   ? const Color(0xFFD97706).withValues(alpha: 0.12)
-                  : (isDark ? AppColors.surfaceVariant : Colors.grey.shade200),
+                  : (isDark ? const Color(0xFF1E293B) : Colors.white),
               borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isDark ? Colors.white12 : Colors.grey.shade300,
+                width: 1,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
+                  color: Colors.black.withValues(alpha: 0.06),
                   blurRadius: 6,
                   offset: const Offset(0, 3),
                 ),
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(13),
               child: isNoVoteOrBoycott
                   ? const Center(
                       child: Icon(Icons.do_not_disturb_alt_rounded, color: Color(0xFFD97706), size: 30),
@@ -1043,9 +1675,25 @@ class _CandidateResultTile extends StatelessWidget {
                       ? Image.network(
                           score.photoUrl,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => _buildPlaceholder(isDark),
+                          errorBuilder: (context, error, stackTrace) => (score.symbolImage.isNotEmpty
+                              ? Padding(
+                                  padding: const EdgeInsets.all(6.0),
+                                  child: Image.network(score.symbolImage, fit: BoxFit.contain),
+                                )
+                              : _buildPlaceholder(isDark)),
                         )
-                      : _buildPlaceholder(isDark)),
+                      : (score.symbolImage.isNotEmpty
+                          ? Padding(
+                              padding: const EdgeInsets.all(6.0),
+                              child: Image.network(
+                                score.symbolImage,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) => const Icon(Icons.how_to_vote_rounded, size: 28, color: Colors.amber),
+                              ),
+                            )
+                          : (score.symbolName.isNotEmpty
+                              ? const Center(child: Icon(Icons.how_to_vote_rounded, size: 28, color: Color(0xFFD97706)))
+                              : _buildPlaceholder(isDark)))),
             ),
           ),
           const SizedBox(width: 16),
@@ -1087,19 +1735,130 @@ class _CandidateResultTile extends StatelessWidget {
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Text(
-                        score.name,
-                        style: TextStyle(
-                          color: isDark ? Colors.white : Colors.black,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      child: Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              score.name,
+                              style: TextStyle(
+                                color: isDark ? Colors.white : Colors.black,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (score.symbolName.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.2 : 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.how_to_vote_rounded, size: 11, color: Color(0xFFD97706)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    score.symbolName,
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ],
                 ),
+
+                if (score.partyName.isNotEmpty || score.panelName.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      if (score.partyName.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF1E3A8A).withValues(alpha: 0.35)
+                                : const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: isDark
+                                  ? const Color(0xFF3B82F6).withValues(alpha: 0.4)
+                                  : const Color(0xFF93C5FD),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.flag_rounded,
+                                size: 11,
+                                color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                score.partyName,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? const Color(0xFFBFDBFE) : const Color(0xFF1D4ED8),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (score.panelName.isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF581C87).withValues(alpha: 0.35)
+                                : const Color(0xFFFAF5FF),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: isDark
+                                  ? const Color(0xFF8B5CF6).withValues(alpha: 0.4)
+                                  : const Color(0xFFC4B5FD),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.groups_rounded,
+                                size: 11,
+                                color: isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                score.panelName,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? const Color(0xFFE9D5FF) : const Color(0xFF6D28D9),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+
                 const SizedBox(height: 10),
 
                 // Stats Row

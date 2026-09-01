@@ -84,6 +84,13 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
   final _manifestoController = TextEditingController();
   String _candidateImage = '';
 
+  // Affiliation, Symbol & PR Rank
+  final _partyController = TextEditingController();
+  final _panelController = TextEditingController();
+  final _symbolNameController = TextEditingController();
+  String _symbolImageUrl = '';
+  final _prRankController = TextEditingController(text: '1');
+
   // Dynamic Multi-Proposers & Multi-Supporters
   late List<_EndorsementItem> _proposers;
   late List<_EndorsementItem> _supporters;
@@ -112,6 +119,10 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
     _personalDescController.dispose();
     _contributionController.dispose();
     _manifestoController.dispose();
+    _partyController.dispose();
+    _panelController.dispose();
+    _symbolNameController.dispose();
+    _prRankController.dispose();
     for (final p in _proposers) {
       p.dispose();
     }
@@ -122,6 +133,11 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
   }
 
   Future<void> _submit() async {
+    final isSam = widget.election.isSamanupatik;
+    if (isSam && _selectedPositionId == null && widget.election.positions.isNotEmpty) {
+      _selectedPositionId = widget.election.positions.first.id;
+    }
+
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -131,11 +147,21 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
       );
       return;
     }
-    if (_selectedPositionId == null) {
+    if (_selectedPositionId == null && !isSam) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please select a target designation.'),
           backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    if (isSam && _partyController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Political Party affiliation is strictly required for Samānupātik nomination.'),
+          backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -179,6 +205,11 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
           'contribution_to_org': _contributionController.text.trim(),
           'manifesto': _manifestoController.text.trim(),
           'status': 'approved',
+          'party_name': widget.election.enableParty ? _partyController.text.trim() : '',
+          'panel_name': widget.election.enablePanel ? _panelController.text.trim() : '',
+          'symbol_name': widget.election.enableSymbol ? _symbolNameController.text.trim() : '',
+          'symbol_image': widget.election.enableSymbol ? _symbolImageUrl : '',
+          'pr_rank': widget.election.hasPrSystem ? (int.tryParse(_prRankController.text.trim()) ?? 1) : 1,
           if (endorsements.isNotEmpty) 'endorsements': endorsements,
         },
       );
@@ -367,25 +398,39 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
                             children: [
                               Expanded(
                                 flex: 2,
-                                child: DropdownButtonFormField<String>(
-                                  initialValue: _selectedPositionId,
-                                  decoration: _dec(
-                                    'Target Designation *',
-                                    prefix: const Icon(Icons.military_tech_rounded),
-                                    isDark: isDark,
-                                  ),
-                                  items: widget.election.positions.map((p) => DropdownMenuItem(
-                                    value: p.id,
-                                    child: Text('${p.title} (${p.seatsAvailable} seats)'),
-                                  )).toList(),
-                                  onChanged: (v) {
-                                    setState(() {
-                                      _selectedPositionId = v;
-                                      _selectedQuotaId = null;
+                                child: () {
+                                  final isSam = widget.election.isSamanupatik;
+                                  final initialVal = _selectedPositionId ?? (isSam ? widget.election.positions.firstOrNull?.id : null);
+                                  if (isSam && _selectedPositionId == null && widget.election.positions.isNotEmpty) {
+                                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                                      if (mounted && _selectedPositionId == null) {
+                                        setState(() => _selectedPositionId = widget.election.positions.first.id);
+                                      }
                                     });
-                                  },
-                                  validator: (v) => v == null ? 'Target designation is required' : null,
-                                ),
+                                  }
+                                  return DropdownButtonFormField<String>(
+                                    initialValue: initialVal,
+                                    decoration: _dec(
+                                      isSam ? 'Samānupātik List (समानुपातिक सूची) *' : 'Target Designation *',
+                                      prefix: const Icon(Icons.military_tech_rounded),
+                                      isDark: isDark,
+                                    ),
+                                    items: widget.election.positions.map((p) => DropdownMenuItem(
+                                      value: p.id,
+                                      child: Text('${p.title} (${p.seatsAvailable} seats)'),
+                                    )).toList(),
+                                    onChanged: (v) {
+                                      setState(() {
+                                        _selectedPositionId = v;
+                                        _selectedQuotaId = null;
+                                      });
+                                    },
+                                    validator: (v) {
+                                      if (isSam && widget.election.positions.isEmpty) return null;
+                                      return v == null ? 'Target designation is required' : null;
+                                    },
+                                  );
+                                }(),
                               ),
                               if (activeQuotas.isNotEmpty) ...[
                                 const SizedBox(width: 14),
@@ -506,28 +551,139 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 20),
-
-                          // Candidate Photo
-                          Center(
-                            child: Column(
-                              children: [
-                                Text(
-                                  'Candidate Official Portrait (उम्मेदवार फोटो)',
-                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : Colors.grey.shade700),
-                                ),
-                                const SizedBox(height: 10),
-                                ImageUploadWidget(
-                                  initialImageUrl: _candidateImage,
-                                  placeholderText: 'Upload Candidate Portrait',
-                                  onImageUploaded: (url) => setState(() => _candidateImage = url),
-                                ),
-                              ],
+                          if (widget.election.enableCandidatePhoto) ...[
+                            const SizedBox(height: 20),
+                            Center(
+                              child: Column(
+                                children: [
+                                  Text(
+                                    'Candidate Official Portrait (उम्मेदवार फोटो)',
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : Colors.grey.shade700),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  ImageUploadWidget(
+                                    initialImageUrl: _candidateImage,
+                                    placeholderText: 'Upload Candidate Portrait',
+                                    onImageUploaded: (url) => setState(() => _candidateImage = url),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 20),
+
+                      // ════════════════════════════════════════════════════════
+                      // AFFILIATION, SYMBOL & PR RANK
+                      // ════════════════════════════════════════════════════════
+                      if (widget.election.enableParty ||
+                          widget.election.enablePanel ||
+                          widget.election.enableSymbol ||
+                          widget.election.hasPrSystem ||
+                          widget.election.isSamanupatik) ...[
+                        _buildSectionCard(
+                          context,
+                          title: 'Affiliation & Election Symbol (दल, प्यानल तथा चुनाव चिन्ह)',
+                          subtitle: 'Configure political party, group panel, election symbol, and PR list rank',
+                          icon: Icons.flag_rounded,
+                          isDark: isDark,
+                          children: [
+                            if (widget.election.enableParty || widget.election.enablePanel || widget.election.isSamanupatik) ...[
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (widget.election.enableParty || widget.election.isSamanupatik)
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: _partyController,
+                                        decoration: _dec(
+                                          widget.election.isSamanupatik
+                                              ? 'Political Party (राजनीतिक दल) *'
+                                              : 'Political Party (राजनीतिक दल)',
+                                          hint: 'e.g. Nepali Congress, UML, RPP...',
+                                          prefix: const Icon(Icons.flag_outlined),
+                                          isDark: isDark,
+                                        ),
+                                        validator: widget.election.isSamanupatik
+                                            ? (v) => (v == null || v.trim().isEmpty) ? 'Party affiliation is required for Samānupātik' : null
+                                            : null,
+                                      ),
+                                    ),
+                                  if ((widget.election.enableParty || widget.election.isSamanupatik) && widget.election.enablePanel)
+                                    const SizedBox(width: 14),
+                                  if (widget.election.enablePanel)
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: _panelController,
+                                        decoration: _dec(
+                                          'Panel / Slate (प्यानल / समूह)',
+                                          hint: 'e.g. Progressive Slate',
+                                          prefix: const Icon(Icons.group_work_outlined),
+                                          isDark: isDark,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+
+                            if (widget.election.enableSymbol || widget.election.isSamanupatik) ...[
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    flex: 3,
+                                    child: TextFormField(
+                                      controller: _symbolNameController,
+                                      decoration: _dec(
+                                        'Election Symbol Name (चुनाव चिन्ह)',
+                                        hint: 'e.g. Sun (सूर्य), Tree (रुख)',
+                                        prefix: const Icon(Icons.how_to_vote_outlined),
+                                        isDark: isDark,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Center(
+                                      child: ImageUploadWidget(
+                                        initialImageUrl: _symbolImageUrl,
+                                        placeholderText: 'Symbol Icon',
+                                        radius: 28,
+                                        onImageUploaded: (url) => setState(() => _symbolImageUrl = url),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+
+                            if (widget.election.hasPrSystem || widget.election.isSamanupatik) ...[
+                              TextFormField(
+                                controller: _prRankController,
+                                keyboardType: TextInputType.number,
+                                decoration: _dec(
+                                  widget.election.isSamanupatik
+                                      ? 'PR Closed List Priority Rank (समानुपातिक सूची वरियता क्रम) *'
+                                      : 'PR Closed List Priority Rank (समानुपातिक सूची वरियता क्रम)',
+                                  hint: 'e.g. 1 for Top candidate, 2, 3...',
+                                  prefix: const Icon(Icons.format_list_numbered_rounded),
+                                  helper: 'Determines election order on the party\'s closed list',
+                                  isDark: isDark,
+                                ),
+                                validator: widget.election.isSamanupatik
+                                    ? (v) => (v == null || v.trim().isEmpty) ? 'PR list rank (e.g. 1, 2, 3) is required' : null
+                                    : null,
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                      ],
 
                       // ════════════════════════════════════════════════════════
                       // 3. STATEMENTS & MANIFESTO

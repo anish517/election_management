@@ -181,6 +181,58 @@ class Election(TimestampedModel):
         help_text='Secondary verification channel for venue voting'
     )
 
+    # Election Settings (Requirements 4, 5, 6, 7, 8, 9)
+    election_type = models.CharField(
+        max_length=30,
+        choices=[
+            ('fptp', 'First-Past-The-Post (FPTP)'),
+            ('samanupatik', 'Samānupātik (Proportional Representation)'),
+            ('mixed', 'Mixed / Parallel (मिश्रित - FPTP + Samānupātik)')
+        ],
+        default='fptp',
+        help_text='Voting system type: FPTP vs Samānupātik PR vs Mixed'
+    )
+    enable_party = models.BooleanField(
+        default=True,
+        help_text='Enable / Disable Party affiliation for candidates & voting'
+    )
+    enable_panel = models.BooleanField(
+        default=True,
+        help_text='Enable / Disable Panel affiliation for candidates & voting'
+    )
+    enable_symbol = models.BooleanField(
+        default=True,
+        help_text='Enable / Disable election symbols on ballot'
+    )
+    enable_candidate_photo = models.BooleanField(
+        default=True,
+        help_text='Enable / Disable candidate photos on ballot'
+    )
+    is_partial_election = models.BooleanField(
+        default=False,
+        help_text='Partial Election for specific branches only'
+    )
+    target_branches = models.JSONField(
+        default=list, blank=True,
+        help_text='List of branch names or IDs eligible for this partial election'
+    )
+    total_pr_seats = models.PositiveIntegerField(
+        default=10,
+        help_text='Total seats allocated for Samānupātik / PR election'
+    )
+    pr_threshold_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0.00,
+        help_text='Minimum vote percentage threshold for PR seat allocation (e.g. 3.00%)'
+    )
+    pr_allocation_method = models.CharField(
+        max_length=30,
+        choices=[
+            ('modified_sainte_lague', 'Modified Sainte-Laguë (Nepal Election Standard — 1.4, 3, 5, 7...)'),
+        ],
+        default='modified_sainte_lague',
+        help_text='Mathematical PR quota formula for seat allocation (Modified Sainte-Laguë)'
+    )
+
     created_by = models.ForeignKey(
         'users.User', on_delete=models.SET_NULL,
         null=True, related_name='elections_created'

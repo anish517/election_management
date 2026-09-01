@@ -1033,6 +1033,7 @@ class _QuotaSettingsScreenState extends ConsumerState<QuotaSettingsScreen> {
                           const SizedBox(height: 8),
                           DropdownButtonFormField<String>(
                             initialValue: selectedPositionId,
+                            isExpanded: true,
                             decoration: InputDecoration(
                               labelText: 'Target Designation *',
                               prefixIcon: const Icon(Icons.military_tech_rounded),
@@ -1041,7 +1042,10 @@ class _QuotaSettingsScreenState extends ConsumerState<QuotaSettingsScreen> {
                             items: election.positions.map((p) {
                               return DropdownMenuItem(
                                 value: p.id,
-                                child: Text('${p.title} (Capacity: ${p.seatsAvailable} seats)'),
+                                child: Text(
+                                  '${p.title} (Capacity: ${p.seatsAvailable} seats)',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               );
                             }).toList(),
                             onChanged: isEditing ? null : (val) => setDialogState(() => selectedPositionId = val),

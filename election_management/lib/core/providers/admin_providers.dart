@@ -47,6 +47,17 @@ class CreateElectionNotifier extends AsyncNotifier<void> {
     String venueAddress = '',
     bool requireVenueOtp = false,
     String venueOtpChannel = 'none',
+    // Requirements 4, 5, 6, 7, 8, 9 Settings
+    String electionType = 'fptp',
+    bool enableParty = true,
+    bool enablePanel = true,
+    bool enableSymbol = true,
+    bool enableCandidatePhoto = true,
+    bool isPartialElection = false,
+    List<String> targetBranches = const [],
+    int totalPrSeats = 10,
+    double prThresholdPercent = 0.0,
+    String prAllocationMethod = 'sainte_lague',
   }) async {
     if (state.isLoading) return;
     state = const AsyncValue.loading();
@@ -80,6 +91,16 @@ class CreateElectionNotifier extends AsyncNotifier<void> {
         if (venueAddress.isNotEmpty) 'venue_address': venueAddress,
         'require_venue_otp': requireVenueOtp,
         'venue_otp_channel': venueOtpChannel,
+        'election_type': electionType,
+        'enable_party': enableParty,
+        'enable_panel': enablePanel,
+        'enable_symbol': enableSymbol,
+        'enable_candidate_photo': enableCandidatePhoto,
+        'is_partial_election': isPartialElection,
+        'target_branches': targetBranches,
+        'total_pr_seats': totalPrSeats,
+        'pr_threshold_percent': prThresholdPercent,
+        'pr_allocation_method': prAllocationMethod,
       };
       await dio.post(ApiConstants.elections, data: data);
       

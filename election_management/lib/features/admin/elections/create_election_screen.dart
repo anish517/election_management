@@ -407,6 +407,18 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
   bool _requireVenueOtp = false;
   String _venueOtpChannel = 'sms'; // 'sms', 'email', 'both'
 
+  // --- Requirements 4, 5, 6, 7, 8, 9 Election Settings ---
+  String _electionType = 'fptp'; // 'fptp' or 'samanupatik'
+  bool _enableParty = true;
+  bool _enablePanel = true;
+  bool _enableSymbol = true;
+  bool _enableCandidatePhoto = true;
+  bool _isPartialElection = false;
+  final _branchesCtrl = TextEditingController();
+  final _totalPrSeatsCtrl = TextEditingController(text: '10');
+  final _prThresholdCtrl = TextEditingController(text: '0.0');
+  final String _prAllocationMethod = 'modified_sainte_lague';
+
   // --- Payment ---
   bool _isPaid = false;
 
@@ -422,6 +434,9 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
     _contactCtrl.dispose();
     _venueNameCtrl.dispose();
     _venueAddressCtrl.dispose();
+    _branchesCtrl.dispose();
+    _totalPrSeatsCtrl.dispose();
+    _prThresholdCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
   }
@@ -573,6 +588,22 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
             venueAddress: _venueAddressCtrl.text.trim(),
             requireVenueOtp: _requireVenueOtp,
             venueOtpChannel: _requireVenueOtp ? _venueOtpChannel : 'none',
+            electionType: _electionType,
+            enableParty: _enableParty,
+            enablePanel: _enablePanel,
+            enableSymbol: _enableSymbol,
+            enableCandidatePhoto: _enableCandidatePhoto,
+            isPartialElection: _isPartialElection,
+            targetBranches: _isPartialElection
+                ? _branchesCtrl.text
+                    .split(',')
+                    .map((e) => e.trim())
+                    .where((e) => e.isNotEmpty)
+                    .toList()
+                : const [],
+            totalPrSeats: int.tryParse(_totalPrSeatsCtrl.text.trim()) ?? 10,
+            prThresholdPercent: double.tryParse(_prThresholdCtrl.text.trim()) ?? 0.0,
+            prAllocationMethod: _prAllocationMethod,
           );
       if (mounted) {
         if (context.canPop()) {
@@ -1317,6 +1348,334 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
                           },
                         ),
                       ],
+                    ],
+                  ],
+                ),
+
+                // ══════════════════════════════════════════════════════════
+                // 2B. ELECTORAL SYSTEM & ADVANCED SETTINGS (Requirements 4-9)
+                // ══════════════════════════════════════════════════════════
+                _sectionCard(
+                  context,
+                  step: 'SETTINGS',
+                  title: 'Electoral System & Display Settings (निर्वाचन प्रणाली र सेटिङ)',
+                  subtitle:
+                      'Configure voting system (FPTP vs Samānupātik), party/panel affiliations, symbols, and branch scope',
+                  icon: Icons.tune_rounded,
+                  children: [
+                    // System Selector: FPTP vs Samānupātik vs Mixed
+                    const Text(
+                      'Voting System (निर्वाचन प्रणाली):',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setState(() => _electionType = 'fptp'),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: _electionType == 'fptp'
+                                    ? AppColors.primary.withValues(alpha: 0.1)
+                                    : (isDark ? Colors.white10 : Colors.grey.shade100),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: _electionType == 'fptp' ? AppColors.primary : Colors.transparent,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    _electionType == 'fptp'
+                                        ? Icons.radio_button_checked
+                                        : Icons.radio_button_off,
+                                    color: _electionType == 'fptp' ? AppColors.primary : Colors.grey,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'FPTP (प्रत्यक्ष)',
+                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                                        ),
+                                        Text(
+                                          'First-Past-The-Post direct voting',
+                                          style: TextStyle(fontSize: 10.5, color: Colors.grey),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setState(() => _electionType = 'samanupatik'),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: _electionType == 'samanupatik'
+                                    ? AppColors.primary.withValues(alpha: 0.1)
+                                    : (isDark ? Colors.white10 : Colors.grey.shade100),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: _electionType == 'samanupatik' ? AppColors.primary : Colors.transparent,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    _electionType == 'samanupatik'
+                                        ? Icons.radio_button_checked
+                                        : Icons.radio_button_off,
+                                    color: _electionType == 'samanupatik' ? AppColors.primary : Colors.grey,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Samānupātik (समानुपातिक)',
+                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                                        ),
+                                        Text(
+                                          'Proportional party-list voting',
+                                          style: TextStyle(fontSize: 10.5, color: Colors.grey),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setState(() => _electionType = 'mixed'),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: _electionType == 'mixed'
+                                    ? AppColors.primary.withValues(alpha: 0.1)
+                                    : (isDark ? Colors.white10 : Colors.grey.shade100),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: _electionType == 'mixed' ? AppColors.primary : Colors.transparent,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    _electionType == 'mixed'
+                                        ? Icons.radio_button_checked
+                                        : Icons.radio_button_off,
+                                    color: _electionType == 'mixed' ? AppColors.primary : Colors.grey,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Mixed (मिश्रित)',
+                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                                        ),
+                                        Text(
+                                          'Direct (FPTP) + PR Proportional',
+                                          style: TextStyle(fontSize: 10.5, color: Colors.grey),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Samānupātik & Mixed PR Configuration Card
+                    if (_electionType == 'samanupatik' || _electionType == 'mixed') ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.calculate_outlined, color: AppColors.primary, size: 20),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Proportional Representation (PR) Allocation Parameters',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _totalPrSeatsCtrl,
+                                    keyboardType: TextInputType.number,
+                                    decoration: _dec(
+                                      'Total PR Seats (जम्मा सिट संख्या)',
+                                      prefix: const Icon(Icons.event_seat_rounded),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _prThresholdCtrl,
+                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    decoration: _dec(
+                                      'Threshold % (न्यूनतम थ्रेसहोल्ड प्रतिशत)',
+                                      prefix: const Icon(Icons.percent_rounded),
+                                      hint: 'e.g. 3.0',
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(Icons.verified_rounded, color: AppColors.primary, size: 20),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Seat Allocation Method: Modified Sainte-Laguë',
+                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                                        ),
+                                        SizedBox(height: 2),
+                                        Text(
+                                          'संशोधित सेन्ट-लागु पद्धति (नेपाल निर्वाचन मापदण्ड — Divisors: 1.4, 3, 5, 7, 9...)',
+                                          style: TextStyle(fontSize: 11, color: Colors.grey),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 8),
+
+                    // Display Badges & Symbols Toggles (Requirements 4, 5, 6)
+                    const Text(
+                      'Candidate Display Settings (उम्मेदवार विवरण प्रदर्शन):',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    const SizedBox(height: 4),
+                    SwitchListTile(
+                      value: _enableParty,
+                      onChanged: (val) => setState(() => _enableParty = val),
+                      title: const Text('Enable Party Affiliation (पार्टी / दल)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                      subtitle: const Text('Display political/organization party affiliation on nomination and ballot cards', style: TextStyle(fontSize: 11.5)),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    SwitchListTile(
+                      value: _enablePanel,
+                      onChanged: (val) => setState(() => _enablePanel = val),
+                      title: const Text('Enable Panel / Slate (प्यानल / समूह)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                      subtitle: const Text('Display panel / group label on nomination and ballot cards', style: TextStyle(fontSize: 11.5)),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    SwitchListTile(
+                      value: _enableSymbol,
+                      onChanged: (val) => setState(() => _enableSymbol = val),
+                      title: const Text('Enable Election Symbol (चुनाव चिन्ह)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                      subtitle: const Text('Allow candidates/parties to have official symbols displayed during voting', style: TextStyle(fontSize: 11.5)),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    SwitchListTile(
+                      value: _enableCandidatePhoto,
+                      onChanged: (val) => setState(() => _enableCandidatePhoto = val),
+                      title: const Text('Enable Candidate Photo (उम्मेदवार फोटो)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                      subtitle: const Text('Display profile photographs of nominated candidates on the ballot paper', style: TextStyle(fontSize: 11.5)),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+
+                    const SizedBox(height: 12),
+                    const Divider(),
+                    const SizedBox(height: 8),
+
+                    // Partial Election / Target Branches (Requirement 7)
+                    SwitchListTile(
+                      value: _isPartialElection,
+                      onChanged: (val) => setState(() => _isPartialElection = val),
+                      title: const Text(
+                        'Partial Election / Branch Restricted (आंशिक निर्वाचन)',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                      ),
+                      subtitle: const Text(
+                        'Restrict voting strictly to electors registered under specific target branches',
+                        style: TextStyle(fontSize: 11.5),
+                      ),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    if (_isPartialElection) ...[
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _branchesCtrl,
+                        decoration: _dec(
+                          'Target Branches (शाखाहरू - अल्पविरामले छुट्याउनुहोस्)',
+                          hint: 'e.g. Kathmandu Central, Lalitpur, Pokhara',
+                          prefix: const Icon(Icons.location_city_rounded),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Electors outside these branches will be automatically rejected with branch verification message.',
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
                     ],
                   ],
                 ),

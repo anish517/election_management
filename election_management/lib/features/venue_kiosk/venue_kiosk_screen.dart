@@ -1105,7 +1105,9 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
           ..._ballotPositions.map((pos) {
             final posId = pos['id'].toString();
             final title = pos['title'] as String? ?? 'Designation';
-            final seats = pos['seats_available'] as int? ?? 1;
+            final isSam = pos['voting_method'] == 'samanupatik' || posId == 'pr_ballot';
+            final maxVotes = (pos['max_votes_per_voter'] as int?) ?? 1;
+            final seats = (isSam || maxVotes == 1) ? 1 : (pos['seats_available'] as int? ?? 1);
             final candidates = pos['candidates'] as List<dynamic>? ?? [];
             final isBoycotted = _boycottedPositions.contains(posId);
             final selectedList = _selectedCandidates[posId] ?? [];
@@ -1153,7 +1155,7 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                'Select up to $seats candidate(s) for this designation',
+                                isSam ? 'Select 1 Political Party / Symbol' : 'Select up to $seats candidate(s) for this designation',
                                 style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
                               ),
                             ],
@@ -1264,6 +1266,10 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
                             final name = '${cand["name"] ?? cand["first_name"] ?? ""} ${cand["last_name"] ?? ""}'.trim();
                             final manifesto = cand['manifesto'] as String? ?? '';
                             final photoUrl = cand['photo_url'] as String? ?? '';
+                            final partyName = (cand['party_name'] as String? ?? '').trim();
+                            final panelName = (cand['panel_name'] as String? ?? '').trim();
+                            final symbolName = (cand['symbol_name'] as String? ?? '').trim();
+                            final symbolImage = (cand['symbol_image'] as String? ?? '').trim();
                             final isSelected = selectedList.contains(cid);
                             final letterBadge = String.fromCharCode(65 + (idx % 26));
 
@@ -1295,23 +1301,40 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
                                         child: Row(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            // Letter Badge / Photo
+                                            // Letter Badge / Photo / Large Symbol
                                             Container(
                                               width: 60,
                                               height: 60,
                                               decoration: BoxDecoration(
                                                 color: const Color(0xFF1E293B),
                                                 borderRadius: BorderRadius.circular(12),
+                                                border: Border.all(color: const Color(0xFF334155), width: 1),
                                               ),
                                               child: ClipRRect(
-                                                borderRadius: BorderRadius.circular(12),
+                                                borderRadius: BorderRadius.circular(11),
                                                 child: photoUrl.isNotEmpty
                                                     ? Image.network(
                                                         ApiConstants.getFullImageUrl(photoUrl) ?? photoUrl,
                                                         fit: BoxFit.cover,
-                                                        errorBuilder: (ctx, err, stack) => _buildKioskLetterAvatar(letterBadge),
+                                                        errorBuilder: (ctx, err, stack) => (symbolImage.isNotEmpty
+                                                            ? Padding(
+                                                                padding: const EdgeInsets.all(5.0),
+                                                                child: Image.network(symbolImage, fit: BoxFit.contain),
+                                                              )
+                                                            : _buildKioskLetterAvatar(letterBadge)),
                                                       )
-                                                    : _buildKioskLetterAvatar(letterBadge),
+                                                    : (symbolImage.isNotEmpty
+                                                        ? Padding(
+                                                            padding: const EdgeInsets.all(5.0),
+                                                            child: Image.network(
+                                                              symbolImage,
+                                                              fit: BoxFit.contain,
+                                                              errorBuilder: (ctx, err, stack) => _buildKioskLetterAvatar(letterBadge),
+                                                            ),
+                                                          )
+                                                        : (symbolName.isNotEmpty
+                                                            ? const Center(child: Icon(Icons.how_to_vote_rounded, color: Color(0xFFF59E0B), size: 26))
+                                                            : _buildKioskLetterAvatar(letterBadge))),
                                               ),
                                             ),
                                             const SizedBox(width: 14),
@@ -1319,13 +1342,41 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
                                               child: Column(
                                                 crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [
-                                                  Text(
-                                                    name.isNotEmpty ? name : 'Candidate $letterBadge',
-                                                    style: TextStyle(
-                                                      fontWeight: FontWeight.bold,
-                                                      fontSize: 15,
-                                                      color: isSelected ? const Color(0xFFFCA5A5) : Colors.white,
-                                                    ),
+                                                  Row(
+                                                    children: [
+                                                      Expanded(
+                                                        child: Text(
+                                                          name.isNotEmpty ? name : 'Candidate $letterBadge',
+                                                          style: TextStyle(
+                                                            fontWeight: FontWeight.bold,
+                                                            fontSize: 15,
+                                                            color: isSelected ? const Color(0xFFFCA5A5) : Colors.white,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      if (symbolName.isNotEmpty) ...[
+                                                        const SizedBox(width: 6),
+                                                        Container(
+                                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                          decoration: BoxDecoration(
+                                                            color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                                                            borderRadius: BorderRadius.circular(5),
+                                                            border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+                                                          ),
+                                                          child: Row(
+                                                            mainAxisSize: MainAxisSize.min,
+                                                            children: [
+                                                              const Icon(Icons.how_to_vote_rounded, size: 10.5, color: Color(0xFFF59E0B)),
+                                                              const SizedBox(width: 3),
+                                                              Text(
+                                                                symbolName,
+                                                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFFFDE68A)),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ],
                                                   ),
                                                   if (manifesto.isNotEmpty) ...[
                                                     const SizedBox(height: 4),
@@ -1334,6 +1385,49 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
                                                       maxLines: 2,
                                                       overflow: TextOverflow.ellipsis,
                                                       style: const TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8), height: 1.3),
+                                                    ),
+                                                  ],
+                                                  if (partyName.isNotEmpty || panelName.isNotEmpty) ...[
+                                                    const SizedBox(height: 6),
+                                                    Wrap(
+                                                      spacing: 6,
+                                                      runSpacing: 4,
+                                                      children: [
+                                                        if (partyName.isNotEmpty)
+                                                          Container(
+                                                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                                            decoration: BoxDecoration(
+                                                              color: const Color(0xFF1E3A8A).withValues(alpha: 0.4),
+                                                              borderRadius: BorderRadius.circular(5),
+                                                              border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.4)),
+                                                            ),
+                                                            child: Row(
+                                                              mainAxisSize: MainAxisSize.min,
+                                                              children: [
+                                                                const Icon(Icons.flag_rounded, size: 10.5, color: Color(0xFF60A5FA)),
+                                                                const SizedBox(width: 4),
+                                                                Text(partyName, style: const TextStyle(color: Color(0xFFBFDBFE), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        if (panelName.isNotEmpty)
+                                                          Container(
+                                                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                                            decoration: BoxDecoration(
+                                                              color: const Color(0xFF581C87).withValues(alpha: 0.4),
+                                                              borderRadius: BorderRadius.circular(5),
+                                                              border: Border.all(color: const Color(0xFF8B5CF6).withValues(alpha: 0.4)),
+                                                            ),
+                                                            child: Row(
+                                                              mainAxisSize: MainAxisSize.min,
+                                                              children: [
+                                                                const Icon(Icons.groups_rounded, size: 10.5, color: Color(0xFFA78BFA)),
+                                                                const SizedBox(width: 4),
+                                                                Text(panelName, style: const TextStyle(color: Color(0xFFE9D5FF), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                      ],
                                                     ),
                                                   ],
                                                 ],

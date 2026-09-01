@@ -13,7 +13,8 @@ class ImportMembersDialog extends ConsumerStatefulWidget {
   const ImportMembersDialog({super.key, required this.electionId});
 
   @override
-  ConsumerState<ImportMembersDialog> createState() => _ImportMembersDialogState();
+  ConsumerState<ImportMembersDialog> createState() =>
+      _ImportMembersDialogState();
 }
 
 class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
@@ -65,7 +66,9 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
       if (!_importAll) {
         if (_selectedMemberIds.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please select at least one member to import.')),
+            const SnackBar(
+              content: Text('Please select at least one member to import.'),
+            ),
           );
           setState(() => _isOrgSubmitting = false);
           return;
@@ -74,18 +77,28 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
       }
 
       final response = await dio.post(url, data: payload);
-      final message = response.data['message'] ?? 'Members imported successfully!';
+      final message =
+          response.data['message'] ?? 'Members imported successfully!';
 
       ref.invalidate(votersProvider(widget.electionId));
 
       if (mounted) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.green));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: Colors.green),
+        );
       }
     } on DioException catch (e) {
       if (mounted) {
-        final err = e.response?.data is Map ? e.response?.data['error'] ?? e.message : e.message;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import failed: $err'), backgroundColor: Colors.red));
+        final err = e.response?.data is Map
+            ? e.response?.data['error'] ?? e.message
+            : e.message;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Import failed: $err'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isOrgSubmitting = false);
@@ -101,7 +114,9 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
     if (_authType == 'bearer') {
       final token = _tokenController.text.trim();
       if (token.isNotEmpty) {
-        payload['auth_header'] = token.startsWith('Bearer ') ? token : 'Bearer $token';
+        payload['auth_header'] = token.startsWith('Bearer ')
+            ? token
+            : 'Bearer $token';
       }
     } else if (_authType == 'custom') {
       final hName = _customHeaderNameController.text.trim();
@@ -117,8 +132,12 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
 
   Future<void> _fetchExternalApiPreview() async {
     final url = _apiUrlController.text.trim();
-    if (url.isEmpty || (!url.startsWith('http://') && !url.startsWith('https://'))) {
-      setState(() => _apiErrorMessage = 'Please enter a valid HTTP/HTTPS endpoint URL.');
+    if (url.isEmpty ||
+        (!url.startsWith('http://') && !url.startsWith('https://'))) {
+      setState(
+        () =>
+            _apiErrorMessage = 'Please enter a valid HTTP/HTTPS endpoint URL.',
+      );
       return;
     }
 
@@ -132,11 +151,15 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
     try {
       final dio = ref.read(apiClientProvider);
       final postUrl = ApiConstants.importExternalApiVoters(widget.electionId);
-      final response = await dio.post(postUrl, data: _buildApiPayload(previewOnly: true));
+      final response = await dio.post(
+        postUrl,
+        data: _buildApiPayload(previewOnly: true),
+      );
 
       final data = response.data;
       if (data is Map) {
-        final preview = (data['preview'] as List<dynamic>?)
+        final preview =
+            (data['preview'] as List<dynamic>?)
                 ?.map((e) => Map<String, dynamic>.from(e as Map))
                 .toList() ??
             [];
@@ -147,9 +170,15 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
       }
     } on DioException catch (e) {
       final err = e.response?.data is Map
-          ? (e.response?.data['error'] is Map ? e.response?.data['error']['message'] : e.response?.data['error']) ?? e.message
+          ? (e.response?.data['error'] is Map
+                    ? e.response?.data['error']['message']
+                    : e.response?.data['error']) ??
+                e.message
           : e.message;
-      setState(() => _apiErrorMessage = err?.toString() ?? 'Failed to connect to external API.');
+      setState(
+        () => _apiErrorMessage =
+            err?.toString() ?? 'Failed to connect to external API.',
+      );
     } catch (e) {
       setState(() => _apiErrorMessage = e.toString());
     } finally {
@@ -162,36 +191,50 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
     try {
       final dio = ref.read(apiClientProvider);
       final postUrl = ApiConstants.importExternalApiVoters(widget.electionId);
-      final response = await dio.post(postUrl, data: _buildApiPayload(previewOnly: false));
+      final response = await dio.post(
+        postUrl,
+        data: _buildApiPayload(previewOnly: false),
+      );
 
       final data = response.data;
-      final message = data is Map ? data['message'] ?? 'External voters imported successfully!' : 'Imported successfully!';
+      final message = data is Map
+          ? data['message'] ?? 'External voters imported successfully!'
+          : 'Imported successfully!';
 
       ref.invalidate(votersProvider(widget.electionId));
 
       if (mounted) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(message.toString()),
-          backgroundColor: Colors.green,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message.toString()),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
     } on DioException catch (e) {
       final err = e.response?.data is Map
-          ? (e.response?.data['error'] is Map ? e.response?.data['error']['message'] : e.response?.data['error']) ?? e.message
+          ? (e.response?.data['error'] is Map
+                    ? e.response?.data['error']['message']
+                    : e.response?.data['error']) ??
+                e.message
           : e.message;
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Import failed: $err'),
-          backgroundColor: Colors.red,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Import failed: $err'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Import error: $e'),
-          backgroundColor: Colors.red,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Import error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isImportingApi = false);
@@ -213,11 +256,18 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.sync_alt_rounded, color: AppColors.primary, size: 24),
+                    Icon(
+                      Icons.sync_alt_rounded,
+                      color: AppColors.primary,
+                      size: 24,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'Import Voters via API',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
@@ -242,12 +292,21 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 4,
+                    ),
                   ],
                 ),
                 tabs: const [
-                  Tab(icon: Icon(Icons.groups_outlined, size: 18), text: 'Organization Roster'),
-                  Tab(icon: Icon(Icons.cloud_download_outlined, size: 18), text: 'External API Endpoint'),
+                  Tab(
+                    icon: Icon(Icons.groups_outlined, size: 18),
+                    text: 'Organization Roster',
+                  ),
+                  Tab(
+                    icon: Icon(Icons.cloud_download_outlined, size: 18),
+                    text: 'External API Endpoint',
+                  ),
                 ],
               ),
             ),
@@ -255,10 +314,7 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
             Expanded(
               child: TabBarView(
                 controller: _tabController,
-                children: [
-                  _buildOrgRosterTab(),
-                  _buildExternalApiTab(),
-                ],
+                children: [_buildOrgRosterTab(), _buildExternalApiTab()],
               ),
             ),
           ],
@@ -272,9 +328,12 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
 
     return membersAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Failed to load organization members: $e')),
+      error: (e, _) =>
+          Center(child: Text('Failed to load organization members: $e')),
       data: (members) {
-        final eligibleMembers = members.where((m) => m.isEligibleToVote).toList();
+        final eligibleMembers = members
+            .where((m) => m.isEligibleToVote)
+            .toList();
         final filteredMembers = members.where((m) {
           final query = _searchQuery.toLowerCase();
           return m.fullName.toLowerCase().contains(query) ||
@@ -287,7 +346,10 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
           children: [
             Text(
               'Sync and import registered organization members directly into this election\'s voter roll without CSV upload.',
-              style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodySmall?.color),
+              style: TextStyle(
+                fontSize: 13,
+                color: Theme.of(context).textTheme.bodySmall?.color,
+              ),
             ),
             const Divider(height: 20),
             Row(
@@ -298,9 +360,15 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
                     contentPadding: EdgeInsets.zero,
                     value: true,
                     groupValue: _importAll,
-                    onChanged: (val) => setState(() => _importAll = val ?? true),
-                    title: Text('Import All Eligible Active Members (${eligibleMembers.length})',
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    onChanged: (val) =>
+                        setState(() => _importAll = val ?? true),
+                    title: Text(
+                      'Import All Eligible Active Members (${eligibleMembers.length})',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
                   ),
                 ),
                 Expanded(
@@ -309,9 +377,15 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
                     contentPadding: EdgeInsets.zero,
                     value: false,
                     groupValue: _importAll,
-                    onChanged: (val) => setState(() => _importAll = val ?? false),
-                    title: const Text('Select Specific Members',
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    onChanged: (val) =>
+                        setState(() => _importAll = val ?? false),
+                    title: const Text(
+                      'Select Specific Members',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -323,7 +397,10 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
                   hintText: 'Search by name, email, or member code...',
                   prefixIcon: Icon(Icons.search, size: 20),
                   border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                 ),
                 onChanged: (v) => setState(() => _searchQuery = v),
               ),
@@ -333,19 +410,31 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
                 children: [
                   Text(
                     'Selected: ${_selectedMemberIds.length} of ${members.length}',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   Row(
                     children: [
                       TextButton(
                         onPressed: () => setState(() {
-                          _selectedMemberIds.addAll(filteredMembers.map((m) => m.id));
+                          _selectedMemberIds.addAll(
+                            filteredMembers.map((m) => m.id),
+                          );
                         }),
-                        child: const Text('Select All Filtered', style: TextStyle(fontSize: 12)),
+                        child: const Text(
+                          'Select All Filtered',
+                          style: TextStyle(fontSize: 12),
+                        ),
                       ),
                       TextButton(
-                        onPressed: () => setState(() => _selectedMemberIds.clear()),
-                        child: const Text('Clear', style: TextStyle(fontSize: 12)),
+                        onPressed: () =>
+                            setState(() => _selectedMemberIds.clear()),
+                        child: const Text(
+                          'Clear',
+                          style: TextStyle(fontSize: 12),
+                        ),
                       ),
                     ],
                   ),
@@ -375,11 +464,28 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
                             }
                           });
                         },
-                        title: Text(m.fullName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                        subtitle: Text('${m.email} • Code: ${m.memberCode.isNotEmpty ? m.memberCode : "N/A"}', style: const TextStyle(fontSize: 11)),
+                        title: Text(
+                          m.fullName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '${m.email} • Code: ${m.memberCode.isNotEmpty ? m.memberCode : "N/A"}',
+                          style: const TextStyle(fontSize: 11),
+                        ),
                         secondary: m.isEligibleToVote
-                            ? const Icon(Icons.check_circle_outline, color: AppColors.success, size: 18)
-                            : const Icon(Icons.cancel_outlined, color: Colors.grey, size: 18),
+                            ? const Icon(
+                                Icons.check_circle_outline,
+                                color: AppColors.success,
+                                size: 18,
+                              )
+                            : const Icon(
+                                Icons.cancel_outlined,
+                                color: Colors.grey,
+                                size: 18,
+                              ),
                       );
                     },
                   ),
@@ -392,24 +498,40 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
-                  onPressed: _isOrgSubmitting ? null : () => Navigator.pop(context),
+                  onPressed: _isOrgSubmitting
+                      ? null
+                      : () => Navigator.pop(context),
                   child: const Text('Cancel'),
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton.icon(
-                  onPressed: _isOrgSubmitting ? null : () => _submitOrgMembers(members),
+                  onPressed: _isOrgSubmitting
+                      ? null
+                      : () => _submitOrgMembers(members),
                   icon: _isOrgSubmitting
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
                       : const Icon(Icons.sync_rounded, size: 18),
-                  label: Text(_isOrgSubmitting
-                      ? 'Importing...'
-                      : _importAll
-                          ? 'Import All (${eligibleMembers.length})'
-                          : 'Import Selected (${_selectedMemberIds.length})'),
+                  label: Text(
+                    _isOrgSubmitting
+                        ? 'Importing...'
+                        : _importAll
+                        ? 'Import All (${eligibleMembers.length})'
+                        : 'Import Selected (${_selectedMemberIds.length})',
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
                   ),
                 ),
               ],
@@ -427,7 +549,10 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
         children: [
           Text(
             'Connect to an external MIS / CRM / Organization API to fetch and import voter records live.',
-            style: TextStyle(fontSize: 13, color: Theme.of(context).textTheme.bodySmall?.color),
+            style: TextStyle(
+              fontSize: 13,
+              color: Theme.of(context).textTheme.bodySmall?.color,
+            ),
           ),
           const SizedBox(height: 14),
 
@@ -439,7 +564,10 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
               hintText: 'https://partner-portal.org/api/v1/members',
               prefixIcon: Icon(Icons.link_rounded),
               border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -454,12 +582,24 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
                   decoration: const InputDecoration(
                     labelText: 'Authentication Type',
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                   items: const [
-                    DropdownMenuItem(value: 'none', child: Text('No Authentication (Public)')),
-                    DropdownMenuItem(value: 'bearer', child: Text('Bearer Token')),
-                    DropdownMenuItem(value: 'custom', child: Text('Custom API Key / Header')),
+                    DropdownMenuItem(
+                      value: 'none',
+                      child: Text('No Authentication (Public)'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'bearer',
+                      child: Text('Bearer Token'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'custom',
+                      child: Text('Custom API Key / Header'),
+                    ),
                   ],
                   onChanged: (val) => setState(() => _authType = val ?? 'none'),
                 ),
@@ -474,7 +614,10 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
                       labelText: 'Bearer Token *',
                       hintText: 'eyJhbGciOi...',
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                     ),
                   ),
                 )
@@ -487,7 +630,10 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
                       labelText: 'Header Name',
                       hintText: 'X-API-KEY',
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                     ),
                   ),
                 ),
@@ -500,7 +646,10 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
                       labelText: 'Header Value',
                       hintText: 'SecretKey...',
                       border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                     ),
                   ),
                 ),
@@ -515,13 +664,27 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
               ElevatedButton.icon(
                 onPressed: _isFetchingApi ? null : _fetchExternalApiPreview,
                 icon: _isFetchingApi
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
                     : const Icon(Icons.download_rounded, size: 18),
-                label: Text(_isFetchingApi ? 'Testing & Fetching...' : 'Test & Fetch Voters'),
+                label: Text(
+                  _isFetchingApi
+                      ? 'Testing & Fetching...'
+                      : 'Test & Fetch Voters',
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF563D7C),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -546,7 +709,10 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
                   const Icon(Icons.error_outline, color: Colors.red, size: 20),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(_apiErrorMessage!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                    child: Text(
+                      _apiErrorMessage!,
+                      style: const TextStyle(color: Colors.red, fontSize: 12),
+                    ),
                   ),
                 ],
               ),
@@ -567,11 +733,19 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.check_circle_outline, color: Colors.green, size: 18),
+                      const Icon(
+                        Icons.check_circle_outline,
+                        color: Colors.green,
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         'Found $_apiTotalFound voter records from external API. Previewing first ${_apiPreviewRecords.length}:',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Colors.green.shade800),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12.5,
+                          color: Colors.green.shade800,
+                        ),
                       ),
                     ],
                   ),
@@ -595,10 +769,26 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
                     leading: CircleAvatar(
                       radius: 14,
                       backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                      child: Text('${idx + 1}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                      child: Text(
+                        '${idx + 1}',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
                     ),
-                    title: Text('${r['first_name']} ${r['last_name']}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                    subtitle: Text('ID: ${r['voter_id']} • Email: ${r['email']} • Phone: ${r['phone']}', style: const TextStyle(fontSize: 11)),
+                    title: Text(
+                      '${r['first_name']} ${r['last_name']}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    subtitle: Text(
+                      'ID: ${r['voter_id']} • Email: ${r['email']} • Phone: ${r['phone']}',
+                      style: const TextStyle(fontSize: 11),
+                    ),
                   );
                 },
               ),
@@ -608,20 +798,36 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
-                  onPressed: _isImportingApi ? null : () => Navigator.pop(context),
+                  onPressed: _isImportingApi
+                      ? null
+                      : () => Navigator.pop(context),
                   child: const Text('Cancel'),
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton.icon(
                   onPressed: _isImportingApi ? null : _importExternalApiVoters,
                   icon: _isImportingApi
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
                       : const Icon(Icons.cloud_upload_rounded, size: 18),
-                  label: Text(_isImportingApi ? 'Importing...' : 'Import All ($_apiTotalFound Voters)'),
+                  label: Text(
+                    _isImportingApi
+                        ? 'Importing...'
+                        : 'Import All ($_apiTotalFound Voters)',
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
                   ),
                 ),
               ],

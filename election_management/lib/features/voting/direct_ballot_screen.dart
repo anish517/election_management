@@ -641,7 +641,7 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
                       ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                       : const Icon(Icons.how_to_vote_rounded, size: 18),
                   label: Text(
-                    _isCasting ? l10n.submittingBallot : l10n.castBallotButton,
+                    _isCasting ? (l10n.isNepali ? 'मतदान दर्ता हुँदैछ...' : 'Submitting Ballot...') : l10n.reviewAndSignBallot,
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   style: FilledButton.styleFrom(

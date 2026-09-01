@@ -120,6 +120,41 @@
         });
       }
     };
+
+    window.enterKioskFullscreen = function() {
+      var docEl = document.documentElement;
+      if (docEl.requestFullscreen) {
+        docEl.requestFullscreen().catch(function(err) { console.warn("Fullscreen request failed:", err); });
+      } else if (docEl.webkitRequestFullscreen) {
+        docEl.webkitRequestFullscreen();
+      } else if (docEl.msRequestFullscreen) {
+        docEl.msRequestFullscreen();
+      }
+    };
+
+    window.exitKioskFullscreen = function() {
+      if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(function(err) {});
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+          document.msExitFullscreen();
+        }
+      }
+    };
+
+    window.isKioskFullscreen = function() {
+      return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+    };
+
+    window.toggleKioskFullscreen = function() {
+      if (window.isKioskFullscreen()) {
+        window.exitKioskFullscreen();
+      } else {
+        window.enterKioskFullscreen();
+      }
+    };
   </script>
 </head>
 <body>

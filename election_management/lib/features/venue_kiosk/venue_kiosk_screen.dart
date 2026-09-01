@@ -11,6 +11,7 @@ import '../../core/providers/app_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/models.dart';
 import 'qr_scanner_view.dart';
+import 'kiosk_fullscreen.dart';
 
 enum KioskStage {
   stationPin,       // Officer station unlock PIN
@@ -50,6 +51,7 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
   // Selections: { position_id: [candidate_id] }
   final Map<String, List<String>> _selectedCandidates = {};
   final Set<String> _boycottedPositions = {};
+  final Map<String, String> _contestSearchQueries = {};
 
   // Post-Vote Receipt & Countdown
   String _receiptHash = '';
@@ -83,6 +85,7 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
     }
     // Accept 1234 or any 4-digit PIN for election officers
     if (entered == _stationPin || entered == '0000' || entered == '1234') {
+      enterFullscreen();
       setState(() {
         _stationPin = entered;
         _stage = KioskStage.standbyCheckIn;
@@ -406,6 +409,7 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
           ElevatedButton(
             onPressed: () {
               if (exitPinController.text.trim() == _stationPin || exitPinController.text.trim() == '1234') {
+                exitFullscreen();
                 Navigator.pop(ctx);
                 context.pop();
               } else {
@@ -538,22 +542,27 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
             child: Text('Failed to load election: $e', style: const TextStyle(color: Colors.white)),
           ),
           data: (election) {
+            final isCasting = _stage == KioskStage.ballotCasting;
             return SafeArea(
+              top: !isCasting,
+              bottom: !isCasting,
+              left: !isCasting,
+              right: !isCasting,
               child: Column(
                 children: [
-                  _buildKioskHeader(election),
+                  if (!isCasting) _buildKioskHeader(election),
                   Expanded(
                     child: Center(
                       child: Container(
                         constraints: BoxConstraints(
-                          maxWidth: _stage == KioskStage.ballotCasting ? 960 : 580,
+                          maxWidth: isCasting ? double.infinity : (_stage == KioskStage.standbyCheckIn ? 680 : 580),
                         ),
-                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        margin: isCasting ? const EdgeInsets.all(12) : const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         child: _buildStageContent(election),
                       ),
                     ),
                   ),
-                  _buildKioskFooter(election),
+                  if (!isCasting) _buildKioskFooter(election),
                 ],
               ),
             );
@@ -608,6 +617,11 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
                 ),
               ],
             ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.fullscreen_rounded, color: Color(0xFF94A3B8)),
+            tooltip: 'Toggle Fullscreen',
+            onPressed: toggleFullscreen,
           ),
           IconButton(
             icon: const Icon(Icons.lock_outline_rounded, color: Color(0xFF94A3B8)),
@@ -958,6 +972,12 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
                       ),
                       const SizedBox(width: 14),
                       SizedBox(width: 36, height: 36, child: CustomPaint(painter: const _KioskSwastikPainter(color: Color(0xFFB91C1C)))),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.lock_outline_rounded, color: Colors.white38, size: 20),
+                        tooltip: 'Officer Exit Station',
+                        onPressed: _showOfficerExitDialog,
+                      ),
                     ],
                   ),
                 ),
@@ -1088,16 +1108,81 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
                     ),
                   ),
 
+                  // In-Contest Search Filter (for positions with 8 or more candidates)
+                  if (candidates.length >= 8)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                      child: TextField(
+                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF94A3B8)),
+                          hintText: 'Search candidates by name, number, or manifesto...',
+                          hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                          filled: true,
+                          fillColor: const Color(0xFF0F172A),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: Color(0xFF334155)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: Color(0xFF334155)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                          ),
+                        ),
+                        onChanged: (val) => setState(() => _contestSearchQueries[posId] = val.trim().toLowerCase()),
+                      ),
+                    ),
+
                   // Candidate Cards Grid
                   Padding(
                     padding: const EdgeInsets.all(18),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        final itemWidth = constraints.maxWidth > 700 ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth;
+                        final query = _contestSearchQueries[posId] ?? '';
+                        final filteredCandidates = query.isEmpty
+                            ? candidates
+                            : candidates.where((c) {
+                                final name = '${c["name"] ?? c["first_name"] ?? ""} ${c["last_name"] ?? ""}'.toLowerCase();
+                                final manifesto = (c['manifesto'] as String? ?? '').toLowerCase();
+                                return name.contains(query) || manifesto.contains(query);
+                              }).toList();
+
+                        int crossAxisCount;
+                        if (constraints.maxWidth >= 1500) {
+                          crossAxisCount = 4;
+                        } else if (constraints.maxWidth >= 1100) {
+                          crossAxisCount = 3;
+                        } else if (constraints.maxWidth >= 680) {
+                          crossAxisCount = 2;
+                        } else {
+                          crossAxisCount = 1;
+                        }
+                        const spacing = 16.0;
+                        final totalSpacing = spacing * (crossAxisCount - 1);
+                        final itemWidth = (constraints.maxWidth - totalSpacing) / crossAxisCount;
+
+                        if (filteredCandidates.isEmpty) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24),
+                            child: Center(
+                              child: Text(
+                                'No candidates match your search.',
+                                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                              ),
+                            ),
+                          );
+                        }
+
                         return Wrap(
-                          spacing: 16,
-                          runSpacing: 16,
-                          children: candidates.asMap().entries.map((entry) {
+                          spacing: spacing,
+                          runSpacing: spacing,
+                          children: filteredCandidates.asMap().entries.map((entry) {
                             final idx = entry.key;
                             final cand = entry.value;
                             final cid = cand['id'].toString();

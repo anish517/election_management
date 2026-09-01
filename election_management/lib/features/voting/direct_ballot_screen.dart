@@ -575,27 +575,22 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
           ),
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1100),
-                child: Column(
-                  children: [
-                    _buildOfficialHeader(data, isDark, l10n),
-                    ...positions.map(
-                      (p) => Padding(
-                        padding: const EdgeInsets.only(bottom: 20),
-                        child: _DirectPositionCard(
-                          position: p,
-                          allowBoycott: data.allowBoycott,
-                          l10n: l10n,
-                        ),
-                      ),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Column(
+              children: [
+                _buildOfficialHeader(data, isDark, l10n),
+                ...positions.map(
+                  (p) => Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: _DirectPositionCard(
+                      position: p,
+                      allowBoycott: data.allowBoycott,
+                      l10n: l10n,
                     ),
-                    const SizedBox(height: 20),
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(height: 20),
+              ],
             ),
           ),
         ),
@@ -616,48 +611,46 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
           ),
           child: SafeArea(
             top: false,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1100),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: allDecided ? Colors.green.withValues(alpha: 0.12) : AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: allDecided ? Colors.green.withValues(alpha: 0.3) : AppColors.primary.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(allDecided ? Icons.check_circle_rounded : Icons.info_outline_rounded, size: 16, color: allDecided ? Colors.green : AppColors.primaryLight),
-                          const SizedBox(width: 8),
-                          Text(
-                            l10n.contestsDecidedCount(completedCount, positions.length),
-                            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: allDecided ? Colors.green : AppColors.primaryLight),
-                          ),
-                        ],
-                      ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: allDecided ? Colors.green.withValues(alpha: 0.12) : AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: allDecided ? Colors.green.withValues(alpha: 0.3) : AppColors.primary.withValues(alpha: 0.3),
                     ),
-                    const Spacer(),
-                    FilledButton.icon(
-                      onPressed: _isCasting ? null : () => _submitDirectBallot(data, l10n),
-                      icon: _isCasting
-                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Icon(Icons.how_to_vote_rounded, size: 18),
-                      label: Text(l10n.reviewAndSignBallot, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF10B981),
-                        padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 15),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(allDecided ? Icons.check_circle_rounded : Icons.info_outline_rounded, size: 16, color: allDecided ? Colors.green : AppColors.primaryLight),
+                      const SizedBox(width: 8),
+                      Text(
+                        l10n.contestsDecidedCount(completedCount, positions.length),
+                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: allDecided ? Colors.green : AppColors.primaryLight),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+                const Spacer(),
+                FilledButton.icon(
+                  onPressed: _isCasting ? null : () => _submitDirectBallot(data, l10n),
+                  icon: _isCasting
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Icon(Icons.how_to_vote_rounded, size: 18),
+                  label: Text(
+                    _isCasting ? l10n.submittingBallot : l10n.castBallotButton,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 15),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -733,21 +726,16 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
             itemCount: positions.length,
             itemBuilder: (context, i) {
               return SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1100),
-                    child: Column(
-                      children: [
-                        if (i == 0) _buildOfficialHeader(data, isDark, l10n),
-                        _DirectPositionCard(
-                          position: positions[i],
-                          allowBoycott: data.allowBoycott,
-                          l10n: l10n,
-                        ),
-                      ],
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                child: Column(
+                  children: [
+                    if (i == 0) _buildOfficialHeader(data, isDark, l10n),
+                    _DirectPositionCard(
+                      position: positions[i],
+                      allowBoycott: data.allowBoycott,
+                      l10n: l10n,
                     ),
-                  ),
+                  ],
                 ),
               );
             },
@@ -762,33 +750,28 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
           ),
           child: SafeArea(
             top: false,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1100),
-                child: Row(
-                  children: [
-                    if (_currentIndex > 0)
-                      OutlinedButton.icon(
-                        onPressed: () => _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
-                        icon: const Icon(Icons.arrow_back_ios_rounded, size: 14),
-                        label: Text(l10n.previousContest),
-                      ),
-                    const Spacer(),
-                    FilledButton.icon(
-                      onPressed: isLastStep
-                          ? () => _submitDirectBallot(data, l10n)
-                          : () => _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
-                      icon: Icon(isLastStep ? Icons.how_to_vote_rounded : Icons.arrow_forward_ios_rounded, size: 16),
-                      label: Text(isLastStep ? l10n.reviewAndSignBallot : l10n.nextContest, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: isLastStep ? const Color(0xFF10B981) : AppColors.primary,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                  ],
+            child: Row(
+              children: [
+                if (_currentIndex > 0)
+                  OutlinedButton.icon(
+                    onPressed: () => _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
+                    icon: const Icon(Icons.arrow_back_ios_rounded, size: 14),
+                    label: Text(l10n.previousContest),
+                  ),
+                const Spacer(),
+                FilledButton.icon(
+                  onPressed: isLastStep
+                      ? () => _submitDirectBallot(data, l10n)
+                      : () => _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
+                  icon: Icon(isLastStep ? Icons.how_to_vote_rounded : Icons.arrow_forward_ios_rounded, size: 16),
+                  label: Text(isLastStep ? l10n.reviewAndSignBallot : l10n.nextContest, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: isLastStep ? const Color(0xFF10B981) : AppColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
@@ -969,7 +952,7 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
   }
 }
 
-class _DirectPositionCard extends ConsumerWidget {
+class _DirectPositionCard extends ConsumerStatefulWidget {
   final PositionModel position;
   final bool allowBoycott;
   final BallotL10n l10n;
@@ -981,8 +964,17 @@ class _DirectPositionCard extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_DirectPositionCard> createState() => _DirectPositionCardState();
+}
+
+class _DirectPositionCardState extends ConsumerState<_DirectPositionCard> {
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
     final selections = ref.watch(ballotSelectionsProvider);
+    final position = widget.position;
+    final l10n = widget.l10n;
     final positionSelections = selections[position.id] ?? [];
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -1055,16 +1047,79 @@ class _DirectPositionCard extends ConsumerWidget {
             ),
           ),
 
+          // In-Contest Search Filter (for positions with 8 or more candidates)
+          if (position.candidates.length >= 8)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: TextField(
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search, size: 18),
+                  hintText: l10n.isNepali ? 'उम्मेदवार खोज्नुहोस् (नाम वा घोषणापत्र)...' : 'Search candidates by name, number, or manifesto...',
+                  hintStyle: TextStyle(fontSize: 13, color: isDark ? Colors.white38 : Colors.grey.shade500),
+                  filled: true,
+                  fillColor: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.3) : const Color(0xFFF8FAFC),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                  ),
+                ),
+                onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
+              ),
+            ),
+
           // Candidates Grid
           Padding(
             padding: const EdgeInsets.all(20),
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final itemWidth = constraints.maxWidth > 700 ? (constraints.maxWidth - 20) / 2 : constraints.maxWidth;
+                final filteredCandidates = _searchQuery.isEmpty
+                    ? position.candidates
+                    : position.candidates.where((c) {
+                        final name = c.name.toLowerCase();
+                        final manifesto = c.manifesto.toLowerCase();
+                        return name.contains(_searchQuery) || manifesto.contains(_searchQuery);
+                      }).toList();
+
+                if (filteredCandidates.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text(
+                        l10n.isNepali ? 'कुनै मिल्दो उम्मेदवार भेटिएन।' : 'No candidates match your search.',
+                        style: TextStyle(color: isDark ? Colors.white60 : Colors.grey.shade600, fontSize: 13),
+                      ),
+                    ),
+                  );
+                }
+
+                int crossAxisCount;
+                if (constraints.maxWidth >= 1500) {
+                  crossAxisCount = 4;
+                } else if (constraints.maxWidth >= 1100) {
+                  crossAxisCount = 3;
+                } else if (constraints.maxWidth >= 680) {
+                  crossAxisCount = 2;
+                } else {
+                  crossAxisCount = 1;
+                }
+                const spacing = 20.0;
+                final totalSpacing = spacing * (crossAxisCount - 1);
+                final itemWidth = (constraints.maxWidth - totalSpacing) / crossAxisCount;
+
                 return Wrap(
-                  spacing: 20,
-                  runSpacing: 20,
-                  children: position.candidates.map((candidate) {
+                  spacing: spacing,
+                  runSpacing: spacing,
+                  children: filteredCandidates.map((candidate) {
                     final isSelected = positionSelections.contains(candidate.id);
                     return SizedBox(
                       width: itemWidth,

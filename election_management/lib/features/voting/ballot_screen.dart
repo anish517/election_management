@@ -476,28 +476,23 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
       children: [
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1100),
-                child: Column(
-                  children: [
-                    _buildBallotHeader(context, positions, allowBoycott, isDark, l10n),
-                    ...positions.map(
-                      (p) => Padding(
-                        padding: const EdgeInsets.only(bottom: 20),
-                        child: _BallotPositionCard(
-                          position: p,
-                          electionId: widget.electionId,
-                          allowBoycott: allowBoycott,
-                          l10n: l10n,
-                        ),
-                      ),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Column(
+              children: [
+                _buildBallotHeader(context, positions, allowBoycott, isDark, l10n),
+                ...positions.map(
+                  (p) => Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: _BallotPositionCard(
+                      position: p,
+                      electionId: widget.electionId,
+                      allowBoycott: allowBoycott,
+                      l10n: l10n,
                     ),
-                    const SizedBox(height: 20),
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(height: 20),
+              ],
             ),
           ),
         ),
@@ -518,61 +513,56 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
           ),
           child: SafeArea(
             top: false,
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1100),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: allDecided
-                            ? Colors.green.withValues(alpha: 0.12)
-                            : AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: allDecided
-                              ? Colors.green.withValues(alpha: 0.3)
-                              : AppColors.primary.withValues(alpha: 0.3),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: allDecided
+                        ? Colors.green.withValues(alpha: 0.12)
+                        : AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: allDecided
+                          ? Colors.green.withValues(alpha: 0.3)
+                          : AppColors.primary.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        allDecided ? Icons.check_circle_rounded : Icons.info_outline_rounded,
+                        size: 16,
+                        color: allDecided ? Colors.green : AppColors.primaryLight,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        l10n.contestsDecidedCount(completedCount, positions.length),
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.bold,
+                          color: allDecided ? Colors.green : AppColors.primaryLight,
                         ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            allDecided ? Icons.check_circle_rounded : Icons.info_outline_rounded,
-                            size: 16,
-                            color: allDecided ? Colors.green : AppColors.primaryLight,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            l10n.contestsDecidedCount(completedCount, positions.length),
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.bold,
-                              color: allDecided ? Colors.green : AppColors.primaryLight,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Spacer(),
-                    FilledButton.icon(
-                      onPressed: () => context.pushNamed('vote-confirm', pathParameters: {'electionId': widget.electionId}),
-                      icon: const Icon(Icons.how_to_vote_rounded, size: 18),
-                      label: Text(
-                        l10n.reviewAndSignBallot,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF10B981),
-                        padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 15),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+                const Spacer(),
+                FilledButton.icon(
+                  onPressed: () => context.pushNamed('vote-confirm', pathParameters: {'electionId': widget.electionId}),
+                  icon: const Icon(Icons.how_to_vote_rounded, size: 18),
+                  label: Text(
+                    l10n.reviewAndSignBallot,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 15),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -652,22 +642,17 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
             itemCount: positions.length,
             itemBuilder: (context, i) {
               return SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1100),
-                    child: Column(
-                      children: [
-                        if (i == 0) _buildBallotHeader(context, positions, allowBoycott, isDark, l10n),
-                        _BallotPositionCard(
-                          position: positions[i],
-                          electionId: widget.electionId,
-                          allowBoycott: allowBoycott,
-                          l10n: l10n,
-                        ),
-                      ],
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                child: Column(
+                  children: [
+                    if (i == 0) _buildBallotHeader(context, positions, allowBoycott, isDark, l10n),
+                    _BallotPositionCard(
+                      position: positions[i],
+                      electionId: widget.electionId,
+                      allowBoycott: allowBoycott,
+                      l10n: l10n,
                     ),
-                  ),
+                  ],
                 ),
               );
             },
@@ -1229,53 +1214,48 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
       ),
       child: SafeArea(
         top: false,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1100),
-            child: Row(
-              children: [
-                if (_currentIndex > 0)
-                  OutlinedButton.icon(
-                    onPressed: _prevPage,
-                    icon: const Icon(Icons.arrow_back_ios_rounded, size: 14),
-                    label: Text(l10n.previousContest),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  )
-                else
-                  const SizedBox.shrink(),
-
-                const Spacer(),
-
-                FilledButton.icon(
-                  onPressed: isLastStep
-                      ? (hasSelections
-                          ? () => context.pushNamed('vote-confirm', pathParameters: {'electionId': widget.electionId})
-                          : null)
-                      : () => _nextPage(positions.length),
-                  icon: Icon(isLastStep ? Icons.how_to_vote_rounded : Icons.arrow_forward_ios_rounded, size: 16),
-                  label: Text(
-                    isLastStep ? l10n.reviewAndSignBallot : l10n.nextContest,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: isLastStep ? const Color(0xFF10B981) : AppColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
+        child: Row(
+          children: [
+            if (_currentIndex > 0)
+              OutlinedButton.icon(
+                onPressed: _prevPage,
+                icon: const Icon(Icons.arrow_back_ios_rounded, size: 14),
+                label: Text(l10n.previousContest),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-              ],
+              )
+            else
+              const SizedBox.shrink(),
+
+            const Spacer(),
+
+            FilledButton.icon(
+              onPressed: isLastStep
+                  ? (hasSelections
+                      ? () => context.pushNamed('vote-confirm', pathParameters: {'electionId': widget.electionId})
+                      : null)
+                  : () => _nextPage(positions.length),
+              icon: Icon(isLastStep ? Icons.how_to_vote_rounded : Icons.arrow_forward_ios_rounded, size: 16),
+              label: Text(
+                isLastStep ? l10n.reviewAndSignBallot : l10n.nextContest,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: isLastStep ? const Color(0xFF10B981) : AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _BallotPositionCard extends ConsumerWidget {
+class _BallotPositionCard extends ConsumerStatefulWidget {
   final PositionModel position;
   final String electionId;
   final bool allowBoycott;
@@ -1288,10 +1268,19 @@ class _BallotPositionCard extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_BallotPositionCard> createState() => _BallotPositionCardState();
+}
+
+class _BallotPositionCardState extends ConsumerState<_BallotPositionCard> {
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
     final selections = ref.watch(ballotSelectionsProvider);
-    final positionSelections = selections[position.id] ?? [];
+    final positionSelections = selections[widget.position.id] ?? [];
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final position = widget.position;
+    final l10n = widget.l10n;
 
     return Container(
       decoration: BoxDecoration(
@@ -1419,32 +1408,33 @@ class _BallotPositionCard extends ConsumerWidget {
                     margin: const EdgeInsets.only(right: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: AppColors.info.withValues(alpha: 0.1),
+                      color: Colors.purple.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.purple.withValues(alpha: 0.3)),
                     ),
                     child: Text(
-                      position.quotaName,
-                      style: const TextStyle(color: AppColors.info, fontWeight: FontWeight.bold, fontSize: 11),
+                      'Quota: ${position.quotaName}',
+                      style: const TextStyle(color: Colors.purple, fontWeight: FontWeight.bold, fontSize: 11),
                     ),
                   ),
                 ],
 
-                // Selection Counter Badge
-                if (!position.isRankedChoice && !position.isApproval && !position.isYesNo) ...[
+                // Contest Completion Badge
+                if (position.candidates.isNotEmpty) ...[
                   () {
-                    final isNoVoteSelected = ref.read(ballotSelectionsProvider.notifier).isNoVote(position.id);
-                    if (isNoVoteSelected) {
+                    final isNoVote = ref.watch(ballotSelectionsProvider.notifier).isNoVote(position.id);
+                    if (isNoVote) {
                       return Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                          color: const Color(0xFFD97706).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+                          border: Border.all(color: const Color(0xFFD97706).withValues(alpha: 0.4)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.do_not_disturb_alt_rounded, size: 13, color: Color(0xFFD97706)),
+                            const Icon(Icons.block_rounded, size: 14, color: Color(0xFFD97706)),
                             const SizedBox(width: 4),
                             Text(
                               l10n.abstainedBadge,
@@ -1488,6 +1478,36 @@ class _BallotPositionCard extends ConsumerWidget {
             ),
           ),
 
+          // In-Contest Search Filter
+          if (position.candidates.length >= 8)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: TextField(
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search, size: 18),
+                  hintText: l10n.isNepali ? 'उम्मेदवार खोज्नुहोस् (नाम वा घोषणापत्र)...' : 'Search candidates by name, number, or manifesto...',
+                  hintStyle: TextStyle(fontSize: 13, color: isDark ? Colors.white38 : Colors.grey.shade500),
+                  filled: true,
+                  fillColor: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.3) : const Color(0xFFF8FAFC),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade300),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                  ),
+                ),
+                onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
+              ),
+            ),
+
           // Candidates Grid
           if (position.candidates.isEmpty)
             Padding(
@@ -1504,14 +1524,44 @@ class _BallotPositionCard extends ConsumerWidget {
               padding: const EdgeInsets.all(20),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final itemWidth = constraints.maxWidth > 700
-                      ? (constraints.maxWidth - 20) / 2
-                      : constraints.maxWidth;
+                  final filteredCandidates = _searchQuery.isEmpty
+                      ? position.candidates
+                      : position.candidates.where((c) {
+                          final name = c.name.toLowerCase();
+                          final manifesto = c.manifesto.toLowerCase();
+                          return name.contains(_searchQuery) || manifesto.contains(_searchQuery);
+                        }).toList();
+
+                  if (filteredCandidates.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: Text(
+                          l10n.isNepali ? 'कुनै मिल्दो उम्मेदवार भेटिएन।' : 'No candidates match your search.',
+                          style: TextStyle(color: isDark ? Colors.white60 : Colors.grey.shade600, fontSize: 13),
+                        ),
+                      ),
+                    );
+                  }
+
+                  int crossAxisCount;
+                  if (constraints.maxWidth >= 1500) {
+                    crossAxisCount = 4;
+                  } else if (constraints.maxWidth >= 1100) {
+                    crossAxisCount = 3;
+                  } else if (constraints.maxWidth >= 680) {
+                    crossAxisCount = 2;
+                  } else {
+                    crossAxisCount = 1;
+                  }
+                  const spacing = 20.0;
+                  final totalSpacing = spacing * (crossAxisCount - 1);
+                  final itemWidth = (constraints.maxWidth - totalSpacing) / crossAxisCount;
 
                   return Wrap(
-                    spacing: 20,
-                    runSpacing: 20,
-                    children: position.candidates.map((candidate) {
+                    spacing: spacing,
+                    runSpacing: spacing,
+                    children: filteredCandidates.map((candidate) {
                       final isSelected = positionSelections.contains(candidate.id);
                       final rank = position.isRankedChoice
                           ? ref.read(ballotSelectionsProvider.notifier).getRank(position.id, candidate.id)

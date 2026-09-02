@@ -7,12 +7,9 @@ import '../../core/theme/app_theme.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/providers/admin_providers.dart';
-import '../admin/elections/add_position_dialog.dart';
-import '../admin/elections/add_candidate_dialog.dart';
 import '../admin/elections/edit_election_dialog.dart';
 import '../admin/elections/edit_position_dialog.dart';
 import '../admin/elections/edit_candidate_dialog.dart';
-import '../admin/elections/assign_officer_dialog.dart';
 import '../admin/elections/audit_portal_screen.dart';
 import '../voters/dialogs/file_voter_claim_dialog.dart';
 import '../admin/elections/manage_voter_claims_dialog.dart';
@@ -1116,32 +1113,6 @@ class ElectionDetailScreen extends ConsumerWidget {
                 child: OutlinedButton.icon(
                   onPressed: () => showDialog(
                     context: context,
-                    builder: (_) => AddPositionDialog(electionId: election.id),
-                  ),
-                  icon: const Icon(Icons.add_box_outlined, size: 18),
-                  label: const Text('Add Designation'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => showDialog(
-                    context: context,
-                    builder: (_) => AddCandidateDialog(election: election),
-                  ),
-                  icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
-                  label: const Text('Add Candidate'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => showDialog(
-                    context: context,
                     builder: (_) => ManageVoterClaimsDialog(electionId: election.id),
                   ),
                   icon: const Icon(Icons.rate_review_rounded, size: 18, color: AppColors.primary),
@@ -1206,29 +1177,17 @@ class ElectionDetailScreen extends ConsumerWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => showDialog(
-                    context: context,
-                    builder: (_) => AssignOfficerDialog(electionId: election.id),
+                  onPressed: () => context.pushNamed('analytics',
+                      pathParameters: {'electionId': election.id}),
+                  icon: const Icon(Icons.bar_chart_rounded, size: 18),
+                  label: const Text('Live Analytics & Telemetry'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primaryLight,
+                    side: BorderSide(color: AppColors.primaryLight.withValues(alpha: 0.5)),
                   ),
-                  icon: const Icon(Icons.admin_panel_settings_outlined, size: 18),
-                  label: const Text('Assign Roles'),
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => context.pushNamed('analytics',
-                  pathParameters: {'electionId': election.id}),
-              icon: const Icon(Icons.bar_chart_rounded, size: 18),
-              label: const Text('Live Analytics & Telemetry Dashboard'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primaryLight,
-                side: BorderSide(color: AppColors.primaryLight.withValues(alpha: 0.5)),
-              ),
-            ),
           ),
         ],
       ),

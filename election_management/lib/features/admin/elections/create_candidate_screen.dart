@@ -171,6 +171,77 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
       return;
     }
 
+    final emailToSubmit = _emailController.text.trim().toLowerCase();
+    final phoneToSubmit = _contactController.text.trim();
+    final nameToSubmit = '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}'.trim().toLowerCase();
+
+    if (election != null) {
+      for (final pos in election.positions) {
+        for (final c in pos.candidates) {
+          final cEmail = (c.email ?? '').trim().toLowerCase();
+          final cPhone = (c.contactNumber ?? '').trim();
+          final cName = c.name.trim().toLowerCase();
+
+          if (emailToSubmit.isNotEmpty && cEmail.isNotEmpty && emailToSubmit == cEmail) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: Colors.white),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text('Candidate with email "$emailToSubmit" is already nominated for "${pos.title}" in this election.'),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.red.shade700,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            return;
+          }
+
+          if (phoneToSubmit.isNotEmpty && cPhone.isNotEmpty && phoneToSubmit == cPhone) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: Colors.white),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text('Candidate with contact number "$phoneToSubmit" is already nominated for "${pos.title}" in this election.'),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.red.shade700,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            return;
+          }
+
+          if (nameToSubmit.isNotEmpty && cName.isNotEmpty && nameToSubmit == cName) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: Colors.white),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text('Candidate "${c.name}" is already nominated for "${pos.title}" in this election.'),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.red.shade700,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+            return;
+          }
+        }
+      }
+    }
+
     setState(() => _isSubmitting = true);
 
     final endorsements = <Map<String, dynamic>>[];
@@ -505,6 +576,24 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
                             );
                           }
 
+                          // Build lookup of already nominated voters by email / phone
+                          final nominatedVoters = <String, String>{}; // key -> position title
+                          final electionData = electionAsync.valueOrNull;
+                          if (electionData != null) {
+                            for (final pos in electionData.positions) {
+                              for (final c in pos.candidates) {
+                                final cEmail = (c.email ?? '').trim().toLowerCase();
+                                final cPhone = (c.contactNumber ?? '').trim();
+                                if (cEmail.isNotEmpty) {
+                                  nominatedVoters[cEmail] = pos.title;
+                                }
+                                if (cPhone.isNotEmpty) {
+                                  nominatedVoters[cPhone] = pos.title;
+                                }
+                              }
+                            }
+                          }
+
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -518,14 +607,34 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
                                 ),
                                 items: voters.map((v) {
                                   final fullName = v['full_name'] ?? '${v['first_name']} ${v['last_name']}';
-                                  final email = v['email'] ?? '';
+                                  final email = (v['email'] ?? '').toString().trim();
+                                  final phone = (v['phone'] ?? '').toString().trim();
                                   final voterId = v['voter_id'] ?? v['id'];
+
+                                  String? nominatedPos = nominatedVoters[email.toLowerCase()];
+                                  if (nominatedPos == null && phone.isNotEmpty) {
+                                    nominatedPos = nominatedVoters[phone];
+                                  }
+                                  final isNominated = nominatedPos != null;
+
                                   return DropdownMenuItem(
-                                    value: v['id'].toString(),
-                                    child: Text('$fullName ($email) • ID: $voterId', style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis),
+                                    value: isNominated ? null : v['id'].toString(),
+                                    enabled: !isNominated,
+                                    child: Text(
+                                      isNominated
+                                          ? '$fullName ($email) • ⚠️ Already Nominated for $nominatedPos'
+                                          : '$fullName ($email) • ID: $voterId',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: isNominated ? Colors.grey : null,
+                                        fontStyle: isNominated ? FontStyle.italic : null,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   );
                                 }).toList(),
                                 onChanged: (val) {
+                                  if (val == null) return;
                                   setState(() {
                                     _selectedVoterId = val;
                                     final v = voters.firstWhere((item) => item['id'].toString() == val);

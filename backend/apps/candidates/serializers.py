@@ -88,17 +88,42 @@ class CandidateSerializer(serializers.ModelSerializer):
                 if attrs.get('pr_rank', 0) < 1:
                     attrs['pr_rank'] = 1
 
-            if request and request.method == 'POST':
-                user_email = request.user.email.strip().lower()
-                existing = Candidate.objects.filter(
-                    election=election,
-                    email__iexact=user_email,
-                ).exclude(status__in=[NominationStatus.WITHDRAWN, NominationStatus.REJECTED]).first()
-                if existing:
-                    pos_title = existing.position.title if existing.position else 'another position'
+            # Comprehensive Single Active Nomination Check per Election (Self & Admin)
+            cand_email = (attrs.get('email') or (request.user.email if request else '')).strip().lower()
+            cand_phone = (attrs.get('contact_number') or '').strip()
+            first_name = (attrs.get('first_name') or '').strip().lower()
+            last_name = (attrs.get('last_name') or '').strip().lower()
+
+            qs = Candidate.objects.filter(election=election).exclude(
+                status__in=[NominationStatus.WITHDRAWN, NominationStatus.REJECTED]
+            )
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+
+            if cand_email:
+                existing_email = qs.filter(email__iexact=cand_email).first()
+                if existing_email:
+                    pos_title = existing_email.position.title if existing_email.position else 'another position'
                     raise serializers.ValidationError(
-                        f"You have already filed an active nomination for '{pos_title}' in this election. Candidates may only apply for one position per election."
+                        f"Candidate with email '{cand_email}' is already actively nominated for '{pos_title}' in this election. Candidates may only apply for one position per election."
                     )
+
+            if cand_phone:
+                existing_phone = qs.filter(contact_number=cand_phone).first()
+                if existing_phone:
+                    pos_title = existing_phone.position.title if existing_phone.position else 'another position'
+                    raise serializers.ValidationError(
+                        f"Candidate with contact number '{cand_phone}' is already actively nominated for '{pos_title}' in this election."
+                    )
+
+            if first_name and last_name:
+                existing_name = qs.filter(first_name__iexact=first_name, last_name__iexact=last_name).first()
+                if existing_name:
+                    pos_title = existing_name.position.title if existing_name.position else 'another position'
+                    raise serializers.ValidationError(
+                        f"Candidate '{existing_name.full_name}' is already actively nominated for '{pos_title}' in this election."
+                    )
+
         return attrs
 
 

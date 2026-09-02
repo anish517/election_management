@@ -168,6 +168,51 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
       return;
     }
 
+    final emailToSubmit = _emailController.text.trim().toLowerCase();
+    final phoneToSubmit = _phoneController.text.trim();
+    final nameToSubmit = '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}'.trim().toLowerCase();
+
+    for (final pos in widget.election.positions) {
+      for (final c in pos.candidates) {
+        final cEmail = (c.email ?? '').trim().toLowerCase();
+        final cPhone = (c.contactNumber ?? '').trim();
+        final cName = c.name.trim().toLowerCase();
+
+        if (emailToSubmit.isNotEmpty && cEmail.isNotEmpty && emailToSubmit == cEmail) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Candidate with email "$emailToSubmit" is already nominated for "${pos.title}".'),
+              backgroundColor: Colors.red.shade700,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
+
+        if (phoneToSubmit.isNotEmpty && cPhone.isNotEmpty && phoneToSubmit == cPhone) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Candidate with contact number "$phoneToSubmit" is already nominated for "${pos.title}".'),
+              backgroundColor: Colors.red.shade700,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
+
+        if (nameToSubmit.isNotEmpty && cName.isNotEmpty && nameToSubmit == cName) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Candidate "${c.name}" is already nominated for "${pos.title}".'),
+              backgroundColor: Colors.red.shade700,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
+      }
+    }
+
     setState(() => _isLoading = true);
 
     final endorsements = <Map<String, dynamic>>[];

@@ -55,6 +55,37 @@ class CandidateViewSet(viewsets.ModelViewSet):
         )
 
         if is_admin_manual_create:
+            # Duplicate validation check for admin manual nomination
+            target_email = payload_email
+            target_phone = str(self.request.data.get('contact_number') or '').strip()
+            first = str(self.request.data.get('first_name') or '').strip().lower()
+            last = str(self.request.data.get('last_name') or '').strip().lower()
+
+            qs = Candidate.objects.filter(election=election).exclude(
+                status__in=[NominationStatus.WITHDRAWN, NominationStatus.REJECTED]
+            )
+            if target_email:
+                existing_email = qs.filter(email__iexact=target_email).first()
+                if existing_email:
+                    pos_title = existing_email.position.title if existing_email.position else 'another position'
+                    raise ValidationError({
+                        'email': f"Candidate with email '{target_email}' is already actively nominated for '{pos_title}' in this election."
+                    })
+            if target_phone:
+                existing_phone = qs.filter(contact_number=target_phone).first()
+                if existing_phone:
+                    pos_title = existing_phone.position.title if existing_phone.position else 'another position'
+                    raise ValidationError({
+                        'contact_number': f"Candidate with contact number '{target_phone}' is already actively nominated for '{pos_title}' in this election."
+                    })
+            if first and last:
+                existing_name = qs.filter(first_name__iexact=first, last_name__iexact=last).first()
+                if existing_name:
+                    pos_title = existing_name.position.title if existing_name.position else 'another position'
+                    raise ValidationError({
+                        'first_name': f"Candidate '{existing_name.full_name}' is already actively nominated for '{pos_title}' in this election."
+                    })
+
             status_val = serializer.validated_data.get('status', NominationStatus.APPROVED)
             serializer.save(
                 election=election,

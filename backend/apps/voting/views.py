@@ -311,7 +311,9 @@ class VoterRollViewSet(viewsets.ModelViewSet):
                 if error:
                     error_rows.append({'row': i, 'data': dict(row), 'mapped': mapped, 'error': error})
                 else:
-                    if v_id: existing_voter_ids.add(v_id)
+                    if not v_id:
+                        v_id = VoterRoll.generate_unique_voter_id_for_election(election_pk, existing_voter_ids)
+                    existing_voter_ids.add(v_id)
                     if email: existing_emails.add(email)
                     valid_rows.append({
                         'row': i,
@@ -378,7 +380,10 @@ class VoterRollViewSet(viewsets.ModelViewSet):
                     skipped += 1
                     continue
 
-                if v_id: existing_voter_ids.add(v_id)
+                if not v_id:
+                    v_id = VoterRoll.generate_unique_voter_id_for_election(election, existing_voter_ids)
+
+                existing_voter_ids.add(v_id)
                 if email: existing_emails.add(email)
                 
                 VoterRoll.objects.create(
@@ -462,7 +467,9 @@ class VoterRollViewSet(viewsets.ModelViewSet):
         skipped = 0
 
         for m in qs:
-            v_id = m.member_code.strip() if m.member_code else str(m.id)[:8]
+            v_id = m.member_code.strip() if m.member_code else ''
+            if not v_id:
+                v_id = VoterRoll.generate_unique_voter_id_for_election(election, existing_voter_ids)
             email = m.email.strip().lower() if m.email else ''
 
             if (email and email in existing_emails) or (v_id and v_id in existing_voter_ids):
@@ -590,8 +597,12 @@ class VoterRollViewSet(viewsets.ModelViewSet):
             council = str(item.get(mapping.get('council_number', 'council_number')) or '').strip()
             prefix = str(item.get(mapping.get('prefix', 'prefix')) or '').strip()
 
+            if not v_id:
+                v_id = VoterRoll.generate_unique_voter_id_for_election(election, existing_voter_ids)
+            existing_voter_ids.add(v_id)
+
             parsed_records.append({
-                'voter_id': v_id or str(uuid.uuid4())[:8],
+                'voter_id': v_id,
                 'prefix': prefix,
                 'first_name': first or 'Voter',
                 'middle_name': middle,

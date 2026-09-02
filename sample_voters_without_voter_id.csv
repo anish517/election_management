@@ -1,0 +1,6 @@
+prefix,first_name,middle_name,last_name,email,phone,council_number,citizenship_number
+Mr.,Ramesh,Prasad,Shrestha,ramesh.shrestha@example.com,9841000001,NNC-101,27-01-76-00001
+Ms.,Sita,,Sharma,sita.sharma@example.com,9841000002,,27-01-76-00002
+Dr.,Bikash,,Karki,bikash.karki@example.com,9841000003,NMC-504,27-01-76-00003
+Mrs.,Sunita,Devi,Adhikari,sunita.adhikari@example.com,9841000004,,27-01-76-00004
+Mr.,Dipendra,Kumar,Thapa,dipendra.thapa@example.com,9841000005,NEC-982,27-01-76-00005

@@ -88,6 +88,27 @@ class VoterRoll(TimestampedModel):
         return " ".join([p for p in parts if p])
 
     @classmethod
+    def generate_unique_voter_id_for_election(cls, election, existing_ids=None):
+        """
+        Generates a clean sequential Voter ID (e.g. V001, V002, V003...)
+        guaranteed to be unique within the election.
+        """
+        if existing_ids is None:
+            existing_ids = set(
+                cls.objects.filter(election=election)
+                .exclude(voter_id='')
+                .values_list('voter_id', flat=True)
+            )
+
+        count = len(existing_ids) + 1
+        while True:
+            candidate_id = f"V{count:03d}"
+            if candidate_id not in existing_ids:
+                existing_ids.add(candidate_id)
+                return candidate_id
+            count += 1
+
+    @classmethod
     def generate_unique_pin_for_election(cls, election, existing_pins=None):
         """
         Generates a cryptographically random, non-duplicative 6-digit PIN.
@@ -113,6 +134,13 @@ class VoterRoll(TimestampedModel):
             if candidate_pin not in existing_pins:
                 existing_pins.add(candidate_pin)
                 return candidate_pin
+
+    def save(self, *args, **kwargs):
+        if (not self.voter_id or not str(self.voter_id).strip()) and self.election_id:
+            self.voter_id = self.generate_unique_voter_id_for_election(self.election)
+        elif self.voter_id:
+            self.voter_id = str(self.voter_id).strip()
+        super().save(*args, **kwargs)
 
 
 class VotingSession(models.Model):

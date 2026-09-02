@@ -1147,8 +1147,21 @@ class VoterClaimViewSet(viewsets.ModelViewSet):
         if election.voter_list_claim_date and now > election.voter_list_claim_date:
             raise ValidationError({'detail': 'Voter roll claim deadline has passed.'})
 
+        voter_roll = serializer.validated_data.get('voter_roll')
+        if not voter_roll:
+            target_query = serializer.validated_data.get('target_voter_name') or self.request.user.email
+            if target_query:
+                from django.db.models import Q
+                voter_roll = VoterRoll.objects.filter(
+                    Q(voter_id__iexact=target_query)
+                    | Q(email__iexact=target_query)
+                    | Q(first_name__icontains=target_query),
+                    election=election
+                ).first()
+
         serializer.save(
             election=election,
+            voter_roll=voter_roll,
             claimant_name=serializer.validated_data.get('claimant_name') or self.request.user.full_name or self.request.user.email,
             claimant_email=serializer.validated_data.get('claimant_email') or self.request.user.email,
         )
@@ -1205,17 +1218,38 @@ class VoterClaimViewSet(viewsets.ModelViewSet):
                         citizenship_number=claim.claimant_citizenship_number,
                         is_eligible=True,
                     )
-            elif claim.claim_type == 'objection' and claim.voter_roll:
-                claim.voter_roll.is_eligible = False
-                claim.voter_roll.ineligibility_reason = f"Objection upheld: {notes or claim.description}"
-                claim.voter_roll.save(update_fields=['is_eligible', 'ineligibility_reason'])
-            elif claim.claim_type == 'correction' and claim.voter_roll:
-                if claim.target_voter_name:
+            elif claim.claim_type == 'objection':
+                target_roll = claim.voter_roll
+                if not target_roll and claim.target_voter_name:
+                    from django.db.models import Q
+                    target_roll = VoterRoll.objects.filter(
+                        Q(voter_id__iexact=claim.target_voter_name)
+                        | Q(email__iexact=claim.target_voter_name)
+                        | Q(first_name__icontains=claim.target_voter_name),
+                        election=claim.election
+                    ).first()
+                if target_roll:
+                    target_roll.is_eligible = False
+                    target_roll.ineligibility_reason = f"Objection upheld: {notes or claim.description}"
+                    target_roll.save(update_fields=['is_eligible', 'ineligibility_reason'])
+            elif claim.claim_type == 'correction':
+                target_roll = claim.voter_roll
+                if not target_roll and claim.target_voter_name:
+                    from django.db.models import Q
+                    target_roll = VoterRoll.objects.filter(
+                        Q(voter_id__iexact=claim.target_voter_name)
+                        | Q(email__iexact=claim.target_voter_name)
+                        | Q(first_name__icontains=claim.target_voter_name),
+                        election=claim.election
+                    ).first()
+                if target_roll and claim.target_voter_name:
                     parts = claim.target_voter_name.strip().split()
-                    claim.voter_roll.first_name = parts[0] if parts else ''
-                    claim.voter_roll.middle_name = " ".join(parts[1:-1]) if len(parts) > 2 else ''
-                    claim.voter_roll.last_name = parts[-1] if len(parts) > 1 else ''
-                    claim.voter_roll.save(update_fields=['first_name', 'middle_name', 'last_name'])
+                    target_roll.first_name = parts[0] if parts else ''
+                    target_roll.middle_name = " ".join(parts[1:-1]) if len(parts) > 2 else ''
+                    target_roll.last_name = parts[-1] if len(parts) > 1 else ''
+                    if claim.claimant_citizenship_number and not target_roll.citizenship_number:
+                        target_roll.citizenship_number = claim.claimant_citizenship_number
+                    target_roll.save(update_fields=['first_name', 'middle_name', 'last_name', 'citizenship_number'])
 
         # Notify claimant of resolution
         from apps.notifications.services import NotificationService

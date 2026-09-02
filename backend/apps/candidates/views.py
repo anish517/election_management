@@ -62,7 +62,7 @@ class CandidateViewSet(viewsets.ModelViewSet):
             last = str(self.request.data.get('last_name') or '').strip().lower()
 
             qs = Candidate.objects.filter(election=election).exclude(
-                status__in=[NominationStatus.WITHDRAWN, NominationStatus.REJECTED]
+                status=NominationStatus.WITHDRAWN
             )
             if target_email:
                 existing_email = qs.filter(email__iexact=target_email).first()
@@ -119,7 +119,7 @@ class CandidateViewSet(viewsets.ModelViewSet):
         existing = Candidate.objects.filter(
             election=election,
             email__iexact=user_email,
-        ).exclude(status__in=[NominationStatus.WITHDRAWN, NominationStatus.REJECTED]).first()
+        ).exclude(status=NominationStatus.WITHDRAWN).first()
         if existing:
             pos_title = existing.position.title if existing.position else 'another position'
             raise ValidationError({

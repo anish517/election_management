@@ -95,7 +95,7 @@ class CandidateSerializer(serializers.ModelSerializer):
             last_name = (attrs.get('last_name') or '').strip().lower()
 
             qs = Candidate.objects.filter(election=election).exclude(
-                status__in=[NominationStatus.WITHDRAWN, NominationStatus.REJECTED]
+                status=NominationStatus.WITHDRAWN
             )
             if self.instance and self.instance.pk:
                 qs = qs.exclude(pk=self.instance.pk)

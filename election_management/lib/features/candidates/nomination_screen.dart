@@ -726,7 +726,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
           }).toList();
 
           final myActiveNominations = myNominations
-              .where((n) => n.status != 'withdrawn' && n.status != 'rejected')
+              .where((n) => n.status != 'withdrawn')
               .toList();
           final myActiveNominatedPosIds = myActiveNominations
               .map((n) => n.positionId)
@@ -1078,12 +1078,21 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                           () {
                             final active = myActiveNominations.first;
                             final posTitle = active.positionTitle ?? 'Designation';
+                            final isRejected = active.status == 'rejected';
+                            final bannerColor = isRejected ? Colors.red : const Color(0xFF3B82F6);
+                            final bgColor = isDark
+                                ? (isRejected ? const Color(0xFF450A0A) : const Color(0xFF1E293B))
+                                : (isRejected ? const Color(0xFFFEF2F2) : const Color(0xFFEFF6FF));
+                            final borderColor = isDark
+                                ? bannerColor.withValues(alpha: 0.3)
+                                : (isRejected ? const Color(0xFFFECACA) : const Color(0xFFBFDBFE));
+
                             return Container(
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF),
+                                color: bgColor,
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: isDark ? const Color(0xFF3B82F6).withValues(alpha: 0.3) : const Color(0xFFBFDBFE)),
+                                border: Border.all(color: borderColor),
                               ),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1091,24 +1100,32 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                                   Container(
                                     padding: const EdgeInsets.all(10),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                                      color: bannerColor.withValues(alpha: 0.15),
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Icon(Icons.verified_user_rounded, color: Color(0xFF2563EB), size: 24),
+                                    child: Icon(
+                                      isRejected ? Icons.cancel_outlined : Icons.verified_user_rounded,
+                                      color: bannerColor,
+                                      size: 24,
+                                    ),
                                   ),
                                   const SizedBox(width: 14),
                                   Expanded(
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        const Text(
-                                          'Active Nomination on File (सक्रिय उम्मेदवारी दर्ता भइसकेको)',
-                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                        Text(
+                                          isRejected
+                                              ? 'Nomination Rejected on File (उम्मेदवारी अस्वीकृत)'
+                                              : 'Active Nomination on File (सक्रिय उम्मेदवारी दर्ता भइसकेको)',
+                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: isRejected ? Colors.red.shade700 : null),
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          'Institutional election regulations permit candidates to apply for only ONE position per election. You currently hold an active nomination for "$posTitle" (Status: ${active.status?.toUpperCase() ?? "PENDING"}).',
-                                          style: TextStyle(fontSize: 12.5, color: isDark ? Colors.white70 : const Color(0xFF1E3A8A), height: 1.4),
+                                          isRejected
+                                              ? 'Your nomination for "$posTitle" was rejected during scrutiny by the Election Officer. Candidates may only submit one nomination record per election.'
+                                              : 'Institutional election regulations permit candidates to apply for only ONE position per election. You currently hold an active nomination for "$posTitle" (Status: ${active.status?.toUpperCase() ?? "PENDING"}).',
+                                          style: TextStyle(fontSize: 12.5, color: isDark ? Colors.white70 : (isRejected ? const Color(0xFF991B1B) : const Color(0xFF1E3A8A)), height: 1.4),
                                         ),
                                         const SizedBox(height: 8),
                                         Text(

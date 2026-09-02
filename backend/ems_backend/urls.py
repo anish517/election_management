@@ -44,6 +44,7 @@ election_router.register(r'candidates', CandidateViewSet, basename='election-can
 election_router.register(r'objections', CandidateObjectionViewSet, basename='election-objections')
 election_router.register(r'voters', VoterRollViewSet, basename='election-voters')
 election_router.register(r'claims', VoterClaimViewSet, basename='election-claims')
+election_router.register(r'voter-claims', VoterClaimViewSet, basename='election-voter-claims')
 election_router.register(r'voting', VotingViewSet, basename='election-voting')
 election_router.register(r'results', ElectionResultsViewSet, basename='election-results')
 election_router.register(r'notices', ElectionNoticeViewSet, basename='election-notices')

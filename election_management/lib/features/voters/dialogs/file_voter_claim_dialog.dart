@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/admin_providers.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../core/utils/error_helper.dart';
 
 class FileVoterClaimDialog extends ConsumerStatefulWidget {
@@ -32,6 +33,14 @@ class _FileVoterClaimDialogState extends ConsumerState<FileVoterClaimDialog> {
   @override
   void initState() {
     super.initState();
+    final user = ref.read(currentUserProvider);
+    if (user != null) {
+      _nameController.text = user.fullName.isNotEmpty ? user.fullName : user.email;
+      _emailController.text = user.email;
+      if (user.phone.isNotEmpty) {
+        _phoneController.text = user.phone;
+      }
+    }
     if (widget.initialVoterName != null && widget.initialVoterName!.isNotEmpty) {
       _targetVoterController.text = widget.initialVoterName!;
       _claimType = 'correction';

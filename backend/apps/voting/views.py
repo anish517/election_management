@@ -1725,7 +1725,15 @@ class KioskUnlockView(APIView):
         from django.db.models import Q
 
         roll = None
-        if raw_identifier:
+        if voter_pin and not raw_identifier:
+            # Direct unlock via unique 6-digit Secret Voting PIN
+            roll = VoterRoll.objects.filter(election=election, voter_pin__iexact=voter_pin).first()
+            if not roll:
+                return Response({
+                    'error': 'Invalid Secret Voting PIN. No voter found with this PIN in the electoral roll.'
+                }, status=400)
+        elif raw_identifier:
+            # Look up via Voter ID, Email, Phone, Council Number, Citizenship, or PIN as identifier
             roll = VoterRoll.objects.filter(
                 Q(voter_id__iexact=raw_identifier)
                 | Q(email__iexact=raw_identifier)
@@ -1735,20 +1743,29 @@ class KioskUnlockView(APIView):
                 | Q(voter_pin__iexact=raw_identifier),
                 election=election,
             ).first()
+
+            if not roll:
+                return Response({
+                    'error': f'No voter record found for "{raw_identifier}" in the electoral roll.'
+                }, status=404)
+
+            # If separate PIN is provided and differs from identifier, strictly enforce match
+            if voter_pin and raw_identifier.strip().lower() != voter_pin.strip().lower():
+                if not roll.voter_pin or roll.voter_pin.strip().lower() != voter_pin.strip().lower():
+                    return Response({
+                        'error': 'Invalid Secret Voting PIN for this voter. Please check your token slip and try again.'
+                    }, status=400)
         elif voter_pin:
-            roll = VoterRoll.objects.filter(election=election, voter_pin=voter_pin).first()
+            roll = VoterRoll.objects.filter(election=election, voter_pin__iexact=voter_pin).first()
+            if not roll:
+                return Response({
+                    'error': 'Invalid Secret Voting PIN. No voter found with this PIN in the electoral roll.'
+                }, status=400)
 
         if not roll:
             return Response({
                 'error': f'No voter record found for "{raw_identifier or voter_pin}" in the electoral roll.'
             }, status=404)
-
-        # Validate Secret Voting PIN if provided separately from identifier
-        if voter_pin and raw_identifier and raw_identifier != voter_pin and roll.voter_pin and roll.voter_pin.strip():
-            if roll.voter_pin.strip().lower() != voter_pin.strip().lower():
-                return Response({
-                    'error': 'Invalid Secret Voting PIN for this voter. Please check your token slip and try again.'
-                }, status=400)
 
         if not roll.is_eligible:
             return Response({

@@ -846,8 +846,24 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
                           style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5, color: Color(0xFFB91C1C), letterSpacing: 1.2),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(data.electionTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                      const SizedBox(height: 6),
+                      Text(data.electionTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 14,
+                        runSpacing: 6,
+                        children: [
+                          _buildInlineMetaItem(Icons.person_outline_rounded, l10n.voterNameLabel, data.voterName.isNotEmpty ? data.voterName : l10n.authenticatedVoter, isDark),
+                          _buildDotDivider(isDark),
+                          _buildInlineMetaItem(Icons.badge_outlined, l10n.voterIdLabel, data.voterId.isNotEmpty ? data.voterId : '—', isDark),
+                          _buildDotDivider(isDark),
+                          _buildInlineMetaItem(Icons.calendar_today_outlined, l10n.votingDateLabel, votingDate, isDark),
+                          _buildDotDivider(isDark),
+                          _buildInlineMetaItem(Icons.access_time_rounded, l10n.votingTimeLabel, votingTime, isDark),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -857,68 +873,24 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
             ),
           ),
 
-          // Metadata Grid: 4 items (Voter Name, Voter ID, Date, Time)
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final isWide = constraints.maxWidth >= 768;
-                return Column(
-                  children: [
-                    if (isWide)
-                      Row(
-                        children: [
-                          Expanded(child: _buildInfoCard(l10n.voterNameLabel, data.voterName.isNotEmpty ? data.voterName : l10n.authenticatedVoter, Icons.person_rounded, isDark)),
-                          const SizedBox(width: 12),
-                          Expanded(child: _buildInfoCard(l10n.voterIdLabel, data.voterId.isNotEmpty ? data.voterId : '—', Icons.badge_outlined, isDark)),
-                          const SizedBox(width: 12),
-                          Expanded(child: _buildInfoCard(l10n.votingDateLabel, votingDate, Icons.calendar_today_outlined, isDark)),
-                          const SizedBox(width: 12),
-                          Expanded(child: _buildInfoCard(l10n.votingTimeLabel, votingTime, Icons.access_time_rounded, isDark)),
-                        ],
-                      )
-                    else ...[
-                      Row(
-                        children: [
-                          Expanded(child: _buildInfoCard(l10n.voterNameLabel, data.voterName.isNotEmpty ? data.voterName : l10n.authenticatedVoter, Icons.person_rounded, isDark)),
-                          const SizedBox(width: 10),
-                          Expanded(child: _buildInfoCard(l10n.voterIdLabel, data.voterId.isNotEmpty ? data.voterId : '—', Icons.badge_outlined, isDark)),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(child: _buildInfoCard(l10n.votingDateLabel, votingDate, Icons.calendar_today_outlined, isDark)),
-                          const SizedBox(width: 10),
-                          Expanded(child: _buildInfoCard(l10n.votingTimeLabel, votingTime, Icons.access_time_rounded, isDark)),
-                        ],
-                      ),
-                    ],
-                    const SizedBox(height: 14),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.verified_user_outlined, size: 15, color: isDark ? Colors.blue.shade300 : const Color(0xFF2563EB)),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'End-to-End Cryptographically Sealed Ballot • Single-Use Magic Link',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: isDark ? Colors.white70 : const Color(0xFF475569)),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              },
+          // Security Badge Strip
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.black.withValues(alpha: 0.25) : const Color(0xFFF8FAFC),
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+              border: Border(top: BorderSide(color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFE2E8F0))),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.verified_user_outlined, size: 14, color: isDark ? Colors.blue.shade300 : const Color(0xFF2563EB)),
+                const SizedBox(width: 8),
+                Text(
+                  'End-to-End Cryptographically Sealed Ballot • Single-Use Magic Link',
+                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: isDark ? Colors.white70 : const Color(0xFF475569)),
+                ),
+              ],
             ),
           ),
         ],
@@ -926,37 +898,41 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
     );
   }
 
-  Widget _buildInfoCard(String label, String value, IconData icon, bool isDark) {
+  Widget _buildInlineMetaItem(IconData icon, String label, String value, bool isDark) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: isDark ? Colors.white54 : const Color(0xFF64748B)),
+        const SizedBox(width: 5),
+        Text(
+          '$label: ',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: isDark ? Colors.white54 : const Color(0xFF64748B),
+            letterSpacing: 0.3,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDotDivider(bool isDark) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      width: 4,
+      height: 4,
+      margin: const EdgeInsets.symmetric(horizontal: 2),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0F172A).withValues(alpha: 0.6) : const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(7),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFFB91C1C).withValues(alpha: 0.2) : const Color(0xFFB91C1C).withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, size: 16, color: isDark ? const Color(0xFFFCA5A5) : const Color(0xFFB91C1C)),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(label, style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: isDark ? Colors.white54 : const Color(0xFF64748B))),
-                const SizedBox(height: 2),
-                Text(value, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: isDark ? Colors.white : const Color(0xFF0F172A)), overflow: TextOverflow.ellipsis),
-              ],
-            ),
-          ),
-        ],
+        color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
+        shape: BoxShape.circle,
       ),
     );
   }

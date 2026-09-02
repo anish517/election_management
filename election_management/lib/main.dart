@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,6 +26,19 @@ void main() async {
   runApp(const ProviderScope(child: ElectionManagementApp()));
 }
 
+class AppScrollBehavior extends MaterialScrollBehavior {
+  const AppScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+        PointerDeviceKind.unknown,
+      };
+}
+
 class ElectionManagementApp extends ConsumerWidget {
   const ElectionManagementApp({super.key});
 
@@ -39,6 +53,7 @@ class ElectionManagementApp extends ConsumerWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode,
+      scrollBehavior: const AppScrollBehavior(),
       routerConfig: router,
       builder: (context, child) {
         final isDark = Theme.of(context).brightness == Brightness.dark;

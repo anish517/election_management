@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -996,116 +997,139 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
     final nepaliDateStr = '${NepaliDateFormat('yyyy/MM/dd').format(nepaliNow)} BS';
     final votingTime = DateFormat('hh:mm a').format(now);
 
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          // Official Red Stamp Header Banner
-          Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E293B),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFB91C1C).withValues(alpha: 0.5), width: 1.2),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 14, offset: const Offset(0, 4)),
-              ],
-            ),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF331317), Color(0xFF1E293B)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+    return ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(
+        dragDevices: {
+          PointerDeviceKind.touch,
+          PointerDeviceKind.mouse,
+          PointerDeviceKind.trackpad,
+          PointerDeviceKind.stylus,
+          PointerDeviceKind.unknown,
+        },
+      ),
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        child: Column(
+          children: [
+            // Official Red Stamp Header Banner
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFFB91C1C).withValues(alpha: 0.5), width: 1.2),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 14, offset: const Offset(0, 4)),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF331317), Color(0xFF1E293B)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(17)),
+                      border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
                     ),
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(17)),
-                    border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-                  ),
-                  child: Row(
-                    children: [
-                      SizedBox(width: 36, height: 36, child: CustomPaint(painter: const _KioskSwastikPainter(color: Color(0xFFB91C1C)))),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2.5),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFB91C1C).withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: const Color(0xFFB91C1C).withValues(alpha: 0.4)),
+                    child: Row(
+                      children: [
+                        SizedBox(width: 36, height: 36, child: CustomPaint(painter: const _KioskSwastikPainter(color: Color(0xFFB91C1C)))),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2.5),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFB91C1C).withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: const Color(0xFFB91C1C).withValues(alpha: 0.4)),
+                                ),
+                                child: const Text(
+                                  'मतपत्र — OFFICIAL BALLOT',
+                                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12.5, color: Color(0xFFFCA5A5), letterSpacing: 1.2),
+                                ),
                               ),
-                              child: const Text(
-                                'मतपत्र — OFFICIAL BALLOT',
-                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12.5, color: Color(0xFFFCA5A5), letterSpacing: 1.2),
+                              const SizedBox(height: 6),
+                              Text(
+                                election.title,
+                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                                textAlign: TextAlign.center,
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              election.title,
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
+                              const SizedBox(height: 10),
+                              // Sleek Professional Metadata Line (No bulky boxes!)
+                              Wrap(
+                                alignment: WrapAlignment.center,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 14,
+                                runSpacing: 6,
+                                children: [
+                                  _buildInlineKioskMeta(
+                                    Icons.person_outline_rounded,
+                                    'VOTER NAME',
+                                    _voterName.isNotEmpty ? _voterName : 'Authenticated Voter',
+                                  ),
+                                  _buildKioskDotSeparator(),
+                                  _buildInlineKioskMeta(
+                                    Icons.badge_outlined,
+                                    'VOTER ID',
+                                    _voterId.isNotEmpty ? _voterId : '—',
+                                  ),
+                                  _buildKioskDotSeparator(),
+                                  _buildInlineKioskMeta(
+                                    Icons.calendar_today_outlined,
+                                    'VOTING DATE',
+                                    nepaliDateStr,
+                                  ),
+                                  _buildKioskDotSeparator(),
+                                  _buildInlineKioskMeta(
+                                    Icons.access_time_rounded,
+                                    'VOTING TIME',
+                                    votingTime,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 14),
-                      SizedBox(width: 36, height: 36, child: CustomPaint(painter: const _KioskSwastikPainter(color: Color(0xFFB91C1C)))),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Icons.lock_outline_rounded, color: Colors.white38, size: 20),
-                        tooltip: 'Officer Exit Station',
-                        onPressed: _showOfficerExitDialog,
-                      ),
-                    ],
+                        const SizedBox(width: 14),
+                        SizedBox(width: 36, height: 36, child: CustomPaint(painter: const _KioskSwastikPainter(color: Color(0xFFB91C1C)))),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.lock_outline_rounded, color: Colors.white38, size: 20),
+                          tooltip: 'Officer Exit Station',
+                          onPressed: _showOfficerExitDialog,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
 
-                // 4-Column Voter Info Strip
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(child: _buildKioskInfoTile('VOTER NAME (मतदाता)', _voterName.isNotEmpty ? _voterName : 'Authenticated Voter', Icons.person_rounded)),
-                          const SizedBox(width: 10),
-                          Expanded(child: _buildKioskInfoTile('VOTER ID (परिचयपत्र नं.)', _voterId.isNotEmpty ? _voterId : '—', Icons.badge_outlined)),
-                          const SizedBox(width: 10),
-                          Expanded(child: _buildKioskInfoTile('VOTING DATE (मिति)', nepaliDateStr, Icons.calendar_today_outlined)),
-                          const SizedBox(width: 10),
-                          Expanded(child: _buildKioskInfoTile('VOTING TIME (समय)', votingTime, Icons.access_time_rounded)),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.04),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.white10),
+                  // Bottom Cryptographic Assurance Bar
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(17)),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.verified_user_outlined, size: 14, color: Color(0xFF38BDF8)),
+                        SizedBox(width: 8),
+                        Text(
+                          'End-to-End Cryptographically Sealed In-Person Kiosk Ballot • Station #1',
+                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: Color(0xFF94A3B8)),
                         ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.verified_user_outlined, size: 15, color: Color(0xFF38BDF8)),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'End-to-End Cryptographically Sealed In-Person Kiosk Ballot • Station #1',
-                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Color(0xFF94A3B8)),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
           // Contests
           ..._ballotPositions.map((pos) {
@@ -1563,40 +1587,45 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
           const SizedBox(height: 24),
         ],
       ),
+    ),
+  );
+}
+
+  Widget _buildInlineKioskMeta(IconData icon, String label, String value) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: const Color(0xFF94A3B8)),
+        const SizedBox(width: 5),
+        Text(
+          '$label: ',
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF94A3B8),
+            letterSpacing: 0.3,
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildKioskInfoTile(String label, String value, IconData icon) {
+  Widget _buildKioskDotSeparator() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF334155)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(7),
-            decoration: BoxDecoration(
-              color: const Color(0xFFB91C1C).withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, size: 16, color: const Color(0xFFFCA5A5)),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(label, style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: Color(0xFF94A3B8)), maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 2),
-                Text(value, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: Colors.white), overflow: TextOverflow.ellipsis),
-              ],
-            ),
-          ),
-        ],
+      width: 4,
+      height: 4,
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      decoration: const BoxDecoration(
+        color: Color(0xFF475569),
+        shape: BoxShape.circle,
       ),
     );
   }

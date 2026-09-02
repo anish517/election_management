@@ -346,18 +346,29 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
     }
 
     final user = ref.read(authProvider).user;
+    final userEmail = (user?.email ?? '').trim().toLowerCase();
+    final userPhone = (user?.phone ?? '').trim();
+    final userName = (user?.fullName ?? '').trim().toLowerCase();
+
     final candidates = ref.read(candidatesProvider(widget.electionId)).valueOrNull ?? [];
-    final activeNomination = candidates.where((c) =>
-        c.email?.toLowerCase() == user?.email.toLowerCase() &&
-        c.status != 'withdrawn' &&
-        c.status != 'rejected').firstOrNull;
+    final activeNomination = candidates.where((c) {
+      if (c.status == 'withdrawn' || c.status == 'rejected') return false;
+      final cEmail = (c.email ?? '').trim().toLowerCase();
+      final cPhone = (c.contactNumber ?? '').trim();
+      final cName = c.name.trim().toLowerCase();
+
+      return (userEmail.isNotEmpty && cEmail == userEmail) ||
+             (userPhone.isNotEmpty && cPhone == userPhone) ||
+             (userName.isNotEmpty && cName == userName);
+    }).firstOrNull;
 
     if (activeNomination != null) {
       final posTitle = activeNomination.positionTitle ?? 'another position';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('You already have an active nomination for "$posTitle" in this election. Candidates may only apply for one position per election (एउटै निर्वाचनमा एकभन्दा बढी पदका लागि उम्मेदवारी दिन पाइँदैन).'),
-          backgroundColor: Colors.red,
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
         ),
       );
       return;
@@ -687,11 +698,33 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
           }
 
           final candidatesAsync = ref.watch(candidatesProvider(widget.electionId));
+          if (candidatesAsync.isLoading) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32.0),
+                child: CircularProgressIndicator(),
+              ),
+            );
+          }
+
           final org = ref.watch(orgProfileProvider).valueOrNull;
           final isDark = Theme.of(context).brightness == Brightness.dark;
 
           final candidates = candidatesAsync.valueOrNull ?? [];
-          final myNominations = candidates.where((c) => c.email == user?.email).toList();
+          final userEmail = (user?.email ?? '').trim().toLowerCase();
+          final userPhone = (user?.phone ?? '').trim();
+          final userName = (user?.fullName ?? '').trim().toLowerCase();
+
+          final myNominations = candidates.where((c) {
+            final cEmail = (c.email ?? '').trim().toLowerCase();
+            final cPhone = (c.contactNumber ?? '').trim();
+            final cName = c.name.trim().toLowerCase();
+
+            return (userEmail.isNotEmpty && cEmail == userEmail) ||
+                   (userPhone.isNotEmpty && cPhone == userPhone) ||
+                   (userName.isNotEmpty && cName == userName);
+          }).toList();
+
           final myActiveNominations = myNominations
               .where((n) => n.status != 'withdrawn' && n.status != 'rejected')
               .toList();

@@ -290,6 +290,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
         'prefix': _prefixCtrl.text.trim(),
         'org_type': _selectedOrgType,
         'council_number': _councilCtrl.text.trim(),
+        'email': _orgEmailCtrl.text.trim(),
         'org_email': _orgEmailCtrl.text.trim(),
         'phone': _orgPhoneCtrl.text.trim(),
         'website': _websiteCtrl.text.trim(),

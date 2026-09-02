@@ -2,6 +2,12 @@ from rest_framework import serializers
 from apps.organizations.models import Organization
 
 class OrganizationSerializer(serializers.ModelSerializer):
+    logo_url = serializers.CharField(required=False, allow_blank=True, default='')
+    cover_image_url = serializers.CharField(required=False, allow_blank=True, default='')
+    bank_qr_url = serializers.CharField(required=False, allow_blank=True, default='')
+    website = serializers.CharField(required=False, allow_blank=True, default='')
+    email = serializers.EmailField(required=False, allow_blank=True, default='')
+
     class Meta:
         model = Organization
         fields = [
@@ -20,6 +26,22 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'legal_hold', 'created_at'
         ]
         read_only_fields = ['id', 'slug', 'status', 'trial_ends_at', 'legal_hold', 'created_at']
+
+    def to_internal_value(self, data):
+        # Support both 'email' and 'org_email'
+        if isinstance(data, dict):
+            if 'org_email' in data and 'email' not in data:
+                data = dict(data)
+                data['email'] = data.pop('org_email')
+        return super().to_internal_value(data)
+
+    def validate_website(self, value):
+        if not value:
+            return ''
+        value = str(value).strip()
+        if value and not value.startswith(('http://', 'https://')):
+            value = f'https://{value}'
+        return value
 
 class OrganizationStatsSerializer(serializers.Serializer):
     total_members = serializers.IntegerField()

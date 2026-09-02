@@ -288,7 +288,7 @@ class CandidateViewSet(viewsets.ModelViewSet):
         quota_label = f" ({cand.quota_name})" if cand.quota_name else ''
 
         qr_data = f"EMS-CAND:{cand.id.hex[:8].upper()}:{election.id}:{cand.email or cand.contact_number}"
-        qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={qr_data}"
+        qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=120x120&data={qr_data}"
 
         html = f"""<!DOCTYPE html>
 <html lang="ne">
@@ -305,13 +305,14 @@ class CandidateViewSet(viewsets.ModelViewSet):
       .no-print {{ display: none !important; }}
       .card-wrap {{ box-shadow: none !important; margin: 0 auto; page-break-after: always; }}
     }}
+    * {{ box-sizing: border-box; }}
     body {{
       font-family: 'Segoe UI', 'Noto Sans Devanagari', -apple-system, sans-serif;
       background: #F1F5F9;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 20px;
+      padding: 24px;
       margin: 0;
     }}
     .action-bar {{
@@ -320,129 +321,195 @@ class CandidateViewSet(viewsets.ModelViewSet):
       gap: 12px;
     }}
     .btn {{
-      background: #6366F1;
+      background: #4F46E5;
       color: white;
       border: none;
-      padding: 8px 16px;
+      padding: 9px 18px;
       border-radius: 6px;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
       font-size: 13px;
+      box-shadow: 0 2px 6px rgba(79,70,229,0.3);
     }}
-    .btn:hover {{ background: #4F46E5; }}
+    .btn:hover {{ background: #4338CA; }}
     .card-wrap {{
       width: 85.6mm;
       height: 54mm;
       background: #FFFFFF;
+      background-image: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.04) 0%, rgba(255,255,255,1) 70%);
       border-radius: 8px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-      border: 1.5px solid #6366F1;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+      border: 1.5px solid #4F46E5;
       overflow: hidden;
       display: flex;
       flex-direction: column;
+      justify-content: space-between;
       position: relative;
-      box-sizing: border-box;
-      padding: 6px 10px;
+      padding: 7px 10px;
     }}
-    .header {{
+    .top-banner {{
       display: flex;
       align-items: center;
-      gap: 8px;
-      border-bottom: 1.5px solid #6366F1;
+      justify-content: space-between;
+      border-bottom: 1.5px solid #4F46E5;
       padding-bottom: 4px;
-      margin-bottom: 5px;
+    }}
+    .header-left {{
+      display: flex;
+      align-items: center;
+      gap: 7px;
     }}
     .header-logo {{
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      border-radius: 4px;
       object-fit: contain;
     }}
     .org-title {{
-      font-size: 10px;
+      font-size: 9.5px;
       font-weight: 900;
-      color: #0F172A;
+      color: #312E81;
       line-height: 1.1;
       text-transform: uppercase;
+      letter-spacing: 0.2px;
     }}
     .el-title {{
       font-size: 8px;
       font-weight: 700;
-      color: #6366F1;
+      color: #1E293B;
       line-height: 1.1;
     }}
-    .badge-bar {{
-      position: absolute;
-      top: 6px;
-      right: 8px;
-      background: #6366F1;
-      color: white;
-      font-size: 7px;
-      font-weight: 800;
-      padding: 2px 6px;
+    .badge-ribbon {{
+      background: linear-gradient(135deg, #4F46E5, #4338CA);
+      color: #FFFFFF;
+      font-size: 7.5px;
+      font-weight: 900;
+      padding: 2.5px 6px;
       border-radius: 4px;
-      letter-spacing: 0.3px;
+      letter-spacing: 0.4px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }}
     .card-body {{
       display: flex;
-      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 7px;
       flex: 1;
+      padding: 3px 0;
     }}
     .photo-col {{
-      width: 58px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      width: 44px;
+      height: 52px;
+      flex-shrink: 0;
     }}
     .photo-box {{
-      width: 56px;
-      height: 64px;
+      width: 44px;
+      height: 52px;
       border-radius: 4px;
-      border: 1.5px solid #6366F1;
+      border: 1.2px solid #6366F1;
       object-fit: cover;
       background: #F8FAFC;
     }}
-    .info-col {{
+    .candidate-info {{
       flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
+      min-width: 0;
     }}
     .cand-name {{
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 900;
       color: #0F172A;
       margin-bottom: 2px;
-      line-height: 1.2;
+      line-height: 1.15;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }}
-    .info-row {{
-      font-size: 8px;
+    .cand-id-pill {{
+      display: inline-block;
+      background: #EEF2FF;
+      color: #3730A3;
+      border: 1px solid #C7D2FE;
+      border-radius: 4px;
+      font-size: 7.5px;
+      font-weight: 800;
+      padding: 1px 5px;
+      margin-bottom: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }}
+    .meta-grid {{
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5px;
+      font-size: 7px;
       color: #334155;
-      margin-bottom: 2px;
     }}
-    .info-label {{
+    .meta-item {{
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }}
+    .meta-label {{
       font-weight: bold;
       color: #64748B;
     }}
-    .footer-row {{
+    .status-verified {{
+      font-size: 7px;
+      font-weight: 800;
+      color: #059669;
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }}
+    .qr-container {{
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      flex-shrink: 0;
+    }}
+    .qr-code {{
+      width: 44px;
+      height: 44px;
+      border: 1px solid #CBD5E1;
+      border-radius: 4px;
+      padding: 1px;
+      background: white;
+    }}
+    .qr-text {{
+      font-size: 5.5px;
+      font-weight: bold;
+      color: #64748B;
+      margin-top: 2px;
+      letter-spacing: 0.3px;
+    }}
+    .card-footer {{
+      border-top: 1px dashed #CBD5E1;
+      padding-top: 3px;
       display: flex;
       justify-content: space-between;
       align-items: flex-end;
-      margin-top: 2px;
     }}
-    .qr-code {{
-      width: 34px;
-      height: 34px;
-      object-fit: contain;
+    .footer-stamp {{
+      font-size: 6.5px;
+      color: #64748B;
+      font-weight: 600;
+      line-height: 1.2;
     }}
-    .seal-box {{
-      font-size: 7px;
-      text-align: center;
+    .officer-sign {{
+      text-align: right;
+      font-size: 6.5px;
       color: #DC2626;
-      font-weight: bold;
-      border-top: 1px solid #94A3B8;
-      padding-top: 1px;
-      width: 70px;
+      font-weight: 800;
+    }}
+    .officer-line {{
+      width: 60px;
+      border-top: 1px solid #DC2626;
+      margin-top: 1px;
     }}
   </style>
 </head>
@@ -453,34 +520,44 @@ class CandidateViewSet(viewsets.ModelViewSet):
   </div>
 
   <div class="card-wrap">
-    <div class="badge-bar">CANDIDATE ID (उम्मेदवार)</div>
-    <div class="header">
-      {f'<img src="{org_logo}" class="header-logo">' if org_logo else '<div style="font-size:18px;">🏛️</div>'}
-      <div>
-        <div class="org-title">{org_name}</div>
-        <div class="el-title">{election.title}</div>
+    <div class="top-banner">
+      <div class="header-left">
+        {f'<img src="{org_logo}" class="header-logo">' if org_logo else '<div style="font-size:20px;">🏛️</div>'}
+        <div>
+          <div class="org-title">{org_name}</div>
+          <div class="el-title">{election.title}</div>
+        </div>
       </div>
+      <div class="badge-ribbon">CANDIDATE ID<br><span style="font-size:6px;font-weight:normal;">उम्मेदवार परिचय</span></div>
     </div>
 
     <div class="card-body">
       <div class="photo-col">
-        {f'<img src="{photo_url}" class="photo-box">' if photo_url else '<div class="photo-box" style="display:flex;align-items:center;justify-content:center;font-size:20px;color:#6366F1;">👤</div>'}
+        {f'<img src="{photo_url}" class="photo-box">' if photo_url else '<div class="photo-box" style="display:flex;align-items:center;justify-content:center;font-size:18px;color:#6366F1;">👤</div>'}
       </div>
-      <div class="info-col">
-        <div>
-          <div class="cand-name">{cand.full_name}</div>
-          <div class="info-row"><span class="info-label">पद (Position):</span> <b style="color:#4F46E5;">{pos_title}{quota_label}</b></div>
-          <div class="info-row"><span class="info-label">Candidate Code:</span> <b>{cand.id.hex[:8].upper()}</b></div>
-          {f'<div class="info-row"><span class="info-label">Contact:</span> {cand.contact_number}</div>' if cand.contact_number else ''}
-          <div class="info-row"><span class="info-label">Status:</span> <b style="color:#059669;">Approved Candidate</b></div>
-        </div>
 
-        <div class="footer-row">
-          <img src="{qr_url}" class="qr-code" alt="QR">
-          <div class="seal-box">
-            Election Officer<br>निर्वाचन अधिकृत
-          </div>
+      <div class="candidate-info">
+        <div class="cand-name">{cand.full_name}</div>
+        <div class="cand-id-pill">पद (Position): <b>{pos_title}{quota_label}</b></div>
+        <div class="meta-grid">
+          <div class="meta-item"><span class="meta-label">Code:</span> <b>{cand.id.hex[:8].upper()}</b></div>
+          {f'<div class="meta-item"><span class="meta-label">Contact:</span> {cand.contact_number}</div>' if cand.contact_number else ''}
+          {f'<div class="meta-item"><span class="meta-label">Party/Panel:</span> {cand.party_name or cand.panel_name}</div>' if (cand.party_name or cand.panel_name) else ''}
         </div>
+        <div class="status-verified">✓ Approved Candidate (स्वीकृत उम्मेदवार)</div>
+      </div>
+
+      <div class="qr-container">
+        <img src="{qr_url}" class="qr-code" alt="QR">
+        <div class="qr-text">EMS VERIFY TOKEN</div>
+      </div>
+    </div>
+
+    <div class="card-footer">
+      <div class="footer-stamp">Election Management System • निर्वाचन आयोग</div>
+      <div class="officer-sign">
+        <div>Election Officer (निर्वाचन अधिकृत)</div>
+        <div class="officer-line"></div>
       </div>
     </div>
   </div>
@@ -514,34 +591,49 @@ class CandidateViewSet(viewsets.ModelViewSet):
         cards_html = ""
         for c in candidates:
             qr_data = f"EMS-CAND:{c.id.hex[:8].upper()}:{election.id}:{c.email or c.contact_number}"
-            qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={qr_data}"
+            qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=120x120&data={qr_data}"
             pos_title = c.position.title if c.position else 'Candidate'
+            quota_label = f" ({c.quota_name})" if c.quota_name else ''
+            photo_url = c.candidate_image or ''
+
             cards_html += f"""
             <div class="card-wrap">
-              <div class="badge-bar">CANDIDATE ID</div>
-              <div class="header">
-                {f'<img src="{org_logo}" class="header-logo">' if org_logo else '<div style="font-size:16px;">🏛️</div>'}
-                <div>
-                  <div class="org-title">{org_name}</div>
-                  <div class="el-title">{election.title}</div>
+              <div class="top-banner">
+                <div class="header-left">
+                  {f'<img src="{org_logo}" class="header-logo">' if org_logo else '<div style="font-size:18px;">🏛️</div>'}
+                  <div>
+                    <div class="org-title">{org_name}</div>
+                    <div class="el-title">{election.title}</div>
+                  </div>
                 </div>
+                <div class="badge-ribbon">CANDIDATE ID<br><span style="font-size:5.5px;font-weight:normal;">उम्मेदवार परिचय</span></div>
               </div>
+
               <div class="card-body">
                 <div class="photo-col">
-                  {f'<img src="{c.candidate_image}" class="photo-box">' if c.candidate_image else '<div class="photo-box" style="display:flex;align-items:center;justify-content:center;font-size:20px;color:#6366F1;">👤</div>'}
+                  {f'<img src="{photo_url}" class="photo-box">' if photo_url else '<div class="photo-box" style="display:flex;align-items:center;justify-content:center;font-size:16px;color:#6366F1;">👤</div>'}
                 </div>
-                <div class="info-col">
-                  <div>
-                    <div class="cand-name">{c.full_name}</div>
-                    <div class="info-row"><span class="info-label">पद:</span> <b style="color:#4F46E5;">{pos_title}</b></div>
-                    <div class="info-row"><span class="info-label">Code:</span> <b>{c.id.hex[:8].upper()}</b></div>
-                    <div class="info-row"><span class="info-label">Status:</span> <b style="color:#059669;">Approved</b></div>
+
+                <div class="candidate-info">
+                  <div class="cand-name">{c.full_name}</div>
+                  <div class="cand-id-pill">पद: <b>{pos_title}{quota_label}</b></div>
+                  <div class="meta-grid">
+                    <div class="meta-item"><span class="meta-label">Code:</span> <b>{c.id.hex[:8].upper()}</b></div>
+                    {f'<div class="meta-item"><span class="meta-label">Contact:</span> {c.contact_number}</div>' if c.contact_number else ''}
+                    {f'<div class="meta-item"><span class="meta-label">Party:</span> {c.party_name or c.panel_name}</div>' if (c.party_name or c.panel_name) else ''}
                   </div>
-                  <div class="footer-row">
-                    <img src="{qr_url}" class="qr-code" alt="QR">
-                    <div class="seal-box">Election Officer</div>
-                  </div>
+                  <div class="status-verified">✓ Approved Candidate</div>
                 </div>
+
+                <div class="qr-container">
+                  <img src="{qr_url}" class="qr-code" alt="QR">
+                  <div class="qr-text">EMS VERIFY</div>
+                </div>
+              </div>
+
+              <div class="card-footer">
+                <div class="footer-stamp">Election Management System</div>
+                <div class="officer-sign">Election Officer (अधिकृत)<div class="officer-line"></div></div>
               </div>
             </div>
             """
@@ -552,10 +644,16 @@ class CandidateViewSet(viewsets.ModelViewSet):
   <meta charset="UTF-8">
   <title>Batch Candidate ID Cards - {election.title}</title>
   <style>
-    @media print {{
-      body {{ margin: 0; padding: 10px; background: none; }}
-      .no-print {{ display: none !important; }}
+    @page {{
+      size: A4 portrait;
+      margin: 10mm;
     }}
+    @media print {{
+      body {{ margin: 0; padding: 0; background: none; }}
+      .no-print {{ display: none !important; }}
+      .card-wrap {{ box-shadow: none !important; page-break-inside: avoid; }}
+    }}
+    * {{ box-sizing: border-box; }}
     body {{
       font-family: 'Segoe UI', 'Noto Sans Devanagari', -apple-system, sans-serif;
       background: #F8FAFC;
@@ -569,15 +667,17 @@ class CandidateViewSet(viewsets.ModelViewSet):
       justify-content: center;
     }}
     .btn {{
-      background: #6366F1;
+      background: #4F46E5;
       color: white;
       border: none;
       padding: 10px 20px;
       border-radius: 6px;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
       font-size: 14px;
+      box-shadow: 0 2px 6px rgba(79,70,229,0.3);
     }}
+    .btn:hover {{ background: #4338CA; }}
     .grid-container {{
       display: grid;
       grid-template-columns: repeat(auto-fill, 85.6mm);
@@ -588,38 +688,50 @@ class CandidateViewSet(viewsets.ModelViewSet):
       width: 85.6mm;
       height: 54mm;
       background: #FFFFFF;
+      background-image: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.04) 0%, rgba(255,255,255,1) 70%);
       border-radius: 8px;
-      border: 1.5px solid #6366F1;
+      border: 1.5px solid #4F46E5;
       overflow: hidden;
       display: flex;
       flex-direction: column;
+      justify-content: space-between;
       position: relative;
-      box-sizing: border-box;
-      padding: 6px 10px;
+      padding: 7px 10px;
       page-break-inside: avoid;
     }}
-    .header {{
+    .top-banner {{
       display: flex;
       align-items: center;
-      gap: 8px;
-      border-bottom: 1.5px solid #6366F1;
+      justify-content: space-between;
+      border-bottom: 1.5px solid #4F46E5;
       padding-bottom: 4px;
-      margin-bottom: 5px;
     }}
-    .header-logo {{ width: 28px; height: 28px; border-radius: 50%; object-fit: contain; }}
-    .org-title {{ font-size: 9.5px; font-weight: 900; color: #0F172A; line-height: 1.1; text-transform: uppercase; }}
-    .el-title {{ font-size: 8px; font-weight: 700; color: #6366F1; line-height: 1.1; }}
-    .badge-bar {{ position: absolute; top: 6px; right: 8px; background: #6366F1; color: white; font-size: 7px; font-weight: 800; padding: 2px 6px; border-radius: 4px; }}
-    .card-body {{ display: flex; gap: 8px; flex: 1; }}
-    .photo-col {{ width: 54px; }}
-    .photo-box {{ width: 52px; height: 60px; border-radius: 4px; border: 1px solid #94A3B8; background: #F8FAFC; object-fit: cover; }}
-    .info-col {{ flex: 1; display: flex; flex-direction: column; justify-content: space-between; }}
-    .cand-name {{ font-size: 11px; font-weight: 900; color: #0F172A; margin-bottom: 2px; }}
-    .info-row {{ font-size: 7.5px; color: #334155; margin-bottom: 1.5px; }}
-    .info-label {{ font-weight: bold; color: #64748B; }}
-    .footer-row {{ display: flex; justify-content: space-between; align-items: flex-end; }}
-    .qr-code {{ width: 30px; height: 30px; }}
-    .seal-box {{ font-size: 6.5px; text-align: center; color: #DC2626; font-weight: bold; border-top: 1px solid #94A3B8; width: 65px; }}
+    .header-left {{
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }}
+    .header-logo {{ width: 28px; height: 28px; border-radius: 4px; object-fit: contain; }}
+    .org-title {{ font-size: 9.5px; font-weight: 900; color: #312E81; line-height: 1.1; text-transform: uppercase; letter-spacing: 0.2px; }}
+    .el-title {{ font-size: 8px; font-weight: 700; color: #1E293B; line-height: 1.1; }}
+    .badge-ribbon {{ background: linear-gradient(135deg, #4F46E5, #4338CA); color: #FFFFFF; font-size: 7.5px; font-weight: 900; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.4px; text-align: center; }}
+    .card-body {{ display: flex; align-items: center; justify-content: space-between; gap: 7px; flex: 1; padding: 3px 0; }}
+    .photo-col {{ width: 44px; height: 52px; flex-shrink: 0; }}
+    .photo-box {{ width: 44px; height: 52px; border-radius: 4px; border: 1.2px solid #6366F1; object-fit: cover; background: #F8FAFC; }}
+    .candidate-info {{ flex: 1; min-width: 0; }}
+    .cand-name {{ font-size: 11px; font-weight: 900; color: #0F172A; margin-bottom: 2px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+    .cand-id-pill {{ display: inline-block; background: #EEF2FF; color: #3730A3; border: 1px solid #C7D2FE; border-radius: 4px; font-size: 7px; font-weight: 800; padding: 1px 4px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }}
+    .meta-grid {{ display: grid; grid-template-columns: 1fr; gap: 1.5px; font-size: 7px; color: #334155; }}
+    .meta-item {{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
+    .meta-label {{ font-weight: bold; color: #64748B; }}
+    .status-verified {{ font-size: 6.5px; font-weight: 800; color: #059669; margin-top: 2px; }}
+    .qr-container {{ display: flex; flex-direction: column; align-items: center; text-align: center; flex-shrink: 0; }}
+    .qr-code {{ width: 42px; height: 42px; border: 1px solid #CBD5E1; border-radius: 4px; padding: 1px; background: white; }}
+    .qr-text {{ font-size: 5.5px; font-weight: bold; color: #64748B; margin-top: 2px; letter-spacing: 0.3px; }}
+    .card-footer {{ border-top: 1px dashed #CBD5E1; padding-top: 3px; display: flex; justify-content: space-between; align-items: flex-end; }}
+    .footer-stamp {{ font-size: 6.5px; color: #64748B; font-weight: 600; line-height: 1.2; }}
+    .officer-sign {{ text-align: right; font-size: 6.5px; color: #DC2626; font-weight: 800; }}
+    .officer-line {{ width: 55px; border-top: 1px solid #DC2626; margin-top: 1px; }}
   </style>
 </head>
 <body>

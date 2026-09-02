@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nepali_date_picker/nepali_date_picker.dart';
@@ -97,8 +98,8 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
       setState(() => _errorMessage = 'Please enter your 6-digit Secret Voting PIN');
       return;
     }
-    if (entered.length < 4) {
-      setState(() => _errorMessage = 'PIN must be at least 4 digits');
+    if (!RegExp(r'^\d{4,6}$').hasMatch(entered)) {
+      setState(() => _errorMessage = 'Voting PIN must be numbers only (4 to 6 digits)');
       return;
     }
     enterFullscreen();
@@ -133,6 +134,7 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
         data: {
           'election_id': widget.electionId,
           'voter_id': identifier,
+          'pin': _enteredVoterPin,
         },
       );
 
@@ -739,6 +741,10 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
             TextField(
               controller: _pinController,
               keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(6),
+              ],
               obscureText: true,
               textAlign: TextAlign.center,
               autofocus: true,

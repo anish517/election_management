@@ -1709,6 +1709,13 @@ class KioskUnlockView(APIView):
                 'error': f'No voter record found for "{raw_identifier or voter_pin}" in the electoral roll.'
             }, status=404)
 
+        # Validate Secret Voting PIN if provided separately from identifier
+        if voter_pin and raw_identifier and raw_identifier != voter_pin and roll.voter_pin and roll.voter_pin.strip():
+            if roll.voter_pin.strip().lower() != voter_pin.strip().lower():
+                return Response({
+                    'error': 'Invalid Secret Voting PIN for this voter. Please check your token slip and try again.'
+                }, status=400)
+
         if not roll.is_eligible:
             return Response({
                 'error': roll.ineligibility_reason or 'You are marked as ineligible to vote in this election.'

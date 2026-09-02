@@ -825,7 +825,7 @@ class ElectionDetailScreen extends ConsumerWidget {
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateResults, foregroundColor: Colors.white),
           ),
 
-        if (user?.canManageElections == true && (election.isVenueElection || election.isHybrid))
+        if (user?.canManageElections == true && election.isVenueElection && election.state == 'voting_open')
           ElevatedButton.icon(
             onPressed: () => context.pushNamed('venue-kiosk', pathParameters: {'electionId': electionId}),
             icon: const Icon(Icons.storefront_rounded),

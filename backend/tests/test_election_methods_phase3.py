@@ -276,6 +276,30 @@ class TestElectionMethodsPhase3(TestCase):
         self.assertIn('ballot', res.data)
         self.assertEqual(res.data['require_otp'], False)
 
+    def test_kiosk_two_step_pin_and_voter_id_validation(self):
+        """Requirement 3: Two-step kiosk unlock strictly validates voter PIN against Voter ID."""
+        self.voter1.voter_pin = '492810'
+        self.voter1.save()
+
+        self.client.force_authenticate(user=None)
+        # Test wrong PIN
+        res_fail = self.client.post('/v1/voting/kiosk/unlock/', {
+            'election_id': str(self.venue_election.id),
+            'voter_id': self.voter1.voter_id,
+            'pin': '999999',
+        }, format='json')
+        self.assertEqual(res_fail.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Invalid Secret Voting PIN', res_fail.data['error'])
+
+        # Test correct PIN
+        res_ok = self.client.post('/v1/voting/kiosk/unlock/', {
+            'election_id': str(self.venue_election.id),
+            'voter_id': self.voter1.voter_id,
+            'pin': '492810',
+        }, format='json')
+        self.assertEqual(res_ok.status_code, status.HTTP_200_OK)
+        self.assertEqual(res_ok.data['voter_id'], self.voter1.voter_id)
+
     def test_voter_pin_slips_html_view(self):
         """Requirement 3: Printable voter PIN slips letterhead renders successfully."""
         self.voter1.voter_pin = '558899'

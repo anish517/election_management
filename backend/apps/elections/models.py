@@ -138,7 +138,7 @@ class Election(TimestampedModel):
         help_text='Publish uncontested winners on statutory notice board'
     )
     show_uncontested_on_ballot = models.BooleanField(
-        default=False,
+        default=True,
         help_text='Include uncontested positions on the voting ballot paper'
     )
     show_uncontested_in_results = models.BooleanField(

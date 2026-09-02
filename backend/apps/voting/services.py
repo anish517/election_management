@@ -17,8 +17,11 @@ class BallotService:
         positions = election.positions.all().order_by('result_order', 'id')
         data = BallotPositionSerializer(positions, many=True).data
         
+        # Exclude vacant positions that have 0 candidates (no candidates to vote for)
+        data = [p for p in data if len(p.get('candidates', [])) > 0 or p.get('id') == 'pr_ballot']
+
         # If show_uncontested_on_ballot is False, exclude uncontested positions from voting ballots
-        if not getattr(election, 'show_uncontested_on_ballot', False):
+        if not getattr(election, 'show_uncontested_on_ballot', True):
             data = [p for p in data if not p.get('is_uncontested', False)]
 
         # If election is 'mixed' or 'samanupatik', synthesize the Samānupātik PR Party-List ballot

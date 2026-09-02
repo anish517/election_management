@@ -93,7 +93,7 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
   // ACTIONS & API CALLS
   // ══════════════════════════════════════════════════════════════════════════
 
-  void _proceedToVoterId() {
+  Future<void> _proceedToVoterId() async {
     final entered = _pinController.text.trim();
     if (entered.isEmpty) {
       setState(() => _errorMessage = 'Please enter your 6-digit Secret Voting PIN');
@@ -104,11 +104,37 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
       return;
     }
     enterFullscreen();
+
     setState(() {
-      _enteredVoterPin = entered;
-      _stage = KioskStage.voterIdCheckIn;
+      _isLoading = true;
       _errorMessage = null;
     });
+
+    try {
+      final dio = ref.read(apiClientProvider);
+      final res = await dio.post(
+        ApiConstants.kioskUnlock,
+        data: {
+          'election_id': widget.electionId,
+          'pin': entered,
+          'validate_only': true,
+        },
+      );
+
+      if (res.data['valid'] == true) {
+        setState(() {
+          _enteredVoterPin = entered;
+          _stage = KioskStage.voterIdCheckIn;
+          _isLoading = false;
+          _errorMessage = null;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = _extractErrorMessage(e);
+      });
+    }
   }
 
   Future<void> _checkInVoter() async {
@@ -759,16 +785,21 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF334155))),
                 focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFF59E0B), width: 2)),
               ),
-              onSubmitted: (_) => _proceedToVoterId(),
+              onSubmitted: (_) => _isLoading ? null : _proceedToVoterId(),
             ),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               height: 52,
               child: ElevatedButton.icon(
-                onPressed: _proceedToVoterId,
-                icon: const Icon(Icons.arrow_forward_rounded, size: 20),
-                label: const Text('Next: Enter Voter ID (अगाडि बढ्नुहोस्)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                onPressed: _isLoading ? null : _proceedToVoterId,
+                icon: _isLoading
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.black87, strokeWidth: 2))
+                    : const Icon(Icons.arrow_forward_rounded, size: 20),
+                label: Text(
+                  _isLoading ? 'Verifying PIN...' : 'Next: Enter Voter ID (अगाडि बढ्नुहोस्)',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFF59E0B),
                   foregroundColor: Colors.black87,

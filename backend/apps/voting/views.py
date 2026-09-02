@@ -1772,6 +1772,19 @@ class KioskUnlockView(APIView):
                 'error': roll.ineligibility_reason or 'You are marked as ineligible to vote in this election.'
             }, status=403)
 
+        if roll.has_voted:
+            return Response({
+                'error': 'This voter has already cast their secret ballot in this election.'
+            }, status=400)
+
+        # If only pre-validating PIN for Step 1 of two-step check-in
+        if request.data.get('validate_only') is True:
+            return Response({
+                'status': 'success',
+                'valid': True,
+                'message': 'Secret PIN verified. Please proceed to enter your Voter ID.'
+            }, status=200)
+
         # Partial Election Branch Verification (Requirement 7)
         if getattr(election, 'is_partial_election', False) and election.target_branches:
             target_branches_clean = [str(b).strip().lower() for b in election.target_branches if str(b).strip()]

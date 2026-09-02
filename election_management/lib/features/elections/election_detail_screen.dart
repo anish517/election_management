@@ -551,6 +551,7 @@ class ElectionDetailScreen extends ConsumerWidget {
   Widget _buildVoterListAndClaimsSection(BuildContext context, WidgetRef ref, ElectionModel election, UserModel? user) {
     final now = DateTime.now();
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isAdmin = user?.canManageElections ?? false;
     final isObserverOrAuditor = (user?.isObserver ?? false) || (user?.isAuditor ?? false);
 
     DateTime? firstListDate = election.firstVoterListDate != null ? DateTime.tryParse(election.firstVoterListDate!) : null;
@@ -678,7 +679,7 @@ class ElectionDetailScreen extends ConsumerWidget {
                 icon: const Icon(Icons.people_outline_rounded, size: 18),
                 label: const Text('View Published Voter Roll'),
               ),
-              if (isVoterClaimOpen && !isObserverOrAuditor)
+              if (isVoterClaimOpen && !isAdmin && !isObserverOrAuditor)
                 ElevatedButton.icon(
                   onPressed: () {
                     showDialog(
@@ -723,7 +724,7 @@ class ElectionDetailScreen extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  if (!isObserverOrAuditor) ...[
+                  if (!isAdmin && !isObserverOrAuditor) ...[
                     const SizedBox(width: 8),
                     ElevatedButton.icon(
                       onPressed: () {

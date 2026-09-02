@@ -1200,68 +1200,6 @@ class VoterClaimViewSet(viewsets.ModelViewSet):
         claim.resolved_at = timezone.now()
         claim.save()
 
-        # Automated side effects if approved
-        if new_status == 'approved':
-            if claim.claim_type == 'omission':
-                existing_voter = VoterRoll.objects.filter(election=claim.election, email__iexact=claim.claimant_email).first()
-                if not existing_voter and claim.claimant_phone:
-                    existing_voter = VoterRoll.objects.filter(election=claim.election, phone=claim.claimant_phone).first()
-
-                if existing_voter:
-                    existing_voter.is_eligible = True
-                    existing_voter.ineligibility_reason = ''
-                    if claim.claimant_citizenship_number and not existing_voter.citizenship_number:
-                        existing_voter.citizenship_number = claim.claimant_citizenship_number
-                    existing_voter.save()
-                else:
-                    parts = (claim.claimant_name or '').strip().split()
-                    first_name = parts[0] if parts else ''
-                    middle_name = " ".join(parts[1:-1]) if len(parts) > 2 else ''
-                    last_name = parts[-1] if len(parts) > 1 else ''
-
-                    VoterRoll.objects.create(
-                        election=claim.election,
-                        first_name=first_name,
-                        middle_name=middle_name,
-                        last_name=last_name,
-                        email=claim.claimant_email,
-                        phone=claim.claimant_phone,
-                        citizenship_number=claim.claimant_citizenship_number,
-                        is_eligible=True,
-                    )
-            elif claim.claim_type == 'objection':
-                target_roll = claim.voter_roll
-                if not target_roll and claim.target_voter_name:
-                    from django.db.models import Q
-                    target_roll = VoterRoll.objects.filter(
-                        Q(voter_id__iexact=claim.target_voter_name)
-                        | Q(email__iexact=claim.target_voter_name)
-                        | Q(first_name__icontains=claim.target_voter_name),
-                        election=claim.election
-                    ).first()
-                if target_roll:
-                    target_roll.is_eligible = False
-                    target_roll.ineligibility_reason = f"Objection upheld: {notes or claim.description}"
-                    target_roll.save(update_fields=['is_eligible', 'ineligibility_reason'])
-            elif claim.claim_type == 'correction':
-                target_roll = claim.voter_roll
-                if not target_roll and claim.target_voter_name:
-                    from django.db.models import Q
-                    target_roll = VoterRoll.objects.filter(
-                        Q(voter_id__iexact=claim.target_voter_name)
-                        | Q(email__iexact=claim.target_voter_name)
-                        | Q(first_name__icontains=claim.target_voter_name),
-                        election=claim.election
-                    ).first()
-                if target_roll and claim.target_voter_name:
-                    parts = claim.target_voter_name.strip().split()
-                    target_roll.first_name = parts[0] if parts else ''
-                    target_roll.middle_name = " ".join(parts[1:-1]) if len(parts) > 2 else ''
-                    target_roll.last_name = parts[-1] if len(parts) > 1 else ''
-                    if claim.claimant_citizenship_number and not target_roll.citizenship_number:
-                        target_roll.citizenship_number = claim.claimant_citizenship_number
-                    target_roll.save(update_fields=['first_name', 'middle_name', 'last_name', 'citizenship_number'])
-
         # Notify claimant of resolution
         from apps.notifications.services import NotificationService
         try:

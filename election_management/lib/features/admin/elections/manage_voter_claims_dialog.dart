@@ -51,7 +51,7 @@ class _ManageVoterClaimsDialogState extends ConsumerState<ManageVoterClaimsDialo
           children: [
             Text(
               isApprove
-                  ? 'You are approving this claim as the Election Officer. This decision will be applied to the official Voter Roll and recorded in the audit log.'
+                  ? 'Confirm approval of this claim. You can manually apply any necessary corrections to the Voter Roll from the Voter Management screen.'
                   : 'Please state the grounds or notes for rejecting this claim:',
               style: const TextStyle(fontSize: 13),
             ),

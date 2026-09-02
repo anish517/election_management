@@ -93,7 +93,7 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
   // ACTIONS & API CALLS
   // ══════════════════════════════════════════════════════════════════════════
 
-  Future<void> _unlockWithPin() async {
+  void _proceedToVoterId() {
     final entered = _pinController.text.trim();
     if (entered.isEmpty) {
       setState(() => _errorMessage = 'Please enter your 6-digit Secret Voting PIN');
@@ -104,44 +104,11 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
       return;
     }
     enterFullscreen();
-
     setState(() {
       _enteredVoterPin = entered;
-      _isLoading = true;
+      _stage = KioskStage.voterIdCheckIn;
       _errorMessage = null;
     });
-
-    try {
-      final dio = ref.read(apiClientProvider);
-      final res = await dio.post(
-        ApiConstants.kioskUnlock,
-        data: {
-          'election_id': widget.electionId,
-          'pin': entered,
-        },
-      );
-
-      final data = res.data;
-      final requireOtp = data['require_otp'] as bool? ?? false;
-
-      if (requireOtp) {
-        setState(() {
-          _voterName = data['voter_name'] ?? '';
-          _voterId = data['voter_id'] ?? '';
-          _maskedPhone = data['masked_phone'] ?? '';
-          _maskedEmail = data['masked_email'] ?? '';
-          _stage = KioskStage.otpVerification;
-          _isLoading = false;
-        });
-      } else {
-        _loadBallotSession(data);
-      }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = _extractErrorMessage(e);
-      });
-    }
   }
 
   Future<void> _checkInVoter() async {
@@ -748,7 +715,7 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
             ),
             const SizedBox(height: 20),
             const Text(
-              'Enter Your Secret Voting PIN',
+              'Step 1 • Enter Your Secret PIN',
               style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
@@ -792,37 +759,21 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF334155))),
                 focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFF59E0B), width: 2)),
               ),
-              onSubmitted: (_) => _unlockWithPin(),
+              onSubmitted: (_) => _proceedToVoterId(),
             ),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               height: 52,
               child: ElevatedButton.icon(
-                onPressed: _isLoading ? null : _unlockWithPin,
-                icon: _isLoading
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.black87, strokeWidth: 2))
-                    : const Icon(Icons.lock_open_rounded, size: 20),
-                label: const Text('Unlock & Cast Vote (मतपत्र खोल्नुहोस्)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                onPressed: _proceedToVoterId,
+                icon: const Icon(Icons.arrow_forward_rounded, size: 20),
+                label: const Text('Next: Enter Voter ID (अगाडि बढ्नुहोस्)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFF59E0B),
                   foregroundColor: Colors.black87,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextButton.icon(
-              onPressed: () {
-                setState(() {
-                  _errorMessage = null;
-                  _stage = KioskStage.voterIdCheckIn;
-                });
-              },
-              icon: const Icon(Icons.badge_outlined, size: 16, color: Color(0xFF94A3B8)),
-              label: const Text(
-                'Or Check In via Voter ID / Scan QR Code (वा मतदाता परिचयपत्र/QR बाट)',
-                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12.5),
               ),
             ),
           ],

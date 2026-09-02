@@ -141,7 +141,7 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                   try {
                     final dio = ref.read(apiClientProvider);
                     final res = await dio.post(
-                      '/elections/${widget.electionId}/voter-pins/initialize-station/',
+                      ApiConstants.initializePollingStation(widget.electionId),
                       data: {
                         'station_name': nameCtrl.text.trim(),
                         'station_code': codeCtrl.text.trim(),

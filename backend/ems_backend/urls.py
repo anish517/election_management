@@ -86,6 +86,8 @@ urlpatterns = [
     path('v1/voting/kiosk/verify-otp/', KioskVerifyOTPView.as_view(), name='kiosk-verify-otp'),
     path('v1/voting/kiosk/cast/', KioskCastVoteView.as_view(), name='kiosk-cast'),
     path('v1/elections/<uuid:election_pk>/polling-stations/initialize/', PollingStationInitializeView.as_view(), name='polling-station-initialize'),
+    path('v1/elections/<uuid:election_pk>/voter-pins/initialize-station/', PollingStationInitializeView.as_view(), name='voter-pins-initialize-station'),
+    path('v1/elections/<uuid:election_pk>/voter-pins/initialize/', PollingStationInitializeView.as_view(), name='voter-pins-initialize'),
     path('v1/elections/<uuid:election_pk>/voter-pins/print-slips/', VoterPinSlipsPrintView.as_view(), name='voter-pins-print-slips'),
 
     path('v1/', include(router.urls)),

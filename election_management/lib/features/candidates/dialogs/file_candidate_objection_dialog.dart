@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/admin_providers.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../shared/models/models.dart';
 import '../../../core/utils/error_helper.dart';
 
@@ -35,6 +36,17 @@ class _FileCandidateObjectionDialogState extends ConsumerState<FileCandidateObje
   void initState() {
     super.initState();
     _selectedCandidateId = widget.preselectedCandidateId;
+    if (_selectedCandidateId == null && widget.candidates.isNotEmpty) {
+      _selectedCandidateId = widget.candidates.first.id;
+    }
+    final user = ref.read(currentUserProvider);
+    if (user != null) {
+      _nameController.text = user.fullName.isNotEmpty ? user.fullName : user.email;
+      _emailController.text = user.email;
+      if (user.phone.isNotEmpty) {
+        _phoneController.text = user.phone;
+      }
+    }
   }
 
   @override

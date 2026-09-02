@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/admin_providers.dart';
+import '../../../core/providers/app_providers.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/network/api_client.dart';
@@ -102,9 +103,9 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                   TextField(
                     controller: nameCtrl,
                     decoration: const InputDecoration(
-                      labelText: 'Station / Venue Name',
-                      border: OutlineInputBorder(),
-                      isDense: true,
+                      labelText: 'Station Name',
+                      hintText: 'e.g. Kathmandu Central Booth',
+                      prefixIcon: Icon(Icons.location_on_outlined),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -112,18 +113,18 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                     controller: codeCtrl,
                     decoration: const InputDecoration(
                       labelText: 'Station Code',
-                      border: OutlineInputBorder(),
-                      isDense: true,
+                      hintText: 'e.g. KTM-01',
+                      prefixIcon: Icon(Icons.qr_code_rounded),
                     ),
                   ),
                   const SizedBox(height: 12),
                   CheckboxListTile(
+                    title: const Text('Regenerate all existing PINs', style: TextStyle(fontSize: 13)),
+                    subtitle: const Text('Re-assign brand new secret PINs to voters who already have one', style: TextStyle(fontSize: 11)),
                     value: regenAll,
-                    onChanged: (val) => setModalState(() => regenAll = val ?? false),
-                    title: const Text('Regenerate All PINs', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    subtitle: const Text('Generates fresh unique PINs for all voters', style: TextStyle(fontSize: 11)),
-                    controlAffinity: ListTileControlAffinity.leading,
+                    onChanged: (v) => setModalState(() => regenAll = v ?? false),
                     contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
                   ),
                 ],
               ),
@@ -135,12 +136,12 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
               ),
               ElevatedButton.icon(
                 onPressed: isSubmitting ? null : () async {
-                  final messenger = ScaffoldMessenger.of(context);
                   setModalState(() => isSubmitting = true);
+                  final messenger = ScaffoldMessenger.of(context);
                   try {
                     final dio = ref.read(apiClientProvider);
                     final res = await dio.post(
-                      ApiConstants.initializePollingStation(widget.electionId),
+                      '/elections/${widget.electionId}/voter-pins/initialize-station/',
                       data: {
                         'station_name': nameCtrl.text.trim(),
                         'station_code': codeCtrl.text.trim(),
@@ -152,8 +153,15 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                     if (mounted) {
                       messenger.showSnackBar(
                         SnackBar(
-                          content: Text(res.data['message'] ?? 'Polling station initialized successfully.'),
-                          backgroundColor: Colors.green,
+                          content: Row(
+                            children: [
+                              const Icon(Icons.check_circle_rounded, color: Colors.white),
+                              const SizedBox(width: 10),
+                              Expanded(child: Text(res.data['message'] ?? 'Polling station initialized with unique PINs!')),
+                            ],
+                          ),
+                          backgroundColor: const Color(0xFF059669),
+                          behavior: SnackBarBehavior.floating,
                         ),
                       );
                     }
@@ -188,10 +196,14 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
   @override
   Widget build(BuildContext context) {
     final votersAsync = ref.watch(votersProvider(widget.electionId));
+    final electionAsync = ref.watch(electionProvider(widget.electionId));
     final user = ref.watch(currentUserProvider);
     final isAdmin = user?.canManageElections ?? false;
     final isObserverOrAuditor = (user?.isObserver ?? false) || (user?.isAuditor ?? false);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final election = electionAsync.valueOrNull;
+    final isVoterClaimOpen = election?.isVoterClaimOpen ?? false;
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.background : const Color(0xFFF8F9FA),
@@ -262,7 +274,9 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                           ? 'Official registered voter roll with management controls and verification'
                           : isObserverOrAuditor
                               ? 'Read-only voter roll for independent audit and monitoring'
-                              : 'Public voter list for verification and statutory scrutiny (दाबी-विरोध)',
+                              : isVoterClaimOpen
+                                  ? 'Public voter list for verification and statutory scrutiny (दाबी-विरोध)'
+                                  : 'Official certified voter roll (दाबी-विरोध समय समाप्त)',
                       style: TextStyle(color: isDark ? Colors.white60 : AppColors.textMuted, fontSize: 13),
                     ),
                   ],
@@ -272,7 +286,7 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                   spacing: 10,
                   runSpacing: 10,
                   children: [
-                    if (!isAdmin && !isObserverOrAuditor) ...[
+                    if (!isAdmin && !isObserverOrAuditor && isVoterClaimOpen) ...[
                       ElevatedButton.icon(
                         onPressed: () {
                           showDialog(
@@ -568,7 +582,7 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                             separatorBuilder: (context, index) => const Divider(height: 1),
                             itemBuilder: (context, index) {
                               final voter = filtered[index] as Map<String, dynamic>;
-                              return _buildTableRow(context, ref, voter, index + 1, isAdmin, isObserverOrAuditor, isDark);
+                              return _buildTableRow(context, ref, voter, index + 1, isAdmin, isObserverOrAuditor, isDark, isVoterClaimOpen);
                             },
                           );
                         },
@@ -633,6 +647,7 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
     bool isAdmin,
     bool isObserverOrAuditor,
     bool isDark,
+    bool isVoterClaimOpen,
   ) {
     final fullName = (voter['full_name'] as String?)?.trim() ?? '${voter['first_name'] ?? ''} ${voter['last_name'] ?? ''}'.trim();
     final initial = fullName.isNotEmpty ? fullName[0].toUpperCase() : 'V';
@@ -708,7 +723,7 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                       );
                     },
                   ),
-                  if (!isObserverOrAuditor)
+                  if (!isObserverOrAuditor && isVoterClaimOpen)
                     IconButton(
                       icon: const Icon(Icons.rate_review_outlined, size: 18, color: Colors.orange),
                       tooltip: 'File Claim / Correction on this Voter',

@@ -223,6 +223,33 @@ class ElectionModel {
   bool get isWebBasedOnly => isOnlineElection && onlineType == 'web_based';
   bool get isHybridDelivery => isOnlineElection && onlineType == 'hybrid';
   bool get isHybrid => isHybridDelivery;
+
+  bool get isVoterClaimOpen {
+    if (state == 'draft' ||
+        state == 'voting_open' ||
+        state == 'voting_closed' ||
+        state == 'results_provisional' ||
+        state == 'results_final' ||
+        state == 'completed' ||
+        state == 'cancelled') {
+      return false;
+    }
+    final now = DateTime.now();
+    final firstList = firstVoterListDate != null ? DateTime.tryParse(firstVoterListDate!) : null;
+    final claimDeadline = voterListClaimDate != null ? DateTime.tryParse(voterListClaimDate!) : null;
+    final finalList = finalVoterListDate != null ? DateTime.tryParse(finalVoterListDate!) : null;
+
+    if (finalList != null && now.isAfter(finalList)) {
+      return false;
+    }
+    if (firstList != null && now.isBefore(firstList)) {
+      return false;
+    }
+    if (claimDeadline != null && now.isAfter(claimDeadline)) {
+      return false;
+    }
+    return true;
+  }
 }
 
 

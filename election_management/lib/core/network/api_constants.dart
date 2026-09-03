@@ -1,11 +1,19 @@
+import 'package:flutter/foundation.dart';
+
 // API constants and environment configuration
 class ApiConstants {
   // Production / Staging dynamic override with fallback to local development:
   // Build with: flutter build web --release --dart-define=API_BASE_URL=https://api.yourdomain.com/v1
-  static const String baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://127.0.0.1:8000/v1',
-  );
+  static String get baseUrl {
+    const fromEnv = String.fromEnvironment('API_BASE_URL');
+    if (fromEnv.isNotEmpty) return fromEnv;
+    if (kIsWeb) {
+      return 'http://127.0.0.1:8000/v1';
+    }
+    // On real mobile device or emulator, default to your computer's local Wi-Fi IP
+    // so both Wi-Fi and mobile testing connect automatically without connection refused errors!
+    return 'http://192.168.110.108:8000/v1';
+  }
   static const Duration connectTimeout = Duration(seconds: 10);
   static const Duration receiveTimeout = Duration(seconds: 30);
 

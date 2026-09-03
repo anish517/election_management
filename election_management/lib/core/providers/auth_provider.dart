@@ -269,6 +269,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
         }
       }
     }
+    if (e.type == DioExceptionType.connectionError ||
+        (e.message != null && e.message!.contains('Connection refused'))) {
+      return 'Unable to reach backend server. Please verify Django is running on 0.0.0.0:8000 and your device is on the same network.';
+    }
+    if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout) {
+      return 'Connection timed out. Please check your network connection.';
+    }
     return e.response?.statusMessage ?? e.message ?? 'Network error. Please check your connection.';
   }
 }

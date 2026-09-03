@@ -155,9 +155,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         dividerColor: Colors.transparent,
         labelColor: Colors.white,
         unselectedLabelColor: isDark ? AppColors.textMuted : AppColors.textSecondaryLightMode,
+        labelPadding: const EdgeInsets.symmetric(horizontal: 6),
         tabs: const [
           Tab(text: 'Password'),
-          Tab(text: 'OTP / Phone'),
+          Tab(text: 'OTP Login'),
         ],
       ),
     );
@@ -173,6 +174,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 18),
           const SizedBox(width: 8),
@@ -186,7 +188,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   Widget _buildTabContent() {
     return SizedBox(
-      height: 320,
+      height: 350,
       child: TabBarView(
         controller: _tabController,
         children: [_buildPasswordTab(), _buildOtpTab()],
@@ -197,54 +199,57 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Widget _buildPasswordTab() {
     return Form(
       key: _emailPasswordKey,
-      child: Column(
-        children: [
-          TextFormField(
-            controller: _emailCtrl,
-            keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(
-              labelText: 'Email or Phone',
-              prefixIcon: Icon(Icons.person_outline_rounded),
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Column(
+          children: [
+            TextFormField(
+              controller: _emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                labelText: 'Email or Phone',
+                prefixIcon: Icon(Icons.person_outline_rounded),
+              ),
+              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
             ),
-            validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _passwordCtrl,
-            obscureText: !_passwordVisible,
-            decoration: InputDecoration(
-              labelText: 'Password',
-              prefixIcon: const Icon(Icons.lock_outline_rounded),
-              suffixIcon: IconButton(
-                onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
-                icon: Icon(_passwordVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _passwordCtrl,
+              obscureText: !_passwordVisible,
+              decoration: InputDecoration(
+                labelText: 'Password',
+                prefixIcon: const Icon(Icons.lock_outline_rounded),
+                suffixIcon: IconButton(
+                  onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
+                  icon: Icon(_passwordVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined),
+                ),
+              ),
+              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+              onFieldSubmitted: (_) => _loginWithPassword(),
+            ),
+            // Forgot Password link
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => context.pushNamed('forgot-password'),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('Forgot Password?', style: TextStyle(fontSize: 13)),
               ),
             ),
-            validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-            onFieldSubmitted: (_) => _loginWithPassword(),
-          ),
-          // Forgot Password link
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () => context.pushNamed('forgot-password'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: const Text('Forgot Password?', style: TextStyle(fontSize: 13)),
+            const SizedBox(height: 12),
+            LoadingButton(
+              onPressed: _loginWithPassword,
+              isLoading: _isLoading,
+              label: 'Sign In',
+              icon: Icons.login_rounded,
             ),
-          ),
-          const SizedBox(height: 12),
-          LoadingButton(
-            onPressed: _loginWithPassword,
-            isLoading: _isLoading,
-            label: 'Sign In',
-            icon: Icons.login_rounded,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -252,31 +257,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Widget _buildOtpTab() {
     return Form(
       key: _otpKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Enter your phone number or email and we\'ll send you a one-time code.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _otpIdentCtrl,
-            keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(
-              labelText: 'Phone or Email',
-              prefixIcon: Icon(Icons.phone_outlined),
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Enter your phone number or email and we\'ll send you a one-time code.',
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
-            validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-          ),
-          const SizedBox(height: 24),
-          LoadingButton(
-            onPressed: _requestOtp,
-            isLoading: _isLoading,
-            label: 'Send OTP',
-            icon: Icons.send_rounded,
-          ),
-        ],
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _otpIdentCtrl,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                labelText: 'Phone or Email',
+                prefixIcon: Icon(Icons.phone_outlined),
+              ),
+              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+            ),
+            const SizedBox(height: 24),
+            LoadingButton(
+              onPressed: _requestOtp,
+              isLoading: _isLoading,
+              label: 'Send OTP',
+              icon: Icons.send_rounded,
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -135,9 +135,11 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                 color: payment.isCorrectionRequested ? const Color(0xFFD97706) : AppColors.primary,
               ),
               const SizedBox(width: 8),
-              Text(
-                payment.isCorrectionRequested ? 'Correct & Resubmit Payment' : 'Re-submit Payment Proof',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              Expanded(
+                child: Text(
+                  payment.isCorrectionRequested ? 'Correct & Resubmit Payment' : 'Re-submit Payment Proof',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
               ),
             ],
           ),
@@ -157,13 +159,15 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Row(
-                          children: [
+                        Row(
+                          children: const [
                             Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 18),
                             SizedBox(width: 6),
-                            Text(
-                              'Officer Correction Request (सच्याउने निर्देशन):',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF92400E)),
+                            Expanded(
+                              child: Text(
+                                'Officer Correction Request (सच्याउने निर्देशन):',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF92400E)),
+                              ),
                             ),
                           ],
                         ),
@@ -588,7 +592,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
           children: const [
             Icon(Icons.warning_amber_rounded, color: Colors.orange),
             SizedBox(width: 8),
-            Text('Withdraw Candidacy?'),
+            Expanded(child: Text('Withdraw Candidacy?')),
           ],
         ),
         content: Column(
@@ -709,6 +713,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
 
           final org = ref.watch(orgProfileProvider).valueOrNull;
           final isDark = Theme.of(context).brightness == Brightness.dark;
+          final isMobile = MediaQuery.sizeOf(context).width < 600;
 
           final candidates = candidatesAsync.valueOrNull ?? [];
           final userEmail = (user?.email ?? '').trim().toLowerCase();
@@ -743,7 +748,10 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
           }
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 16 : 24,
+              vertical: isMobile ? 16 : 24,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -752,7 +760,15 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                             children: [
                               const Icon(Icons.assignment_ind_outlined, color: AppColors.primary, size: 22),
                               const SizedBox(width: 8),
-                              Text('My Nominations (मेरा उम्मेदवारीहरू)', style: Theme.of(context).textTheme.headlineSmall),
+                              Expanded(
+                                child: Text(
+                                  'My Nominations (मेरा उम्मेदवारीहरू)',
+                                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                    fontSize: isMobile ? 18 : 22,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 12),
@@ -791,13 +807,15 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Row(
+                                    Wrap(
+                                      alignment: WrapAlignment.spaceBetween,
+                                      crossAxisAlignment: WrapCrossAlignment.center,
+                                      spacing: 8,
+                                      runSpacing: 6,
                                       children: [
-                                        Expanded(
-                                          child: Text(
-                                            c.positionTitle ?? 'Position',
-                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                          ),
+                                        Text(
+                                          c.positionTitle ?? 'Position',
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                         ),
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -1013,15 +1031,23 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                                         child: Column(
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Row(
+                                            Wrap(
+                                              alignment: WrapAlignment.spaceBetween,
+                                              crossAxisAlignment: WrapCrossAlignment.center,
+                                              spacing: 8,
+                                              runSpacing: 8,
                                               children: [
-                                                const Icon(Icons.edit_note_rounded, color: Color(0xFFD97706), size: 18),
-                                                const SizedBox(width: 6),
-                                                const Text(
-                                                  'Officer Correction Note (सच्याउने निर्देशन):',
-                                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF92400E)),
+                                                Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: const [
+                                                    Icon(Icons.edit_note_rounded, color: Color(0xFFD97706), size: 18),
+                                                    SizedBox(width: 6),
+                                                    Text(
+                                                      'Officer Correction Note (सच्याउने निर्देशन):',
+                                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF92400E)),
+                                                    ),
+                                                  ],
                                                 ),
-                                                const Spacer(),
                                                 ElevatedButton.icon(
                                                   onPressed: () => _handleResubmitPayment(c),
                                                   icon: const Icon(Icons.refresh_rounded, size: 13),
@@ -1271,70 +1297,118 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                                 ],
 
                                 if (election.enableParty || election.enablePanel || election.isSamanupatik) ...[
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      if (election.enableParty || election.isSamanupatik)
-                                        Expanded(
-                                          child: TextFormField(
-                                            controller: _partyCtrl,
-                                            decoration: InputDecoration(
-                                              labelText: election.isSamanupatik ? 'Political Party (राजनीतिक दल) *' : 'Party Affiliation (दल / पार्टी)',
-                                              hintText: 'e.g. Nepali Congress, UML, RPP...',
-                                              prefixIcon: const Icon(Icons.flag_outlined),
-                                            ),
-                                            validator: (election.isSamanupatik)
-                                                ? (v) => (v == null || v.trim().isEmpty) ? 'Party affiliation is strictly required for Samānupātik' : null
-                                                : null,
-                                          ),
+                                  if (isMobile) ...[
+                                    if (election.enableParty || election.isSamanupatik) ...[
+                                      TextFormField(
+                                        controller: _partyCtrl,
+                                        decoration: InputDecoration(
+                                          labelText: election.isSamanupatik ? 'Political Party (राजनीतिक दल) *' : 'Party Affiliation (दल / पार्टी)',
+                                          hintText: 'e.g. Nepali Congress, UML, RPP...',
+                                          prefixIcon: const Icon(Icons.flag_outlined),
                                         ),
-                                      if ((election.enableParty || election.isSamanupatik) && election.enablePanel)
-                                        const SizedBox(width: 12),
-                                      if (election.enablePanel)
-                                        Expanded(
-                                          child: TextFormField(
-                                            controller: _panelCtrl,
-                                            decoration: const InputDecoration(
-                                              labelText: 'Panel / Slate (प्यानल / समूह)',
-                                              prefixIcon: Icon(Icons.group_work_outlined),
-                                            ),
-                                          ),
-                                        ),
+                                        validator: (election.isSamanupatik)
+                                            ? (v) => (v == null || v.trim().isEmpty) ? 'Party affiliation is strictly required for Samānupātik' : null
+                                            : null,
+                                      ),
+                                      const SizedBox(height: 14),
                                     ],
-                                  ),
-                                  const SizedBox(height: 16),
+                                    if (election.enablePanel) ...[
+                                      TextFormField(
+                                        controller: _panelCtrl,
+                                        decoration: const InputDecoration(
+                                          labelText: 'Panel / Slate (प्यानल / समूह)',
+                                          prefixIcon: Icon(Icons.group_work_outlined),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 14),
+                                    ],
+                                  ] else ...[
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        if (election.enableParty || election.isSamanupatik)
+                                          Expanded(
+                                            child: TextFormField(
+                                              controller: _partyCtrl,
+                                              decoration: InputDecoration(
+                                                labelText: election.isSamanupatik ? 'Political Party (राजनीतिक दल) *' : 'Party Affiliation (दल / पार्टी)',
+                                                hintText: 'e.g. Nepali Congress, UML, RPP...',
+                                                prefixIcon: const Icon(Icons.flag_outlined),
+                                              ),
+                                              validator: (election.isSamanupatik)
+                                                  ? (v) => (v == null || v.trim().isEmpty) ? 'Party affiliation is strictly required for Samānupātik' : null
+                                                  : null,
+                                            ),
+                                          ),
+                                        if ((election.enableParty || election.isSamanupatik) && election.enablePanel)
+                                          const SizedBox(width: 12),
+                                        if (election.enablePanel)
+                                          Expanded(
+                                            child: TextFormField(
+                                              controller: _panelCtrl,
+                                              decoration: const InputDecoration(
+                                                labelText: 'Panel / Slate (प्यानल / समूह)',
+                                                prefixIcon: Icon(Icons.group_work_outlined),
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                  ],
                                 ],
 
                                 if (election.enableSymbol || election.isSamanupatik) ...[
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        flex: 3,
-                                        child: TextFormField(
-                                          controller: _symbolNameCtrl,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Election Symbol Name (चुनाव चिन्ह)',
-                                            hintText: 'e.g. Sun (सूर्य), Tree (रुख), Pen (कलम)',
-                                            prefixIcon: Icon(Icons.how_to_vote_outlined),
+                                  if (isMobile) ...[
+                                    TextFormField(
+                                      controller: _symbolNameCtrl,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Election Symbol Name (चुनाव चिन्ह)',
+                                        hintText: 'e.g. Sun (सूर्य), Tree (रुख), Pen (कलम)',
+                                        prefixIcon: Icon(Icons.how_to_vote_outlined),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Center(
+                                      child: ImageUploadWidget(
+                                        initialImageUrl: _symbolImageUrl,
+                                        placeholderText: 'Upload Symbol Icon (चिन्ह)',
+                                        radius: 36,
+                                        onImageUploaded: (url) => setState(() => _symbolImageUrl = url),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                  ] else ...[
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          flex: 3,
+                                          child: TextFormField(
+                                            controller: _symbolNameCtrl,
+                                            decoration: const InputDecoration(
+                                              labelText: 'Election Symbol Name (चुनाव चिन्ह)',
+                                              hintText: 'e.g. Sun (सूर्य), Tree (रुख), Pen (कलम)',
+                                              prefixIcon: Icon(Icons.how_to_vote_outlined),
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        flex: 2,
-                                        child: Center(
-                                          child: ImageUploadWidget(
-                                            initialImageUrl: _symbolImageUrl,
-                                            placeholderText: 'Symbol Icon',
-                                            radius: 28,
-                                            onImageUploaded: (url) => setState(() => _symbolImageUrl = url),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          flex: 2,
+                                          child: Center(
+                                            child: ImageUploadWidget(
+                                              initialImageUrl: _symbolImageUrl,
+                                              placeholderText: 'Symbol Icon',
+                                              radius: 28,
+                                              onImageUploaded: (url) => setState(() => _symbolImageUrl = url),
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                  ],
                                 ],
 
                                 if (election.hasPrSystem || election.isSamanupatik) ...[
@@ -1366,10 +1440,14 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                       ),
                       const SizedBox(height: 28),
 
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 10,
+                        runSpacing: 8,
                         children: [
                           Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -1439,10 +1517,14 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                       const Divider(height: 1),
                       const SizedBox(height: 20),
 
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 10,
+                        runSpacing: 8,
                         children: [
                           Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -1700,47 +1782,97 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               border: Border(bottom: BorderSide(color: activeColor.withValues(alpha: 0.2))),
             ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: activeColor.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(activeChannel['icon'] as IconData, color: activeColor, size: 22),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isCardNarrow = constraints.maxWidth < 450;
+                if (isCardNarrow) {
+                  return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Nomination Fee Payment (उम्मेदवारी दर्ता दस्तुर)',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: activeColor.withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(activeChannel['icon'] as IconData, color: activeColor, size: 20),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Nomination Fee (उम्मेदवारी दस्तुर)',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: activeColor,
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [
+                                BoxShadow(color: activeColor.withValues(alpha: 0.3), blurRadius: 6, offset: const Offset(0, 2)),
+                              ],
+                            ),
+                            child: Text(
+                              'Rs. ${fee.toStringAsFixed(0)}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13.5),
+                            ),
+                          ),
+                        ],
                       ),
+                      const SizedBox(height: 6),
                       Text(
                         'Designation: $positionTitle',
                         style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.grey.shade700),
                       ),
                     ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: activeColor,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
-                      BoxShadow(color: activeColor.withValues(alpha: 0.3), blurRadius: 6, offset: const Offset(0, 2)),
-                    ],
-                  ),
-                  child: Text(
-                    'Rs. ${fee.toStringAsFixed(0)} NPR',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14.5),
-                  ),
-                ),
-              ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: activeColor.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(activeChannel['icon'] as IconData, color: activeColor, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Nomination Fee Payment (उम्मेदवारी दर्ता दस्तुर)',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                          Text(
+                            'Designation: $positionTitle',
+                            style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.grey.shade700),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: activeColor,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(color: activeColor.withValues(alpha: 0.3), blurRadius: 6, offset: const Offset(0, 2)),
+                        ],
+                      ),
+                      child: Text(
+                        'Rs. ${fee.toStringAsFixed(0)} NPR',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14.5),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
 
@@ -1868,50 +2000,10 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                       style: _voucherImageUrl.isNotEmpty ? BorderStyle.solid : BorderStyle.solid,
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: _voucherImageUrl.isNotEmpty
-                              ? Colors.green.withValues(alpha: 0.15)
-                              : AppColors.primary.withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          _voucherImageUrl.isNotEmpty ? Icons.receipt_long_rounded : Icons.upload_file_rounded,
-                          color: _voucherImageUrl.isNotEmpty ? Colors.green : AppColors.primary,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _voucherImageUrl.isNotEmpty
-                                  ? 'Receipt Voucher Attached'
-                                  : 'Upload Payment Voucher / Receipt Screenshot',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                color: _voucherImageUrl.isNotEmpty ? Colors.green.shade800 : null,
-                              ),
-                            ),
-                            Text(
-                              _voucherImageUrl.isNotEmpty
-                                  ? _voucherImageUrl.split("/").last
-                                  : 'PNG, JPG, PDF (Screenshot from Mobile Banking/eSewa/Khalti)',
-                              style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white60 : Colors.grey.shade600),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      ElevatedButton.icon(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isNarrow = constraints.maxWidth < 460;
+                      final uploadBtn = ElevatedButton.icon(
                         onPressed: _isUploadingVoucher
                             ? null
                             : () async {
@@ -1945,15 +2037,112 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                         icon: _isUploadingVoucher
                             ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
                             : Icon(_voucherImageUrl.isNotEmpty ? Icons.change_circle_rounded : Icons.attach_file_rounded, size: 16),
-                        label: Text(_voucherImageUrl.isNotEmpty ? 'Change' : 'Browse File'),
+                        label: Text(_voucherImageUrl.isNotEmpty ? 'Change Voucher' : 'Browse File'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _voucherImageUrl.isNotEmpty ? Colors.green.shade700 : AppColors.primary,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         ),
-                      ),
-                    ],
+                      );
+
+                      if (isNarrow) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: _voucherImageUrl.isNotEmpty
+                                        ? Colors.green.withValues(alpha: 0.15)
+                                        : AppColors.primary.withValues(alpha: 0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    _voucherImageUrl.isNotEmpty ? Icons.receipt_long_rounded : Icons.upload_file_rounded,
+                                    color: _voucherImageUrl.isNotEmpty ? Colors.green : AppColors.primary,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _voucherImageUrl.isNotEmpty
+                                        ? 'Receipt Voucher Attached'
+                                        : 'Upload Payment Voucher / Receipt',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: _voucherImageUrl.isNotEmpty ? Colors.green.shade800 : null,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              _voucherImageUrl.isNotEmpty
+                                  ? _voucherImageUrl.split("/").last
+                                  : 'PNG, JPG, PDF (Screenshot from Mobile Banking/eSewa/Khalti)',
+                              style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white60 : Colors.grey.shade600),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 10),
+                            SizedBox(width: double.infinity, child: uploadBtn),
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: _voucherImageUrl.isNotEmpty
+                                  ? Colors.green.withValues(alpha: 0.15)
+                                  : AppColors.primary.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              _voucherImageUrl.isNotEmpty ? Icons.receipt_long_rounded : Icons.upload_file_rounded,
+                              color: _voucherImageUrl.isNotEmpty ? Colors.green : AppColors.primary,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _voucherImageUrl.isNotEmpty
+                                      ? 'Receipt Voucher Attached'
+                                      : 'Upload Payment Voucher / Receipt Screenshot',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: _voucherImageUrl.isNotEmpty ? Colors.green.shade800 : null,
+                                  ),
+                                ),
+                                Text(
+                                  _voucherImageUrl.isNotEmpty
+                                      ? _voucherImageUrl.split("/").last
+                                      : 'PNG, JPG, PDF (Screenshot from Mobile Banking/eSewa/Khalti)',
+                                  style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white60 : Colors.grey.shade600),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          uploadBtn,
+                        ],
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -1986,6 +2175,26 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
       final qrPath = org?.staticQrImageUrl ?? (org?.bankQrUrl ?? '');
       final fullQrUrl = qrPath.isNotEmpty ? ApiConstants.getFullImageUrl(qrPath) : null;
 
+      final qrWidget = Container(
+        width: 130,
+        height: 130,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(11),
+          child: fullQrUrl != null
+              ? Image.network(
+                  fullQrUrl,
+                  fit: BoxFit.contain,
+                  errorBuilder: (ctx, err, stack) => _buildQrPlaceholder(activeColor, isDark),
+                )
+              : _buildQrPlaceholder(activeColor, isDark),
+        ),
+      );
+
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -1993,58 +2202,56 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: activeColor.withValues(alpha: 0.25)),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 130,
-              height: 130,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(11),
-                child: fullQrUrl != null
-                    ? Image.network(
-                        fullQrUrl,
-                        fit: BoxFit.contain,
-                        errorBuilder: (ctx, err, stack) => _buildQrPlaceholder(activeColor, isDark),
-                      )
-                    : _buildQrPlaceholder(activeColor, isDark),
-              ),
-            ),
-            const SizedBox(width: 18),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: activeColor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text('Official FonePay / Standee QR', style: TextStyle(color: activeColor, fontWeight: FontWeight.bold, fontSize: 11)),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 450;
+            final detailsWidget = Column(
+              crossAxisAlignment: isNarrow ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: activeColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Scan this QR code using any Mobile Banking App (Global IME, NIC Asia, Nabil, etc.) or FonePay.',
-                    style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.grey.shade700),
-                  ),
-                  const SizedBox(height: 8),
-                  if (org?.staticBankName.isNotEmpty == true) ...[
-                    Text('Bank: ${org!.staticBankName}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  ],
-                  if (org?.staticAccountName.isNotEmpty == true) ...[
-                    const SizedBox(height: 2),
-                    Text('A/C Name: ${org!.staticAccountName}', style: const TextStyle(fontSize: 12)),
-                  ],
+                  child: Text('Official FonePay / Standee QR', style: TextStyle(color: activeColor, fontWeight: FontWeight.bold, fontSize: 11)),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Scan this QR code using any Mobile Banking App (Global IME, NIC Asia, Nabil, etc.) or FonePay.',
+                  textAlign: isNarrow ? TextAlign.center : TextAlign.start,
+                  style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.grey.shade700),
+                ),
+                const SizedBox(height: 8),
+                if (org?.staticBankName.isNotEmpty == true) ...[
+                  Text('Bank: ${org!.staticBankName}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                 ],
-              ),
-            ),
-          ],
+                if (org?.staticAccountName.isNotEmpty == true) ...[
+                  const SizedBox(height: 2),
+                  Text('A/C Name: ${org!.staticAccountName}', style: const TextStyle(fontSize: 12)),
+                ],
+              ],
+            );
+
+            if (isNarrow) {
+              return Column(
+                children: [
+                  Center(child: qrWidget),
+                  const SizedBox(height: 14),
+                  detailsWidget,
+                ],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                qrWidget,
+                const SizedBox(width: 18),
+                Expanded(child: detailsWidget),
+              ],
+            );
+          },
         ),
       );
     }
@@ -2115,58 +2322,91 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: activeColor.withValues(alpha: 0.25)),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (hasQr && fullQrUrl != null) ...[
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(11),
-                  child: Image.network(
-                    fullQrUrl,
-                    fit: BoxFit.contain,
-                    errorBuilder: (ctx, err, stack) => _buildQrPlaceholder(activeColor, isDark),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 450;
+            final detailsWidget = Column(
+              crossAxisAlignment: isNarrow ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF60BB46).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
                   ),
+                  child: const Text('eSewa Wallet Transfer', style: TextStyle(color: Color(0xFF60BB46), fontWeight: FontWeight.bold, fontSize: 11)),
                 ),
-              ),
-              const SizedBox(width: 16),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 10),
+                _buildCopyableRow(
+                  label: 'eSewa ID / Mobile No',
+                  value: org?.staticEsewaId.isNotEmpty == true
+                      ? org!.staticEsewaId
+                      : (org?.staticWalletId.isNotEmpty == true ? org!.staticWalletId : 'Official Account'),
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '💡 Send money directly from your eSewa App to the ID above and attach the screenshot.',
+                  style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white54 : Colors.grey.shade600),
+                ),
+              ],
+            );
+
+            if (isNarrow && hasQr && fullQrUrl != null) {
+              return Column(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF60BB46).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
+                  Center(
+                    child: Container(
+                      width: 130,
+                      height: 130,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(11),
+                        child: Image.network(
+                          fullQrUrl,
+                          fit: BoxFit.contain,
+                          errorBuilder: (ctx, err, stack) => _buildQrPlaceholder(activeColor, isDark),
+                        ),
+                      ),
                     ),
-                    child: const Text('eSewa Wallet Transfer', style: TextStyle(color: Color(0xFF60BB46), fontWeight: FontWeight.bold, fontSize: 11)),
                   ),
-                  const SizedBox(height: 10),
-                  _buildCopyableRow(
-                    label: 'eSewa ID / Mobile No',
-                    value: org?.staticEsewaId.isNotEmpty == true
-                        ? org!.staticEsewaId
-                        : (org?.staticWalletId.isNotEmpty == true ? org!.staticWalletId : 'Official Account'),
-                    isDark: isDark,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '💡 Send money directly from your eSewa App to the ID above and attach the screenshot.',
-                    style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white54 : Colors.grey.shade600),
-                  ),
+                  const SizedBox(height: 14),
+                  detailsWidget,
                 ],
-              ),
-            ),
-          ],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (hasQr && fullQrUrl != null) ...[
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(11),
+                      child: Image.network(
+                        fullQrUrl,
+                        fit: BoxFit.contain,
+                        errorBuilder: (ctx, err, stack) => _buildQrPlaceholder(activeColor, isDark),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                ],
+                Expanded(child: detailsWidget),
+              ],
+            );
+          },
         ),
       );
     }
@@ -2182,58 +2422,91 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: activeColor.withValues(alpha: 0.25)),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (hasQr && fullQrUrl != null) ...[
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(11),
-                  child: Image.network(
-                    fullQrUrl,
-                    fit: BoxFit.contain,
-                    errorBuilder: (ctx, err, stack) => _buildQrPlaceholder(activeColor, isDark),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = constraints.maxWidth < 450;
+            final detailsWidget = Column(
+              crossAxisAlignment: isNarrow ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF5C2D91).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(6),
                   ),
+                  child: const Text('Khalti Wallet Transfer', style: TextStyle(color: Color(0xFF5C2D91), fontWeight: FontWeight.bold, fontSize: 11)),
                 ),
-              ),
-              const SizedBox(width: 16),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 10),
+                _buildCopyableRow(
+                  label: 'Khalti ID / Mobile No',
+                  value: org?.staticKhaltiId.isNotEmpty == true
+                      ? org!.staticKhaltiId
+                      : (org?.staticWalletId.isNotEmpty == true ? org!.staticWalletId : 'Official Account'),
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '💡 Send money directly from your Khalti App to the ID above and attach the screenshot.',
+                  style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white54 : Colors.grey.shade600),
+                ),
+              ],
+            );
+
+            if (isNarrow && hasQr && fullQrUrl != null) {
+              return Column(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF5C2D91).withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
+                  Center(
+                    child: Container(
+                      width: 130,
+                      height: 130,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(11),
+                        child: Image.network(
+                          fullQrUrl,
+                          fit: BoxFit.contain,
+                          errorBuilder: (ctx, err, stack) => _buildQrPlaceholder(activeColor, isDark),
+                        ),
+                      ),
                     ),
-                    child: const Text('Khalti Wallet Transfer', style: TextStyle(color: Color(0xFF5C2D91), fontWeight: FontWeight.bold, fontSize: 11)),
                   ),
-                  const SizedBox(height: 10),
-                  _buildCopyableRow(
-                    label: 'Khalti ID / Mobile No',
-                    value: org?.staticKhaltiId.isNotEmpty == true
-                        ? org!.staticKhaltiId
-                        : (org?.staticWalletId.isNotEmpty == true ? org!.staticWalletId : 'Official Account'),
-                    isDark: isDark,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '💡 Send money directly from your Khalti App to the ID above and attach the screenshot.',
-                    style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white54 : Colors.grey.shade600),
-                  ),
+                  const SizedBox(height: 14),
+                  detailsWidget,
                 ],
-              ),
-            ),
-          ],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (hasQr && fullQrUrl != null) ...[
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(11),
+                      child: Image.network(
+                        fullQrUrl,
+                        fit: BoxFit.contain,
+                        errorBuilder: (ctx, err, stack) => _buildQrPlaceholder(activeColor, isDark),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                ],
+                Expanded(child: detailsWidget),
+              ],
+            );
+          },
         ),
       );
     }
@@ -2366,64 +2639,117 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: primaryColor.withValues(alpha: 0.08),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              border: Border(bottom: BorderSide(color: primaryColor.withValues(alpha: 0.15))),
-            ),
-            child: Row(
-              children: [
-                Icon(roleIcon, size: 20, color: primaryColor),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        roleTitle,
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: primaryColor),
-                      ),
-                      Text(
-                        roleSubtitle,
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                      ),
-                    ],
-                  ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 500;
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: primaryColor.withValues(alpha: 0.08),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  border: Border(bottom: BorderSide(color: primaryColor.withValues(alpha: 0.15))),
                 ),
-                OutlinedButton.icon(
-                  onPressed: onPickRoster,
-                  icon: const Icon(Icons.people_outline, size: 14),
-                  label: const Text('Pick Member', style: TextStyle(fontSize: 12)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: primaryColor,
-                    side: BorderSide(color: primaryColor.withValues(alpha: 0.4)),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ),
-                if (onRemove != null) ...[
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
-                    tooltip: 'Remove',
-                    visualDensity: VisualDensity.compact,
-                    onPressed: onRemove,
-                  ),
-                ],
-              ],
-            ),
+                child: isNarrow
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(roleIcon, size: 20, color: primaryColor),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  roleTitle,
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: primaryColor),
+                                ),
+                              ),
+                              if (onRemove != null)
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
+                                  tooltip: 'Remove',
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  onPressed: onRemove,
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            roleSubtitle,
+                            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: onPickRoster,
+                              icon: const Icon(Icons.people_outline, size: 15),
+                              label: const Text('Pick from Member Roster', style: TextStyle(fontSize: 12)),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: primaryColor,
+                                side: BorderSide(color: primaryColor.withValues(alpha: 0.4)),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          Icon(roleIcon, size: 20, color: primaryColor),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  roleTitle,
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: primaryColor),
+                                ),
+                                Text(
+                                  roleSubtitle,
+                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                ),
+                              ],
+                            ),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: onPickRoster,
+                            icon: const Icon(Icons.people_outline, size: 14),
+                            label: const Text('Pick Member', style: TextStyle(fontSize: 12)),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: primaryColor,
+                              side: BorderSide(color: primaryColor.withValues(alpha: 0.4)),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
+                          if (onRemove != null) ...[
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
+                              tooltip: 'Remove',
+                              visualDensity: VisualDensity.compact,
+                              onPressed: onRemove,
+                            ),
+                          ],
+                        ],
+                      ),
+              );
+            },
           ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                Row(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 500;
+              return Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
                   children: [
-                    Expanded(
-                      child: TextFormField(
+                    if (isNarrow) ...[
+                      TextFormField(
                         controller: item.nameCtrl,
                         decoration: const InputDecoration(
                           labelText: 'Full Name *',
@@ -2431,10 +2757,8 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                         ),
                         validator: (v) => v == null || v.isEmpty ? 'Required' : null,
                       ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: TextFormField(
+                      const SizedBox(height: 12),
+                      TextFormField(
                         controller: item.phoneCtrl,
                         decoration: const InputDecoration(
                           labelText: 'Phone Number *',
@@ -2442,33 +2766,73 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                         ),
                         validator: (v) => v == null || v.isEmpty ? 'Required' : null,
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
+                      const SizedBox(height: 12),
+                      TextFormField(
                         controller: item.memIdCtrl,
                         decoration: const InputDecoration(
                           labelText: 'Voter ID / Member Code (Optional)',
                           prefixIcon: Icon(Icons.badge_outlined, size: 18),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: TextFormField(
+                      const SizedBox(height: 12),
+                      TextFormField(
                         controller: item.citizenCtrl,
                         decoration: const InputDecoration(
                           labelText: 'Citizenship / Council No (Optional)',
                           prefixIcon: Icon(Icons.credit_card_outlined, size: 18),
                         ),
                       ),
-                    ),
-                  ],
-                ),
+                    ] else ...[
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: item.nameCtrl,
+                              decoration: const InputDecoration(
+                                labelText: 'Full Name *',
+                                prefixIcon: Icon(Icons.person_outline, size: 18),
+                              ),
+                              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: TextFormField(
+                              controller: item.phoneCtrl,
+                              decoration: const InputDecoration(
+                                labelText: 'Phone Number *',
+                                prefixIcon: Icon(Icons.phone_outlined, size: 18),
+                              ),
+                              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: item.memIdCtrl,
+                              decoration: const InputDecoration(
+                                labelText: 'Voter ID / Member Code (Optional)',
+                                prefixIcon: Icon(Icons.badge_outlined, size: 18),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: TextFormField(
+                              controller: item.citizenCtrl,
+                              decoration: const InputDecoration(
+                                labelText: 'Citizenship / Council No (Optional)',
+                                prefixIcon: Icon(Icons.credit_card_outlined, size: 18),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                 const SizedBox(height: 14),
                 Row(
                   children: [
@@ -2484,9 +2848,11 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                 ),
               ],
             ),
-          ),
-        ],
+          );
+        },
       ),
-    );
+    ],
+  ),
+);
   }
 }

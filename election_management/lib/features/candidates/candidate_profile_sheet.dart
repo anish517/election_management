@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/network/api_constants.dart';
 import '../../shared/models/models.dart';
 
 /// Opens a rich candidate profile as a full-screen modal bottom sheet.
@@ -81,6 +82,8 @@ class _CandidateProfileSheetState extends State<CandidateProfileSheet>
                 ),
                 child: TabBar(
                   controller: _tabController,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
                   indicator: BoxDecoration(
                     color: AppColors.primaryLight,
                     borderRadius: BorderRadius.circular(12),
@@ -158,6 +161,40 @@ class _HeroHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final photoUrl = ApiConstants.getFullImageUrl(candidate.photoUrl);
+    final symbolUrl = ApiConstants.getFullImageUrl(candidate.symbolImage);
+    final hasValidPhoto = photoUrl != null && photoUrl.isNotEmpty;
+    final hasValidSymbol = symbolUrl != null && symbolUrl.isNotEmpty;
+
+    Widget fallbackContent = hasValidSymbol
+        ? Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Image.network(
+              symbolUrl,
+              fit: BoxFit.contain,
+              errorBuilder: (ctx, err, stack) => Center(
+                child: Text(
+                  _initials(candidate.name),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primaryLight,
+                  ),
+                ),
+              ),
+            ),
+          )
+        : Center(
+            child: Text(
+              _initials(candidate.name),
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: AppColors.primaryLight,
+              ),
+            ),
+          );
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Row(
@@ -182,36 +219,36 @@ class _HeroHeader extends StatelessWidget {
                 ],
               ),
               padding: const EdgeInsets.all(3),
-              child: CircleAvatar(
-                radius: 40,
-                backgroundColor: isDark ? const Color(0xFF27272A) : const Color(0xFFF0F3F8),
-                backgroundImage: hasPhoto ? NetworkImage(candidate.photoUrl!) : null,
-                child: !hasPhoto
-                    ? (candidate.symbolImage.isNotEmpty
-                        ? Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Image.network(
-                              candidate.symbolImage,
-                              fit: BoxFit.contain,
-                              errorBuilder: (ctx, err, stack) => Text(
-                                _initials(candidate.name),
-                                style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.primaryLight,
+              child: ClipOval(
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  color: isDark ? const Color(0xFF27272A) : const Color(0xFFF0F3F8),
+                  child: hasValidPhoto
+                      ? Image.network(
+                          photoUrl,
+                          width: 80,
+                          height: 80,
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, err, stack) => fallbackContent,
+                          loadingBuilder: (ctx, child, progress) {
+                            if (progress == null) return child;
+                            return Center(
+                              child: SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  value: progress.expectedTotalBytes != null
+                                      ? progress.cumulativeBytesLoaded / progress.expectedTotalBytes!
+                                      : null,
                                 ),
                               ),
-                            ),
-                          )
-                        : Text(
-                            _initials(candidate.name),
-                            style: const TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.primaryLight,
-                            ),
-                          ))
-                    : null,
+                            );
+                          },
+                        )
+                      : fallbackContent,
+                ),
               ),
             ),
           )
@@ -303,7 +340,7 @@ class _HeroHeader extends StatelessWidget {
                           ],
                         ),
                       ),
-                    if (candidate.panelName.isNotEmpty)
+                    if (candidate.panelName.isNotEmpty && candidate.panelName.toLowerCase() != 'null')
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
                         decoration: BoxDecoration(
@@ -457,12 +494,14 @@ class _ManifestoTab extends StatelessWidget {
               children: [
                 const Icon(Icons.menu_book_rounded, size: 18, color: AppColors.primaryLight),
                 const SizedBox(width: 8),
-                Text(
-                  'Election Manifesto & Platform Agenda (घोषणापत्र)',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87,
+                Expanded(
+                  child: Text(
+                    'Election Manifesto & Platform Agenda (घोषणापत्र)',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
                   ),
                 ),
               ],
@@ -746,12 +785,15 @@ class _EndorsementsTab extends StatelessWidget {
                   children: [
                     const Icon(Icons.draw_rounded, size: 18, color: AppColors.primaryLight),
                     const SizedBox(width: 8),
-                    Text(
-                      'Statutory Nominators & Endorsements (प्रस्तावक र समर्थक)',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black87,
+                    Expanded(
+                      child: Text(
+                        'Statutory Nominators & Endorsements (प्रस्तावक र समर्थक)',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -808,21 +850,27 @@ class _EndorsementsTab extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(roleIcon, size: 18, color: primaryColor),
-                    const SizedBox(width: 8),
-                    Text(
-                      roleTitle,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        letterSpacing: 0.3,
-                        color: primaryColor,
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(roleIcon, size: 18, color: primaryColor),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          roleTitle,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            letterSpacing: 0.3,
+                            color: primaryColor,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
@@ -894,45 +942,70 @@ class _EndorsementsTab extends StatelessWidget {
                 const SizedBox(height: 12),
 
                 // Details Grid
-                Row(
-                  children: [
-                    if (e.phone.isNotEmpty)
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Icon(Icons.phone_rounded, size: 16, color: primaryColor),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Phone Number', style: TextStyle(fontSize: 10.5, color: isDark ? Colors.white54 : Colors.grey.shade600)),
-                                  Text(e.phone, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
-                                ],
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 320;
+                    final phoneWidget = e.phone.isNotEmpty
+                        ? Row(
+                            children: [
+                              Icon(Icons.phone_rounded, size: 16, color: primaryColor),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Phone Number', style: TextStyle(fontSize: 10.5, color: isDark ? Colors.white54 : Colors.grey.shade600)),
+                                    Text(e.phone, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    if (e.citizenshipNumber.isNotEmpty)
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Icon(Icons.badge_outlined, size: 16, color: primaryColor),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Citizenship / Council No', style: TextStyle(fontSize: 10.5, color: isDark ? Colors.white54 : Colors.grey.shade600)),
-                                  Text(e.citizenshipNumber, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
-                                ],
+                            ],
+                          )
+                        : null;
+
+                    final citizenWidget = e.citizenshipNumber.isNotEmpty
+                        ? Row(
+                            children: [
+                              Icon(Icons.badge_outlined, size: 16, color: primaryColor),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Citizenship / Council No', style: TextStyle(fontSize: 10.5, color: isDark ? Colors.white54 : Colors.grey.shade600)),
+                                    Text(e.citizenshipNumber, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
+                                  ],
+                                ),
                               ),
-                            ),
+                            ],
+                          )
+                        : null;
+
+                    if (phoneWidget != null && citizenWidget != null) {
+                      if (isNarrow) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            phoneWidget,
+                            const SizedBox(height: 10),
+                            citizenWidget,
                           ],
-                        ),
-                      ),
-                  ],
+                        );
+                      }
+                      return Row(
+                        children: [
+                          Expanded(child: phoneWidget),
+                          const SizedBox(width: 8),
+                          Expanded(child: citizenWidget),
+                        ],
+                      );
+                    } else if (phoneWidget != null) {
+                      return phoneWidget;
+                    } else if (citizenWidget != null) {
+                      return citizenWidget;
+                    }
+                    return const SizedBox.shrink();
+                  },
                 ),
 
                 // Signature Image Box
@@ -971,7 +1044,7 @@ class _EndorsementsTab extends StatelessWidget {
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(6),
                             child: Image.network(
-                              e.signatureUrl,
+                              ApiConstants.getFullImageUrl(e.signatureUrl) ?? e.signatureUrl,
                               fit: BoxFit.contain,
                               errorBuilder: (ctx, err, stack) => Center(
                                 child: Text('Signature on file', style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontStyle: FontStyle.italic)),

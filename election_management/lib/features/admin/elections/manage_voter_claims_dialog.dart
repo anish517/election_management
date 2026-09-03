@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
@@ -15,15 +16,22 @@ class ManageVoterClaimsDialog extends ConsumerStatefulWidget {
 
 class _ManageVoterClaimsDialogState extends ConsumerState<ManageVoterClaimsDialog> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (mounted) {
+        ref.invalidate(voterClaimsProvider(widget.electionId));
+      }
+    });
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _tabController.dispose();
     super.dispose();
   }
@@ -150,6 +158,13 @@ class _ManageVoterClaimsDialogState extends ConsumerState<ManageVoterClaimsDialo
                         ),
                       ],
                     ),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      ref.invalidate(voterClaimsProvider(widget.electionId));
+                    },
+                    icon: const Icon(Icons.refresh_rounded),
+                    tooltip: 'Refresh Claims',
                   ),
                   IconButton(
                     onPressed: () => Navigator.pop(context),

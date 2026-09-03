@@ -105,26 +105,62 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(ctx, false),
-                        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                        child: const Text('Go Back'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: FilledButton.icon(
-                        onPressed: () => Navigator.pop(ctx, true),
-                        icon: const Icon(Icons.how_to_vote_rounded, size: 18),
-                        label: const Text('Cast My Vote (मतदान गर्नुहोस्)', style: TextStyle(fontWeight: FontWeight.bold)),
-                        style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                      ),
-                    ),
-                  ],
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 360;
+                    if (isNarrow) {
+                      return Column(
+                        children: [
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              icon: const Icon(Icons.how_to_vote_rounded, size: 18),
+                              label: const Text('Cast My Vote (मतदान गर्नुहोस्)', style: TextStyle(fontWeight: FontWeight.bold)),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFF10B981),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text('Go Back'),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                            child: const Text('Go Back'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: FilledButton.icon(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            icon: const Icon(Icons.how_to_vote_rounded, size: 18),
+                            label: const Text('Cast My Vote (मतदान गर्नुहोस्)', style: TextStyle(fontWeight: FontWeight.bold)),
+                            style: FilledButton.styleFrom(backgroundColor: const Color(0xFF10B981), padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ],
@@ -297,12 +333,15 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                                 child: CustomPaint(painter: _VoteSwastikPainter(color: Color(0xFFB91C1C))),
                               ),
                               const SizedBox(width: 8),
-                              Text(
-                                l10n.isEnglish ? 'Your Verified Selections' : (l10n.isNepali ? 'तपाईंको छनोट विवरण' : 'Your Verified Selections (तपाईंको छनोट विवरण)'),
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.white : Colors.black87,
+                              Expanded(
+                                child: Text(
+                                  l10n.isEnglish ? 'Your Verified Selections' : (l10n.isNepali ? 'तपाईंको छनोट विवरण' : 'Your Verified Selections (तपाईंको छनोट विवरण)'),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? Colors.white : Colors.black87,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
@@ -393,7 +432,7 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
               ),
 
               // Bottom Action Suite
-              _buildBottomBar(context, isDark),
+              _buildBottomBar(context, isDark, l10n),
             ],
           );
         },
@@ -751,7 +790,7 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
     );
   }
 
-  Widget _buildBottomBar(BuildContext context, bool isDark) {
+  Widget _buildBottomBar(BuildContext context, bool isDark, BallotL10n l10n) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
@@ -770,9 +809,19 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 860),
-            child: Row(
-              children: [
-                OutlinedButton.icon(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 540;
+                final submitButton = LoadingButton(
+                  onPressed: _submitVote,
+                  isLoading: _isSubmitting,
+                  label: isNarrow
+                      ? (l10n.isNepali ? 'मतदान गर्नुहोस् (Submit)' : 'Cast Secret Ballot (मतदान)')
+                      : 'Cast & Submit Secret Ballot (मतदान गर्नुहोस्)',
+                  icon: Icons.how_to_vote_rounded,
+                  backgroundColor: const Color(0xFF10B981),
+                );
+                final backButton = OutlinedButton.icon(
                   onPressed: _isSubmitting ? null : () => context.pop(),
                   icon: const Icon(Icons.arrow_back_ios_rounded, size: 14),
                   label: const Text('Back & Edit Selections'),
@@ -780,18 +829,27 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: LoadingButton(
-                    onPressed: _submitVote,
-                    isLoading: _isSubmitting,
-                    label: 'Cast & Submit Secret Ballot (मतदान गर्नुहोस्)',
-                    icon: Icons.how_to_vote_rounded,
-                    backgroundColor: const Color(0xFF10B981),
-                  ),
-                ),
-              ],
+                );
+
+                if (isNarrow) {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(width: double.infinity, child: submitButton),
+                      const SizedBox(height: 10),
+                      SizedBox(width: double.infinity, child: backButton),
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    backButton,
+                    const SizedBox(width: 16),
+                    Expanded(child: submitButton),
+                  ],
+                );
+              },
             ),
           ),
         ),

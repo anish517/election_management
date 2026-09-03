@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -322,9 +323,19 @@ class ElectionDetailScreen extends ConsumerWidget {
                     color: isDark ? const Color(0xFF27272A) : Colors.white,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: isDark ? Colors.white12 : Colors.grey.shade300),
-                    image: DecorationImage(
-                      image: NetworkImage(election.logoUrl),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(13),
+                    child: Image.network(
+                      ApiConstants.getFullImageUrl(election.logoUrl) ?? election.logoUrl,
                       fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => Center(
+                        child: Icon(
+                          Icons.how_to_vote_rounded,
+                          color: isDark ? Colors.white54 : AppColors.primary,
+                          size: 28,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -701,47 +712,90 @@ class ElectionDetailScreen extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
               ),
-              child: Row(
-                children: [
-                  const Icon(Icons.gavel_rounded, color: Colors.orange, size: 24),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isNarrow = constraints.maxWidth < 480;
+                  final objectionBtn = ElevatedButton.icon(
+                    onPressed: () {
+                      final allCandidates = election.positions.expand((p) => p.candidates).toList();
+                      showDialog(
+                        context: context,
+                        builder: (_) => FileCandidateObjectionDialog(
+                          electionId: election.id,
+                          candidates: allCandidates,
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange.shade800,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    icon: const Icon(Icons.gavel, size: 16),
+                    label: const Text('File Objection'),
+                  );
+
+                  if (isNarrow) {
+                    return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Candidate Scrutiny & Objection Window (उम्मेदवार दाबी-विरोध)',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.orange),
+                        Row(
+                          children: [
+                            const Icon(Icons.gavel_rounded, color: Colors.orange, size: 22),
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Text(
+                                'Candidate Scrutiny & Objection Window (उम्मेदवार दाबी-विरोध)',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.orange),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 8),
                         Text(
                           candClaimDeadline != null
                               ? 'Nominations are closed. You may file eligibility objections against any candidate before ${_formatIsoDate(election.candidacyClaimDate!)}.'
                               : 'Nominations are closed. You may file formal eligibility objections against candidates.',
                           style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87),
                         ),
+                        if (!isAdmin && !isObserverOrAuditor) ...[
+                          const SizedBox(height: 12),
+                          SizedBox(width: double.infinity, child: objectionBtn),
+                        ],
                       ],
-                    ),
-                  ),
-                  if (!isAdmin && !isObserverOrAuditor) ...[
-                    const SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        final allCandidates = election.positions.expand((p) => p.candidates).toList();
-                        showDialog(
-                          context: context,
-                          builder: (_) => FileCandidateObjectionDialog(
-                            electionId: election.id,
-                            candidates: allCandidates,
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade800, foregroundColor: Colors.white),
-                      icon: const Icon(Icons.gavel, size: 16),
-                      label: const Text('File Objection'),
-                    ),
-                  ],
-                ],
+                    );
+                  }
+
+                  return Row(
+                    children: [
+                      const Icon(Icons.gavel_rounded, color: Colors.orange, size: 24),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Candidate Scrutiny & Objection Window (उम्मेदवार दाबी-विरोध)',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.orange),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              candClaimDeadline != null
+                                  ? 'Nominations are closed. You may file eligibility objections against any candidate before ${_formatIsoDate(election.candidacyClaimDate!)}.'
+                                  : 'Nominations are closed. You may file formal eligibility objections against candidates.',
+                              style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (!isAdmin && !isObserverOrAuditor) ...[
+                        const SizedBox(width: 12),
+                        objectionBtn,
+                      ],
+                    ],
+                  );
+                },
               ),
             ),
           ],
@@ -803,6 +857,26 @@ class ElectionDetailScreen extends ConsumerWidget {
               label: const Text('Get Web Ballot Link (मतदान लिङ्क पाउनुहोस्)'),
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateVoting, foregroundColor: Colors.white),
             )
+          else if (kIsWeb && election.onlineType == 'mobile_app')
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.blue.withValues(alpha: 0.35)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.phone_android_rounded, color: Colors.blue, size: 18),
+                  SizedBox(width: 8),
+                  Text(
+                    'Mobile App Voting Only (मोबाइल एपबाट मात्र मतदान सम्भव छ)',
+                    style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ],
+              ),
+            )
           else
             ElevatedButton.icon(
               onPressed: () => context.pushNamed('ballot',
@@ -833,7 +907,9 @@ class ElectionDetailScreen extends ConsumerWidget {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.purple.shade700, foregroundColor: Colors.white),
           ),
 
-        if (election.hasResults || user?.isAuditor == true || user?.canManageElections == true)
+        if ((election.hasResults || user?.isAuditor == true || user?.canManageElections == true) &&
+            user?.role != 'voter' &&
+            user?.role != 'candidate')
           OutlinedButton.icon(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
@@ -1438,9 +1514,11 @@ class _PositionCard extends ConsumerWidget {
                     children: [
                       const Icon(Icons.person_off_outlined, color: Colors.grey, size: 16),
                       const SizedBox(width: 6),
-                      Text(
-                        'Withdrawn Candidates (उम्मेदवारी फिर्ता) (${withdrawnCandidates.length})',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey),
+                      Expanded(
+                        child: Text(
+                          'Withdrawn Candidates (उम्मेदवारी फिर्ता) (${withdrawnCandidates.length})',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.grey),
+                        ),
                       ),
                     ],
                   ),
@@ -1465,7 +1543,8 @@ class _CandidateTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final hasPhoto = candidate.photoUrl != null && candidate.photoUrl!.isNotEmpty;
+    final resolvedPhotoUrl = ApiConstants.getFullImageUrl(candidate.photoUrl);
+    final hasPhoto = resolvedPhotoUrl != null && resolvedPhotoUrl.isNotEmpty;
     final statusColor = _getStatusColor(candidate.status ?? '');
 
     return Padding(
@@ -1515,7 +1594,7 @@ class _CandidateTile extends ConsumerWidget {
                     child: CircleAvatar(
                       radius: 26,
                       backgroundColor: isDark ? AppColors.surface : const Color(0xFFF0F3F8),
-                      backgroundImage: hasPhoto ? NetworkImage(candidate.photoUrl!) : null,
+                      backgroundImage: hasPhoto ? NetworkImage(resolvedPhotoUrl) : null,
                       child: !hasPhoto
                           ? Text(
                               _initials(candidate.name),
@@ -1535,14 +1614,14 @@ class _CandidateTile extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 6,
+                        runSpacing: 4,
                         children: [
-                          Expanded(
-                            child: Text(
-                              candidate.name,
-                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                          Text(
+                            candidate.name,
+                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                           ),
                           if (candidate.status != null)
                             Container(

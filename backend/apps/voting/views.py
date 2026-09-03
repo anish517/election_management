@@ -42,6 +42,19 @@ class VotingViewSet(viewsets.ViewSet):
     # Roles that are NEVER allowed to cast a ballot
     _NON_VOTER_ROLES = {'org_admin', 'election_officer', 'observer', 'auditor', 'super_admin'}
 
+    @staticmethod
+    def _is_web_client(request):
+        """Detects if the request originated from a web browser rather than the mobile app."""
+        platform = request.headers.get('x-client-platform', '').lower()
+        if platform == 'web':
+            return True
+        if platform == 'mobile':
+            return False
+        ua = request.META.get('HTTP_USER_AGENT', '').lower()
+        is_browser = any(k in ua for k in ['windows', 'macintosh', 'linux', 'mozilla', 'chrome', 'safari', 'firefox', 'edge'])
+        is_mobile_app = any(k in ua for k in ['okhttp', 'dart/', 'flutter'])
+        return is_browser and not is_mobile_app
+
     @action(detail=False, methods=['get'])
     def ballot(self, request, election_pk=None):
         """Returns the structured ballot with approved candidates."""
@@ -72,6 +85,18 @@ class VotingViewSet(viewsets.ViewSet):
                 'is_secret_ballot': election.is_secret_ballot,
                 'not_eligible': True,
                 'not_eligible_reason': f'Remote online voting is disabled for this election. This is a Method 2 (Physical In-Person Venue) election. Please cast your ballot in person {venue_str}.',
+                'has_voted': False,
+                'voter_info': None,
+            })
+
+        # Check if election is Method 1 Type 1 (Mobile App Only) and accessed via web browser
+        if getattr(election, 'online_type', 'mobile_app') == 'mobile_app' and self._is_web_client(request):
+            return Response({
+                'ballot': [],
+                'allow_boycott': False,
+                'is_secret_ballot': election.is_secret_ballot,
+                'not_eligible': True,
+                'not_eligible_reason': 'This election is configured for Mobile App voting only (Method 1 Type 1). Voting from web browsers is strictly disabled. Please open the official mobile application to cast your ballot.',
                 'has_voted': False,
                 'voter_info': None,
             })
@@ -163,6 +188,12 @@ class VotingViewSet(viewsets.ViewSet):
                 status=403
             )
 
+        if getattr(roll.election, 'online_type', 'mobile_app') == 'mobile_app' and self._is_web_client(request):
+            return Response(
+                {'error': 'This election is configured for Mobile App voting only (Method 1 Type 1). Voting from web browsers is disabled. Please use the mobile application to cast your ballot.'},
+                status=403
+            )
+
         if roll.has_voted:
             return Response({'error': 'You have already cast your ballot in this election. Each voter may only vote once.'}, status=403)
 
@@ -173,12 +204,7 @@ class VotingViewSet(viewsets.ViewSet):
             token = BallotService.start_session(roll)
             if roll.verification_channel == 'unverified':
                 from django.utils import timezone
-                ua = request.META.get('HTTP_USER_AGENT', '').lower()
-                # If requested via Web Browser (Windows, Mac, Linux, Chrome, Firefox, Edge, Safari)
-                if any(k in ua for k in ['windows', 'macintosh', 'linux', 'mozilla', 'chrome', 'safari', 'firefox', 'edge']) and not any(k in ua for k in ['okhttp', 'dart/']):
-                    roll.verification_channel = 'web_email'
-                else:
-                    roll.verification_channel = 'mobile_app'
+                roll.verification_channel = 'mobile_app'
                 roll.verified_at = timezone.now()
                 roll.save(update_fields=['verification_channel', 'verified_at'])
             return Response({'session_token': token})
@@ -196,6 +222,12 @@ class VotingViewSet(viewsets.ViewSet):
             election = Election.objects.get(id=election_pk, organization=request.user.organization)
         except Election.DoesNotExist:
             return Response({'error': 'Election not found'}, status=404)
+
+        if getattr(election, 'online_type', 'mobile_app') == 'mobile_app' and self._is_web_client(request):
+            return Response(
+                {'error': 'This election is configured for Mobile App voting only (Method 1 Type 1). Voting from web browsers is disabled. Please use the mobile application to cast your ballot.'},
+                status=403
+            )
             
         serializer = CastVoteSerializer(data=request.data, context={'election': election})
         if not serializer.is_valid():

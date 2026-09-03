@@ -52,6 +52,8 @@ class UserModel {
   bool get isObserver => role == 'observer';
   bool get isAuditor => role == 'auditor';
   bool get isMember => role == 'member';
+  bool get isVoter => role == 'voter';
+  bool get isCandidate => role == 'candidate';
   bool get canManageElections => isOrgAdmin || isElectionOfficer;
 }
 

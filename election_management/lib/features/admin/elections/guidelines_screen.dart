@@ -216,18 +216,18 @@ class _GuidelinesScreenState extends ConsumerState<GuidelinesScreen> {
   }
 
   Widget _buildHeader(BuildContext context, bool isDark, bool canManage) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Column(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 650;
+
+        final titleCol = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Election Guidelines & Code of Conduct',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
             Text(
               canManage
                   ? 'Define official election regulations, campaigning rules, and voter directives.'
@@ -235,33 +235,54 @@ class _GuidelinesScreenState extends ConsumerState<GuidelinesScreen> {
               style: TextStyle(color: isDark ? Colors.white60 : AppColors.textMuted, fontSize: 13),
             ),
           ],
-        ),
-        if (canManage)
-          Row(
-            children: [
-              SegmentedButton<bool>(
-                segments: const [
-                  ButtonSegment<bool>(
-                    value: false,
-                    icon: Icon(Icons.edit_note_rounded, size: 18),
-                    label: Text('Edit'),
-                  ),
-                  ButtonSegment<bool>(
-                    value: true,
-                    icon: Icon(Icons.preview_rounded, size: 18),
-                    label: Text('Preview'),
-                  ),
-                ],
-                selected: {_isPreviewMode},
-                onSelectionChanged: (val) => setState(() => _isPreviewMode = val.first),
-                style: SegmentedButton.styleFrom(
-                  selectedBackgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                  selectedForegroundColor: AppColors.primaryLight,
-                ),
-              ),
-            ],
+        );
+
+        if (!canManage) {
+          return titleCol;
+        }
+
+        final toggleBtn = SegmentedButton<bool>(
+          segments: const [
+            ButtonSegment<bool>(
+              value: false,
+              icon: Icon(Icons.edit_note_rounded, size: 18),
+              label: Text('Edit'),
+            ),
+            ButtonSegment<bool>(
+              value: true,
+              icon: Icon(Icons.preview_rounded, size: 18),
+              label: Text('Preview'),
+            ),
+          ],
+          selected: {_isPreviewMode},
+          onSelectionChanged: (val) => setState(() => _isPreviewMode = val.first),
+          style: SegmentedButton.styleFrom(
+            selectedBackgroundColor: AppColors.primary.withValues(alpha: 0.15),
+            selectedForegroundColor: AppColors.primaryLight,
           ),
-      ],
+        );
+
+        if (isMobile) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              titleCol,
+              const SizedBox(height: 12),
+              toggleBtn,
+            ],
+          );
+        }
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(child: titleCol),
+            const SizedBox(width: 16),
+            toggleBtn,
+          ],
+        );
+      },
     );
   }
 
@@ -444,11 +465,14 @@ class _GuidelinesScreenState extends ConsumerState<GuidelinesScreen> {
               children: [
                 const Icon(Icons.verified_rounded, size: 18, color: Color(0xFF10B981)),
                 const SizedBox(width: 8),
-                const Text(
-                  'Official Statutory Document (आधिकारिक निर्देशिका)',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                const Expanded(
+                  child: Text(
+                    'Official Statutory Document (आधिकारिक निर्देशिका)',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.copy_rounded, size: 18),
                   tooltip: 'Copy Document',

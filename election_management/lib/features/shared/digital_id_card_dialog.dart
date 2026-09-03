@@ -77,10 +77,12 @@ class DigitalIdCardDialog extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 440),
-        padding: const EdgeInsets.all(20),
-        child: Column(
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 440),
+          padding: const EdgeInsets.all(18),
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -287,12 +289,15 @@ class DigitalIdCardDialog extends StatelessWidget {
                                 children: [
                                   const Icon(Icons.verified_rounded, size: 14, color: Color(0xFF10B981)),
                                   const SizedBox(width: 4),
-                                  const Text(
-                                    'Statutorily Enrolled & Eligible (योग्य मतदाता)',
-                                    style: TextStyle(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF10B981),
+                                  Expanded(
+                                    child: Text(
+                                      'Statutorily Enrolled & Eligible (योग्य मतदाता)',
+                                      style: const TextStyle(
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF10B981),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ],
@@ -431,12 +436,15 @@ class DigitalIdCardDialog extends StatelessWidget {
                                 children: [
                                   const Icon(Icons.verified_rounded, size: 13, color: Color(0xFF10B981)),
                                   const SizedBox(width: 4),
-                                  const Text(
-                                    'Certified Candidate',
-                                    style: TextStyle(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF10B981),
+                                  Expanded(
+                                    child: Text(
+                                      'Certified Candidate',
+                                      style: const TextStyle(
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF10B981),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ],
@@ -452,21 +460,28 @@ class DigitalIdCardDialog extends StatelessWidget {
                   // Bottom Seal & Auth Signature Row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Row(
-                        children: [
-                          Icon(Icons.shield_outlined, size: 14, color: primaryBadgeColor),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Official Digital Credential • निर्वाचन व्यवस्थापन प्रणाली',
-                            style: TextStyle(
-                              fontSize: 8.5,
-                              fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.white38 : Colors.grey.shade600,
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Icon(Icons.shield_outlined, size: 14, color: primaryBadgeColor),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                'Official Digital Credential • निर्वाचन व्यवस्थापन प्रणाली',
+                                style: TextStyle(
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark ? Colors.white38 : Colors.grey.shade600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
@@ -520,6 +535,7 @@ class DigitalIdCardDialog extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

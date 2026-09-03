@@ -346,6 +346,7 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = list(default_methods)
 CORS_ALLOW_HEADERS = list(default_headers) + [
     'x-organization-id',
+    'x-client-platform',
     'bypass-tunnel-reminder',
     'bypasstunnelreminder',
     'ngrok-skip-browser-warning',

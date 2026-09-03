@@ -116,13 +116,16 @@ class _FileCandidateObjectionDialogState extends ConsumerState<FileCandidateObje
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final isMobile = MediaQuery.sizeOf(context).width < 500;
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       backgroundColor: isDark ? AppColors.surface : Colors.white,
+      insetPadding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 40, vertical: 24),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 540),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(isMobile ? 18 : 24),
           child: Form(
             key: _formKey,
             child: SingleChildScrollView(
@@ -138,7 +141,7 @@ class _FileCandidateObjectionDialogState extends ConsumerState<FileCandidateObje
                           color: Colors.orange.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Icons.gavel_rounded, color: Colors.orange, size: 24),
+                        child: const Icon(Icons.gavel_rounded, color: Colors.orange, size: 22),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -147,7 +150,7 @@ class _FileCandidateObjectionDialogState extends ConsumerState<FileCandidateObje
                           children: [
                             Text(
                               'File Objection Against Candidate',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 16),
                             ),
                             Text(
                               'Candidacy Scrutiny Period (उम्मेदवार दाबी-विरोध)',
@@ -159,14 +162,16 @@ class _FileCandidateObjectionDialogState extends ConsumerState<FileCandidateObje
                       IconButton(
                         onPressed: () => Navigator.pop(context),
                         icon: const Icon(Icons.close),
+                        visualDensity: VisualDensity.compact,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 18),
                   Text('Select Candidate to Object *', style: Theme.of(context).textTheme.labelLarge),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     initialValue: _selectedCandidateId,
+                    isExpanded: true,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -174,13 +179,17 @@ class _FileCandidateObjectionDialogState extends ConsumerState<FileCandidateObje
                     items: widget.candidates.map((c) {
                       return DropdownMenuItem(
                         value: c.id,
-                        child: Text('${c.name} (${c.positionTitle ?? 'Candidate'})'),
+                        child: Text(
+                          '${c.name} (${c.positionTitle ?? 'Candidate'})',
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
                       );
                     }).toList(),
                     onChanged: (val) => setState(() => _selectedCandidateId = val),
                     validator: (v) => v == null ? 'Please select candidate' : null,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   TextFormField(
                     controller: _nameController,
                     decoration: InputDecoration(
@@ -191,31 +200,44 @@ class _FileCandidateObjectionDialogState extends ConsumerState<FileCandidateObje
                     validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _emailController,
-                          decoration: InputDecoration(
-                            labelText: 'Your Email *',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            prefixIcon: const Icon(Icons.email_outlined),
-                          ),
-                          validator: (v) => v == null || !v.contains('@') ? 'Valid email required' : null,
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isNarrow = constraints.maxWidth < 360;
+                      final emailField = TextFormField(
+                        controller: _emailController,
+                        decoration: InputDecoration(
+                          labelText: 'Your Email *',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          prefixIcon: const Icon(Icons.email_outlined),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _phoneController,
-                          decoration: InputDecoration(
-                            labelText: 'Phone Number',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            prefixIcon: const Icon(Icons.phone_outlined),
-                          ),
+                        validator: (v) => v == null || !v.contains('@') ? 'Valid email required' : null,
+                      );
+                      final phoneField = TextFormField(
+                        controller: _phoneController,
+                        decoration: InputDecoration(
+                          labelText: 'Phone Number',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          prefixIcon: const Icon(Icons.phone_outlined),
                         ),
-                      ),
-                    ],
+                      );
+
+                      if (isNarrow) {
+                        return Column(
+                          children: [
+                            emailField,
+                            const SizedBox(height: 12),
+                            phoneField,
+                          ],
+                        );
+                      }
+                      return Row(
+                        children: [
+                          Expanded(child: emailField),
+                          const SizedBox(width: 12),
+                          Expanded(child: phoneField),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -237,21 +259,23 @@ class _FileCandidateObjectionDialogState extends ConsumerState<FileCandidateObje
                     ),
                     validator: (v) => v == null || v.trim().isEmpty ? 'Grounds are required' : null,
                   ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                  const SizedBox(height: 20),
+                  Wrap(
+                    alignment: WrapAlignment.end,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 12,
+                    runSpacing: 10,
                     children: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
                         child: const Text('Cancel'),
                       ),
-                      const SizedBox(width: 12),
                       ElevatedButton.icon(
                         onPressed: _isSubmitting ? null : _submit,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.orange.shade800,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         icon: _isSubmitting

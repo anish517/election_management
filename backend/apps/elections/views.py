@@ -232,6 +232,20 @@ class ElectionViewSet(viewsets.ModelViewSet):
 
         return base_qs.filter(voter_filter).distinct()
 
+    def retrieve(self, request, *args, **kwargs):
+        election = self.get_object()
+        if election.election_type in ['samanupatik', 'mixed'] and not election.positions.filter(voting_method='samanupatik').exists():
+            Position.objects.create(
+                election=election,
+                title="Samānupātik PR Closed List (समानुपातिक बन्द सूची)",
+                seats_available=election.total_pr_seats or 10,
+                voting_method='samanupatik',
+                max_votes_per_voter=1,
+                result_order=999,
+            )
+        serializer = self.get_serializer(election)
+        return Response(serializer.data)
+
     def perform_create(self, serializer):
         org = self.request.user.organization
         kwargs = {
@@ -242,14 +256,14 @@ class ElectionViewSet(viewsets.ModelViewSet):
             kwargs['results_visibility'] = org.default_result_visibility
 
         election = serializer.save(**kwargs)
-        if election.election_type == 'samanupatik' and not election.positions.exists():
+        if election.election_type in ['samanupatik', 'mixed'] and not election.positions.filter(voting_method='samanupatik').exists():
             Position.objects.create(
                 election=election,
-                title="Samānupātik PR Representative (समानुपातिक प्रतिनिधि)",
+                title="Samānupātik PR Closed List (समानुपातिक बन्द सूची)",
                 seats_available=election.total_pr_seats or 10,
                 voting_method='samanupatik',
                 max_votes_per_voter=1,
-                result_order=1,
+                result_order=999,
             )
         log_action('election.created', self.request.user.organization, self.request.user, {
             'election_id': str(election.id),
@@ -258,14 +272,14 @@ class ElectionViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         election = serializer.save()
-        if election.election_type == 'samanupatik' and not election.positions.exists():
+        if election.election_type in ['samanupatik', 'mixed'] and not election.positions.filter(voting_method='samanupatik').exists():
             Position.objects.create(
                 election=election,
-                title="Samānupātik PR Representative (समानुपातिक प्रतिनिधि)",
+                title="Samānupātik PR Closed List (समानुपातिक बन्द सूची)",
                 seats_available=election.total_pr_seats or 10,
                 voting_method='samanupatik',
                 max_votes_per_voter=1,
-                result_order=1,
+                result_order=999,
             )
         log_action('election.updated', self.request.user.organization, self.request.user, {
             'election_id': str(election.id),

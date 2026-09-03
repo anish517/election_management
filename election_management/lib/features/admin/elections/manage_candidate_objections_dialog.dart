@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
@@ -16,15 +17,22 @@ class ManageCandidateObjectionsDialog extends ConsumerStatefulWidget {
 class _ManageCandidateObjectionsDialogState extends ConsumerState<ManageCandidateObjectionsDialog>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (mounted) {
+        ref.invalidate(candidateObjectionsProvider(widget.electionId));
+      }
+    });
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _tabController.dispose();
     super.dispose();
   }
@@ -150,6 +158,13 @@ class _ManageCandidateObjectionsDialogState extends ConsumerState<ManageCandidat
                         ),
                       ],
                     ),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      ref.invalidate(candidateObjectionsProvider(widget.electionId));
+                    },
+                    icon: const Icon(Icons.refresh_rounded),
+                    tooltip: 'Refresh Objections',
                   ),
                   IconButton(
                     onPressed: () => Navigator.pop(context),

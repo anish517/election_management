@@ -213,33 +213,69 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(ctx, false),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 360;
+                    if (isNarrow) {
+                      return Column(
+                        children: [
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              icon: const Icon(Icons.how_to_vote_rounded, size: 18),
+                              label: const Text('Cast Official Ballot', style: TextStyle(fontWeight: FontWeight.bold)),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFF10B981),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text('Review Choices'),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: const Text('Review Choices'),
+                          ),
                         ),
-                        child: const Text('Review Choices'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: FilledButton.icon(
-                        onPressed: () => Navigator.pop(ctx, true),
-                        icon: const Icon(Icons.how_to_vote_rounded, size: 18),
-                        label: const Text('Cast Official Ballot', style: TextStyle(fontWeight: FontWeight.bold)),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF10B981),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: FilledButton.icon(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            icon: const Icon(Icons.how_to_vote_rounded, size: 18),
+                            label: const Text('Cast Official Ballot', style: TextStyle(fontWeight: FontWeight.bold)),
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF10B981),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ],
+                      ],
+                    );
+                  },
                 ),
               ),
             ],
@@ -294,112 +330,159 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               l10n.secretElectronicBallot,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 16,
+                fontSize: MediaQuery.sizeOf(context).width < 600 ? 14 : 16,
                 color: isDark ? Colors.white : const Color(0xFF0F172A),
               ),
+              overflow: TextOverflow.ellipsis,
             ),
-            Text(
-              'Method 1 Type 2 • Single-Use Direct Web Ballot',
-              style: TextStyle(
-                fontSize: 11,
-                color: isDark ? Colors.white60 : Colors.grey.shade600,
+            if (MediaQuery.sizeOf(context).width >= 600)
+              Text(
+                'Method 1 Type 2 • Single-Use Direct Web Ballot',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isDark ? Colors.white60 : Colors.grey.shade600,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
           ],
         ),
         automaticallyImplyLeading: false,
         actions: [
-          // Language Switcher
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Container(
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: isDark ? Colors.white24 : Colors.grey.shade300),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildLangItem(ref, BallotLanguage.bilingual, 'द्विभाषी', isDark),
-                  _buildLangItem(ref, BallotLanguage.english, 'EN', isDark),
-                  _buildLangItem(ref, BallotLanguage.nepali, 'नेपाली', isDark),
-                ],
+          if (MediaQuery.sizeOf(context).width < 600) ...[
+            // Mobile: Compact Menu
+            PopupMenuButton<String>(
+              icon: Icon(Icons.tune_rounded, color: isDark ? Colors.white70 : const Color(0xFF0F172A), size: 20),
+              tooltip: 'Ballot Options',
+              onSelected: (val) {
+                if (val == 'lang_bi') ref.read(ballotLanguageProvider.notifier).state = BallotLanguage.bilingual;
+                if (val == 'lang_en') ref.read(ballotLanguageProvider.notifier).state = BallotLanguage.english;
+                if (val == 'lang_ne') ref.read(ballotLanguageProvider.notifier).state = BallotLanguage.nepali;
+                if (val == 'mode_single') setState(() => _isSinglePage = true);
+                if (val == 'mode_wizard') setState(() => _isSinglePage = false);
+              },
+              itemBuilder: (ctx) => [
+                const PopupMenuItem(enabled: false, child: Text('VIEW MODE (दृश्य)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold))),
+                PopupMenuItem(
+                  value: 'mode_single',
+                  child: Row(
+                    children: [
+                      Icon(Icons.article_outlined, size: 16, color: (_isSinglePage ?? true) ? AppColors.primary : null),
+                      const SizedBox(width: 8),
+                      Text(l10n.allInOneView, style: TextStyle(fontWeight: (_isSinglePage ?? true) ? FontWeight.bold : FontWeight.normal)),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'mode_wizard',
+                  child: Row(
+                    children: [
+                      Icon(Icons.view_carousel_outlined, size: 16, color: (_isSinglePage == false) ? AppColors.primary : null),
+                      const SizedBox(width: 8),
+                      Text(l10n.wizardView, style: TextStyle(fontWeight: (_isSinglePage == false) ? FontWeight.bold : FontWeight.normal)),
+                    ],
+                  ),
+                ),
+                const PopupMenuDivider(),
+                const PopupMenuItem(enabled: false, child: Text('LANGUAGE (भाषा)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold))),
+                PopupMenuItem(value: 'lang_bi', child: Text('द्विभाषी (Bilingual)', style: TextStyle(fontWeight: ballotLang == BallotLanguage.bilingual ? FontWeight.bold : FontWeight.normal))),
+                PopupMenuItem(value: 'lang_en', child: Text('English', style: TextStyle(fontWeight: ballotLang == BallotLanguage.english ? FontWeight.bold : FontWeight.normal))),
+                PopupMenuItem(value: 'lang_ne', child: Text('नेपाली', style: TextStyle(fontWeight: ballotLang == BallotLanguage.nepali ? FontWeight.bold : FontWeight.normal))),
+              ],
+            ),
+          ] else ...[
+            // Desktop: Language Switcher
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: isDark ? Colors.white24 : Colors.grey.shade300),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildLangItem(ref, BallotLanguage.bilingual, 'द्विभाषी', isDark),
+                    _buildLangItem(ref, BallotLanguage.english, 'EN', isDark),
+                    _buildLangItem(ref, BallotLanguage.nepali, 'नेपाली', isDark),
+                  ],
+                ),
               ),
             ),
-          ),
 
-          // View Mode Switcher
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Container(
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: isDark ? Colors.white24 : Colors.grey.shade300),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  InkWell(
-                    onTap: () => setState(() => _isSinglePage = true),
-                    borderRadius: const BorderRadius.horizontal(left: Radius.circular(9)),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: (_isSinglePage ?? true) ? AppColors.primary : Colors.transparent,
-                        borderRadius: const BorderRadius.horizontal(left: Radius.circular(9)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.article_outlined, size: 14, color: (_isSinglePage ?? true) ? Colors.white : (isDark ? Colors.white70 : Colors.black87)),
-                          const SizedBox(width: 4),
-                          Text(
-                            l10n.allInOneView,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: (_isSinglePage ?? true) ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+            // Desktop: View Mode Switcher
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: isDark ? Colors.white24 : Colors.grey.shade300),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      onTap: () => setState(() => _isSinglePage = true),
+                      borderRadius: const BorderRadius.horizontal(left: Radius.circular(9)),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: (_isSinglePage ?? true) ? AppColors.primary : Colors.transparent,
+                          borderRadius: const BorderRadius.horizontal(left: Radius.circular(9)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.article_outlined, size: 14, color: (_isSinglePage ?? true) ? Colors.white : (isDark ? Colors.white70 : Colors.black87)),
+                            const SizedBox(width: 4),
+                            Text(
+                              l10n.allInOneView,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: (_isSinglePage ?? true) ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  InkWell(
-                    onTap: () => setState(() => _isSinglePage = false),
-                    borderRadius: const BorderRadius.horizontal(right: Radius.circular(9)),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: (_isSinglePage == false) ? AppColors.primary : Colors.transparent,
-                        borderRadius: const BorderRadius.horizontal(right: Radius.circular(9)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.view_carousel_outlined, size: 14, color: (_isSinglePage == false) ? Colors.white : (isDark ? Colors.white70 : Colors.black87)),
-                          const SizedBox(width: 4),
-                          Text(
-                            l10n.wizardView,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: (_isSinglePage == false) ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                    InkWell(
+                      onTap: () => setState(() => _isSinglePage = false),
+                      borderRadius: const BorderRadius.horizontal(right: Radius.circular(9)),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: (_isSinglePage == false) ? AppColors.primary : Colors.transparent,
+                          borderRadius: const BorderRadius.horizontal(right: Radius.circular(9)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.view_carousel_outlined, size: 14, color: (_isSinglePage == false) ? Colors.white : (isDark ? Colors.white70 : Colors.black87)),
+                            const SizedBox(width: 4),
+                            Text(
+                              l10n.wizardView,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: (_isSinglePage == false) ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
+          ],
 
           // Duration Stopwatch
           Padding(
@@ -557,6 +640,7 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
   ) {
     final completedCount = ref.read(ballotSelectionsProvider.notifier).completedContestsCount(positions);
     final allDecided = completedCount == positions.length;
+    final isMobile = MediaQuery.sizeOf(context).width < 500;
 
     return Column(
       children: [
@@ -575,7 +659,7 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
           ),
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 24, vertical: isMobile ? 12 : 16),
             child: Column(
               children: [
                 _buildOfficialHeader(data, isDark, l10n),
@@ -602,7 +686,7 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
 
         // Bottom Action Bar
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: EdgeInsets.symmetric(horizontal: isMobile ? 14 : 24, vertical: isMobile ? 12 : 16),
           decoration: BoxDecoration(
             color: isDark ? AppColors.surface : Colors.white,
             border: Border(top: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200)),
@@ -616,10 +700,12 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
           ),
           child: SafeArea(
             top: false,
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 480;
+
+                final contestPill = Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: allDecided ? Colors.green.withValues(alpha: 0.12) : AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
@@ -630,17 +716,25 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(allDecided ? Icons.check_circle_rounded : Icons.info_outline_rounded, size: 16, color: allDecided ? Colors.green : AppColors.primaryLight),
-                      const SizedBox(width: 8),
+                      Icon(
+                        allDecided ? Icons.check_circle_rounded : Icons.info_outline_rounded,
+                        size: 15,
+                        color: allDecided ? Colors.green : AppColors.primaryLight,
+                      ),
+                      const SizedBox(width: 6),
                       Text(
                         l10n.contestsDecidedCount(completedCount, positions.length),
-                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: allDecided ? Colors.green : AppColors.primaryLight),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: allDecided ? Colors.green : AppColors.primaryLight,
+                        ),
                       ),
                     ],
                   ),
-                ),
-                const Spacer(),
-                FilledButton.icon(
+                );
+
+                final submitButton = FilledButton.icon(
                   onPressed: _isCasting ? null : () => _submitDirectBallot(data, l10n),
                   icon: _isCasting
                       ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
@@ -651,11 +745,31 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
                   ),
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFF10B981),
-                    padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 15),
+                    padding: EdgeInsets.symmetric(horizontal: isNarrow ? 16 : 26, vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                ),
-              ],
+                );
+
+                if (isNarrow) {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Align(alignment: Alignment.centerLeft, child: contestPill),
+                      const SizedBox(height: 10),
+                      SizedBox(width: double.infinity, child: submitButton),
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    contestPill,
+                    const Spacer(),
+                    submitButton,
+                  ],
+                );
+              },
             ),
           ),
         ),
@@ -673,37 +787,44 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
   ) {
     final progressValue = (_currentIndex + 1) / positions.length;
     final isLastStep = _currentIndex == positions.length - 1;
+    final isMobile = MediaQuery.sizeOf(context).width < 500;
 
     return Column(
       children: [
         Container(
           color: isDark ? AppColors.surface : Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 20, vertical: 10),
           child: Column(
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(6),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            l10n.contestStepProgress(_currentIndex + 1, positions.length),
+                            style: const TextStyle(color: AppColors.primaryLight, fontWeight: FontWeight.bold, fontSize: 11.5),
+                          ),
                         ),
-                        child: Text(
-                          l10n.contestStepProgress(_currentIndex + 1, positions.length),
-                          style: const TextStyle(color: AppColors.primaryLight, fontWeight: FontWeight.bold, fontSize: 11.5),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            l10n.translatePositionTitle(positions[_currentIndex].title),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        l10n.translatePositionTitle(positions[_currentIndex].title),
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   Text(
                     l10n.percentCompleted((progressValue * 100).toInt()),
                     style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: isDark ? Colors.white60 : Colors.grey.shade600),
@@ -731,7 +852,7 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
             itemCount: positions.length,
             itemBuilder: (context, i) {
               return SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 24, vertical: isMobile ? 12 : 16),
                 child: Column(
                   children: [
                     if (i == 0) _buildOfficialHeader(data, isDark, l10n),
@@ -753,35 +874,55 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
         ),
         // Wizard Controls
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: EdgeInsets.symmetric(horizontal: isMobile ? 14 : 24, vertical: isMobile ? 12 : 16),
           decoration: BoxDecoration(
             color: isDark ? AppColors.surface : Colors.white,
             border: Border(top: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200)),
           ),
           child: SafeArea(
             top: false,
-            child: Row(
-              children: [
-                if (_currentIndex > 0)
-                  OutlinedButton.icon(
-                    onPressed: () => _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
-                    icon: const Icon(Icons.arrow_back_ios_rounded, size: 14),
-                    label: Text(l10n.previousContest),
-                  ),
-                const Spacer(),
-                FilledButton.icon(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 420;
+
+                final prevBtn = _currentIndex > 0
+                    ? OutlinedButton.icon(
+                        onPressed: () => _pageController.previousPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
+                        icon: const Icon(Icons.arrow_back_ios_rounded, size: 13),
+                        label: Text(l10n.previousContest, style: TextStyle(fontSize: isNarrow ? 12 : 13)),
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(horizontal: isNarrow ? 10 : 16, vertical: 12),
+                        ),
+                      )
+                    : null;
+
+                final nextBtn = FilledButton.icon(
                   onPressed: isLastStep
                       ? () => _submitDirectBallot(data, l10n)
                       : () => _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut),
-                  icon: Icon(isLastStep ? Icons.how_to_vote_rounded : Icons.arrow_forward_ios_rounded, size: 16),
-                  label: Text(isLastStep ? l10n.reviewAndSignBallot : l10n.nextContest, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  icon: Icon(isLastStep ? Icons.how_to_vote_rounded : Icons.arrow_forward_ios_rounded, size: 15),
+                  label: Text(
+                    isLastStep ? l10n.reviewAndSignBallot : l10n.nextContest,
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: isNarrow ? 12 : 13.5),
+                  ),
                   style: FilledButton.styleFrom(
                     backgroundColor: isLastStep ? const Color(0xFF10B981) : AppColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                    padding: EdgeInsets.symmetric(horizontal: isNarrow ? 14 : 22, vertical: 13),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                ),
-              ],
+                );
+
+                return Row(
+                  children: [
+                    if (prevBtn != null) ...[
+                      prevBtn,
+                      const SizedBox(width: 8),
+                    ],
+                    const Spacer(),
+                    isNarrow ? Flexible(child: nextBtn) : nextBtn,
+                  ],
+                );
+              },
             ),
           ),
         ),
@@ -797,6 +938,7 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
     final nepaliDateFormatted = '${BallotL10n.toNepaliDigits(NepaliDateFormat('yyyy/MM/dd').format(nepaliNow))} वि.सं.';
     final votingDate = l10n.isEnglish ? engDateStr : (l10n.isNepali ? nepaliDateFormatted : nepaliDateStr);
     final votingTime = l10n.isNepali ? BallotL10n.toNepaliDigits(DateFormat('hh:mm a').format(now)) : DateFormat('hh:mm a').format(now);
+    final isMobile = MediaQuery.sizeOf(context).width < 500;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
@@ -819,7 +961,7 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
         children: [
           // Top Red Stamp Banner with Swastik
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 20, vertical: isMobile ? 10 : 14),
             decoration: BoxDecoration(
               gradient: isDark
                   ? const LinearGradient(colors: [Color(0xFF331317), Color(0xFF1E293B)], begin: Alignment.topLeft, end: Alignment.bottomRight)
@@ -827,33 +969,42 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
               borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
               border: Border(bottom: BorderSide(color: isDark ? Colors.white10 : const Color(0xFFB91C1C).withValues(alpha: 0.15))),
             ),
-            child: Row(
-              children: [
-                SizedBox(width: 38, height: 38, child: CustomPaint(painter: const _SwastikPainter(color: Color(0xFFB91C1C)))),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
+            child: isMobile
+                ? Column(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2.5),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFB91C1C).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFFB91C1C).withValues(alpha: 0.25)),
-                        ),
-                        child: Text(
-                          l10n.officialBallotBadge,
-                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5, color: Color(0xFFB91C1C), letterSpacing: 1.2),
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(width: 26, height: 26, child: CustomPaint(painter: const _SwastikPainter(color: Color(0xFFB91C1C)))),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFB91C1C).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: const Color(0xFFB91C1C).withValues(alpha: 0.25)),
+                            ),
+                            child: Text(
+                              l10n.officialBallotBadge,
+                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11.5, color: Color(0xFFB91C1C), letterSpacing: 1.1),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          SizedBox(width: 26, height: 26, child: CustomPaint(painter: const _SwastikPainter(color: Color(0xFFB91C1C)))),
+                        ],
                       ),
-                      const SizedBox(height: 6),
-                      Text(data.electionTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
+                      Text(
+                        data.electionTitle,
+                        style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
                       Wrap(
                         alignment: WrapAlignment.center,
                         crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 14,
-                        runSpacing: 6,
+                        spacing: 10,
+                        runSpacing: 4,
                         children: [
                           _buildInlineMetaItem(Icons.person_outline_rounded, l10n.voterNameLabel, data.voterName.isNotEmpty ? data.voterName : l10n.authenticatedVoter, isDark),
                           _buildDotDivider(isDark),
@@ -865,17 +1016,56 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
                         ],
                       ),
                     ],
+                  )
+                : Row(
+                    children: [
+                      SizedBox(width: 38, height: 38, child: CustomPaint(painter: const _SwastikPainter(color: Color(0xFFB91C1C)))),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2.5),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFB91C1C).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: const Color(0xFFB91C1C).withValues(alpha: 0.25)),
+                              ),
+                              child: Text(
+                                l10n.officialBallotBadge,
+                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5, color: Color(0xFFB91C1C), letterSpacing: 1.2),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(data.electionTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 14,
+                              runSpacing: 6,
+                              children: [
+                                _buildInlineMetaItem(Icons.person_outline_rounded, l10n.voterNameLabel, data.voterName.isNotEmpty ? data.voterName : l10n.authenticatedVoter, isDark),
+                                _buildDotDivider(isDark),
+                                _buildInlineMetaItem(Icons.badge_outlined, l10n.voterIdLabel, data.voterId.isNotEmpty ? data.voterId : '—', isDark),
+                                _buildDotDivider(isDark),
+                                _buildInlineMetaItem(Icons.calendar_today_outlined, l10n.votingDateLabel, votingDate, isDark),
+                                _buildDotDivider(isDark),
+                                _buildInlineMetaItem(Icons.access_time_rounded, l10n.votingTimeLabel, votingTime, isDark),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      SizedBox(width: 38, height: 38, child: CustomPaint(painter: const _SwastikPainter(color: Color(0xFFB91C1C)))),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 16),
-                SizedBox(width: 38, height: 38, child: CustomPaint(painter: const _SwastikPainter(color: Color(0xFFB91C1C)))),
-              ],
-            ),
           ),
 
           // Security Badge Strip
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 16, vertical: 8),
             decoration: BoxDecoration(
               color: isDark ? Colors.black.withValues(alpha: 0.25) : const Color(0xFFF8FAFC),
               borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
@@ -885,10 +1075,19 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.verified_user_outlined, size: 14, color: isDark ? Colors.blue.shade300 : const Color(0xFF2563EB)),
-                const SizedBox(width: 8),
-                Text(
-                  'End-to-End Cryptographically Sealed Ballot • Single-Use Magic Link',
-                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: isDark ? Colors.white70 : const Color(0xFF475569)),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    'End-to-End Cryptographically Sealed Ballot • Single-Use Magic Link',
+                    style: TextStyle(
+                      fontSize: isMobile ? 10.5 : 11.5,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? Colors.white70 : const Color(0xFF475569),
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
@@ -973,6 +1172,7 @@ class _DirectPositionCardState extends ConsumerState<_DirectPositionCard> {
     final l10n = widget.l10n;
     final positionSelections = selections[position.id] ?? [];
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isMobile = MediaQuery.sizeOf(context).width < 500;
 
     return Container(
       decoration: BoxDecoration(
@@ -989,7 +1189,7 @@ class _DirectPositionCardState extends ConsumerState<_DirectPositionCard> {
         children: [
           // Position Header
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(isMobile ? 12 : 20),
             decoration: BoxDecoration(
               color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.3) : const Color(0xFFF8FAFC),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(19)),
@@ -998,19 +1198,22 @@ class _DirectPositionCardState extends ConsumerState<_DirectPositionCard> {
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(isMobile ? 8 : 10),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.military_tech_rounded, color: AppColors.primaryLight, size: 22),
+                  child: Icon(Icons.military_tech_rounded, color: AppColors.primaryLight, size: isMobile ? 20 : 22),
                 ),
-                const SizedBox(width: 14),
+                SizedBox(width: isMobile ? 10 : 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(l10n.translatePositionTitle(position.title), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+                      Text(
+                        l10n.translatePositionTitle(position.title),
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: isMobile ? 15 : 17),
+                      ),
                       const SizedBox(height: 2),
                       Text(
                         position.isSamanupatik
@@ -1020,14 +1223,17 @@ class _DirectPositionCardState extends ConsumerState<_DirectPositionCard> {
                                     ? '१ राजनीतिक दल वा चुनाव चिन्ह छनोट गर्नुहोस्'
                                     : 'Select 1 Political Party / Symbol (१ राजनीतिक दल वा चुनाव चिन्ह छनोट गर्नुहोस्)'))
                             : l10n.selectionInstruction(position.effectiveMaxVotes),
-                        style: TextStyle(color: isDark ? Colors.white60 : AppColors.textMuted, fontSize: 12),
+                        style: TextStyle(color: isDark ? Colors.white60 : AppColors.textMuted, fontSize: isMobile ? 11.5 : 12),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
                 // Counter Badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: positionSelections.length == position.effectiveMaxVotes
                         ? Colors.green.withValues(alpha: 0.15)
@@ -1044,7 +1250,7 @@ class _DirectPositionCardState extends ConsumerState<_DirectPositionCard> {
                     style: TextStyle(
                       color: positionSelections.length == position.effectiveMaxVotes ? Colors.green : (positionSelections.isNotEmpty ? AppColors.primaryLight : (isDark ? Colors.white60 : Colors.grey.shade700)),
                       fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                      fontSize: isMobile ? 11 : 12,
                     ),
                   ),
                 ),
@@ -1055,7 +1261,7 @@ class _DirectPositionCardState extends ConsumerState<_DirectPositionCard> {
           // In-Contest Search Filter (for positions with 8 or more candidates)
           if (position.candidates.length >= 8)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 20, vertical: 8),
               child: TextField(
                 decoration: InputDecoration(
                   prefixIcon: const Icon(Icons.search, size: 18),
@@ -1084,7 +1290,7 @@ class _DirectPositionCardState extends ConsumerState<_DirectPositionCard> {
 
           // Candidates Grid
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(isMobile ? 12 : 20),
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final filteredCandidates = _searchQuery.isEmpty
@@ -1117,7 +1323,7 @@ class _DirectPositionCardState extends ConsumerState<_DirectPositionCard> {
                 } else {
                   crossAxisCount = 1;
                 }
-                const spacing = 20.0;
+                final spacing = isMobile ? 12.0 : 20.0;
                 final totalSpacing = spacing * (crossAxisCount - 1);
                 final itemWidth = (constraints.maxWidth - totalSpacing) / crossAxisCount;
 
@@ -1154,7 +1360,7 @@ class _DirectPositionCardState extends ConsumerState<_DirectPositionCard> {
 
           // NOTA Card
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            padding: EdgeInsets.fromLTRB(isMobile ? 12 : 20, 0, isMobile ? 12 : 20, isMobile ? 12 : 20),
             child: _DirectNoVoteTile(
               isNoVote: ref.read(ballotSelectionsProvider.notifier).isNoVote(position.id),
               l10n: l10n,
@@ -1197,6 +1403,8 @@ class _DirectCandidateTile extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     const stampColor = Color(0xFFB91C1C);
     final primaryColor = isSelected ? stampColor : AppColors.primary;
+    final isMobile = MediaQuery.sizeOf(context).width < 500;
+    final boxSize = isMobile ? 62.0 : 76.0;
 
     final fullPhotoUrl = ApiConstants.getFullImageUrl(candidate.photoUrl);
     final hasValidPhoto = enableCandidatePhoto && (fullPhotoUrl != null && fullPhotoUrl.isNotEmpty);
@@ -1235,75 +1443,80 @@ class _DirectCandidateTile extends StatelessWidget {
         child: Stack(
           children: [
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(isMobile ? 12 : 16),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Candidate Portrait / Large Symbol Box
-                  _buildVisualBox(context, isDark, hasValidPhoto, fullPhotoUrl, hasSymbolImage, hasSymbolName),
-                  const SizedBox(width: 14),
+                  _buildVisualBox(context, isDark, hasValidPhoto, fullPhotoUrl, hasSymbolImage, hasSymbolName, boxSize, isMobile),
+                  SizedBox(width: isMobile ? 10 : 14),
 
                   // Candidate Details
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Name & Symbol Badge
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
+                        // Name & Symbol Badge (with right clearance for VOTED badge)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 32),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
                                 candidate.name,
                                 style: TextStyle(
                                   fontWeight: FontWeight.w800,
-                                  fontSize: 15.5,
+                                  fontSize: isMobile ? 14.5 : 15.5,
                                   letterSpacing: -0.2,
                                   color: isSelected ? stampColor : (isDark ? Colors.white : const Color(0xFF0F172A)),
                                 ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                            if (hasSymbolName) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.2 : 0.12),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.how_to_vote_rounded, size: 12, color: Color(0xFFD97706)),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      candidate.symbolName,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309),
+                              if (hasSymbolName) ...[
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.2 : 0.12),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.how_to_vote_rounded, size: 11, color: Color(0xFFD97706)),
+                                      const SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          candidate.symbolName,
+                                          style: TextStyle(
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309),
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
 
                         // Badges Row: Party, Slate/Panel, Quota, PR Rank
                         if (hasParty || hasPanel || (candidate.quotaName != null && candidate.quotaName!.isNotEmpty) || (isSamanupatik && candidate.prRank > 0)) ...[
                           const SizedBox(height: 6),
                           Wrap(
-                            spacing: 6,
-                            runSpacing: 5,
+                            spacing: 5,
+                            runSpacing: 4,
                             children: [
                               if (hasParty)
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                                   decoration: BoxDecoration(
                                     color: isDark ? const Color(0xFF1E3A8A).withValues(alpha: 0.35) : const Color(0xFFEFF6FF),
                                     borderRadius: BorderRadius.circular(6),
@@ -1312,18 +1525,22 @@ class _DirectCandidateTile extends StatelessWidget {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.flag_rounded, size: 12, color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB)),
-                                      const SizedBox(width: 4.5),
-                                      Text(
-                                        candidate.partyName,
-                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: isDark ? const Color(0xFFBFDBFE) : const Color(0xFF1D4ED8)),
+                                      Icon(Icons.flag_rounded, size: 11, color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB)),
+                                      const SizedBox(width: 4),
+                                      ConstrainedBox(
+                                        constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width - (isMobile ? 140 : 220)),
+                                        child: Text(
+                                          candidate.partyName,
+                                          style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: isDark ? const Color(0xFFBFDBFE) : const Color(0xFF1D4ED8)),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
                               if (hasPanel)
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                                   decoration: BoxDecoration(
                                     color: isDark ? const Color(0xFF581C87).withValues(alpha: 0.35) : const Color(0xFFFAF5FF),
                                     borderRadius: BorderRadius.circular(6),
@@ -1332,18 +1549,22 @@ class _DirectCandidateTile extends StatelessWidget {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.groups_rounded, size: 12, color: isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED)),
-                                      const SizedBox(width: 4.5),
-                                      Text(
-                                        panelText,
-                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: isDark ? const Color(0xFFE9D5FF) : const Color(0xFF6D28D9)),
+                                      Icon(Icons.groups_rounded, size: 11, color: isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED)),
+                                      const SizedBox(width: 4),
+                                      ConstrainedBox(
+                                        constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width - (isMobile ? 140 : 220)),
+                                        child: Text(
+                                          panelText,
+                                          style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: isDark ? const Color(0xFFE9D5FF) : const Color(0xFF6D28D9)),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
                               if (candidate.quotaName != null && candidate.quotaName!.isNotEmpty)
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
                                     color: Colors.teal.withValues(alpha: isDark ? 0.2 : 0.1),
                                     borderRadius: BorderRadius.circular(6),
@@ -1351,12 +1572,12 @@ class _DirectCandidateTile extends StatelessWidget {
                                   ),
                                   child: Text(
                                     candidate.quotaName!,
-                                    style: TextStyle(color: isDark ? Colors.teal.shade200 : Colors.teal.shade800, fontSize: 10.5, fontWeight: FontWeight.bold),
+                                    style: TextStyle(color: isDark ? Colors.teal.shade200 : Colors.teal.shade800, fontSize: 10, fontWeight: FontWeight.bold),
                                   ),
                                 ),
                               if (isSamanupatik && candidate.prRank > 0)
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
                                     color: Colors.indigo.withValues(alpha: isDark ? 0.25 : 0.1),
                                     borderRadius: BorderRadius.circular(6),
@@ -1364,7 +1585,7 @@ class _DirectCandidateTile extends StatelessWidget {
                                   ),
                                   child: Text(
                                     l10n.isNepali ? 'समानुपातिक #${BallotL10n.toNepaliDigits(candidate.prRank)}' : 'PR Rank #${candidate.prRank}',
-                                    style: TextStyle(color: isDark ? Colors.indigo.shade200 : Colors.indigo.shade800, fontSize: 10.5, fontWeight: FontWeight.bold),
+                                    style: TextStyle(color: isDark ? Colors.indigo.shade200 : Colors.indigo.shade800, fontSize: 10, fontWeight: FontWeight.bold),
                                   ),
                                 ),
                             ],
@@ -1378,7 +1599,7 @@ class _DirectCandidateTile extends StatelessWidget {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 11.5,
                               color: isDark ? Colors.white70 : const Color(0xFF475569),
                               height: 1.35,
                             ),
@@ -1392,12 +1613,12 @@ class _DirectCandidateTile extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.info_outline_rounded, size: 13, color: primaryColor),
+                              Icon(Icons.info_outline_rounded, size: 12, color: primaryColor),
                               const SizedBox(width: 4),
                               Text(
                                 l10n.viewCandidateDossier,
                                 style: TextStyle(
-                                  fontSize: 11.5,
+                                  fontSize: 11,
                                   color: primaryColor,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -1416,7 +1637,7 @@ class _DirectCandidateTile extends StatelessWidget {
               right: 10,
               child: isSelected
                   ? Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
                       decoration: BoxDecoration(
                         color: stampColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(8),
@@ -1426,21 +1647,21 @@ class _DirectCandidateTile extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           SizedBox(
-                            width: 14,
-                            height: 14,
+                            width: 12,
+                            height: 12,
                             child: CustomPaint(painter: const _SwastikPainter(color: stampColor)),
                           ),
                           const SizedBox(width: 4),
                           Text(
                             l10n.isNepali ? 'छाप लगाइयो' : 'VOTED',
-                            style: const TextStyle(color: stampColor, fontSize: 10.5, fontWeight: FontWeight.bold),
+                            style: const TextStyle(color: stampColor, fontSize: 10, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
                     )
                   : Container(
-                      width: 24,
-                      height: 24,
+                      width: 22,
+                      height: 22,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(color: isDark ? Colors.white24 : Colors.grey.shade400, width: 1.5),
@@ -1460,9 +1681,9 @@ class _DirectCandidateTile extends StatelessWidget {
     String? fullPhotoUrl,
     bool hasSymbolImage,
     bool hasSymbolName,
+    double boxSize,
+    bool isMobile,
   ) {
-    const boxSize = 76.0;
-
     // Case 1: Photo enabled & available
     if (hasValidPhoto) {
       return Stack(
@@ -1480,7 +1701,7 @@ class _DirectCandidateTile extends StatelessWidget {
               child: Image.network(
                 fullPhotoUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (ctx, err, stack) => _buildPlaceholder(),
+                errorBuilder: (ctx, err, stack) => _buildPlaceholder(boxSize, isMobile),
               ),
             ),
           ),
@@ -1489,8 +1710,8 @@ class _DirectCandidateTile extends StatelessWidget {
               bottom: 0,
               right: 0,
               child: Container(
-                width: 28,
-                height: 28,
+                width: isMobile ? 22 : 28,
+                height: isMobile ? 22 : 28,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   shape: BoxShape.circle,
@@ -1501,11 +1722,11 @@ class _DirectCandidateTile extends StatelessWidget {
                 ),
                 child: ClipOval(
                   child: Padding(
-                    padding: const EdgeInsets.all(2.5),
+                    padding: const EdgeInsets.all(2),
                     child: Image.network(
-                      candidate.symbolImage,
+                      ApiConstants.getFullImageUrl(candidate.symbolImage) ?? candidate.symbolImage,
                       fit: BoxFit.contain,
-                      errorBuilder: (ctx, err, stack) => const Icon(Icons.star, size: 14, color: Colors.amber),
+                      errorBuilder: (ctx, err, stack) => Icon(Icons.star, size: isMobile ? 11 : 14, color: Colors.amber),
                     ),
                   ),
                 ),
@@ -1539,9 +1760,9 @@ class _DirectCandidateTile extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: Image.network(
-            candidate.symbolImage,
+            ApiConstants.getFullImageUrl(candidate.symbolImage) ?? candidate.symbolImage,
             fit: BoxFit.contain,
-            errorBuilder: (ctx, err, stack) => _buildPlaceholder(),
+            errorBuilder: (ctx, err, stack) => _buildPlaceholder(boxSize, isMobile),
           ),
         ),
       );
@@ -1564,12 +1785,12 @@ class _DirectCandidateTile extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.how_to_vote_rounded, size: 28, color: Color(0xFFD97706)),
+            Icon(Icons.how_to_vote_rounded, size: isMobile ? 22 : 28, color: const Color(0xFFD97706)),
             const SizedBox(height: 2),
             Text(
               candidate.symbolName,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: isMobile ? 9 : 10,
                 fontWeight: FontWeight.bold,
                 color: isDark ? const Color(0xFFFDE68A) : const Color(0xFFB45309),
               ),
@@ -1588,12 +1809,12 @@ class _DirectCandidateTile extends StatelessWidget {
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(14)),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
-        child: _buildPlaceholder(),
+        child: _buildPlaceholder(boxSize, isMobile),
       ),
     );
   }
 
-  Widget _buildPlaceholder() {
+  Widget _buildPlaceholder(double boxSize, bool isMobile) {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -1605,7 +1826,7 @@ class _DirectCandidateTile extends StatelessWidget {
       child: Center(
         child: Text(
           candidate.name.isNotEmpty ? candidate.name[0].toUpperCase() : '?',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 28),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: isMobile ? 22 : 28),
         ),
       ),
     );
@@ -1668,6 +1889,8 @@ class _DirectNoVoteTile extends StatelessWidget {
                         child: Text(
                           l10n.noVoteTitle,
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       if (isNoVote) ...[
@@ -1690,6 +1913,8 @@ class _DirectNoVoteTile extends StatelessWidget {
                   Text(
                     l10n.noVoteSubtitle,
                     style: TextStyle(color: isDark ? Colors.white54 : AppColors.textMuted, fontSize: 11.5),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),

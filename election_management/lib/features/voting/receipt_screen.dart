@@ -189,39 +189,88 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
             const SizedBox(height: 16),
             const Divider(height: 1),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 420;
+                if (isNarrow) {
+                  return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('DATE', style: TextStyle(fontSize: 10, color: isDark ? Colors.white38 : Colors.grey.shade500, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
-                      const SizedBox(height: 2),
-                      Text(formattedDate, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('DATE', style: TextStyle(fontSize: 10, color: isDark ? Colors.white38 : Colors.grey.shade500, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                          const SizedBox(height: 2),
+                          Text(formattedDate, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('TIME', style: TextStyle(fontSize: 10, color: isDark ? Colors.white38 : Colors.grey.shade500, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                                const SizedBox(height: 2),
+                                Text(formattedTime, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('BALLOT TYPE', style: TextStyle(fontSize: 10, color: isDark ? Colors.white38 : Colors.grey.shade500, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                                const SizedBox(height: 2),
+                                const Text('Secret Ballot', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF10B981))),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('TIME', style: TextStyle(fontSize: 10, color: isDark ? Colors.white38 : Colors.grey.shade500, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
-                      const SizedBox(height: 2),
-                      Text(formattedTime, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('BALLOT TYPE', style: TextStyle(fontSize: 10, color: isDark ? Colors.white38 : Colors.grey.shade500, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
-                      const SizedBox(height: 2),
-                      const Text('Secret Ballot', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF10B981))),
-                    ],
-                  ),
-                ),
-              ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(
+                      flex: 14,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('DATE', style: TextStyle(fontSize: 10, color: isDark ? Colors.white38 : Colors.grey.shade500, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                          const SizedBox(height: 2),
+                          Text(formattedDate, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      flex: 8,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('TIME', style: TextStyle(fontSize: 10, color: isDark ? Colors.white38 : Colors.grey.shade500, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                          const SizedBox(height: 2),
+                          Text(formattedTime, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      flex: 10,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('BALLOT TYPE', style: TextStyle(fontSize: 10, color: isDark ? Colors.white38 : Colors.grey.shade500, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                          const SizedBox(height: 2),
+                          const Text('Secret Ballot', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF10B981))),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ],
         ),

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'api_constants.dart';
 import 'token_storage.dart';
@@ -13,6 +14,7 @@ final apiClientProvider = Provider<Dio>((ref) {
       headers: {
         'Content-Type': 'application/json',
         'Bypass-Tunnel-Reminder': 'true',
+        'X-Client-Platform': kIsWeb ? 'web' : 'mobile',
       },
     ),
   );

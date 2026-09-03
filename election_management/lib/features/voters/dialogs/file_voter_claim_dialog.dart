@@ -113,13 +113,15 @@ class _FileVoterClaimDialogState extends ConsumerState<FileVoterClaimDialog> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       backgroundColor: isDark ? AppColors.surface : Colors.white,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 540),
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(18),
           child: Form(
             key: _formKey,
             child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -156,11 +158,12 @@ class _FileVoterClaimDialogState extends ConsumerState<FileVoterClaimDialog> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 18),
                   Text('Select Claim Type', style: Theme.of(context).textTheme.labelLarge),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     initialValue: _claimType,
+                    isExpanded: true,
                     decoration: InputDecoration(
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -168,15 +171,24 @@ class _FileVoterClaimDialogState extends ConsumerState<FileVoterClaimDialog> {
                     items: const [
                       DropdownMenuItem(
                         value: 'omission',
-                        child: Text('📝 Name Missing (Omission Claim)'),
+                        child: Text(
+                          '📝 Name Missing (Omission Claim)',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       DropdownMenuItem(
                         value: 'correction',
-                        child: Text('✏️ Correction of Details / Spelling'),
+                        child: Text(
+                          '✏️ Correction of Details / Spelling',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       DropdownMenuItem(
                         value: 'objection',
-                        child: Text('🚫 Objection Against Ineligible Voter'),
+                        child: Text(
+                          '🚫 Objection Against Ineligible Voter',
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                     onChanged: (val) {
@@ -194,31 +206,44 @@ class _FileVoterClaimDialogState extends ConsumerState<FileVoterClaimDialog> {
                     validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _emailController,
-                          decoration: InputDecoration(
-                            labelText: 'Your Email *',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            prefixIcon: const Icon(Icons.email_outlined),
-                          ),
-                          validator: (v) => v == null || !v.contains('@') ? 'Valid email required' : null,
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isNarrow = constraints.maxWidth < 360;
+                      final emailField = TextFormField(
+                        controller: _emailController,
+                        decoration: InputDecoration(
+                          labelText: 'Your Email *',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          prefixIcon: const Icon(Icons.email_outlined),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _phoneController,
-                          decoration: InputDecoration(
-                            labelText: 'Phone Number',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            prefixIcon: const Icon(Icons.phone_outlined),
-                          ),
+                        validator: (v) => v == null || !v.contains('@') ? 'Valid email required' : null,
+                      );
+                      final phoneField = TextFormField(
+                        controller: _phoneController,
+                        decoration: InputDecoration(
+                          labelText: 'Phone Number',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          prefixIcon: const Icon(Icons.phone_outlined),
                         ),
-                      ),
-                    ],
+                      );
+
+                      if (isNarrow) {
+                        return Column(
+                          children: [
+                            emailField,
+                            const SizedBox(height: 12),
+                            phoneField,
+                          ],
+                        );
+                      }
+                      return Row(
+                        children: [
+                          Expanded(child: emailField),
+                          const SizedBox(width: 12),
+                          Expanded(child: phoneField),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -252,21 +277,23 @@ class _FileVoterClaimDialogState extends ConsumerState<FileVoterClaimDialog> {
                     ),
                     validator: (v) => v == null || v.trim().isEmpty ? 'Please provide details' : null,
                   ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                  const SizedBox(height: 20),
+                  Wrap(
+                    alignment: WrapAlignment.end,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 12,
+                    runSpacing: 10,
                     children: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
                         child: const Text('Cancel'),
                       ),
-                      const SizedBox(width: 12),
                       ElevatedButton.icon(
                         onPressed: _isSubmitting ? null : _submit,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         icon: _isSubmitting

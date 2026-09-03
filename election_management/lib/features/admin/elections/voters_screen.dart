@@ -695,6 +695,16 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
     final isEligible = voter['is_eligible'] == true;
     final voterId = voter['voter_id']?.toString() ?? '-';
 
+    final currentUser = ref.watch(currentUserProvider);
+    final userEmail = currentUser?.email.trim().toLowerCase() ?? '';
+    final userPhone = currentUser?.phone.trim() ?? '';
+    final voterEmail = (voter['email']?.toString() ?? '').trim().toLowerCase();
+    final voterPhone = (voter['phone']?.toString() ?? '').trim();
+    final isOwnRecord = currentUser != null && (
+      (userEmail.isNotEmpty && userEmail == voterEmail) ||
+      (userPhone.isNotEmpty && userPhone == voterPhone)
+    );
+
     if (!isAdmin) {
       // Read-Only Privacy Row for Voters & Candidates
       return Padding(
@@ -752,6 +762,26 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  if (isOwnRecord)
+                    IconButton(
+                      icon: const Icon(Icons.badge_outlined, size: 18, color: Color(0xFF10B981)),
+                      tooltip: 'View / Print My Voter ID Card',
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => DigitalIdCardDialog(
+                            cardType: 'voter',
+                            fullName: fullName,
+                            idNumber: voterId.isNotEmpty ? voterId : (voter['id']?.toString() ?? ''),
+                            councilNumber: voter['council_number']?.toString(),
+                            phone: voter['phone']?.toString(),
+                            electionTitle: 'Official Voter Roll',
+                            electionId: widget.electionId,
+                            entityId: voter['id']?.toString() ?? '',
+                          ),
+                        );
+                      },
+                    ),
                   IconButton(
                     icon: const Icon(Icons.person_search_rounded, size: 18, color: AppColors.primaryLight),
                     tooltip: 'View Profile Dossier',
@@ -764,7 +794,7 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                       );
                     },
                   ),
-                  if (!isObserverOrAuditor && isVoterClaimOpen)
+                  if (!isObserverOrAuditor && isVoterClaimOpen && !isOwnRecord)
                     IconButton(
                       icon: const Icon(Icons.rate_review_outlined, size: 18, color: Colors.orange),
                       tooltip: 'File Claim / Correction on this Voter',
@@ -999,6 +1029,16 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
         ? voter['council_number'].toString()
         : (voter['citizenship_number']?.toString().isNotEmpty == true ? voter['citizenship_number'].toString() : '');
 
+    final currentUser = ref.watch(currentUserProvider);
+    final userEmail = currentUser?.email.trim().toLowerCase() ?? '';
+    final userPhone = currentUser?.phone.trim() ?? '';
+    final voterEmail = email.trim().toLowerCase();
+    final voterPhone = phone.trim();
+    final isOwnRecord = currentUser != null && (
+      (userEmail.isNotEmpty && userEmail == voterEmail) ||
+      (userPhone.isNotEmpty && userPhone == voterPhone)
+    );
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1034,7 +1074,7 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryLight),
                 ),
               ),
-              if (voterPin.isNotEmpty) ...[
+              if ((isAdmin || isOwnRecord) && voterPin.isNotEmpty) ...[
                 const SizedBox(width: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -1137,25 +1177,40 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                   );
                 },
               ),
-              IconButton(
-                icon: const Icon(Icons.badge_outlined, size: 18, color: Color(0xFF10B981)),
-                tooltip: 'Voter ID Card',
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (_) => DigitalIdCardDialog(
-                      cardType: 'voter',
-                      fullName: fullName,
-                      idNumber: voterId.isNotEmpty ? voterId : (voter['id']?.toString() ?? ''),
-                      councilNumber: voter['council_number']?.toString(),
-                      phone: voter['phone']?.toString(),
-                      electionTitle: 'Official Voter Roll',
-                      electionId: widget.electionId,
-                      entityId: voter['id']?.toString() ?? '',
-                    ),
-                  );
-                },
-              ),
+              if (!isObserverOrAuditor && isVoterClaimOpen && !isOwnRecord)
+                IconButton(
+                  icon: const Icon(Icons.rate_review_outlined, size: 18, color: Colors.orange),
+                  tooltip: 'File Claim / Objection',
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => FileVoterClaimDialog(
+                        electionId: widget.electionId,
+                        initialVoterName: fullName,
+                      ),
+                    );
+                  },
+                ),
+              if (isAdmin || isOwnRecord)
+                IconButton(
+                  icon: const Icon(Icons.badge_outlined, size: 18, color: Color(0xFF10B981)),
+                  tooltip: isOwnRecord ? 'My Voter ID Card' : 'Voter ID Card',
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (_) => DigitalIdCardDialog(
+                        cardType: 'voter',
+                        fullName: fullName,
+                        idNumber: voterId.isNotEmpty ? voterId : (voter['id']?.toString() ?? ''),
+                        councilNumber: voter['council_number']?.toString(),
+                        phone: voter['phone']?.toString(),
+                        electionTitle: 'Official Voter Roll',
+                        electionId: widget.electionId,
+                        entityId: voter['id']?.toString() ?? '',
+                      ),
+                    );
+                  },
+                ),
               if (isAdmin) ...[
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, size: 18, color: Colors.indigo),

@@ -117,15 +117,36 @@ class ApiConstants {
   // Auditor Verification Portal
   // Helpers
   static String? getFullImageUrl(String? path) {
-    if (path == null || path.isEmpty) return null;
-    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    if (path == null || path.trim().isEmpty) return null;
+    String resolved = path.trim();
 
-    // Base URL contains '/v1', so we need the origin
+    // Base URL contains '/v1', so we need the origin (e.g. 'http://192.168.110.108:8000' or 'http://127.0.0.1:8000')
     final origin = baseUrl.replaceAll('/v1', '');
-    if (path.startsWith('/')) {
-      return '$origin$path';
+
+    // On physical mobile devices or emulators, rewrite loopback addresses (127.0.0.1 or localhost)
+    // to the actual server origin where Django backend is running.
+    if (!kIsWeb) {
+      if (resolved.contains('127.0.0.1:8000')) {
+        resolved = resolved
+            .replaceAll('http://127.0.0.1:8000', origin)
+            .replaceAll('https://127.0.0.1:8000', origin)
+            .replaceAll('127.0.0.1:8000', origin.replaceFirst(RegExp(r'^https?:\/\/'), ''));
+      } else if (resolved.contains('localhost:8000')) {
+        resolved = resolved
+            .replaceAll('http://localhost:8000', origin)
+            .replaceAll('https://localhost:8000', origin)
+            .replaceAll('localhost:8000', origin.replaceFirst(RegExp(r'^https?:\/\/'), ''));
+      }
     }
-    return '$origin/$path';
+
+    if (resolved.startsWith('http://') || resolved.startsWith('https://')) {
+      return resolved;
+    }
+
+    if (resolved.startsWith('/')) {
+      return '$origin$resolved';
+    }
+    return '$origin/$resolved';
   }
 
   static String auditExport(String eid) => '/elections/$eid/audit/export/';

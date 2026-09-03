@@ -290,18 +290,18 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
   }
 
   Widget _buildHeader(BuildContext context, bool isDark, bool canManage) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Column(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 650;
+
+        final titleCol = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Election Notices & Letterhead (सूचनाहरू)',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
             Text(
               canManage
                   ? 'Compose, publish, and generate certified statutory letterhead notices for this election.'
@@ -309,19 +309,44 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
               style: TextStyle(color: isDark ? Colors.white60 : AppColors.textMuted, fontSize: 13),
             ),
           ],
-        ),
-        if (canManage)
-          FilledButton.icon(
-            onPressed: () => _showNoticeDialog(),
-            icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text('Publish Notice'),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF4F46E5),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
+        );
+
+        if (!canManage) {
+          return titleCol;
+        }
+
+        final publishBtn = FilledButton.icon(
+          onPressed: () => _showNoticeDialog(),
+          icon: const Icon(Icons.add_rounded, size: 18),
+          label: const Text('Publish Notice'),
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFF4F46E5),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
-      ],
+        );
+
+        if (isMobile) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              titleCol,
+              const SizedBox(height: 12),
+              publishBtn,
+            ],
+          );
+        }
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(child: titleCol),
+            const SizedBox(width: 16),
+            publishBtn,
+          ],
+        );
+      },
     );
   }
 
@@ -334,59 +359,94 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: 'Search notices by title, dispatch number, or keywords...',
-                  hintStyle: const TextStyle(fontSize: 13),
-                  prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  filled: true,
-                  fillColor: isDark ? AppColors.surfaceVariant : const Color(0xFFF9FAFB),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade300),
-                  ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isMobile = constraints.maxWidth < 650;
+            final searchField = TextField(
+              decoration: InputDecoration(
+                hintText: 'Search notices by title, dispatch number, or keywords...',
+                hintStyle: const TextStyle(fontSize: 13),
+                prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                filled: true,
+                fillColor: isDark ? AppColors.surfaceVariant : const Color(0xFFF9FAFB),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade300),
                 ),
-                onChanged: (v) => setState(() => _searchQuery = v),
               ),
-            ),
-            if (canManage) ...[
-              const SizedBox(width: 16),
-              Wrap(
-                spacing: 8,
-                children: [
-                  ChoiceChip(
-                    label: Text('All (${baseNotices.length})', style: const TextStyle(fontSize: 12)),
-                    selected: _filterState == 'all',
-                    onSelected: (val) => setState(() => _filterState = 'all'),
-                  ),
-                  ChoiceChip(
-                    label: Text('Published (${baseNotices.where((n) => n['is_published'] == true).length})', style: const TextStyle(fontSize: 12)),
-                    selected: _filterState == 'published',
-                    selectedColor: Colors.green.withValues(alpha: 0.2),
-                    onSelected: (val) => setState(() => _filterState = 'published'),
-                  ),
-                  ChoiceChip(
-                    label: Text('Drafts (${baseNotices.where((n) => n['is_published'] != true).length})', style: const TextStyle(fontSize: 12)),
-                    selected: _filterState == 'draft',
-                    selectedColor: Colors.orange.withValues(alpha: 0.2),
-                    onSelected: (val) => setState(() => _filterState = 'draft'),
-                  ),
-                ],
-              ),
-            ],
-            const SizedBox(width: 8),
-            IconButton(
+              onChanged: (v) => setState(() => _searchQuery = v),
+            );
+
+            final chips = canManage
+                ? SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    child: Row(
+                      children: [
+                        ChoiceChip(
+                          label: Text('All (${baseNotices.length})', style: const TextStyle(fontSize: 12)),
+                          selected: _filterState == 'all',
+                          onSelected: (val) => setState(() => _filterState = 'all'),
+                        ),
+                        const SizedBox(width: 8),
+                        ChoiceChip(
+                          label: Text('Published (${baseNotices.where((n) => n['is_published'] == true).length})', style: const TextStyle(fontSize: 12)),
+                          selected: _filterState == 'published',
+                          selectedColor: Colors.green.withValues(alpha: 0.2),
+                          onSelected: (val) => setState(() => _filterState = 'published'),
+                        ),
+                        const SizedBox(width: 8),
+                        ChoiceChip(
+                          label: Text('Drafts (${baseNotices.where((n) => n['is_published'] != true).length})', style: const TextStyle(fontSize: 12)),
+                          selected: _filterState == 'draft',
+                          selectedColor: Colors.orange.withValues(alpha: 0.2),
+                          onSelected: (val) => setState(() => _filterState = 'draft'),
+                        ),
+                      ],
+                    ),
+                  )
+                : const SizedBox.shrink();
+
+            final refreshBtn = IconButton(
               icon: const Icon(Icons.refresh_rounded),
               tooltip: 'Refresh Notices',
               onPressed: _fetchData,
-            ),
-          ],
+            );
+
+            if (isMobile) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: searchField),
+                      const SizedBox(width: 8),
+                      refreshBtn,
+                    ],
+                  ),
+                  if (canManage) ...[
+                    const SizedBox(height: 10),
+                    chips,
+                  ],
+                ],
+              );
+            }
+
+            return Row(
+              children: [
+                Expanded(child: searchField),
+                if (canManage) ...[
+                  const SizedBox(width: 16),
+                  Flexible(child: chips),
+                ],
+                const SizedBox(width: 8),
+                refreshBtn,
+              ],
+            );
+          },
         ),
       ),
     );
@@ -394,35 +454,38 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
 
   Widget _buildEmptyState(bool isDark, bool canManage) {
     return Center(
-      child: Container(
-        padding: const EdgeInsets.all(36),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.surface : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surface : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.campaign_outlined, size: 44, color: AppColors.primaryLight),
               ),
-              child: const Icon(Icons.campaign_outlined, size: 48, color: AppColors.primaryLight),
-            ),
-            const SizedBox(height: 16),
-            const Text('No Election Notices Found', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
-            Text(
-              canManage
-                  ? 'Create a new notice to generate certified statutory letterhead announcements, schedule bulletins, or polling guidelines.'
-                  : 'Official bulletins and notices from the election committee will appear here.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: isDark ? Colors.white60 : Colors.grey.shade600),
-            ),
-          ],
+              const SizedBox(height: 14),
+              const Text('No Election Notices Found', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              Text(
+                canManage
+                    ? 'Create a new notice to generate certified statutory letterhead announcements, schedule bulletins, or polling guidelines.'
+                    : 'Official bulletins and notices from the election committee will appear here.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12.5, color: isDark ? Colors.white60 : Colors.grey.shade600),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -461,13 +524,15 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
               borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
               border: Border(bottom: BorderSide(color: isDark ? Colors.white10 : Colors.grey.shade200)),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isCardNarrow = constraints.maxWidth < 620;
+
+                final leftDateRow = Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.campaign_rounded, size: 20, color: isPublished ? const Color(0xFF4F46E5) : Colors.orange),
-                    const SizedBox(width: 8),
+                    Icon(Icons.campaign_rounded, size: 18, color: isPublished ? const Color(0xFF4F46E5) : Colors.orange),
+                    const SizedBox(width: 6),
                     Text(
                       _formatDate(createdAt),
                       style: TextStyle(
@@ -477,9 +542,9 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
                       ),
                     ),
                     if (noticeNumber.isNotEmpty) ...[
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.blue.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
@@ -487,13 +552,17 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
                         ),
                         child: Text(
                           'चलानी नं: $noticeNumber',
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blue),
+                          style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Colors.blue),
                         ),
                       ),
                     ],
                   ],
-                ),
-                Row(
+                );
+
+                final rightBadgesRow = Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     // Stamp Mode Chip
                     Container(
@@ -508,23 +577,21 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
                         children: [
                           Icon(
                             stampMode == 'digital' ? Icons.verified_rounded : Icons.radio_button_unchecked_rounded,
-                            size: 13,
+                            size: 12,
                             color: stampMode == 'digital' ? Colors.purple : Colors.teal,
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            stampMode == 'digital' ? 'DIGITAL STAMP' : 'MANUAL WET STAMP',
+                            stampMode == 'digital' ? 'DIGITAL STAMP' : 'MANUAL STAMP',
                             style: TextStyle(
                               color: stampMode == 'digital' ? Colors.purple : Colors.teal,
-                              fontSize: 10.5,
+                              fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-
                     // Publication Status Badge
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -549,7 +616,7 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
                             isPublished ? 'PUBLISHED' : 'DRAFT',
                             style: TextStyle(
                               color: isPublished ? Colors.green : Colors.orange,
-                              fontSize: 10.5,
+                              fontSize: 10,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -557,21 +624,47 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
                       ),
                     ),
                     if (canManage) ...[
-                      const SizedBox(width: 6),
                       IconButton(
-                        icon: const Icon(Icons.edit_outlined, size: 18, color: Colors.indigo),
+                        icon: const Icon(Icons.edit_outlined, size: 17, color: Colors.indigo),
                         tooltip: 'Edit Notice',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                         onPressed: () => _showNoticeDialog(notice: map),
                       ),
+                      const SizedBox(width: 6),
                       IconButton(
-                        icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
+                        icon: const Icon(Icons.delete_outline_rounded, size: 17, color: Colors.red),
                         tooltip: 'Delete Notice',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                         onPressed: () => _deleteNotice(map['id'].toString()),
                       ),
                     ],
                   ],
-                ),
-              ],
+                );
+
+                if (isCardNarrow) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: leftDateRow,
+                      ),
+                      const SizedBox(height: 8),
+                      rightBadgesRow,
+                    ],
+                  );
+                }
+
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    leftDateRow,
+                    rightBadgesRow,
+                  ],
+                );
+              },
             ),
           ),
 
@@ -599,32 +692,61 @@ class _NoticeScreenState extends ConsumerState<NoticeScreen> {
                 const SizedBox(height: 14),
 
                 // Action Bar
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    OutlinedButton.icon(
+                LayoutBuilder(
+                  builder: (context, actionConstraints) {
+                    final isNarrowAction = actionConstraints.maxWidth < 450;
+                    final signatoriesCount = (map['signatories'] is List && (map['signatories'] as List).isNotEmpty)
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.draw_outlined, size: 14, color: Colors.grey),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${(map['signatories'] as List).length} Signator${(map['signatories'] as List).length > 1 ? 'ies' : 'y'}',
+                                style: const TextStyle(fontSize: 11.5, color: Colors.grey, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          )
+                        : const SizedBox.shrink();
+
+                    final letterheadButton = OutlinedButton.icon(
                       onPressed: () => _showLetterheadViewer(map),
                       icon: const Icon(Icons.description_outlined, size: 16, color: Color(0xFF4F46E5)),
-                      label: const Text('View Official Letterhead & Print (लेटरहेड)'),
+                      label: Text(
+                        isNarrowAction
+                            ? 'View Letterhead (लेटरहेड)'
+                            : 'View Official Letterhead & Print (लेटरहेड)',
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: const Color(0xFF4F46E5),
                         side: const BorderSide(color: Color(0xFF4F46E5)),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                    ),
-                    if (map['signatories'] is List && (map['signatories'] as List).isNotEmpty)
-                      Row(
+                    );
+
+                    if (isNarrowAction) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.draw_outlined, size: 15, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${(map['signatories'] as List).length} Signator${(map['signatories'] as List).length > 1 ? 'ies' : 'y'}',
-                            style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
-                          ),
+                          SizedBox(width: double.infinity, child: letterheadButton),
+                          if (map['signatories'] is List && (map['signatories'] as List).isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            signatoriesCount,
+                          ],
                         ],
-                      ),
-                  ],
+                      );
+                    }
+
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(child: letterheadButton),
+                        signatoriesCount,
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
@@ -1292,81 +1414,148 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
         contentLower.contains('मतदान सम्पन्न') ||
         contentLower.contains('मतगणना सम्पन्न');
 
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 680;
+
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(isMobile ? 12 : 20)),
       backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 8 : 24,
+        vertical: isMobile ? 12 : 24,
+      ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 860, maxHeight: 900),
         child: Column(
           children: [
             // Top Toolbar
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 20, vertical: 10),
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(isMobile ? 12 : 20)),
                 border: Border(bottom: BorderSide(color: isDark ? Colors.white10 : Colors.grey.shade200)),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.verified_user_rounded, color: Color(0xFF4F46E5), size: 22),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Official Election Notice Letterhead (आधिकारिक लेटरहेड)',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      // Toggle Stamp Mode live in preview (Digital -> Manual -> Both)
-                      OutlinedButton.icon(
-                        onPressed: _cycleStampMode,
-                        icon: Icon(
-                          _stampModeIcon(),
-                          size: 15,
-                          color: _currentStampMode == 'both' ? const Color(0xFF7C3AED) : const Color(0xFF4F46E5),
+              child: isMobile
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.verified_user_rounded, color: Color(0xFF4F46E5), size: 20),
+                            const SizedBox(width: 8),
+                            const Expanded(
+                              child: Text(
+                                'Official Letterhead (आधिकारिक लेटरहेड)',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 20),
+                              tooltip: 'Close',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ],
                         ),
-                        label: Text(_stampModeLabel()),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          textStyle: const TextStyle(fontSize: 12),
+                        const SizedBox(height: 8),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          child: Row(
+                            children: [
+                              OutlinedButton.icon(
+                                onPressed: _cycleStampMode,
+                                icon: Icon(
+                                  _stampModeIcon(),
+                                  size: 14,
+                                  color: _currentStampMode == 'both' ? const Color(0xFF7C3AED) : const Color(0xFF4F46E5),
+                                ),
+                                label: Text(_stampModeLabel()),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  textStyle: const TextStyle(fontSize: 11),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                icon: const Icon(Icons.copy_rounded, size: 18),
+                                tooltip: 'Copy Text',
+                                onPressed: _copyNoticeText,
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.print_rounded, size: 18, color: Color(0xFF4F46E5)),
+                                tooltip: 'Print Letterhead / PDF',
+                                onPressed: _printNotice,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton(
-                        icon: const Icon(Icons.copy_rounded, size: 19),
-                        tooltip: 'Copy Text',
-                        onPressed: _copyNoticeText,
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.print_rounded, size: 19, color: Color(0xFF4F46E5)),
-                        tooltip: 'Print Letterhead / PDF',
-                        onPressed: _printNotice,
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded, size: 20),
-                        tooltip: 'Close',
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                      ],
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: const [
+                            Icon(Icons.verified_user_rounded, color: Color(0xFF4F46E5), size: 22),
+                            SizedBox(width: 8),
+                            Text(
+                              'Official Election Notice Letterhead (आधिकारिक लेटरहेड)',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: _cycleStampMode,
+                              icon: Icon(
+                                _stampModeIcon(),
+                                size: 15,
+                                color: _currentStampMode == 'both' ? const Color(0xFF7C3AED) : const Color(0xFF4F46E5),
+                              ),
+                              label: Text(_stampModeLabel()),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                textStyle: const TextStyle(fontSize: 12),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: const Icon(Icons.copy_rounded, size: 19),
+                              tooltip: 'Copy Text',
+                              onPressed: _copyNoticeText,
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.print_rounded, size: 19, color: Color(0xFF4F46E5)),
+                              tooltip: 'Print Letterhead / PDF',
+                              onPressed: _printNotice,
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 20),
+                              tooltip: 'Close',
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
             ),
 
             // Scrollable Official Letterhead Document Sheet
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.all(isMobile ? 8 : 24),
                 child: Center(
                   child: Container(
-                    width: 760,
-                    padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
+                    width: isMobile ? double.infinity : 760,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isMobile ? 16 : 48,
+                      vertical: isMobile ? 20 : 40,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(4),
@@ -1386,13 +1575,12 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
                           // ─────────────────────────────────────────────────────────────
                           // LETTERHEAD TOP HEADER (Nepal Medical Association Standard)
                           // ─────────────────────────────────────────────────────────────
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Left: Logo
-                              Container(
-                                width: 80,
-                                height: 80,
+                          if (isMobile) ...[
+                            // Mobile Stacked Header
+                            Center(
+                              child: Container(
+                                width: 64,
+                                height: 64,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   border: Border.all(color: const Color(0xFF0F172A).withValues(alpha: 0.15), width: 1.5),
@@ -1407,70 +1595,155 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
                                       : _defaultLogoBadge(),
                                 ),
                               ),
-                              const SizedBox(width: 14),
-
-                              // Center: Organization Name (Nepali & English), Election Committee, Tenure, Contacts
-                              Expanded(
-                                child: Column(
-                                  children: [
-                                    Text(
-                                      orgName,
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w900,
-                                        color: Color(0xFF0F172A),
-                                      ),
+                            ),
+                            const SizedBox(height: 10),
+                            Center(
+                              child: Column(
+                                children: [
+                                  Text(
+                                    orgName,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFF0F172A),
                                     ),
-                                    Text(
-                                      orgName.toUpperCase(),
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontSize: 13.5,
-                                        fontWeight: FontWeight.w800,
-                                        color: Color(0xFF1E293B),
-                                        letterSpacing: 0.4,
-                                      ),
+                                  ),
+                                  Text(
+                                    orgName.toUpperCase(),
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFF1E293B),
+                                      letterSpacing: 0.4,
                                     ),
-                                    const SizedBox(height: 2),
-                                    const Text(
-                                      'ELECTION COMMITTEE',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 13.5,
-                                        fontWeight: FontWeight.w900,
-                                        color: AppColors.primary,
-                                        letterSpacing: 0.3,
-                                      ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  const Text(
+                                    'ELECTION COMMITTEE',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w900,
+                                      color: AppColors.primary,
+                                      letterSpacing: 0.3,
                                     ),
-                                    Text(
-                                      '($electionYear-${(int.tryParse(electionYear) ?? 2083) + 3})',
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        color: AppColors.primary,
-                                      ),
+                                  ),
+                                  Text(
+                                    '($electionYear-${(int.tryParse(electionYear) ?? 2083) + 3})',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.primary,
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '$orgAddress. Telephone no. $orgPhone. Email: $orgEmail',
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(fontSize: 10, color: Color(0xFF475569), height: 1.3),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '$orgAddress. Tel: $orgPhone. Email: $orgEmail',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(fontSize: 9.5, color: Color(0xFF475569), height: 1.3),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 14),
-
-                              // Right: Registration / Dispatch Regd No.
-                              Text(
+                            ),
+                            const SizedBox(height: 8),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: Text(
                                 'Regd. No. $noticeNumber',
-                                textAlign: TextAlign.right,
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                                style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
                               ),
-                            ],
-                          ),
+                            ),
+                          ] else ...[
+                            // Desktop 3-Column Header
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Left: Logo
+                                Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: const Color(0xFF0F172A).withValues(alpha: 0.15), width: 1.5),
+                                  ),
+                                  child: ClipOval(
+                                    child: orgLogo.isNotEmpty
+                                        ? Image.network(
+                                            orgLogo,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, _, _) => _defaultLogoBadge(),
+                                          )
+                                        : _defaultLogoBadge(),
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+
+                                // Center: Organization Name (Nepali & English), Election Committee, Tenure, Contacts
+                                Expanded(
+                                  child: Column(
+                                    children: [
+                                      Text(
+                                        orgName,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFF0F172A),
+                                        ),
+                                      ),
+                                      Text(
+                                        orgName.toUpperCase(),
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFF1E293B),
+                                          letterSpacing: 0.4,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      const Text(
+                                        'ELECTION COMMITTEE',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w900,
+                                          color: AppColors.primary,
+                                          letterSpacing: 0.3,
+                                        ),
+                                      ),
+                                      Text(
+                                        '($electionYear-${(int.tryParse(electionYear) ?? 2083) + 3})',
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '$orgAddress. Telephone no. $orgPhone. Email: $orgEmail',
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(fontSize: 10, color: Color(0xFF475569), height: 1.3),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+
+                                // Right: Registration / Dispatch Regd No.
+                                Text(
+                                  'Regd. No. $noticeNumber',
+                                  textAlign: TextAlign.right,
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                                ),
+                              ],
+                            ),
+                          ],
                           const SizedBox(height: 12),
 
                           // Solid Full-Width Letterhead Divider Line
@@ -1478,94 +1751,202 @@ class _NoticeLetterheadDialogState extends State<_NoticeLetterheadDialog> {
                           const SizedBox(height: 8),
 
                           // ─────────────────────────────────────────────────────────────
-                          // TWO-COLUMN STATUTORY DOCUMENT BODY
+                          // TWO-COLUMN STATUTORY DOCUMENT BODY (Adaptive for Mobile vs Desktop)
                           // ─────────────────────────────────────────────────────────────
-                          IntrinsicHeight(
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                          if (isMobile) ...[
+                            // Mobile Notice Content First
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                // LEFT COLUMN: Election Committee Officers Roster
-                                _buildLeftCommitteeSidebar(
-                                  (notice['committee_members'] is List && (notice['committee_members'] as List).isNotEmpty)
-                                      ? (notice['committee_members'] as List)
-                                      : widget.committees,
-                                  '($electionYear-${(int.tryParse(electionYear) ?? 2083) + 3})',
-                                ),
-
-                                // RIGHT COLUMN: Notice Main Body & Signatories
-                                Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(left: 20, top: 6),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                      children: [
-                                        // Notice Top Row: Left Stamp + Center Title & Subject + Right Date
-                                        Row(
-                                          crossAxisAlignment: CrossAxisAlignment.center,
-                                          children: [
-                                            // LEFT: Official Stamp
-                                            _buildStampArea(stampImageUrl),
-                                            const SizedBox(width: 12),
-
-                                            // CENTER: Notice Title & Subject
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.center,
-                                                children: [
-                                                  const Text(
-                                                    'सूचना !',
-                                                    textAlign: TextAlign.center,
-                                                    style: TextStyle(
-                                                      fontSize: 18,
-                                                      fontWeight: FontWeight.w900,
-                                                      color: Color(0xFF0F172A),
-                                                      letterSpacing: 0.5,
-                                                    ),
-                                                  ),
-                                                  if ((notice['title'] ?? '').isNotEmpty && notice['title'] != 'सूचना' && notice['title'] != 'सूचना !') ...[
-                                                    const SizedBox(height: 6),
-                                                    Text(
-                                                      'विषय: ${notice['title']}',
-                                                      textAlign: TextAlign.center,
-                                                      style: const TextStyle(
-                                                        fontSize: 13,
-                                                        fontWeight: FontWeight.bold,
-                                                        color: Color(0xFF0F172A),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Text(
-                                              'मिति : ${_formatNepaliDate(dateIso)}',
-                                              style: const TextStyle(
-                                                fontSize: 11.5,
-                                                fontWeight: FontWeight.bold,
-                                                color: Color(0xFF0F172A),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 14),
-
-                                        // Notice Content Body with Markdown Table Support (Plain & Clean)
-                                        _buildNoticeRichContent(notice['content'] ?? '', isResultsNotice),
-                                        const SizedBox(height: 36),
-
-                                        // Signatories Block with Count-Based Alignment (1 -> Left, 2+ -> Center)
-                                        Align(
-                                          alignment: signatories.length <= 1 ? Alignment.bottomLeft : Alignment.bottomCenter,
-                                          child: _buildSignatoriesBlock(signatories, orgName),
-                                        ),
-                                      ],
+                                // Notice Title & Date Row
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    if (stampImageUrl != null && stampImageUrl.isNotEmpty)
+                                      _buildStampArea(stampImageUrl)
+                                    else
+                                      const SizedBox.shrink(),
+                                    Text(
+                                      'मिति : ${_formatNepaliDate(dateIso)}',
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF0F172A),
+                                      ),
                                     ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                const Text(
+                                  'सूचना !',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFF0F172A),
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                if ((notice['title'] ?? '').isNotEmpty && notice['title'] != 'सूचना' && notice['title'] != 'सूचना !') ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'विषय: ${notice['title']}',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: 14),
+
+                                // Notice Content Body
+                                _buildNoticeRichContent(notice['content'] ?? '', isResultsNotice),
+                                const SizedBox(height: 24),
+
+                                // Signatories
+                                Align(
+                                  alignment: Alignment.center,
+                                  child: _buildSignatoriesBlock(signatories, orgName),
+                                ),
+                                const SizedBox(height: 20),
+
+                                // Committee Members Roster (Card layout on mobile)
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8FAFC),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.people_outline_rounded, size: 15, color: AppColors.primary),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'ELECTION COMMITTEE ($electionYear-${(int.tryParse(electionYear) ?? 2083) + 3})',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 11,
+                                              color: AppColors.primary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      ...((notice['committee_members'] is List && (notice['committee_members'] as List).isNotEmpty)
+                                              ? (notice['committee_members'] as List)
+                                              : widget.committees)
+                                          .map((m) {
+                                        final name = m['name'] ?? m['chair_full_name'] ?? m['committee_name'] ?? m['chair_email'] ?? 'Officer';
+                                        final designation = m['designation'] ?? m['chair_designation'] ?? 'Election Officer';
+                                        return Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 2),
+                                          child: Text(
+                                            '• $name — $designation',
+                                            style: const TextStyle(fontSize: 10.5, color: Color(0xFF334155)),
+                                          ),
+                                        );
+                                      }),
+                                    ],
                                   ),
                                 ),
                               ],
                             ),
-                          ),
+                          ] else ...[
+                            // Desktop Two-Column Layout
+                            IntrinsicHeight(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  // LEFT COLUMN: Election Committee Officers Roster
+                                  _buildLeftCommitteeSidebar(
+                                    (notice['committee_members'] is List && (notice['committee_members'] as List).isNotEmpty)
+                                        ? (notice['committee_members'] as List)
+                                        : widget.committees,
+                                    '($electionYear-${(int.tryParse(electionYear) ?? 2083) + 3})',
+                                  ),
+
+                                  // RIGHT COLUMN: Notice Main Body & Signatories
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(left: 20, top: 6),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        children: [
+                                          // Notice Top Row: Left Stamp + Center Title & Subject + Right Date
+                                          Row(
+                                            crossAxisAlignment: CrossAxisAlignment.center,
+                                            children: [
+                                              // LEFT: Official Stamp
+                                              _buildStampArea(stampImageUrl),
+                                              const SizedBox(width: 12),
+
+                                              // CENTER: Notice Title & Subject
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                                  children: [
+                                                    const Text(
+                                                      'सूचना !',
+                                                      textAlign: TextAlign.center,
+                                                      style: TextStyle(
+                                                        fontSize: 18,
+                                                        fontWeight: FontWeight.w900,
+                                                        color: Color(0xFF0F172A),
+                                                        letterSpacing: 0.5,
+                                                      ),
+                                                    ),
+                                                    if ((notice['title'] ?? '').isNotEmpty && notice['title'] != 'सूचना' && notice['title'] != 'सूचना !') ...[
+                                                      const SizedBox(height: 6),
+                                                      Text(
+                                                        'विषय: ${notice['title']}',
+                                                        textAlign: TextAlign.center,
+                                                        style: const TextStyle(
+                                                          fontSize: 13,
+                                                          fontWeight: FontWeight.bold,
+                                                          color: Color(0xFF0F172A),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Text(
+                                                'मिति : ${_formatNepaliDate(dateIso)}',
+                                                style: const TextStyle(
+                                                  fontSize: 11.5,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Color(0xFF0F172A),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 14),
+
+                                          // Notice Content Body with Markdown Table Support (Plain & Clean)
+                                          _buildNoticeRichContent(notice['content'] ?? '', isResultsNotice),
+                                          const SizedBox(height: 36),
+
+                                          // Signatories Block with Count-Based Alignment (1 -> Left, 2+ -> Center)
+                                          Align(
+                                            alignment: signatories.length <= 1 ? Alignment.bottomLeft : Alignment.bottomCenter,
+                                            child: _buildSignatoriesBlock(signatories, orgName),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 20),
 
                           // Footnote

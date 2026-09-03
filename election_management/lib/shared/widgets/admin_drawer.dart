@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/network/api_constants.dart';
 import '../../core/providers/auth_provider.dart';
 
 class AdminDrawer extends ConsumerWidget {
@@ -94,7 +95,7 @@ class AdminDrawer extends ConsumerWidget {
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(12),
                               child: Image.network(
-                                user.organizationLogoUrl,
+                                ApiConstants.getFullImageUrl(user.organizationLogoUrl) ?? user.organizationLogoUrl,
                                 fit: BoxFit.cover,
                                 errorBuilder: (ctx, err, stack) => const Icon(Icons.corporate_fare_rounded, color: Colors.white, size: 22),
                               ),

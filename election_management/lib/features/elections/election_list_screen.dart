@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/providers/auth_provider.dart';
+import '../../core/network/api_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/admin_drawer.dart';
@@ -311,9 +313,19 @@ class _ElectionListTile extends StatelessWidget {
                           border: Border.all(
                             color: isDark ? Colors.white12 : Colors.grey.shade300,
                           ),
-                          image: DecorationImage(
-                            image: NetworkImage(election.logoUrl),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(11),
+                          child: Image.network(
+                            ApiConstants.getFullImageUrl(election.logoUrl) ?? election.logoUrl,
                             fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) => Center(
+                              child: Icon(
+                                Icons.how_to_vote_rounded,
+                                color: isDark ? Colors.white54 : AppColors.primary,
+                                size: 24,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -464,6 +476,30 @@ class _ElectionListTile extends StatelessWidget {
                           Expanded(
                             child: Text(
                               'Web Single-Use Ballot Link (इमेल लिङ्क मार्फत मतदान)',
+                              style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 12.5),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else if (kIsWeb && election.onlineType == 'mobile_app')
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.phone_android_rounded, color: Colors.blue, size: 18),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Mobile App Only (मोबाइल एपबाट मात्र मतदान सम्भव छ)',
                               style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 12.5),
                               textAlign: TextAlign.center,
                             ),

@@ -262,6 +262,7 @@ class _AddPositionDialogState extends ConsumerState<AddPositionDialog> {
                               items: const [
                                 DropdownMenuItem(value: 'fptp', child: Text('First-Past-The-Post')),
                                 DropdownMenuItem(value: 'multi_choice', child: Text('Block Voting (Multi)')),
+                                DropdownMenuItem(value: 'samanupatik', child: Text('Proportional (समानुपातिक)')),
                               ],
                               onChanged: (v) {
                                 if (v != null) setState(() => _votingMethod = v);

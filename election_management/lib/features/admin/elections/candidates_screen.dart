@@ -626,13 +626,10 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
             CircleAvatar(
               radius: 24,
               backgroundColor: posColor.withValues(alpha: 0.15),
-              backgroundImage: (cand.photoUrl != null && cand.photoUrl!.isNotEmpty)
-                  ? NetworkImage(cand.photoUrl!)
-                  : ((cand.candidateImage != null && cand.candidateImage!.isNotEmpty)
-                      ? NetworkImage(cand.candidateImage!)
-                      : null),
-              child: ((cand.photoUrl == null || cand.photoUrl!.isEmpty) &&
-                      (cand.candidateImage == null || cand.candidateImage!.isEmpty))
+              backgroundImage: (ApiConstants.getFullImageUrl(cand.photoUrl ?? cand.candidateImage)?.isNotEmpty == true)
+                  ? NetworkImage(ApiConstants.getFullImageUrl(cand.photoUrl ?? cand.candidateImage)!)
+                  : null,
+              child: (ApiConstants.getFullImageUrl(cand.photoUrl ?? cand.candidateImage)?.isNotEmpty != true)
                   ? Text(
                       cand.name.isNotEmpty ? cand.name.substring(0, 1).toUpperCase() : 'C',
                       style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: posColor),

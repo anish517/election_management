@@ -60,104 +60,120 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
             child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
-              const Icon(Icons.verified_user_outlined, size: 48, color: AppColors.primaryLight),
-              const SizedBox(height: 20),
-              Text('Verify Your Identity', style: Theme.of(context).textTheme.headlineMedium),
-              const SizedBox(height: 8),
-              Text(
-                'Enter the 6-digit code sent to\n${widget.identifier}',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 40),
-              _buildOtpFields(),
-              if (_errorMessage != null) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.error.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 16),
-                      const SizedBox(width: 8),
-                      Text(_errorMessage!, style: const TextStyle(color: AppColors.error, fontSize: 13)),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 10),
+                    const Icon(Icons.verified_user_outlined, size: 48, color: AppColors.primaryLight),
+                    const SizedBox(height: 20),
+                    Text('Verify Your Identity', style: Theme.of(context).textTheme.headlineMedium),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Enter the 6-digit code sent to\n${widget.identifier}',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 36),
+                    _buildOtpFields(),
+                    if (_errorMessage != null) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 16),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(_errorMessage!, style: const TextStyle(color: AppColors.error, fontSize: 13)),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
-                  ),
+                    const SizedBox(height: 32),
+                    LoadingButton(
+                      onPressed: _verify,
+                      isLoading: _isLoading,
+                      label: 'Verify Code',
+                      icon: Icons.check_circle_outline_rounded,
+                    ),
+                    const SizedBox(height: 16),
+                    Center(
+                      child: TextButton(
+                        onPressed: () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          await ref.read(authProvider.notifier).requestOtp(widget.identifier);
+                          if (mounted) {
+                            messenger.showSnackBar(
+                              const SnackBar(content: Text('New OTP sent!')),
+                            );
+                          }
+                        },
+                        child: const Text('Resend Code'),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-              const SizedBox(height: 32),
-              LoadingButton(
-                onPressed: _verify,
-                isLoading: _isLoading,
-                label: 'Verify Code',
-                icon: Icons.check_circle_outline_rounded,
               ),
-              const SizedBox(height: 16),
-              Center(
-                child: TextButton(
-                  onPressed: () async {
-                    final messenger = ScaffoldMessenger.of(context);
-                    await ref.read(authProvider.notifier).requestOtp(widget.identifier);
-                    if (mounted) {
-                      messenger.showSnackBar(
-                        const SnackBar(content: Text('New OTP sent!')),
-                      );
-                    }
-                  },
-                  child: const Text('Resend Code'),
-                ),
-              ),
-              ],
             ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildOtpFields() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(6, (i) {
-        return Padding(
-          padding: EdgeInsets.only(right: i < 5 ? 8.0 : 0),
-          child: SizedBox(
-            width: 48,
-            height: 56,
-            child: TextField(
-                controller: _controllers[i],
-                focusNode: _focusNodes[i],
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.center,
-                maxLength: 1,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                decoration: InputDecoration(
-                  contentPadding: EdgeInsets.zero,
-                  counterText: '',
-                  filled: true,
-                  fillColor: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth;
+        const gap = 6.0;
+        final totalGaps = gap * 5;
+        final boxWidth = ((availableWidth - totalGaps) / 6).clamp(38.0, 48.0);
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(6, (i) {
+            return Padding(
+              padding: EdgeInsets.only(right: i < 5 ? gap : 0),
+              child: SizedBox(
+                width: boxWidth,
+                height: 54,
+                child: TextField(
+                  controller: _controllers[i],
+                  focusNode: _focusNodes[i],
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  maxLength: 1,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  decoration: InputDecoration(
+                    contentPadding: EdgeInsets.zero,
+                    counterText: '',
+                    filled: true,
+                    fillColor: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.surfaceVariant
+                        : Colors.black.withValues(alpha: 0.05),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: AppColors.primaryLight, width: 2),
+                    ),
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.primaryLight, width: 2),
-                  ),
+                  onChanged: (v) => _onDigitInput(i, v),
                 ),
-                onChanged: (v) => _onDigitInput(i, v),
               ),
-            ),
-          );
-      }),
+            );
+          }),
+        );
+      },
     );
   }
 }

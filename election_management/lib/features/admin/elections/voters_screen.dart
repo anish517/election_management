@@ -443,74 +443,97 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                   ),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Row(
-                      children: [
-                        // Search Field
-                        Expanded(
-                          child: TextField(
-                            decoration: InputDecoration(
-                              hintText: 'Search by voter name, email, Voter ID, council or citizenship no...',
-                              hintStyle: const TextStyle(fontSize: 13),
-                              prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                              isDense: true,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                              filled: true,
-                              fillColor: isDark ? AppColors.surfaceVariant : const Color(0xFFF9FAFB),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade300),
-                              ),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isMobile = constraints.maxWidth < 650;
+                        final searchField = TextField(
+                          decoration: InputDecoration(
+                            hintText: 'Search by voter name, email, Voter ID, council...',
+                            hintStyle: const TextStyle(fontSize: 13),
+                            prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            filled: true,
+                            fillColor: isDark ? AppColors.surfaceVariant : const Color(0xFFF9FAFB),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade300),
                             ),
-                            onChanged: (v) => setState(() => _searchQuery = v),
                           ),
-                        ),
-                        const SizedBox(width: 16),
+                          onChanged: (v) => setState(() => _searchQuery = v),
+                        );
 
-                        // Franchise Filter Choice Chips
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 6,
-                          children: [
-                            ChoiceChip(
-                              label: Text('All ($totalVoters)', style: const TextStyle(fontSize: 12)),
-                              selected: _eligibilityFilter == 'all',
-                              onSelected: (val) => setState(() => _eligibilityFilter = 'all'),
-                            ),
-                            ChoiceChip(
-                              label: Text('Eligible ($eligibleCount)', style: const TextStyle(fontSize: 12)),
-                              selected: _eligibilityFilter == 'eligible',
-                              selectedColor: Colors.green.withValues(alpha: 0.2),
-                              onSelected: (val) => setState(() => _eligibilityFilter = 'eligible'),
-                            ),
-                            ChoiceChip(
-                              label: const Text('📱 App', style: TextStyle(fontSize: 12)),
-                              selected: _eligibilityFilter == 'mobile_app',
-                              selectedColor: Colors.indigo.withValues(alpha: 0.2),
-                              onSelected: (val) => setState(() => _eligibilityFilter = 'mobile_app'),
-                            ),
-                            ChoiceChip(
-                              label: const Text('🌐 Web', style: TextStyle(fontSize: 12)),
-                              selected: _eligibilityFilter == 'web_email',
-                              selectedColor: Colors.blue.withValues(alpha: 0.2),
-                              onSelected: (val) => setState(() => _eligibilityFilter = 'web_email'),
-                            ),
-                            ChoiceChip(
-                              label: const Text('🏛️ Venue', style: TextStyle(fontSize: 12)),
-                              selected: _eligibilityFilter == 'venue_kiosk',
-                              selectedColor: Colors.purple.withValues(alpha: 0.2),
-                              onSelected: (val) => setState(() => _eligibilityFilter = 'venue_kiosk'),
-                            ),
-                            if (ineligibleCount > 0)
+                        final filterChips = SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          child: Row(
+                            children: [
                               ChoiceChip(
-                                label: Text('Ineligible ($ineligibleCount)', style: const TextStyle(fontSize: 12)),
-                                selected: _eligibilityFilter == 'ineligible',
-                                selectedColor: Colors.red.withValues(alpha: 0.2),
-                                onSelected: (val) => setState(() => _eligibilityFilter = 'ineligible'),
+                                label: Text('All ($totalVoters)', style: const TextStyle(fontSize: 12)),
+                                selected: _eligibilityFilter == 'all',
+                                onSelected: (val) => setState(() => _eligibilityFilter = 'all'),
                               ),
+                              const SizedBox(width: 8),
+                              ChoiceChip(
+                                label: Text('Eligible ($eligibleCount)', style: const TextStyle(fontSize: 12)),
+                                selected: _eligibilityFilter == 'eligible',
+                                selectedColor: Colors.green.withValues(alpha: 0.2),
+                                onSelected: (val) => setState(() => _eligibilityFilter = 'eligible'),
+                              ),
+                              const SizedBox(width: 8),
+                              ChoiceChip(
+                                label: const Text('📱 App', style: TextStyle(fontSize: 12)),
+                                selected: _eligibilityFilter == 'mobile_app',
+                                selectedColor: Colors.indigo.withValues(alpha: 0.2),
+                                onSelected: (val) => setState(() => _eligibilityFilter = 'mobile_app'),
+                              ),
+                              const SizedBox(width: 8),
+                              ChoiceChip(
+                                label: const Text('🌐 Web', style: TextStyle(fontSize: 12)),
+                                selected: _eligibilityFilter == 'web_email',
+                                selectedColor: Colors.blue.withValues(alpha: 0.2),
+                                onSelected: (val) => setState(() => _eligibilityFilter = 'web_email'),
+                              ),
+                              const SizedBox(width: 8),
+                              ChoiceChip(
+                                label: const Text('🏛️ Venue', style: TextStyle(fontSize: 12)),
+                                selected: _eligibilityFilter == 'venue_kiosk',
+                                selectedColor: Colors.purple.withValues(alpha: 0.2),
+                                onSelected: (val) => setState(() => _eligibilityFilter = 'venue_kiosk'),
+                              ),
+                              if (ineligibleCount > 0) ...[
+                                const SizedBox(width: 8),
+                                ChoiceChip(
+                                  label: Text('Ineligible ($ineligibleCount)', style: const TextStyle(fontSize: 12)),
+                                  selected: _eligibilityFilter == 'ineligible',
+                                  selectedColor: Colors.red.withValues(alpha: 0.2),
+                                  onSelected: (val) => setState(() => _eligibilityFilter = 'ineligible'),
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+
+                        if (isMobile) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              searchField,
+                              const SizedBox(height: 10),
+                              filterChips,
+                            ],
+                          );
+                        }
+
+                        return Row(
+                          children: [
+                            Expanded(child: searchField),
+                            const SizedBox(width: 16),
+                            Flexible(child: filterChips),
                           ],
-                        ),
-                      ],
+                        );
+                      },
                     ),
                   ),
                 );
@@ -519,7 +542,7 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Elector Directory Table Card
+            // Elector Directory Table / Mobile Card View
             Expanded(
               child: Card(
                 elevation: 0,
@@ -528,67 +551,85 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                   borderRadius: BorderRadius.circular(14),
                   side: BorderSide(color: isDark ? AppColors.surfaceVariant : Colors.grey.shade200),
                 ),
-                child: Column(
-                  children: [
-                    _buildTableHeader(isAdmin, isDark),
-                    const Divider(height: 1),
-                    Expanded(
-                      child: votersAsync.when(
-                        loading: () => const Center(child: CircularProgressIndicator()),
-                        error: (err, stack) => Center(child: Text('Error loading voters: $err', style: const TextStyle(color: Colors.red))),
-                        data: (voters) {
-                          if (voters.isEmpty) {
-                            return const Center(
-                              child: Text('No voters registered on the electoral roll.', style: TextStyle(fontSize: 13, color: Colors.grey)),
-                            );
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isMobile = constraints.maxWidth < 700;
+
+                    return votersAsync.when(
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (err, stack) => Center(child: Text('Error loading voters: $err', style: const TextStyle(color: Colors.red))),
+                      data: (voters) {
+                        if (voters.isEmpty) {
+                          return const Center(
+                            child: Text('No voters registered on the electoral roll.', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                          );
+                        }
+
+                        // Filter voters
+                        final filtered = voters.where((item) {
+                          final map = item as Map<String, dynamic>;
+                          final fullName = (map['full_name'] ?? '${map['first_name']} ${map['last_name']}').toString().toLowerCase();
+                          final email = (map['email'] ?? '').toString().toLowerCase();
+                          final voterId = (map['voter_id'] ?? '').toString().toLowerCase();
+                          final councilNo = (map['council_number'] ?? '').toString().toLowerCase();
+                          final citizenNo = (map['citizenship_number'] ?? '').toString().toLowerCase();
+                          final isEligible = map['is_eligible'] == true;
+                          final channel = (map['verification_channel'] ?? 'unverified').toString();
+
+                          if (_eligibilityFilter == 'eligible' && !isEligible) return false;
+                          if (_eligibilityFilter == 'ineligible' && isEligible) return false;
+                          if (_eligibilityFilter == 'mobile_app' && channel != 'mobile_app') return false;
+                          if (_eligibilityFilter == 'web_email' && channel != 'web_email') return false;
+                          if (_eligibilityFilter == 'venue_kiosk' && channel != 'venue_kiosk') return false;
+
+                          if (_searchQuery.isNotEmpty) {
+                            final q = _searchQuery.toLowerCase();
+                            return fullName.contains(q) ||
+                                email.contains(q) ||
+                                voterId.contains(q) ||
+                                councilNo.contains(q) ||
+                                citizenNo.contains(q);
                           }
+                          return true;
+                        }).toList();
 
-                          // Filter voters
-                          final filtered = voters.where((item) {
-                            final map = item as Map<String, dynamic>;
-                            final fullName = (map['full_name'] ?? '${map['first_name']} ${map['last_name']}').toString().toLowerCase();
-                            final email = (map['email'] ?? '').toString().toLowerCase();
-                            final voterId = (map['voter_id'] ?? '').toString().toLowerCase();
-                            final councilNo = (map['council_number'] ?? '').toString().toLowerCase();
-                            final citizenNo = (map['citizenship_number'] ?? '').toString().toLowerCase();
-                            final isEligible = map['is_eligible'] == true;
-                            final channel = (map['verification_channel'] ?? 'unverified').toString();
+                        if (filtered.isEmpty) {
+                          return const Center(
+                            child: Text('No voters matching search or filter criteria.', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                          );
+                        }
 
-                            if (_eligibilityFilter == 'eligible' && !isEligible) return false;
-                            if (_eligibilityFilter == 'ineligible' && isEligible) return false;
-                            if (_eligibilityFilter == 'mobile_app' && channel != 'mobile_app') return false;
-                            if (_eligibilityFilter == 'web_email' && channel != 'web_email') return false;
-                            if (_eligibilityFilter == 'venue_kiosk' && channel != 'venue_kiosk') return false;
-
-                            if (_searchQuery.isNotEmpty) {
-                              final q = _searchQuery.toLowerCase();
-                              return fullName.contains(q) ||
-                                  email.contains(q) ||
-                                  voterId.contains(q) ||
-                                  councilNo.contains(q) ||
-                                  citizenNo.contains(q);
-                            }
-                            return true;
-                          }).toList();
-
-                          if (filtered.isEmpty) {
-                            return const Center(
-                              child: Text('No voters matching search or filter criteria.', style: TextStyle(fontSize: 13, color: Colors.grey)),
-                            );
-                          }
-
+                        if (isMobile) {
                           return ListView.separated(
+                            padding: const EdgeInsets.all(12),
                             itemCount: filtered.length,
-                            separatorBuilder: (context, index) => const Divider(height: 1),
+                            separatorBuilder: (context, index) => const SizedBox(height: 10),
                             itemBuilder: (context, index) {
                               final voter = filtered[index] as Map<String, dynamic>;
-                              return _buildTableRow(context, ref, voter, index + 1, isAdmin, isObserverOrAuditor, isDark, isVoterClaimOpen);
+                              return _buildMobileVoterCard(context, ref, voter, index + 1, isAdmin, isObserverOrAuditor, isDark, isVoterClaimOpen);
                             },
                           );
-                        },
-                      ),
-                    ),
-                  ],
+                        }
+
+                        return Column(
+                          children: [
+                            _buildTableHeader(isAdmin, isDark),
+                            const Divider(height: 1),
+                            Expanded(
+                              child: ListView.separated(
+                                itemCount: filtered.length,
+                                separatorBuilder: (context, index) => const Divider(height: 1),
+                                itemBuilder: (context, index) {
+                                  final voter = filtered[index] as Map<String, dynamic>;
+                                  return _buildTableRow(context, ref, voter, index + 1, isAdmin, isObserverOrAuditor, isDark, isVoterClaimOpen);
+                                },
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
                 ),
               ),
             ),
@@ -930,6 +971,243 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileVoterCard(
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> voter,
+    int sn,
+    bool isAdmin,
+    bool isObserverOrAuditor,
+    bool isDark,
+    bool isVoterClaimOpen,
+  ) {
+    final fullName = (voter['full_name'] as String?)?.trim() ??
+        '${voter['first_name'] ?? ''} ${voter['last_name'] ?? ''}'.trim();
+    final initial = fullName.isNotEmpty ? fullName[0].toUpperCase() : 'V';
+    final isEligible = voter['is_eligible'] == true;
+    final voterId = voter['voter_id']?.toString() ?? '-';
+    final voterPin = voter['voter_pin']?.toString() ?? '';
+    final email = voter['email']?.toString() ?? '';
+    final phone = voter['phone']?.toString() ?? '';
+    final council = voter['council_number']?.toString().isNotEmpty == true
+        ? voter['council_number'].toString()
+        : (voter['citizenship_number']?.toString().isNotEmpty == true ? voter['citizenship_number'].toString() : '');
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.3) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? Colors.white10 : Colors.grey.shade200,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top row: S.N., Voter ID, PIN, and Status Badge
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text('#$sn', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  voterId.isNotEmpty ? voterId : '-',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryLight),
+                ),
+              ),
+              if (voterPin.isNotEmpty) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD97706).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.pin_rounded, size: 10, color: Color(0xFFD97706)),
+                      const SizedBox(width: 2),
+                      Text(
+                        voterPin,
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFD97706)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: (isEligible ? Colors.green : Colors.red).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  isEligible ? 'Eligible' : 'Ineligible',
+                  style: TextStyle(
+                    color: isEligible ? Colors.green : Colors.red,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Voter Name & Avatar
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                child: Text(initial, style: const TextStyle(color: AppColors.primaryLight, fontSize: 13, fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      fullName.isNotEmpty ? fullName : '-',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    if (email.isNotEmpty || phone.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        [if (email.isNotEmpty) email, if (phone.isNotEmpty) phone].join(' • '),
+                        style: TextStyle(fontSize: 11.5, color: isDark ? Colors.white60 : Colors.grey.shade600),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          if (council.isNotEmpty || voter['verification_channel'] != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                if (council.isNotEmpty)
+                  Text('Reg: $council', style: TextStyle(fontSize: 11, color: isDark ? Colors.white54 : Colors.grey.shade600)),
+                const Spacer(),
+                if (voter['verification_channel'] != null)
+                  _buildVerificationChannelBadge(voter['verification_channel']?.toString()),
+              ],
+            ),
+          ],
+
+          const Divider(height: 16),
+
+          // Actions Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.person_search_rounded, size: 18, color: AppColors.primaryLight),
+                tooltip: 'Profile Dossier',
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => VoterProfileSheet(voter: voter),
+                  );
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.badge_outlined, size: 18, color: Color(0xFF10B981)),
+                tooltip: 'Voter ID Card',
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => DigitalIdCardDialog(
+                      cardType: 'voter',
+                      fullName: fullName,
+                      idNumber: voterId.isNotEmpty ? voterId : (voter['id']?.toString() ?? ''),
+                      councilNumber: voter['council_number']?.toString(),
+                      phone: voter['phone']?.toString(),
+                      electionTitle: 'Official Voter Roll',
+                      electionId: widget.electionId,
+                      entityId: voter['id']?.toString() ?? '',
+                    ),
+                  );
+                },
+              ),
+              if (isAdmin) ...[
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 18, color: Colors.indigo),
+                  tooltip: 'Edit Voter',
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => EditVoterDialog(electionId: widget.electionId, voter: voter),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
+                  tooltip: 'Delete Voter',
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        title: const Text('Delete Voter from Roll'),
+                        content: Text('Are you sure you want to delete "$fullName" from this election roll?'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                          FilledButton(
+                            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text('Delete Voter'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirm == true) {
+                      ref.read(publishElectionProvider.notifier).deleteVoter(widget.electionId, voter['id'].toString());
+                    }
+                  },
+                ),
+              ],
+              if (!isAdmin && !isObserverOrAuditor && isVoterClaimOpen)
+                IconButton(
+                  icon: const Icon(Icons.rate_review_outlined, size: 18, color: Colors.orange),
+                  tooltip: 'File Claim / Correction',
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (_) => FileVoterClaimDialog(
+                        electionId: widget.electionId,
+                        initialVoterName: fullName,
+                      ),
+                    );
+                  },
+                ),
+            ],
           ),
         ],
       ),

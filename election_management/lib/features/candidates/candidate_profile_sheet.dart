@@ -396,7 +396,13 @@ class _HeroHeader extends StatelessWidget {
                             if (candidate.symbolImage.isNotEmpty) ...[
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(3),
-                                child: Image.network(candidate.symbolImage, width: 14, height: 14, fit: BoxFit.contain, errorBuilder: (ctx, err, stack) => const Icon(Icons.how_to_vote_rounded, size: 12, color: Color(0xFFD97706))),
+                                child: Image.network(
+                                  ApiConstants.getFullImageUrl(candidate.symbolImage) ?? candidate.symbolImage,
+                                  width: 14,
+                                  height: 14,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (ctx, err, stack) => const Icon(Icons.how_to_vote_rounded, size: 12, color: Color(0xFFD97706)),
+                                ),
                               ),
                               const SizedBox(width: 4),
                             ] else ...[

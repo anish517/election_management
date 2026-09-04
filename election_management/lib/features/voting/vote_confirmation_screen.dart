@@ -693,7 +693,7 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                                     if (c.partyName.isNotEmpty)
                                       _buildPill(
                                         icon: Icons.flag_rounded,
-                                        imageUrl: c.symbolImage.isNotEmpty ? c.symbolImage : null,
+                                        imageUrl: c.symbolImage.isNotEmpty ? (ApiConstants.getFullImageUrl(c.symbolImage) ?? c.symbolImage) : null,
                                         label: c.partyName,
                                         color: const Color(0xFF2563EB),
                                         isDark: isDark,

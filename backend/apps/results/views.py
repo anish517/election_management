@@ -90,6 +90,19 @@ class ElectionResultsViewSet(viewsets.ViewSet):
                     'Yes' if cand.get('candidate_id') in pos.get('winners', []) else 'No'
                 ]
                 writer.writerow(row)
+
+        if tally_data.get('party_results'):
+            writer.writerow([])
+            writer.writerow(['Party Name', 'Votes', 'Vote %', 'Seats Won', 'Elected Candidates'])
+            for pr in tally_data.get('party_results', []):
+                elected_names = ', '.join(f"#{c.get('pr_rank')} {c.get('name')}" for c in pr.get('elected_candidates', []))
+                writer.writerow([
+                    pr.get('party_name', 'Independent'),
+                    pr.get('votes', 0),
+                    f"{pr.get('vote_percentage', 0)}%",
+                    pr.get('seats_allocated', 0),
+                    elected_names
+                ])
                 
         # Also write turnout summary at the bottom
         writer.writerow([])

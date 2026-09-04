@@ -1266,12 +1266,17 @@ class ElectionDetailScreen extends ConsumerWidget {
                   onPressed: () async {
                     final token = await JwtInterceptor.getAccessToken();
                     final url = Uri.parse('${ApiConstants.baseUrl}${ApiConstants.elections}${election.id}/export_voter_roll/?token=$token');
-                    if (await canLaunchUrl(url)) {
-                      await launchUrl(url, mode: LaunchMode.externalApplication);
-                    } else {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch export URL')));
-                      }
+                    bool launched = false;
+                    try {
+                      launched = await launchUrl(url, mode: LaunchMode.externalApplication);
+                    } catch (_) {}
+                    if (!launched) {
+                      try {
+                        launched = await launchUrl(url, mode: LaunchMode.platformDefault);
+                      } catch (_) {}
+                    }
+                    if (!launched && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch export URL')));
                     }
                   },
                   icon: const Icon(Icons.download_rounded, size: 18),

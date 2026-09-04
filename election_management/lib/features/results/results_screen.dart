@@ -48,12 +48,17 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
     try {
       final token = await JwtInterceptor.getAccessToken();
       final url = Uri.parse('${ApiConstants.baseUrl}/elections/${widget.electionId}/results/export_csv/?token=$token');
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch export URL')));
-        }
+      bool launched = false;
+      try {
+        launched = await launchUrl(url, mode: LaunchMode.externalApplication);
+      } catch (_) {}
+      if (!launched) {
+        try {
+          launched = await launchUrl(url, mode: LaunchMode.platformDefault);
+        } catch (_) {}
+      }
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch export URL')));
       }
     } catch (e) {
       if (mounted) {
@@ -1287,9 +1292,9 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(8),
-                          child: party.symbolImage.isNotEmpty
+                          child: (ApiConstants.getFullImageUrl(party.symbolImage) ?? party.symbolImage).isNotEmpty
                               ? Image.network(
-                                  party.symbolImage,
+                                  ApiConstants.getFullImageUrl(party.symbolImage) ?? party.symbolImage,
                                   fit: BoxFit.contain,
                                   errorBuilder: (ctx, err, stack) => const Icon(Icons.flag_rounded, color: Colors.blue),
                                 )

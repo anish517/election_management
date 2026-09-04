@@ -225,6 +225,12 @@ class TallyService:
                     'symbol_image': c.symbol_image or '',
                 }
             canonical_name = party_key_map[lower_name]
+            if not parties_info[canonical_name].get('symbol_image') and c.symbol_image:
+                parties_info[canonical_name]['symbol_image'] = c.symbol_image
+            if not parties_info[canonical_name].get('symbol_name') and c.symbol_name:
+                parties_info[canonical_name]['symbol_name'] = c.symbol_name
+            if not parties_info[canonical_name].get('panel_name') and c.panel_name:
+                parties_info[canonical_name]['panel_name'] = c.panel_name
             party_candidates[canonical_name].append({
                 'id': str(c.id),
                 'name': c.full_name,

@@ -14,7 +14,19 @@ class BallotService:
         from apps.candidates.models import Candidate, NominationStatus
         from collections import OrderedDict
 
-        positions = election.positions.all().order_by('result_order', 'id')
+        election_type = getattr(election, 'election_type', 'fptp')
+
+        # In Samānupātik PR, voters vote for the political party / symbol list (pr_ballot).
+        # Internal database positions with voting_method='samanupatik' store candidate closed lists
+        # and priority ranks, so they must NOT be rendered as direct candidate voting contests.
+        if election_type == 'samanupatik':
+            positions = election.positions.none()
+        elif election_type == 'mixed':
+            # In mixed parallel elections, only FPTP / direct constituency positions are voted on individually
+            positions = election.positions.exclude(voting_method='samanupatik').order_by('result_order', 'id')
+        else:
+            positions = election.positions.all().order_by('result_order', 'id')
+
         data = BallotPositionSerializer(positions, many=True).data
         
         # Exclude vacant positions that have 0 candidates (no candidates to vote for)
@@ -25,7 +37,6 @@ class BallotService:
             data = [p for p in data if not p.get('is_uncontested', False)]
 
         # If election is 'mixed' or 'samanupatik', synthesize the Samānupātik PR Party-List ballot
-        election_type = getattr(election, 'election_type', 'fptp')
         if election_type in ['mixed', 'samanupatik']:
             all_candidates = Candidate.objects.filter(
                 election=election,

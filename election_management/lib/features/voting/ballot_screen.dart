@@ -154,6 +154,95 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
     );
   }
 
+  Widget _buildStopwatchBadge(bool isDark, BallotL10n l10n) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: isDark ? Colors.white24 : Colors.grey.shade300),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.timer_outlined,
+            size: 15,
+            color: isDark ? Colors.white70 : const Color(0xFF475569),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            l10n.elapsedTimer(_elapsedStr),
+            style: TextStyle(
+              fontFamily: 'monospace',
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCountdownBadge(bool isDark, BallotL10n l10n) {
+    final isUrgent = _remainingSeconds < 60;
+    final isWarning = _remainingSeconds < 120;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: isUrgent
+            ? (isDark ? const Color(0xFF7F1D1D).withValues(alpha: 0.6) : const Color(0xFFFEE2E2))
+            : (isWarning
+                ? (isDark ? const Color(0xFF78350F).withValues(alpha: 0.6) : const Color(0xFFFEF3C7))
+                : (isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF))),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isUrgent
+              ? const Color(0xFFEF4444)
+              : (isWarning ? const Color(0xFFF59E0B) : (isDark ? Colors.blue.shade700 : const Color(0xFF3B82F6))),
+          width: 1.5,
+        ),
+        boxShadow: [
+          if (isUrgent)
+            BoxShadow(
+              color: const Color(0xFFEF4444).withValues(alpha: 0.25),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.hourglass_top_rounded,
+            size: 15,
+            color: isUrgent
+                ? (isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626))
+                : (isWarning
+                    ? (isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706))
+                    : (isDark ? Colors.blue.shade300 : const Color(0xFF2563EB))),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            l10n.countdownTimer(_countdownStr),
+            style: TextStyle(
+              fontFamily: 'monospace',
+              fontWeight: FontWeight.w800,
+              fontSize: 12.5,
+              color: isUrgent
+                  ? (isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B))
+                  : (isWarning
+                      ? (isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E))
+                      : (isDark ? Colors.blue.shade100 : const Color(0xFF1E40AF))),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ballotAsync = ref.watch(ballotDataProvider(widget.electionId));
@@ -165,6 +254,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
     final enableCountdown = (org?.enableVotingCountdown == true);
     final ballotLang = ref.watch(ballotLanguageProvider);
     final l10n = BallotL10n(ballotLang);
+    final isMobile = MediaQuery.sizeOf(context).width < 600;
 
     if (enableCountdown && !_countdownInitialized && org != null) {
       _remainingSeconds = org.votingTimeLimitMinutes * 60;
@@ -182,12 +272,12 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
               l10n.secretElectronicBallot,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: MediaQuery.sizeOf(context).width < 600 ? 14 : 16,
+                fontSize: isMobile ? 14 : 16,
                 color: isDark ? Colors.white : const Color(0xFF0F172A),
               ),
               overflow: TextOverflow.ellipsis,
             ),
-            if (MediaQuery.sizeOf(context).width >= 600)
+            if (!isMobile)
               Text(
                 l10n.secretElectronicBallotSub,
                 style: TextStyle(
@@ -206,7 +296,7 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
           onPressed: () => context.pop(),
         ),
         actions: [
-          if (MediaQuery.sizeOf(context).width < 600) ...[
+          if (isMobile) ...[
             // Mobile: Compact dropdown for Language & View Mode
             PopupMenuButton<String>(
               icon: Icon(Icons.tune_rounded, color: isDark ? Colors.white70 : const Color(0xFF0F172A), size: 20),
@@ -346,106 +436,49 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
                 ),
               ),
             ),
-          ],
 
-          // Elapsed Stopwatch Badge (if enabled)
-          if (showDurationTimer)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Center(
+            // Desktop: Elapsed Stopwatch Badge (if enabled)
+            if (showDurationTimer)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: _buildStopwatchBadge(isDark, l10n),
+              ),
+
+            // Desktop: Remaining Time Countdown Badge (if enabled)
+            if (enableCountdown)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: _buildCountdownBadge(isDark, l10n),
+              ),
+            const SizedBox(width: 6),
+          ],
+        ],
+        bottom: isMobile && (showDurationTimer || enableCountdown)
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(42),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  height: 42,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: isDark ? Colors.white24 : Colors.grey.shade300),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.timer_outlined,
-                        size: 15,
-                        color: isDark ? Colors.white70 : const Color(0xFF475569),
+                    border: Border(
+                      bottom: BorderSide(
+                        color: isDark ? Colors.white12 : Colors.grey.shade300,
                       ),
-                      const SizedBox(width: 5),
-                      Text(
-                        l10n.elapsedTimer(_elapsedStr),
-                        style: TextStyle(
-                          fontFamily: 'monospace',
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-          // Remaining Time Countdown Badge (if enabled)
-          if (enableCountdown)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _remainingSeconds < 60
-                        ? (isDark ? const Color(0xFF7F1D1D).withValues(alpha: 0.6) : const Color(0xFFFEE2E2))
-                        : (_remainingSeconds < 120
-                            ? (isDark ? const Color(0xFF78350F).withValues(alpha: 0.6) : const Color(0xFFFEF3C7))
-                            : (isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF))),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: _remainingSeconds < 60
-                          ? const Color(0xFFEF4444)
-                          : (_remainingSeconds < 120 ? const Color(0xFFF59E0B) : (isDark ? Colors.blue.shade700 : const Color(0xFF3B82F6))),
-                      width: 1.5,
                     ),
-                    boxShadow: [
-                      if (_remainingSeconds < 60)
-                        BoxShadow(
-                          color: const Color(0xFFEF4444).withValues(alpha: 0.25),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                    ],
                   ),
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: (showDurationTimer && enableCountdown)
+                        ? MainAxisAlignment.spaceBetween
+                        : (showDurationTimer ? MainAxisAlignment.start : MainAxisAlignment.end),
                     children: [
-                      Icon(
-                        Icons.hourglass_top_rounded,
-                        size: 15,
-                        color: _remainingSeconds < 60
-                            ? (isDark ? const Color(0xFFF87171) : const Color(0xFFDC2626))
-                            : (_remainingSeconds < 120
-                                ? (isDark ? const Color(0xFFFBBF24) : const Color(0xFFD97706))
-                                : (isDark ? Colors.blue.shade300 : const Color(0xFF2563EB))),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        l10n.countdownTimer(_countdownStr),
-                        style: TextStyle(
-                          fontFamily: 'monospace',
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13,
-                          color: _remainingSeconds < 60
-                              ? (isDark ? const Color(0xFFFCA5A5) : const Color(0xFF991B1B))
-                              : (_remainingSeconds < 120
-                                  ? (isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E))
-                                  : (isDark ? Colors.blue.shade100 : const Color(0xFF1E40AF))),
-                        ),
-                      ),
+                      if (showDurationTimer) _buildStopwatchBadge(isDark, l10n),
+                      if (enableCountdown) _buildCountdownBadge(isDark, l10n),
                     ],
                   ),
                 ),
-              ),
-            ),
-          const SizedBox(width: 6),
-        ],
+              )
+            : null,
       ),
       body: ballotAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -1250,12 +1283,19 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
           children: [
             Icon(Icons.block_rounded, color: Colors.red),
             SizedBox(width: 10),
-            Text('Boycott Entire Election?'),
+            Expanded(
+              child: Text(
+                'Boycott Entire Election?',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+              ),
+            ),
           ],
         ),
         content: const Text(
           'This will select "No Vote / Boycott (बहिष्कार)" for all positions across this ballot. You can still review or edit before final submission.',
         ),
+        actionsOverflowButtonSpacing: 8,
+        actionsOverflowDirection: VerticalDirection.down,
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -2046,12 +2086,35 @@ class _CandidateTile extends StatelessWidget {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(
-                                        Icons.flag_rounded,
-                                        size: 12,
-                                        color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
-                                      ),
-                                      const SizedBox(width: 4.5),
+                                      if (candidate.symbolImage.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(right: 5),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(3),
+                                            child: Container(
+                                              width: 14,
+                                              height: 14,
+                                              color: Colors.white,
+                                              child: Image.network(
+                                                ApiConstants.getFullImageUrl(candidate.symbolImage) ?? candidate.symbolImage,
+                                                fit: BoxFit.contain,
+                                                errorBuilder: (context, error, stackTrace) => Icon(
+                                                  Icons.flag_rounded,
+                                                  size: 12,
+                                                  color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                      else ...[
+                                        Icon(
+                                          Icons.flag_rounded,
+                                          size: 12,
+                                          color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                                        ),
+                                        const SizedBox(width: 4.5),
+                                      ],
                                       Flexible(
                                         child: Text(
                                           candidate.partyName,

@@ -8,6 +8,7 @@ import '../../../shared/models/models.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/image_upload_widget.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_helper.dart';
 
 class EditCandidateDialog extends ConsumerStatefulWidget {
   final String electionId;
@@ -131,11 +132,20 @@ class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
       }
     } catch (e) {
       if (mounted) {
+        final message = extractApiErrorMessage(e);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update candidate: $e'),
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, color: Colors.white),
+                const SizedBox(width: 10),
+                Expanded(child: Text(message, style: const TextStyle(fontWeight: FontWeight.w500))),
+              ],
+            ),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: const Duration(seconds: 6),
           ),
         );
       }
@@ -425,17 +435,35 @@ class _EditCandidateDialogState extends ConsumerState<EditCandidateDialog> {
                         const SizedBox(height: 16),
                       ],
 
-                      if (election?.hasPrSystem == true) ...[
+                      if (election?.hasPrSystem == true || (election?.isSamanupatik ?? false)) ...[
                         // PR Closed List Rank
-                        TextFormField(
-                          controller: _prRankController,
-                          keyboardType: TextInputType.number,
-                          decoration: _dec(
-                            'PR Closed List Priority Rank (समानुपातिक वरियता क्रम)',
-                            hint: '1, 2, 3...',
-                            prefix: const Icon(Icons.format_list_numbered_rounded),
-                            isDark: isDark,
-                          ),
+                        Builder(
+                          builder: (context) {
+                            final totalPr = election?.totalPrSeats ?? 10;
+                            return TextFormField(
+                              controller: _prRankController,
+                              keyboardType: TextInputType.number,
+                              decoration: _dec(
+                                'PR Closed List Priority Rank (समानुपातिक वरियता क्रम)',
+                                hint: '1, 2, 3... up to $totalPr',
+                                prefix: const Icon(Icons.format_list_numbered_rounded),
+                                helper: 'Determines election order on the party\'s closed list (1 to $totalPr)',
+                                isDark: isDark,
+                              ),
+                              validator: (v) {
+                                if (v != null && v.trim().isNotEmpty) {
+                                  final rank = int.tryParse(v.trim());
+                                  if (rank == null || rank < 1) {
+                                    return 'Rank must be a positive number';
+                                  }
+                                  if (rank > totalPr) {
+                                    return 'Rank cannot exceed total PR seats ($totalPr)';
+                                  }
+                                }
+                                return null;
+                              },
+                            );
+                          },
                         ),
                         const SizedBox(height: 16),
                       ],

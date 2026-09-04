@@ -103,9 +103,13 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
             children: [
               Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 24),
               SizedBox(width: 10),
-              Text('Incomplete Ballot (अपूर्ण मतपत्र)'),
+              Expanded(
+                child: Text('Incomplete Ballot (अपूर्ण मतपत्र)'),
+              ),
             ],
           ),
+          actionsOverflowButtonSpacing: 8,
+          actionsOverflowDirection: VerticalDirection.down,
           content: Text(
             'You have not made a choice for:\n• ${unvotedPositions.join("\n• ")}\n\nDo you want to proceed and cast your ballot anyway?',
           ),
@@ -213,9 +217,9 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isNarrow = constraints.maxWidth < 360;
+                child: Builder(
+                  builder: (context) {
+                    final isNarrow = MediaQuery.sizeOf(ctx).width < 450;
                     if (isNarrow) {
                       return Column(
                         children: [
@@ -500,13 +504,16 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
                   children: [
                     Icon(Icons.timer_outlined, size: 15, color: isDark ? Colors.white70 : const Color(0xFF475569)),
                     const SizedBox(width: 5),
-                    Text(
-                      l10n.elapsedTimer(_elapsedStr),
-                      style: TextStyle(
-                        fontFamily: 'monospace',
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    Flexible(
+                      child: Text(
+                        l10n.elapsedTimer(_elapsedStr),
+                        style: TextStyle(
+                          fontFamily: 'monospace',
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -1525,8 +1532,31 @@ class _DirectCandidateTile extends StatelessWidget {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.flag_rounded, size: 11, color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB)),
-                                      const SizedBox(width: 4),
+                                      if (candidate.symbolImage.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(right: 5),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(3),
+                                            child: Container(
+                                              width: 14,
+                                              height: 14,
+                                              color: Colors.white,
+                                              child: Image.network(
+                                                ApiConstants.getFullImageUrl(candidate.symbolImage) ?? candidate.symbolImage,
+                                                fit: BoxFit.contain,
+                                                errorBuilder: (context, error, stackTrace) => Icon(
+                                                  Icons.flag_rounded,
+                                                  size: 11,
+                                                  color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        )
+                                      else ...[
+                                        Icon(Icons.flag_rounded, size: 11, color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB)),
+                                        const SizedBox(width: 4),
+                                      ],
                                       ConstrainedBox(
                                         constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width - (isMobile ? 140 : 220)),
                                         child: Text(

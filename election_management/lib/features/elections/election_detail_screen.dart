@@ -850,12 +850,27 @@ class ElectionDetailScreen extends ConsumerWidget {
                 ],
               ),
             )
-          else if (election.isWebBasedOnly)
-            ElevatedButton.icon(
-              onPressed: () => _showRequestWebBallotDialog(context, election, user),
-              icon: const Icon(Icons.mark_email_read_rounded),
-              label: const Text('Get Web Ballot Link (मतदान लिङ्क पाउनुहोस्)'),
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateVoting, foregroundColor: Colors.white),
+          else if (!kIsWeb && election.isWebBasedOnly)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.blue.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.blue.withValues(alpha: 0.35)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.language_rounded, color: Colors.blue, size: 18),
+                  SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      'Web-Based Voting Only (वेब ब्राउजरबाट मात्र मतदान सम्भव छ)',
+                      style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
             )
           else if (kIsWeb && election.onlineType == 'mobile_app')
             Container(
@@ -870,12 +885,21 @@ class ElectionDetailScreen extends ConsumerWidget {
                 children: [
                   Icon(Icons.phone_android_rounded, color: Colors.blue, size: 18),
                   SizedBox(width: 8),
-                  Text(
-                    'Mobile App Voting Only (मोबाइल एपबाट मात्र मतदान सम्भव छ)',
-                    style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 13),
+                  Flexible(
+                    child: Text(
+                      'Mobile App Voting Only (मोबाइल एपबाट मात्र मतदान सम्भव छ)',
+                      style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
                   ),
                 ],
               ),
+            )
+          else if (election.isWebBasedOnly)
+            ElevatedButton.icon(
+              onPressed: () => _showRequestWebBallotDialog(context, election, user),
+              icon: const Icon(Icons.mark_email_read_rounded),
+              label: const Text('Get Web Ballot Link (मतदान लिङ्क पाउनुहोस्)'),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.stateVoting, foregroundColor: Colors.white),
             )
           else
             ElevatedButton.icon(
@@ -2158,13 +2182,16 @@ class _WebBallotRequestDialogState extends ConsumerState<_WebBallotRequestDialog
                   ),
                 ),
                 const SizedBox(height: 20),
-                Row(
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 10,
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     TextButton(
                       onPressed: _isLoading ? null : () => setState(() => _otpSent = false),
                       child: const Text('Change Email'),
                     ),
-                    const Spacer(),
                     ElevatedButton.icon(
                       onPressed: _isLoading ? null : _verifyOtp,
                       icon: _isLoading

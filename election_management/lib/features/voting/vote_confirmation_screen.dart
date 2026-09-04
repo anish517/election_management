@@ -105,9 +105,9 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isNarrow = constraints.maxWidth < 360;
+                child: Builder(
+                  builder: (context) {
+                    final isNarrow = MediaQuery.sizeOf(ctx).width < 450;
                     if (isNarrow) {
                       return Column(
                         children: [
@@ -277,12 +277,15 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
               child: CustomPaint(painter: _VoteSwastikPainter(color: isDark ? Colors.white : AppColors.primary)),
             ),
             const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(l10n.isEnglish ? 'Review & Confirm Ballot' : (l10n.isNepali ? 'मतपत्र समीक्षा तथा अन्तिम प्रमाणीकरण' : 'Review & Confirm Ballot'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                Text(l10n.isEnglish ? 'Secure Cryptographic Submission' : 'मतपत्र समीक्षा तथा अन्तिम प्रमाणीकरण', style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : AppColors.textSecondaryLightMode)),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(l10n.isEnglish ? 'Review & Confirm Ballot' : (l10n.isNepali ? 'मतपत्र समीक्षा तथा अन्तिम प्रमाणीकरण' : 'Review & Confirm Ballot'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15), overflow: TextOverflow.ellipsis),
+                  Text(l10n.isEnglish ? 'Secure Cryptographic Submission' : 'मतपत्र समीक्षा तथा अन्तिम प्रमाणीकरण', style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : AppColors.textSecondaryLightMode), overflow: TextOverflow.ellipsis),
+                ],
+              ),
             ),
           ],
         ),
@@ -679,6 +682,8 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                                 Text(
                                   c.name,
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 4),
                                 Wrap(
@@ -688,6 +693,7 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                                     if (c.partyName.isNotEmpty)
                                       _buildPill(
                                         icon: Icons.flag_rounded,
+                                        imageUrl: c.symbolImage.isNotEmpty ? c.symbolImage : null,
                                         label: c.partyName,
                                         color: const Color(0xFF2563EB),
                                         isDark: isDark,
@@ -718,6 +724,7 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
                               ],
                             ),
                           ),
+                          const SizedBox(width: 8),
                           if (isRanked)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -874,6 +881,7 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
 
   Widget _buildPill({
     required IconData icon,
+    String? imageUrl,
     required String label,
     required Color color,
     required bool isDark,
@@ -891,15 +899,38 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 11, color: isDark ? color.withValues(alpha: 0.95) : color),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w700,
-              color: isDark ? Colors.white : color,
-              letterSpacing: 0.2,
+          if (imageUrl != null && imageUrl.trim().isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 4.5),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: Container(
+                  width: 14,
+                  height: 14,
+                  color: Colors.white,
+                  child: Image.network(
+                    ApiConstants.getFullImageUrl(imageUrl) ?? imageUrl,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => Icon(icon, size: 11, color: isDark ? color.withValues(alpha: 0.95) : color),
+                  ),
+                ),
+              ),
+            )
+          else ...[
+            Icon(icon, size: 11, color: isDark ? color.withValues(alpha: 0.95) : color),
+            const SizedBox(width: 4),
+          ],
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white : color,
+                letterSpacing: 0.2,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

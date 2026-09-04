@@ -331,11 +331,33 @@ class _HeroHeader extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.flag_rounded, size: 12, color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB)),
-                            const SizedBox(width: 4),
-                            Text(
-                              candidate.partyName,
-                              style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: isDark ? const Color(0xFFBFDBFE) : const Color(0xFF1D4ED8)),
+                            if (candidate.symbolImage.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 5),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(3),
+                                  child: Container(
+                                    width: 14,
+                                    height: 14,
+                                    color: Colors.white,
+                                    child: Image.network(
+                                      ApiConstants.getFullImageUrl(candidate.symbolImage) ?? candidate.symbolImage,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (context, error, stackTrace) => Icon(Icons.flag_rounded, size: 12, color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB)),
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else ...[
+                              Icon(Icons.flag_rounded, size: 12, color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB)),
+                              const SizedBox(width: 4),
+                            ],
+                            Flexible(
+                              child: Text(
+                                candidate.partyName,
+                                style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: isDark ? const Color(0xFFBFDBFE) : const Color(0xFF1D4ED8)),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           ],
                         ),

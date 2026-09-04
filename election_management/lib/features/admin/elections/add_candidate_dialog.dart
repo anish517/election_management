@@ -6,6 +6,7 @@ import '../../../core/network/api_constants.dart';
 import '../../../core/providers/admin_providers.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_helper.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/widgets/image_upload_widget.dart';
 import '../../../shared/widgets/loading_button.dart';
@@ -279,11 +280,20 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
       }
     } catch (e) {
       if (mounted) {
+        final message = extractApiErrorMessage(e);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to add candidate: $e'),
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, color: Colors.white),
+                const SizedBox(width: 10),
+                Expanded(child: Text(message, style: const TextStyle(fontWeight: FontWeight.w500))),
+              ],
+            ),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            duration: const Duration(seconds: 6),
           ),
         );
       }
@@ -708,21 +718,41 @@ class _AddCandidateDialogState extends ConsumerState<AddCandidateDialog> {
                             ],
 
                             if (widget.election.hasPrSystem || widget.election.isSamanupatik) ...[
-                              TextFormField(
-                                controller: _prRankController,
-                                keyboardType: TextInputType.number,
-                                decoration: _dec(
-                                  widget.election.isSamanupatik
-                                      ? 'PR Closed List Priority Rank (समानुपातिक सूची वरियता क्रम) *'
-                                      : 'PR Closed List Priority Rank (समानुपातिक सूची वरियता क्रम)',
-                                  hint: 'e.g. 1 for Top candidate, 2, 3...',
-                                  prefix: const Icon(Icons.format_list_numbered_rounded),
-                                  helper: 'Determines election order on the party\'s closed list',
-                                  isDark: isDark,
-                                ),
-                                validator: widget.election.isSamanupatik
-                                    ? (v) => (v == null || v.trim().isEmpty) ? 'PR list rank (e.g. 1, 2, 3) is required' : null
-                                    : null,
+                              Builder(
+                                builder: (context) {
+                                  final totalPr = widget.election.totalPrSeats;
+                                  final isSamanupatik = widget.election.isSamanupatik;
+                                  return TextFormField(
+                                    controller: _prRankController,
+                                    keyboardType: TextInputType.number,
+                                    decoration: _dec(
+                                      isSamanupatik
+                                          ? 'PR Closed List Priority Rank (समानुपातिक सूची वरियता क्रम) *'
+                                          : 'PR Closed List Priority Rank (समानुपातिक सूची वरियता क्रम)',
+                                      hint: 'e.g. 1 for Top candidate, 2, 3... up to $totalPr',
+                                      prefix: const Icon(Icons.format_list_numbered_rounded),
+                                      helper: 'Determines election order on the party\'s closed list (1 to $totalPr). Max quota: $totalPr candidate(s) per party.',
+                                      isDark: isDark,
+                                    ),
+                                    validator: (v) {
+                                      if (isSamanupatik) {
+                                        if (v == null || v.trim().isEmpty) {
+                                          return 'PR list rank (1 to $totalPr) is required';
+                                        }
+                                      }
+                                      if (v != null && v.trim().isNotEmpty) {
+                                        final rank = int.tryParse(v.trim());
+                                        if (rank == null || rank < 1) {
+                                          return 'Rank must be a positive number';
+                                        }
+                                        if (rank > totalPr) {
+                                          return 'Rank cannot exceed total PR seats ($totalPr)';
+                                        }
+                                      }
+                                      return null;
+                                    },
+                                  );
+                                },
                               ),
                             ],
                           ],

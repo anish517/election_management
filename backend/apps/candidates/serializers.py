@@ -14,7 +14,10 @@ class CandidateEndorsementSerializer(serializers.ModelSerializer):
         fields = ['id', 'endorsement_type', 'name', 'citizenship_number', 'phone', 'membership_id', 'signature_url']
         read_only_fields = ['id']
 
+from apps.elections.models import Position
+
 class CandidateSerializer(serializers.ModelSerializer):
+    position = serializers.PrimaryKeyRelatedField(queryset=Position.objects.all(), required=False)
     documents = CandidateDocumentSerializer(many=True, read_only=True)
     endorsements = CandidateEndorsementSerializer(many=True, required=False)
     
@@ -60,15 +63,24 @@ class CandidateSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         request = self.context.get('request')
         election = self.context.get('election') or attrs.get('election')
+        if not election and self.instance and self.instance.election:
+            election = self.instance.election
+        if not election and self.context.get('view') and 'election_pk' in self.context['view'].kwargs:
+            from apps.elections.models import Election
+            election = Election.objects.filter(id=self.context['view'].kwargs['election_pk']).first()
         
         if election:
             from apps.candidates.models import NominationStatus
             from apps.elections.models import Position
 
-            # If Samanupatik election, ensure position and require party name
-            if getattr(election, 'election_type', 'fptp') == 'samanupatik':
+            # If Samanupatik election or candidate applying for a PR position
+            is_samanupatik_election = getattr(election, 'election_type', 'fptp') == 'samanupatik'
+            cand_pos = attrs.get('position') or (self.instance.position if self.instance else None)
+            is_pr_position = is_samanupatik_election or (cand_pos and getattr(cand_pos, 'voting_method', '') == 'samanupatik')
+
+            if is_pr_position:
                 if not attrs.get('position') and (not self.instance or not self.instance.position):
-                    pos = election.positions.first()
+                    pos = election.positions.filter(voting_method='samanupatik').first() or election.positions.first()
                     if not pos:
                         pos = Position.objects.create(
                             election=election,
@@ -85,8 +97,46 @@ class CandidateSerializer(serializers.ModelSerializer):
                     raise serializers.ValidationError({
                         "party_name": "Political Party affiliation (राजनीतिक दल) is strictly required for Samānupātik closed-list candidates."
                     })
-                if attrs.get('pr_rank', 0) < 1:
+
+                max_pr_seats = getattr(election, 'total_pr_seats', 10) or 10
+
+                # 1. Validate PR Rank Range (1 <= pr_rank <= max_pr_seats)
+                pr_rank = attrs.get('pr_rank')
+                if pr_rank is None and self.instance:
+                    pr_rank = self.instance.pr_rank
+                if pr_rank is None or pr_rank < 1:
+                    pr_rank = 1
                     attrs['pr_rank'] = 1
+
+                if pr_rank > max_pr_seats:
+                    raise serializers.ValidationError({
+                        "pr_rank": f"समानुपातिक बन्दसूची वरीयता क्रम १ देखि {max_pr_seats} सम्म मात्र हुनुपर्छ (PR closed-list rank #{pr_rank} exceeds the total available seats of {max_pr_seats})."
+                    })
+
+                # Validate Party Quota Limit & Duplicate Rank per Party
+                party_cands_qs = Candidate.objects.filter(
+                    election=election,
+                    party_name__iexact=party,
+                ).exclude(status__in=[NominationStatus.WITHDRAWN, NominationStatus.REJECTED])
+
+                if self.instance and self.instance.pk:
+                    party_cands_qs = party_cands_qs.exclude(pk=self.instance.pk)
+
+                # 2. Party Quota Check: maximum active candidates for this party cannot exceed total_pr_seats
+                if party_cands_qs.count() >= max_pr_seats:
+                    raise serializers.ValidationError({
+                        "party_name": f"दल '{party}' ले यस समानुपातिक निर्वाचनका लागि अधिकतम {max_pr_seats} जना उम्मेदवार मात्र मनोनयन गर्न सक्दछ (Party '{party}' has reached the maximum closed-list quota of {max_pr_seats} candidate(s) for this election)."
+                    })
+
+                # 3. Duplicate PR Rank within the same party
+                existing_same_rank = party_cands_qs.filter(pr_rank=pr_rank).first()
+                if existing_same_rank:
+                    raise serializers.ValidationError({
+                        "pr_rank": f"दल '{party}' मा वरीयता क्रम #{pr_rank} मा पहिले नै '{existing_same_rank.full_name}' दर्ता भइसकेका छन् (Candidate '{existing_same_rank.full_name}' is already assigned to PR rank #{pr_rank} for party '{party}')."
+                    })
+            else:
+                if not attrs.get('position') and (not self.instance or not self.instance.position):
+                    raise serializers.ValidationError({"position": "Position is required."})
 
             # Comprehensive Single Active Nomination Check per Election (Self & Admin)
             cand_email = (attrs.get('email') or (request.user.email if request else '')).strip().lower()

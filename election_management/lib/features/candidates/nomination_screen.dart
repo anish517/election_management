@@ -588,6 +588,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: const [
             Icon(Icons.warning_amber_rounded, color: Colors.orange),
@@ -595,29 +596,34 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
             Expanded(child: Text('Withdraw Candidacy?')),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Are you sure you want to withdraw your nomination for $positionTitle?'),
-            const SizedBox(height: 12),
-            TextField(
-              controller: reasonCtrl,
-              maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Reason for Withdrawal (Optional)',
-                hintText: 'e.g. Personal reasons, health, etc.',
-                border: OutlineInputBorder(),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Are you sure you want to withdraw your nomination for $positionTitle?'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: reasonCtrl,
+                maxLines: 2,
+                decoration: const InputDecoration(
+                  labelText: 'Reason for Withdrawal (Optional)',
+                  hintText: 'e.g. Personal reasons, health, etc.',
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Confirm Withdrawal', style: TextStyle(color: Colors.white)),
+            child: const Text('Confirm Withdrawal'),
           ),
         ],
       ),
@@ -1417,13 +1423,27 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                                     keyboardType: TextInputType.number,
                                     decoration: InputDecoration(
                                       labelText: election.isSamanupatik ? 'PR Closed List Rank (बन्दसूची वरीयता क्रम) *' : 'PR Closed List Rank (समानुपातिक सूची वरीयता क्रम)',
-                                      hintText: '1 for Top candidate, 2, 3...',
+                                      hintText: '1 for Top candidate, 2, 3... up to ${election.totalPrSeats}',
                                       prefixIcon: const Icon(Icons.format_list_numbered_rounded),
-                                      helperText: 'Determines election priority order on the party\'s list',
+                                      helperText: 'Determines priority order on party closed list (1 to ${election.totalPrSeats}). Max quota: ${election.totalPrSeats} candidates per party.',
                                     ),
-                                    validator: (election.isSamanupatik)
-                                        ? (v) => (v == null || v.trim().isEmpty) ? 'PR list rank (e.g. 1, 2, 3) is required' : null
-                                        : null,
+                                    validator: (v) {
+                                      if (election.isSamanupatik) {
+                                        if (v == null || v.trim().isEmpty) {
+                                          return 'PR list rank (1 to ${election.totalPrSeats}) is required';
+                                        }
+                                      }
+                                      if (v != null && v.trim().isNotEmpty) {
+                                        final r = int.tryParse(v.trim());
+                                        if (r == null || r < 1) {
+                                          return 'Rank must be a positive number';
+                                        }
+                                        if (r > election.totalPrSeats) {
+                                          return 'Rank cannot exceed total PR seats (${election.totalPrSeats})';
+                                        }
+                                      }
+                                      return null;
+                                    },
                                   ),
                                   const SizedBox(height: 16),
                                 ],

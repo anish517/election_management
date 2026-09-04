@@ -31,6 +31,19 @@ class CandidateViewSet(viewsets.ModelViewSet):
             qs = qs.filter(email__iexact=self.request.user.email)
         return qs
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        if 'election_pk' in self.kwargs:
+            from apps.elections.models import Election
+            try:
+                context['election'] = Election.objects.get(
+                    id=self.kwargs['election_pk'],
+                    organization=self.request.user.organization
+                )
+            except (Election.DoesNotExist, ValueError):
+                pass
+        return context
+
     def perform_create(self, serializer):
         from apps.elections.models import Election, ElectionCommittee, ElectionRoleAssignment
         from rest_framework.exceptions import PermissionDenied, ValidationError

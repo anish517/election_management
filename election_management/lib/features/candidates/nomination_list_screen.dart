@@ -65,27 +65,29 @@ class _NominationListScreenState extends ConsumerState<NominationListScreen> wit
             Text(approve ? 'Approve Nomination?' : 'Reject Nomination?'),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              approve
-                  ? 'Confirm approval of candidate ${candidate.name} for the position of "${candidate.positionTitle ?? 'Nominee'}"?'
-                  : 'Are you sure you want to reject candidate ${candidate.name}?',
-              style: const TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: noteCtrl,
-              decoration: InputDecoration(
-                labelText: 'Officer Scrutiny Notes / Reason',
-                hintText: approve ? 'Approval notes...' : 'Reason for rejection...',
-                border: const OutlineInputBorder(),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                approve
+                    ? 'Confirm approval of candidate ${candidate.name} for the position of "${candidate.positionTitle ?? 'Nominee'}"?'
+                    : 'Are you sure you want to reject candidate ${candidate.name}?',
+                style: const TextStyle(fontSize: 14),
               ),
-              maxLines: 2,
-            ),
-          ],
+              const SizedBox(height: 14),
+              TextField(
+                controller: noteCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Officer Scrutiny Notes / Reason',
+                  hintText: approve ? 'Approval notes...' : 'Reason for rejection...',
+                  border: const OutlineInputBorder(),
+                ),
+                maxLines: 2,
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(

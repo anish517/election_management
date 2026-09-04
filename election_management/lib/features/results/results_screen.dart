@@ -984,18 +984,45 @@ class _ResultsScreenState extends ConsumerState<ResultsScreen> {
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          Icon(
-                                            Icons.flag_rounded,
-                                            size: 9.5,
-                                            color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
-                                          ),
-                                          const SizedBox(width: 3),
-                                          Text(
-                                            score.partyName,
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w700,
-                                              color: isDark ? const Color(0xFFBFDBFE) : const Color(0xFF1D4ED8),
+                                          if (score.symbolImage.isNotEmpty)
+                                            Padding(
+                                              padding: const EdgeInsets.only(right: 4),
+                                              child: ClipRRect(
+                                                borderRadius: BorderRadius.circular(3),
+                                                child: Container(
+                                                  width: 13,
+                                                  height: 13,
+                                                  color: Colors.white,
+                                                  child: Image.network(
+                                                    ApiConstants.getFullImageUrl(score.symbolImage) ?? score.symbolImage,
+                                                    fit: BoxFit.contain,
+                                                    errorBuilder: (context, error, stackTrace) => Icon(
+                                                      Icons.flag_rounded,
+                                                      size: 9.5,
+                                                      color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            )
+                                          else ...[
+                                            Icon(
+                                              Icons.flag_rounded,
+                                              size: 9.5,
+                                              color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                                            ),
+                                            const SizedBox(width: 3),
+                                          ],
+                                          Flexible(
+                                            child: Text(
+                                              score.partyName,
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w700,
+                                                color: isDark ? const Color(0xFFBFDBFE) : const Color(0xFF1D4ED8),
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                              maxLines: 1,
                                             ),
                                           ),
                                         ],
@@ -1948,12 +1975,35 @@ class _CandidateResultTile extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
-                                Icons.flag_rounded,
-                                size: 11,
-                                color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
-                              ),
-                              const SizedBox(width: 4),
+                              if (score.symbolImage.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 5),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(3),
+                                    child: Container(
+                                      width: 14,
+                                      height: 14,
+                                      color: Colors.white,
+                                      child: Image.network(
+                                        ApiConstants.getFullImageUrl(score.symbolImage) ?? score.symbolImage,
+                                        fit: BoxFit.contain,
+                                        errorBuilder: (context, error, stackTrace) => Icon(
+                                          Icons.flag_rounded,
+                                          size: 11,
+                                          color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              else ...[
+                                Icon(
+                                  Icons.flag_rounded,
+                                  size: 11,
+                                  color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                                ),
+                                const SizedBox(width: 4),
+                              ],
                               Flexible(
                                 child: Text(
                                   score.partyName,

@@ -843,9 +843,11 @@ class ElectionDetailScreen extends ConsumerWidget {
                 children: [
                   const Icon(Icons.storefront_rounded, color: Colors.purple, size: 18),
                   const SizedBox(width: 8),
-                  Text(
-                    'In-Person Booth Voting at ${election.venueName.isNotEmpty ? election.venueName : "Venue"}',
-                    style: const TextStyle(color: Colors.purple, fontWeight: FontWeight.bold, fontSize: 13),
+                  Flexible(
+                    child: Text(
+                      'In-Person Booth Voting at ${election.venueName.isNotEmpty ? election.venueName : "Venue"}',
+                      style: const TextStyle(color: Colors.purple, fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
                   ),
                 ],
               ),

@@ -1,0 +1,20 @@
+# /etc/systemd/system/election-celery-worker.service
+# Runs the .delay() tasks: notification emails/SMS, broadcast emails, result calculation.
+[Unit]
+Description=OmWay Election Management System (Celery worker)
+After=network.target postgresql.service redis-server.service
+Requires=redis-server.service
+
+[Service]
+User=omway
+Group=omway
+WorkingDirectory=/srv/election/app
+ExecStart=/srv/election/venv/bin/celery -A ems_backend worker -l INFO \
+    --concurrency=2 --max-tasks-per-child=200 \
+    --logfile=/srv/election/logs/celery-worker.log
+Restart=always
+RestartSec=5
+MemoryMax=384M
+
+[Install]
+WantedBy=multi-user.target

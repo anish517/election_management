@@ -1,0 +1,111 @@
+# MR -> checks + Flutter build. Push to main -> the same, then deploy:production to
+# https://election.omwaytechnologies.com
+#
+# Two shell-executor runners, picked by tag (neither accepts untagged jobs):
+#   flutter-build   omway-gitlab. The Flutter web build peaks at ~1.6 GB, which
+#                   omway-internal cannot spare (1.8 GB shared with production).
+#   omway-internal  the production host. Installs backend/ from the checkout and the
+#                   prebuilt web bundle from build:web's artifacts.
+# deploy:production hands the checkout to /srv/election/deploy/ci-deploy.sh, the only
+# command the runner may sudo (/etc/sudoers.d/gitlab-runner-election). That script
+# backs up the database, syncs code, migrates, restarts services and smoke-tests.
+
+stages:
+  - check
+  - deploy
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - when: never
+
+default:
+  interruptible: true
+
+variables:
+  API_BASE_URL: https://election.omwaytechnologies.com/v1
+
+check:backend:
+  stage: check
+  tags:
+    - omway-internal
+  variables:
+    PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    # Settings fall back to dev defaults; nothing here touches the production DB.
+    DEBUG: "True"
+  cache:
+    key:
+      files:
+        - backend/requirements.txt
+    paths:
+      - .venv/
+  script:
+    - '[ -x .venv/bin/python ] || python3 -m venv .venv'
+    - .venv/bin/pip install -q -r backend/requirements.txt
+    - cd backend
+    - ../.venv/bin/python manage.py check
+    - 'for f in ../deploy/omway-internal/*.sh; do bash -n "$f"; done'
+
+# Model changes pushed without their migration. Reported, not blocking: deploy runs
+# `migrate`, which only applies migration files that exist in the repo.
+check:migrations:
+  stage: check
+  tags:
+    - omway-internal
+  needs:
+    - check:backend
+  allow_failure: true
+  variables:
+    DEBUG: "True"
+  cache:
+    key:
+      files:
+        - backend/requirements.txt
+    paths:
+      - .venv/
+    policy: pull
+  script:
+    - cd backend
+    - ../.venv/bin/python manage.py makemigrations --check --dry-run
+
+build:web:
+  stage: check
+  tags:
+    - flutter-build
+  variables:
+    FLUTTER: /home/gitlab-runner/flutter/bin/flutter
+  script:
+    - cd election_management
+    - $FLUTTER --version | head -1
+    - $FLUTTER pub get
+    - $FLUTTER build web --release --no-wasm-dry-run --dart-define=API_BASE_URL=$API_BASE_URL
+    - grep -q "$API_BASE_URL" build/web/main.dart.js
+  artifacts:
+    name: "election-web-$CI_COMMIT_SHORT_SHA"
+    expire_in: 1 day
+    paths:
+      - election_management/build/web/
+
+deploy:production:
+  stage: deploy
+  tags:
+    - omway-internal
+  needs:
+    - check:backend
+    - build:web
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  interruptible: false
+  resource_group: production
+  environment:
+    name: production
+    url: https://election.omwaytechnologies.com
+  script:
+    - |
+      case "$CI_COMMIT_SHA" in
+        *[!0-9a-f]*|"") echo "refusing to deploy: CI_COMMIT_SHA is not a hex sha"; exit 1 ;;
+      esac
+    - sudo /srv/election/deploy/ci-deploy.sh "$CI_PROJECT_DIR" "$CI_COMMIT_SHA"
+    - 'curl -sS --fail -o /dev/null -w "public /             -> HTTP %{http_code}\n" https://election.omwaytechnologies.com/'
+    - 'code=$(curl -sS -o /dev/null -w "%{http_code}" https://election.omwaytechnologies.com/v1/auth/me/); echo "public /v1/auth/me/ -> HTTP $code"; [ "$code" = "401" ]'

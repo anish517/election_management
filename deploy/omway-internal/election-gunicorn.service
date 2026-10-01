@@ -1,0 +1,28 @@
+# /etc/systemd/system/election-gunicorn.service
+# Election Management System Django API under gunicorn (WSGI, sync workers).
+[Unit]
+Description=OmWay Election Management System (Django / gunicorn)
+After=network.target postgresql.service redis-server.service
+Requires=postgresql.service
+
+[Service]
+User=omway
+# nginx (www-data) reaches the app only through the socket; omway is not in www-data,
+# so systemd supplies the group per-process (same reason ems-gunicorn does this).
+Group=www-data
+# python-decouple reads .env relative to the working directory.
+WorkingDirectory=/srv/election/app
+ExecStart=/srv/election/venv/bin/gunicorn ems_backend.wsgi:application \
+    --workers 2 --max-requests 1000 --max-requests-jitter 100 \
+    --timeout 120 --umask 007 \
+    --bind unix:/srv/election/run/gunicorn.sock \
+    --access-logfile /srv/election/logs/gunicorn-access.log \
+    --error-logfile  /srv/election/logs/gunicorn-error.log
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=always
+RestartSec=3
+# The box has 1.8 GB shared with EMS, three Node apps, PostgreSQL and a GitLab runner.
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

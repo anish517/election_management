@@ -56,3 +56,6 @@ backend/.env.*
 
 # VS Code
 .vscode/
+
+# Playwright MCP browser logs
+.playwright-mcp/

@@ -1,0 +1,4 @@
+# Install as /etc/sudoers.d/gitlab-runner-election (mode 440, check with visudo -c).
+# Lets the GitLab shell runner run the election deploy script, and nothing else, as root.
+# /srv/election/deploy is root-owned; the script validates its own arguments.
+gitlab-runner ALL=(root) NOPASSWD: /srv/election/deploy/ci-deploy.sh

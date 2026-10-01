@@ -1,0 +1,21 @@
+# /etc/systemd/system/election-celery-beat.service
+# Fires transition_election_states every minute (nomination/voting open & close, results).
+# Exactly one beat may run, or transitions and notifications fire twice.
+[Unit]
+Description=OmWay Election Management System (Celery beat)
+After=network.target postgresql.service redis-server.service
+Requires=redis-server.service
+
+[Service]
+User=omway
+Group=omway
+WorkingDirectory=/srv/election/app
+ExecStart=/srv/election/venv/bin/celery -A ems_backend beat -l INFO \
+    --scheduler django_celery_beat.schedulers:DatabaseScheduler \
+    --logfile=/srv/election/logs/celery-beat.log
+Restart=always
+RestartSec=5
+MemoryMax=192M
+
+[Install]
+WantedBy=multi-user.target

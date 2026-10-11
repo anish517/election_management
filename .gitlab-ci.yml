@@ -32,8 +32,9 @@ check:backend:
     - omway-internal
   variables:
     PIP_DISABLE_PIP_VERSION_CHECK: "1"
-    # Settings fall back to dev defaults; nothing here touches the production DB.
+    # In-memory SQLite: checks must never connect to the production Postgres on this host.
     DEBUG: "True"
+    DATABASE_URL: "sqlite:///:memory:"
   cache:
     key:
       files:
@@ -58,6 +59,7 @@ check:migrations:
   allow_failure: true
   variables:
     DEBUG: "True"
+    DATABASE_URL: "sqlite:///:memory:"
   cache:
     key:
       files:

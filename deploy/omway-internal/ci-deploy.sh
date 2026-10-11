@@ -64,6 +64,9 @@ echo "== sync deploy/omway-internal/ -> $E/deploy"
 rsync -a --checksum --delete --chown=root:root --info=name,del --exclude='__pycache__/' \
     "$SRC/deploy/omway-internal/" "$E/deploy/"
 chown root:root "$E/deploy" && chmod 755 "$E/deploy"
+# Keep the sudo target executable and nothing in deploy/ group/world-writable, whatever
+# mode git or the runner's umask gave the files.
+chmod 644 "$E"/deploy/* && chmod 755 "$E"/deploy/*.sh
 
 WEB=$SRC/election_management/build/web
 if [[ -f $WEB/index.html ]]; then

@@ -6,6 +6,7 @@ import os
 import sys
 from pathlib import Path
 from datetime import timedelta
+from email.utils import parseaddr, formataddr
 from decouple import config, Csv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -265,7 +266,16 @@ EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
 EMAIL_HOST_USER = _email_host_user
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@emsplatform.com')
+
+# Sender shown to recipients, e.g.  Election Management <support@omwaytech.com>
+# - If DEFAULT_FROM_EMAIL in .env already has a name, that name is kept.
+# - If it is only an address (or empty), EMAIL_FROM_NAME is added in front of it.
+# - If no address is set at all, EMAIL_HOST_USER is used.
+_from_name, _from_addr = parseaddr(config('DEFAULT_FROM_EMAIL', default=''))
+_from_addr = _from_addr or EMAIL_HOST_USER or 'noreply@emsplatform.com'
+_from_name = _from_name or config('EMAIL_FROM_NAME', default='Election Management')
+DEFAULT_FROM_EMAIL = formataddr((_from_name, _from_addr))
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 # ==============================================================================
 # SMS (Sparrow SMS — Nepal, doc: 20-Notification-System.md)
@@ -355,4 +365,3 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
     'bypasstunnelreminder',
     'ngrok-skip-browser-warning',
 ]
-

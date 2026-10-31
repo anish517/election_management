@@ -47,13 +47,16 @@ final _routerNotifierProvider = ChangeNotifierProvider(
 );
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final notifier = ref.watch(_routerNotifierProvider);
-  final authState = ref.watch(authProvider);
+  // Read, don't watch: watching rebuilt the GoRouter on every auth change
+  // (even "loading"), which reset navigation to /login, so e.g. a wrong OTP
+  // bounced the user back to the login screen. The notifier re-runs redirect.
+  final notifier = ref.read(_routerNotifierProvider);
 
   return GoRouter(
     initialLocation: '/login',
     refreshListenable: notifier,
     redirect: (context, state) {
+      final authState = ref.read(authProvider);
       final isLoggedIn = authState.isAuthenticated;
       final user = authState.user;
       final loc = state.matchedLocation;

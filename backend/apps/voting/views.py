@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 
 from apps.elections.models import Election
-from apps.voting.models import VoterRoll
+from apps.voting.models import VoterRoll, VotingSession
 from apps.voting.serializers import CastVoteSerializer
 from apps.voting.services import BallotService
 from apps.users.views import get_client_ip
@@ -2041,7 +2041,16 @@ class KioskCastVoteView(APIView):
                             b_map[pid] = ['NOTA']
                 payload_data['ballot_data'] = b_map
 
-        ballot_data = payload_data.get('ballot_data', {})
+        # Validate like the online and ballot-link paths (limits per position,
+        # approved candidates, no duplicate picks). The election comes from the
+        # voting session, not the request.
+        session = VotingSession.objects.select_related('voter_roll__election').filter(token=session_token).first()
+        if not session:
+            return Response({'error': 'Invalid session token.'}, status=400)
+        serializer = CastVoteSerializer(data=payload_data, context={'election': session.voter_roll.election})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
+        ballot_data = serializer.validated_data['ballot_data']
 
         try:
             ip_addr = get_client_ip(request)

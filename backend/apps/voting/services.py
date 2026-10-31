@@ -116,27 +116,30 @@ class BallotService:
         Validates token, marks roll as voted, and strictly decouples identity
         from the saved Vote record (creating a cryptographic receipt).
         """
-        try:
-            session = VotingSession.objects.select_related('voter_roll', 'voter_roll__election').get(token=session_token)
-        except VotingSession.DoesNotExist:
-            raise ValueError("Invalid session token.")
-            
-        if not session.is_valid():
-            raise ValueError("Session is expired or already used.")
-            
-        voter_roll = session.voter_roll
-        election = voter_roll.election
-        
-        if voter_roll.has_voted:
-            raise ValueError("Voter has already cast a ballot.")
-
-        # Cryptographic receipt generation
-        # Adding a salt to prevent rainbow table attacks on the vote payload
-        salt = secrets.token_hex(16)
-        payload_str = json.dumps(ballot_data, sort_keys=True)
-        receipt_hash = hashlib.sha256(f"{payload_str}:{salt}:{session.token}".encode()).hexdigest()
-
         with transaction.atomic():
+            # Lock the session and the voter's roll row so two submissions at
+            # the same moment (double tap, retry, two tabs/devices) can't both
+            # pass the checks below: the second waits, then sees has_voted.
+            try:
+                session = VotingSession.objects.select_for_update().get(token=session_token)
+            except VotingSession.DoesNotExist:
+                raise ValueError("Invalid session token.")
+
+            if not session.is_valid():
+                raise ValueError("Session is expired or already used.")
+
+            voter_roll = VoterRoll.objects.select_for_update().select_related('election').get(pk=session.voter_roll_id)
+            election = voter_roll.election
+
+            if voter_roll.has_voted:
+                raise ValueError("Voter has already cast a ballot.")
+
+            # Cryptographic receipt generation
+            # Adding a salt to prevent rainbow table attacks on the vote payload
+            salt = secrets.token_hex(16)
+            payload_str = json.dumps(ballot_data, sort_keys=True)
+            receipt_hash = hashlib.sha256(f"{payload_str}:{salt}:{session.token}".encode()).hexdigest()
+
             # 1. Update the Voter Roll (Identity)
             voter_roll.has_voted = True
             voter_roll.voted_at = timezone.now()

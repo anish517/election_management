@@ -16,6 +16,7 @@ class OtpVerifyScreen extends ConsumerStatefulWidget {
 class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
   final _controllers = List.generate(6, (_) => TextEditingController());
   final _focusNodes = List.generate(6, (_) => FocusNode());
+  final _lastDigits = List.filled(6, '');
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -37,13 +38,56 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
   }
 
   void _onDigitInput(int index, String value) {
-    if (value.isNotEmpty && index < 5) {
-      _focusNodes[index + 1].requestFocus();
+    final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (digits.isEmpty) {
+      _setDigit(index, '');
+      if (index > 0) _focusNodes[index - 1].requestFocus();
+      return;
     }
-    if (value.isEmpty && index > 0) {
-      _focusNodes[index - 1].requestFocus();
+
+    final previous = _lastDigits[index];
+    final typedOver = digits.length == 2 && previous.isNotEmpty && digits.contains(previous);
+    if (digits.length == 1 || typedOver) {
+      // One new digit (possibly typed over the box's old one, on either side of it).
+      final digit = digits.length == 1 ? digits : (digits[0] == previous ? digits[1] : digits[0]);
+      _setDigit(index, digit);
+      if (index < 5) {
+        _focusNodes[index + 1].requestFocus();
+      }
+    } else {
+      // Paste or SMS autofill: spread the code across the boxes from here on.
+      // A full 6-digit code always fills from the first box.
+      var pasted = digits;
+      if (previous.isNotEmpty) {
+        // The box's old digit is still in the text, before or after the paste
+        // depending on where the cursor was; the caret sits after the insert.
+        final caret = _controllers[index].selection.baseOffset;
+        final insertedAtEnd = caret < 0 || caret >= value.length;
+        pasted = insertedAtEnd ? pasted.substring(1) : pasted.substring(0, pasted.length - 1);
+      }
+      final start = pasted.length >= 6 ? 0 : index;
+      final chars = pasted.characters.take(6 - start).toList();
+      for (var k = 0; k < chars.length; k++) {
+        _setDigit(start + k, chars[k]);
+      }
+      final next = start + chars.length;
+      if (next <= 5) {
+        _focusNodes[next].requestFocus();
+      } else {
+        _focusNodes[5].unfocus();
+      }
     }
-    if (index == 5 && value.isNotEmpty) _verify();
+
+    if (_fullOtp.length == 6 && !_isLoading) _verify();
+  }
+
+  void _setDigit(int index, String digit) {
+    _lastDigits[index] = digit;
+    _controllers[index].value = TextEditingValue(
+      text: digit,
+      selection: TextSelection.collapsed(offset: digit.length),
+    );
   }
 
   @override
@@ -149,7 +193,9 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                   focusNode: _focusNodes[i],
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
-                  maxLength: 1,
+                  // No maxLength: it cut a pasted code down to its first digit.
+                  // _onDigitInput spreads multi-digit input across the boxes.
+                  autofillHints: i == 0 ? const [AutofillHints.oneTimeCode] : null,
                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   decoration: InputDecoration(
                     contentPadding: EdgeInsets.zero,

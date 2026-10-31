@@ -126,6 +126,11 @@ class CastVoteSerializer(serializers.Serializer):
                 raise serializers.ValidationError(
                     f"Too many selections for {pos.title}. Max allowed: {pos.max_votes_per_voter}"
                 )
+
+            if len(set(map(str, cand_ids))) != len(cand_ids):
+                raise serializers.ValidationError(
+                    f"A candidate was selected more than once for {pos.title}. Each voter gives at most one vote per candidate."
+                )
                 
             for cand_id in cand_ids:
                 if cand_id in ['__BOYCOTT__', '__NO_VOTE__', 'NOTA']:

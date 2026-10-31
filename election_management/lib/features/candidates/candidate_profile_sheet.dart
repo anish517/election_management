@@ -10,6 +10,11 @@ void showCandidateProfile(BuildContext context, CandidateModel candidate) {
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
+    // Material caps bottom sheets at 640px; give the profile room for the
+    // side-by-side proposer / supporter columns on desktop.
+    constraints: BoxConstraints(
+      maxWidth: MediaQuery.sizeOf(context).width >= 1200 ? 1100 : double.infinity,
+    ),
     builder: (_) => CandidateProfileSheet(candidate: candidate),
   );
 }
@@ -827,17 +832,63 @@ class _EndorsementsTab extends StatelessWidget {
                   ],
                 ).animate().fadeIn(delay: 50.ms),
                 const SizedBox(height: 16),
-                ...() {
-                  int pCount = 0;
-                  int sCount = 0;
-                  return endorsements.map((e) {
-                    final isP = e.endorsementType.toLowerCase() == 'proposer';
-                    final idx = isP ? ++pCount : ++sCount;
-                    return _buildEndorsementCard(e, idx, isDark);
-                  });
-                }(),
+                _buildEndorsementColumns(endorsements, isDark),
               ],
             ),
+    );
+  }
+
+  /// Proposers and supporters as two columns side by side; stacked when narrow.
+  Widget _buildEndorsementColumns(List<CandidateEndorsementModel> endorsements, bool isDark) {
+    final proposers = endorsements.where((e) => e.endorsementType.toLowerCase() == 'proposer').toList();
+    final supporters = endorsements.where((e) => e.endorsementType.toLowerCase() != 'proposer').toList();
+
+    Widget column(String title, Color color, List<CandidateEndorsementModel> items) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text(
+              '$title — ${items.length}',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.4,
+                color: color,
+              ),
+            ),
+          ),
+          if (items.isEmpty)
+            Text(
+              'None',
+              style: TextStyle(fontSize: 12, color: isDark ? Colors.white54 : Colors.grey.shade600),
+            ),
+          for (var i = 0; i < items.length; i++) _buildEndorsementCard(items[i], i + 1, isDark),
+        ],
+      );
+    }
+
+    final proposerCol = column('PROPOSERS (प्रस्तावक)', const Color(0xFF2563EB), proposers);
+    final supporterCol = column('SUPPORTERS (समर्थक)', const Color(0xFF059669), supporters);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 640) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [proposerCol, const SizedBox(height: 8), supporterCol],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: proposerCol),
+            const SizedBox(width: 16),
+            Expanded(child: supporterCol),
+          ],
+        );
+      },
     );
   }
 
@@ -965,9 +1016,12 @@ class _EndorsementsTab extends StatelessWidget {
                   ],
                 ),
 
-                const SizedBox(height: 14),
-                const Divider(height: 1),
-                const SizedBox(height: 12),
+                // Contact details are only sent to reviewers and the candidate.
+                if (e.phone.isNotEmpty || e.citizenshipNumber.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+                ],
 
                 // Details Grid
                 LayoutBuilder(

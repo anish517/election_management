@@ -173,3 +173,75 @@ class CandidateDocument(models.Model):
 
     class Meta:
         db_table = 'candidate_documents'
+
+
+# Roles that see every nomination at all times (reviewers and monitors).
+NOMINATION_REVIEW_ROLES = {'org_admin', 'election_officer', 'super_admin', 'observer', 'auditor'}
+
+
+def limit_to_own_nomination(user, election):
+    """
+    During the candidacy claim window a voter or candidate sees, and files
+    claims about, only their own nomination.
+    """
+    if not user or not user.is_authenticated:
+        return False
+    if user.role in NOMINATION_REVIEW_ROLES or getattr(user, 'is_org_admin', False):
+        return False
+    return election.is_candidacy_claim_window_open()
+
+
+# Nomination fields anyone in the election may see. Everything else (contact
+# details, date of birth, address, review notes, payment, documents and the
+# endorsers' phone / citizenship number / signature) is limited to reviewers
+# and to the candidate themselves.
+PUBLIC_CANDIDATE_FIELDS = {
+    'id', 'election', 'name', 'first_name', 'middle_name', 'last_name', 'full_name',
+    'photo_url', 'candidate_image', 'personal_description', 'contribution_to_org',
+    'manifesto', 'status', 'position', 'position_title', 'quota', 'quota_name',
+    'party_name', 'panel_name', 'symbol_name', 'symbol_image', 'pr_rank', 'gender',
+    'endorsements', 'created_at', 'updated_at',
+}
+PUBLIC_ENDORSEMENT_FIELDS = {'id', 'endorsement_type', 'name', 'membership_id'}
+
+
+def is_own_nomination(user, email, phone):
+    if not user or not user.is_authenticated:
+        return False
+    if email and user.email and email.strip().lower() == user.email.strip().lower():
+        return True
+    return bool(phone and user.phone and phone.strip() == user.phone.strip())
+
+
+def can_see_private_nomination(user, email, phone):
+    if user and user.is_authenticated and (
+        user.role in NOMINATION_REVIEW_ROLES or getattr(user, 'is_org_admin', False)
+    ):
+        return True
+    return is_own_nomination(user, email, phone)
+
+
+def public_candidate_view(data):
+    """Strip a serialized nomination down to its public fields."""
+    public = {k: v for k, v in data.items() if k in PUBLIC_CANDIDATE_FIELDS}
+    if 'endorsements' in public:
+        public['endorsements'] = [
+            {k: v for k, v in e.items() if k in PUBLIC_ENDORSEMENT_FIELDS}
+            for e in (public['endorsements'] or [])
+        ]
+    return public
+
+
+def nomination_fee(election, position):
+    """
+    Fee for a nomination: the position's fee, else the election's, else the
+    organization default. Payment is required only when the organization has
+    payments switched on and the fee is above zero.
+    Returns (fee, payment_required).
+    """
+    ps = election.organization.payment_settings or {}
+    pos_charge = float(position.nominee_charge or 0) if position else 0.0
+    el_charge = float(election.nominee_charge or 0)
+    default_fee = float(ps.get('default_nomination_fee') or 0)
+    fee = pos_charge if pos_charge > 0 else (el_charge if el_charge > 0 else default_fee)
+    return fee, bool(ps.get('is_payment_enabled', False)) and fee > 0

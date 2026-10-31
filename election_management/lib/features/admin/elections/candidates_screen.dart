@@ -1,7 +1,7 @@
+import '../../../core/utils/id_card_link.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_constants.dart';
@@ -296,11 +296,12 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
               runSpacing: 8,
               children: [
                 OutlinedButton.icon(
-                  onPressed: () {
-                    final baseUrl = ApiConstants.baseUrl.replaceAll('/v1', '');
-                    final url = '$baseUrl/v1/elections/${widget.electionId}/candidates/id_cards_bulk/';
-                    launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-                  },
+                  onPressed: () => openIdCard(
+                    context,
+                    electionId: widget.electionId,
+                    kind: 'candidate',
+                    id: 'bulk',
+                  ),
                   icon: const Icon(Icons.badge_rounded, size: 16, color: Color(0xFF6366F1)),
                   label: const Text('Batch ID Cards (PDF)'),
                   style: OutlinedButton.styleFrom(
@@ -737,12 +738,7 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
             // View Profile Sheet Action
             OutlinedButton.icon(
               onPressed: () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (_) => CandidateProfileSheet(candidate: cand),
-                );
+                showCandidateProfile(context, cand);
               },
               icon: const Icon(Icons.visibility_outlined, size: 16),
               label: const Text('View Dossier'),

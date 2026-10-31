@@ -2,6 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../core/theme/app_theme.dart';
 
+bool _isDark(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark;
+
+/// Skeleton card background for the current theme.
+Color _surface(BuildContext context) =>
+    _isDark(context) ? AppColors.surface : AppColors.surfaceLight;
+
+/// Skeleton placeholder / border colour for the current theme.
+Color _surfaceVariant(BuildContext context) =>
+    _isDark(context) ? AppColors.surfaceVariant : const Color(0xFFE2E8F0);
+
 /// A base shimmer container that applies the shimmer effect to any child.
 class _ShimmerBox extends StatelessWidget {
   final double width;
@@ -20,7 +31,7 @@ class _ShimmerBox extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
+        color: _surfaceVariant(context),
         borderRadius: BorderRadius.circular(radius),
       ),
     );
@@ -28,10 +39,10 @@ class _ShimmerBox extends StatelessWidget {
 }
 
 /// Wraps children in a Shimmer animation.
-Widget _shimmer({required Widget child}) {
+Widget _shimmer(BuildContext context, {required Widget child}) {
   return Shimmer.fromColors(
-    baseColor: AppColors.surfaceVariant,
-    highlightColor: AppColors.surface.withValues(alpha: 0.7),
+    baseColor: _surfaceVariant(context),
+    highlightColor: _surface(context).withValues(alpha: 0.7),
     child: child,
   );
 }
@@ -43,10 +54,11 @@ class ListItemSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _shimmer(
+      context,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: _surface(context),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -96,12 +108,13 @@ class CardSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _shimmer(
+      context,
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: _surface(context),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.surfaceVariant),
+          border: Border.all(color: _surfaceVariant(context)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -159,6 +172,7 @@ class DashboardSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _shimmer(
+      context,
       child: Row(
         children: List.generate(3, (i) {
           return Expanded(
@@ -166,9 +180,9 @@ class DashboardSkeleton extends StatelessWidget {
               margin: EdgeInsets.only(left: i == 0 ? 0 : 12),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: _surface(context),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.surfaceVariant),
+                border: Border.all(color: _surfaceVariant(context)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -195,6 +209,7 @@ class ProfileSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _shimmer(
+      context,
       child: Column(
         children: [
           const SizedBox(height: 40),
@@ -204,21 +219,21 @@ class ProfileSkeleton extends StatelessWidget {
           const SizedBox(height: 8),
           const _ShimmerBox(width: 80, height: 24, radius: 12),
           const SizedBox(height: 32),
-          _buildInfoTileSkeleton(),
+          _buildInfoTileSkeleton(context),
           const SizedBox(height: 12),
-          _buildInfoTileSkeleton(),
+          _buildInfoTileSkeleton(context),
           const SizedBox(height: 12),
-          _buildInfoTileSkeleton(),
+          _buildInfoTileSkeleton(context),
         ],
       ),
     );
   }
 
-  Widget _buildInfoTileSkeleton() {
+  Widget _buildInfoTileSkeleton(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: _surface(context),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(

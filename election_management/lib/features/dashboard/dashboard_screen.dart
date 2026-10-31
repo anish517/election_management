@@ -14,6 +14,7 @@ import '../../shared/widgets/responsive_layout.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'dashboard_quick_actions.dart';
 import '../../shared/widgets/live_clock.dart';
+import '../../shared/widgets/theme_mode_button.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -62,15 +63,17 @@ class DashboardScreen extends ConsumerWidget {
                           if (user != null) DashboardQuickActions(user: user),
                           const SizedBox(height: 32),
 
-                          // Elections Feed Section
-                          _buildSectionHeader(
-                            context,
-                            'Your Elections (निर्वाचनहरू)',
-                            Icons.how_to_vote_rounded,
-                            onTap: () => context.pushNamed('elections'),
-                          ),
-                          const SizedBox(height: 16),
-                          _buildElectionsSection(context, ref, user, isDark),
+                          // Elections Feed Section (super admins belong to no organization)
+                          if (user?.isSuperAdmin != true) ...[
+                            _buildSectionHeader(
+                              context,
+                              'Your Elections (निर्वाचनहरू)',
+                              Icons.how_to_vote_rounded,
+                              onTap: () => context.pushNamed('elections'),
+                            ),
+                            const SizedBox(height: 16),
+                            _buildElectionsSection(context, ref, user, isDark),
+                          ],
                         ],
                       ),
                     ),
@@ -131,7 +134,11 @@ class DashboardScreen extends ConsumerWidget {
           ],
           Expanded(
             child: Text(
-              user?.organizationName ?? 'Election Management Portal',
+              user?.isSuperAdmin == true
+                  ? 'Platform Administration'
+                  : (user?.organizationName.isNotEmpty == true
+                      ? user!.organizationName
+                      : 'Election Management Portal'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.3,
@@ -151,6 +158,7 @@ class DashboardScreen extends ConsumerWidget {
               ref.invalidate(orgStatsProvider);
             },
           ).animate().fade().scale(delay: 200.ms),
+          const ThemeModeButton(),
           const SizedBox(width: 4),
           _buildUserMenu(context, ref, user, isDark),
         ],
@@ -163,7 +171,9 @@ class DashboardScreen extends ConsumerWidget {
         ? user!.fullName
         : (user?.email.split('@').first ?? 'Member');
 
-    final roleLabel = user?.role == 'org_admin'
+    final roleLabel = user?.role == 'super_admin'
+        ? 'Super Admin'
+        : user?.role == 'org_admin'
         ? 'Organization Admin'
         : (user?.role == 'election_officer'
             ? 'Election Officer'
@@ -172,6 +182,36 @@ class DashboardScreen extends ConsumerWidget {
                 : (user?.role == 'observer' ? 'Observer' : 'Verified Elector')));
 
     final hasCover = user != null && user.organizationCoverImageUrl.isNotEmpty;
+    final isWideBanner = MediaQuery.sizeOf(context).width >= 600;
+    final Widget? orgPill = user?.organizationName.isNotEmpty == true
+        ? Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white24),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 14),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    user!.organizationName,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11.5,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+        : null;
     final coverUrl = hasCover ? ApiConstants.getFullImageUrl(user.organizationCoverImageUrl) : null;
 
     return Container(
@@ -336,35 +376,18 @@ class DashboardScreen extends ConsumerWidget {
                           height: 1.4,
                         ),
                       ),
+                      // On phones the org badge sits under the text instead of
+                      // squeezing the greeting into a narrow column.
+                      if (orgPill != null && !isWideBanner) ...[
+                        const SizedBox(height: 10),
+                        orgPill,
+                      ],
                     ],
                   ),
                 ),
-                if (user?.organizationName.isNotEmpty == true) ...[
+                if (orgPill != null && isWideBanner) ...[
                   const SizedBox(width: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.white24),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 14),
-                        const SizedBox(width: 6),
-                        Text(
-                          user!.organizationName,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11.5,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  orgPill,
                 ],
               ],
             ),

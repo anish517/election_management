@@ -512,3 +512,42 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         user.save(update_fields=['password', 'updated_at'])
         return user
 
+
+
+class PasswordChangeSerializer(serializers.Serializer):
+    """
+    POST /v1/auth/password/change/
+    Logged-in admin changes their own password (current password required).
+    """
+    current_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(min_length=8, write_only=True)
+    confirm_password = serializers.CharField(min_length=8, write_only=True)
+
+    def validate(self, attrs):
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        user = self.context['request'].user
+        if user.role not in ADMIN_ROLES:
+            raise serializers.ValidationError(
+                {'non_field_errors': 'Password change is not allowed for this account type.'}
+            )
+        if not user.check_password(attrs['current_password']):
+            raise serializers.ValidationError({'current_password': 'Current password is incorrect.'})
+        if attrs['new_password'] != attrs['confirm_password']:
+            raise serializers.ValidationError({'confirm_password': 'Passwords do not match.'})
+        if attrs['new_password'] == attrs['current_password']:
+            raise serializers.ValidationError(
+                {'new_password': 'New password must be different from the current one.'}
+            )
+        try:
+            validate_password(attrs['new_password'], user)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError({'new_password': list(e.messages)})
+        return attrs
+
+    def save(self):
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save(update_fields=['password'])
+        return user

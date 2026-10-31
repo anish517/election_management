@@ -27,6 +27,7 @@ class ApiConstants {
   static const String otpVerify = '/auth/otp/verify/';
   static const String passwordResetRequest = '/auth/password-reset/request/';
   static const String passwordResetConfirm = '/auth/password-reset/confirm/';
+  static const String passwordChange = '/auth/password/change/';
 
   // Core endpoints
   static const String fileUpload = '/upload/';
@@ -159,6 +160,17 @@ class ApiConstants {
   // Organization
   static const String organizationProfile = '/organization/';
   static const String organizationStats = '/organization/stats/';
+
+  // Platform (Super Admin, all tenants)
+  static const String platformOrganizations = '/platform/organizations/';
+  static String platformOrganizationDetail(String id) =>
+      '/platform/organizations/$id/';
+  static String platformOrganizationElections(String id) =>
+      '/platform/organizations/$id/elections/';
+  static String platformElectionDetail(String id) => '/platform/elections/$id/';
+
+  // Signed, short-lived link for the printable ID card pages
+  static String idCardLink(String electionId) => '/elections/$electionId/id-card-link/';
 
   // Payments & Static QR Ledger
   static const String payments = '/payments/';

@@ -13,7 +13,31 @@ class DashboardQuickActions extends StatelessWidget {
   Widget build(BuildContext context) {
     List<_ActionItem> actions = [];
 
-    if (user.isOrgAdmin) {
+    if (user.isSuperAdmin) {
+      actions = [
+        _ActionItem(
+          icon: Icons.domain_rounded,
+          title: 'All Organizations',
+          subtitle: 'Tenants, status & trials',
+          routeName: 'platform-organizations',
+          color: AppColors.accent,
+        ),
+        _ActionItem(
+          icon: Icons.business_rounded,
+          title: 'Create Organization',
+          subtitle: 'Onboard a new organization & admin',
+          routeName: 'register',
+          color: AppColors.primary,
+        ),
+        _ActionItem(
+          icon: Icons.badge_outlined,
+          title: 'My Profile',
+          subtitle: 'Account details & password',
+          routeName: 'profile',
+          color: AppColors.stateVoting,
+        ),
+      ];
+    } else if (user.isOrgAdmin) {
       actions = [
         _ActionItem(
           icon: Icons.how_to_vote_rounded,

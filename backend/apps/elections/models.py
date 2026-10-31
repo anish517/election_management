@@ -262,6 +262,19 @@ class Election(TimestampedModel):
         ElectionState.CANCELLED: [],
     }
 
+    def is_candidacy_claim_window_open(self, now=None):
+        """
+        Candidacy claims/objections (उम्मेदवार दाबी-विरोध) run from the close of
+        nominations until the candidacy claim deadline (same window the
+        objection API enforces).
+        """
+        if not self.candidacy_claim_date:
+            return False
+        now = now or timezone.now()
+        if self.nomination_close_at and now < self.nomination_close_at:
+            return False
+        return now <= self.candidacy_claim_date
+
     def can_transition_to(self, new_state):
         return new_state in self.VALID_TRANSITIONS.get(self.state, [])
 

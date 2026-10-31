@@ -63,12 +63,33 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
         return qs.order_by('-created_at')
 
+    def _require_officer(self, message):
+        user = self.request.user
+        if not (
+            user.role in ['org_admin', 'super_admin', 'election_officer']
+            or getattr(user, 'is_org_admin', False)
+        ):
+            raise PermissionDenied(message)
+
     def perform_create(self, serializer):
+        # Nominees pay as part of their nomination (amount set by the server);
+        # direct ledger entries are for officers only.
+        self._require_officer('Submit your payment with your nomination, or use resubmit to correct it.')
         serializer.save(
             organization=self.request.user.organization,
             user=self.request.user,
             status=PaymentStatus.PENDING,
         )
+
+    def perform_update(self, serializer):
+        # Nominees correct their proof via /resubmit/; amount and linked
+        # nomination can't be changed from the payer side.
+        self._require_officer('Use resubmit to correct your payment proof.')
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        self._require_officer('Payment records cannot be deleted by the payer.')
+        instance.delete()
 
     @action(detail=True, methods=['post'])
     def verify(self, request, pk=None):

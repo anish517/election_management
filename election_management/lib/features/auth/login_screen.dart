@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/loading_button.dart';
 import '../../shared/widgets/responsive_layout.dart';
 import '../../shared/widgets/glass_card.dart';
+import '../../shared/widgets/theme_mode_button.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -31,7 +32,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 2, vsync: this)
+      ..addListener(() => setState(() {}));
   }
 
   @override
@@ -72,6 +74,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        automaticallyImplyLeading: false,
+        actions: const [ThemeModeButton(), SizedBox(width: 8)],
+      ),
       body: SafeArea(
         child: Center(
           child: ResponsiveFormWrapper(
@@ -88,17 +97,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     const SizedBox(height: 28),
                     if (_errorMessage != null) _buildError(),
                     _buildTabContent(),
-                    const SizedBox(height: 24),
-                    Center(
-                      child: TextButton.icon(
-                        onPressed: () => context.pushNamed('register'),
-                        icon: const Icon(Icons.business_rounded),
-                        label: const Text('Create an Organization'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: AppColors.primary,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -113,22 +111,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 52, height: 52,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.primary, AppColors.primaryLight],
+        Row(
+          children: [
+            Container(
+              width: 52, height: 52,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.primary, AppColors.primaryLight],
+                ),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.how_to_vote_rounded, color: Colors.white, size: 28),
             ),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: const Icon(Icons.how_to_vote_rounded, color: Colors.white, size: 28),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                'Election Nepal',
+                style: Theme.of(context).textTheme.displayLarge?.copyWith(fontSize: 28),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 24),
-        Text(
-          'Welcome Back',
-          style: Theme.of(context).textTheme.displayLarge?.copyWith(fontSize: 28),
-        ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 20),
         Text(
           'Sign in to your election account',
           style: Theme.of(context).textTheme.bodyMedium,
@@ -186,13 +190,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
+  // Sized to the active tab so the card has no dead space below the form.
   Widget _buildTabContent() {
-    return SizedBox(
-      height: 350,
-      child: TabBarView(
-        controller: _tabController,
-        children: [_buildPasswordTab(), _buildOtpTab()],
-      ),
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: _tabController.index == 0 ? _buildPasswordTab() : _buildOtpTab(),
     );
   }
 
@@ -233,7 +237,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               child: TextButton(
                 onPressed: () => context.pushNamed('forgot-password'),
                 style: TextButton.styleFrom(
-                  foregroundColor: AppColors.primary,
+                  foregroundColor: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.primaryLight
+                      : AppColors.primary,
                   padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,

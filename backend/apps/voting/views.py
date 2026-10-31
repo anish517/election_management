@@ -698,6 +698,10 @@ class VoterRollViewSet(viewsets.ModelViewSet):
         GET /v1/elections/{election_id}/voters/{voter_id}/id_card/
         Renders a printable, official Digital Voter ID Card (CR80 format, photo-free).
         """
+        from apps.core.id_card_links import token_allows, denied_response
+        if not token_allows(request, 'voter', election_pk, pk):
+            return denied_response()
+
         from django.http import HttpResponse
         from apps.elections.models import Election
 
@@ -712,7 +716,7 @@ class VoterRollViewSet(viewsets.ModelViewSet):
         org_name = org.name if org else 'Election Management'
         org_logo = election.logo_url or (org.logo_url if org else '')
 
-        qr_data = f"EMS-VOTER:{voter.voter_id}:{election.id}:{voter.email or voter.phone}"
+        qr_data = f"EMS-VOTER:{voter.voter_id}:{election.id}"
         qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=120x120&data={qr_data}"
 
         html = f"""<!DOCTYPE html>
@@ -972,6 +976,10 @@ class VoterRollViewSet(viewsets.ModelViewSet):
         GET /v1/elections/{election_id}/voters/id_cards_bulk/
         Renders a printable sheet of all certified voter ID cards (photo-free, professional).
         """
+        from apps.core.id_card_links import token_allows, denied_response
+        if not token_allows(request, 'voter', election_pk, 'bulk'):
+            return denied_response()
+
         from django.http import HttpResponse
         from apps.elections.models import Election
 
@@ -988,7 +996,7 @@ class VoterRollViewSet(viewsets.ModelViewSet):
 
         cards_html = ""
         for v in voters:
-            qr_data = f"EMS-VOTER:{v.voter_id}:{election.id}:{v.email or v.phone}"
+            qr_data = f"EMS-VOTER:{v.voter_id}:{election.id}"
             qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=120x120&data={qr_data}"
             cards_html += f"""
             <div class="card-wrap">
@@ -1190,11 +1198,54 @@ class VoterClaimViewSet(viewsets.ModelViewSet):
         if election.voter_list_claim_date and now > election.voter_list_claim_date:
             raise ValidationError({'detail': 'Voter roll claim deadline has passed.'})
 
+        from django.db.models import Q
+        is_officer = (
+            user.role in ['org_admin', 'election_officer', 'super_admin']
+            or getattr(user, 'is_org_admin', False)
+        )
+
+        if not is_officer:
+            # Voters file only in their own name, and omission/correction claims
+            # are always about their own roll entry. Objections may name another voter.
+            own_q = Q(email__iexact=user.email)
+            if user.phone:
+                own_q |= Q(phone=user.phone)
+            own_roll = VoterRoll.objects.filter(own_q, election=election).first()
+            own_name = (
+                user.full_name
+                or (own_roll and ' '.join(p for p in [own_roll.first_name, own_roll.last_name] if p))
+                or user.email
+            )
+            claim_type = serializer.validated_data.get('claim_type')
+            extra = {}
+            if claim_type in ('omission', 'correction'):
+                extra = {'voter_roll': own_roll, 'target_voter_name': own_name}
+            else:
+                voter_roll = serializer.validated_data.get('voter_roll')
+                target_query = serializer.validated_data.get('target_voter_name', '').strip()
+                if not voter_roll and target_query:
+                    voter_roll = VoterRoll.objects.filter(
+                        Q(voter_id__iexact=target_query)
+                        | Q(email__iexact=target_query)
+                        | Q(first_name__icontains=target_query),
+                        election=election
+                    ).first()
+                if own_roll and voter_roll and voter_roll.id == own_roll.id:
+                    raise ValidationError({'detail': 'You cannot file an objection against your own entry.'})
+                extra = {'voter_roll': voter_roll}
+            serializer.save(
+                election=election,
+                claimant_name=own_name,
+                claimant_email=user.email,
+                claimant_phone=user.phone or serializer.validated_data.get('claimant_phone', ''),
+                **extra,
+            )
+            return
+
         voter_roll = serializer.validated_data.get('voter_roll')
         if not voter_roll:
             target_query = serializer.validated_data.get('target_voter_name') or self.request.user.email
             if target_query:
-                from django.db.models import Q
                 voter_roll = VoterRoll.objects.filter(
                     Q(voter_id__iexact=target_query)
                     | Q(email__iexact=target_query)
@@ -1208,6 +1259,23 @@ class VoterClaimViewSet(viewsets.ModelViewSet):
             claimant_name=serializer.validated_data.get('claimant_name') or self.request.user.full_name or self.request.user.email,
             claimant_email=serializer.validated_data.get('claimant_email') or self.request.user.email,
         )
+
+    def _require_officer_for_change(self):
+        from rest_framework.exceptions import PermissionDenied
+        user = self.request.user
+        if not (
+            user.role in ['org_admin', 'election_officer', 'super_admin']
+            or getattr(user, 'is_org_admin', False)
+        ):
+            raise PermissionDenied('Voter claims cannot be edited or withdrawn after filing.')
+
+    def perform_update(self, serializer):
+        self._require_officer_for_change()
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        self._require_officer_for_change()
+        instance.delete()
 
     @action(detail=True, methods=['post'])
     def resolve(self, request, election_pk=None, pk=None):

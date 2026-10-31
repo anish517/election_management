@@ -20,10 +20,13 @@ import '../../features/admin/elections/voter_turnout_screen.dart';
 import '../../features/voting/voting_history_screen.dart';
 import '../../features/candidates/nomination_screen.dart';
 import '../../features/candidates/nomination_list_screen.dart';
+import '../../features/candidates/nomination_inbox_screen.dart';
 import '../../features/admin/organization/org_settings_screen.dart';
 import '../../features/admin/election_rules/election_rules_screen.dart';
 import '../../features/admin/payment_settings/payment_settings_screen.dart';
 import '../../features/admin/payments/payment_management_screen.dart';
+import '../../features/admin/platform/platform_organizations_screen.dart';
+import '../../features/admin/platform/platform_election_detail_screen.dart';
 import '../../features/results/results_screen.dart';
 import '../../features/profile/user_profile_screen.dart';
 import '../../features/analytics/analytics_screen.dart';
@@ -57,7 +60,6 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final isOnAuth = loc.startsWith('/login') ||
           loc.startsWith('/otp') ||
-          loc.startsWith('/register') ||
           loc.startsWith('/forgot-password') ||
           loc.startsWith('/reset-password');
 
@@ -92,7 +94,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         final isAdminRole = role == 'org_admin' || role == 'super_admin';
         if (isAdminRoute && !isAdminRole) return '/elections';
 
-        final isOfficerRoute = loc.startsWith('/admin/payments');
+        // Creating and managing organizations is reserved for the platform super admin
+        if ((loc.startsWith('/register') || loc.startsWith('/platform')) &&
+            role != 'super_admin') {
+          return '/dashboard';
+        }
+
+        final isOfficerRoute = loc.startsWith('/admin/payments') || loc == '/nominations';
         final isOfficerOrAdmin = isAdminRole || role == 'election_officer';
         if (isOfficerRoute && !isOfficerOrAdmin) return '/elections';
       }
@@ -148,6 +156,30 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/payment-settings',
         name: 'payment-settings',
         builder: (context, state) => const PaymentSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/nominations',
+        name: 'nominations',
+        builder: (context, state) => const NominationInboxScreen(),
+      ),
+      GoRoute(
+        path: '/platform/organizations',
+        name: 'platform-organizations',
+        builder: (context, state) => const PlatformOrganizationsScreen(),
+      ),
+      GoRoute(
+        path: '/platform/elections/:id',
+        name: 'platform-election',
+        builder: (context, state) => PlatformElectionDetailScreen(
+          electionId: state.pathParameters['id']!,
+        ),
+      ),
+      GoRoute(
+        path: '/platform/organizations/:id',
+        name: 'platform-organization',
+        builder: (context, state) => PlatformOrganizationDetailScreen(
+          orgId: state.pathParameters['id']!,
+        ),
       ),
       GoRoute(
         path: '/admin/payments',

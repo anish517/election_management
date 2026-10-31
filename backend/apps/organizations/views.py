@@ -3,8 +3,17 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 
-from apps.organizations.serializers import OrganizationSerializer, OrganizationStatsSerializer
-from apps.core.permissions import IsOrgAdmin
+from django.db.models import Count, Q
+from django.shortcuts import get_object_or_404
+
+from apps.organizations.models import Organization
+from apps.organizations.serializers import (
+    OrganizationSerializer, OrganizationStatsSerializer,
+    PlatformOrganizationSerializer, PlatformElectionSerializer,
+    PlatformElectionDetailSerializer,
+)
+from apps.core.permissions import IsOrgAdmin, IsSuperAdmin
+from apps.audit.models import log_action
 
 class OrganizationView(APIView):
     """
@@ -112,3 +121,105 @@ class OrganizationStatsView(APIView):
         }
         serializer = OrganizationStatsSerializer(data)
         return Response(serializer.data)
+
+
+def _platform_org_queryset():
+    return (
+        Organization.objects
+        .annotate(
+            member_count=Count('members', filter=Q(members__deleted_at__isnull=True), distinct=True),
+            election_count=Count('elections', distinct=True),
+        )
+        .prefetch_related('users')
+        .order_by('-created_at')
+    )
+
+
+class PlatformOrganizationListView(APIView):
+    """
+    GET /v1/platform/organizations/?search=&status= - All tenants (Super Admin only)
+    """
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request):
+        qs = _platform_org_queryset()
+        search = request.query_params.get('search', '').strip()
+        if search:
+            qs = qs.filter(Q(name__icontains=search) | Q(slug__icontains=search) | Q(email__icontains=search))
+        org_status = request.query_params.get('status', '').strip()
+        if org_status:
+            qs = qs.filter(status=org_status)
+        return Response(PlatformOrganizationSerializer(qs, many=True).data)
+
+
+class PlatformOrganizationDetailView(APIView):
+    """
+    GET   /v1/platform/organizations/<id>/ - One tenant (Super Admin only)
+    PATCH /v1/platform/organizations/<id>/ - Change status / trial_ends_at
+    """
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request, org_id):
+        org = get_object_or_404(_platform_org_queryset(), id=org_id)
+        return Response(PlatformOrganizationSerializer(org).data)
+
+    def patch(self, request, org_id):
+        org = get_object_or_404(_platform_org_queryset(), id=org_id)
+        before = {'status': org.status, 'trial_ends_at': str(org.trial_ends_at)}
+        serializer = PlatformOrganizationSerializer(org, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        log_action(
+            'org.platform_updated', organization=org, actor=request.user,
+            metadata={'before': before, 'after': {k: str(v) for k, v in serializer.validated_data.items()}},
+        )
+        return Response(serializer.data)
+
+
+class PlatformOrganizationElectionsView(APIView):
+    """
+    GET /v1/platform/organizations/<id>/elections/ - One tenant's elections (Super Admin only)
+    """
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request, org_id):
+        from apps.elections.models import Election
+
+        org = get_object_or_404(Organization, id=org_id)
+        elections = (
+            Election.objects.filter(organization=org)
+            .annotate(
+                position_count=Count('positions', distinct=True),
+                voter_count=Count('voter_roll', distinct=True),
+                voted_count=Count('voter_roll', filter=Q(voter_roll__has_voted=True), distinct=True),
+            )
+            .order_by('-created_at')
+        )
+        return Response(PlatformElectionSerializer(elections, many=True).data)
+
+
+class PlatformElectionDetailView(APIView):
+    """
+    GET /v1/platform/elections/<id>/ - Read-only election overview (Super Admin only)
+    """
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request, election_id):
+        from django.db.models import Prefetch
+        from apps.elections.models import Election, Position
+        from apps.candidates.models import Candidate
+
+        election = get_object_or_404(
+            Election.objects.select_related('organization').prefetch_related(
+                Prefetch(
+                    'positions',
+                    queryset=Position.objects.order_by('result_order', 'created_at').prefetch_related(
+                        Prefetch('candidates', queryset=Candidate.objects.order_by('first_name', 'last_name'))
+                    ),
+                ),
+            ),
+            id=election_id,
+        )
+        data = PlatformElectionDetailSerializer(election).data
+        data['organization'] = {'id': str(election.organization_id), 'name': election.organization.name}
+        return Response(data)

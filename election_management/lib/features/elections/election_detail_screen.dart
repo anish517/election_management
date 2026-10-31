@@ -530,7 +530,16 @@ class ElectionDetailScreen extends ConsumerWidget {
                 ),
               if (election.nominationOpenAt != null || election.candidacyFinalDate != null)
                 if (election.nominationOpenAt != null && election.nominationCloseAt != null)
-                  _ScheduleBlock(title: '2. Candidate Nominations', start: election.nominationOpenAt!, end: election.nominationCloseAt!, icon: Icons.assignment_ind_outlined)
+                  _ScheduleBlock(
+                    title: '2. Candidate Nominations',
+                    start: election.nominationOpenAt!,
+                    end: election.nominationCloseAt!,
+                    icon: Icons.assignment_ind_outlined,
+                    extraLines: [
+                      if (election.candidacyClaimDate != null) 'Claims Due: ${_formatIsoDate(election.candidacyClaimDate!)}',
+                      if (election.candidacyFinalDate != null) 'Final Candidate List: ${_formatIsoDate(election.candidacyFinalDate!)}',
+                    ],
+                  )
                 else if (election.candidacyClaimDate != null || election.candidacyFinalDate != null)
                   _SingleMilestoneBlock(
                     title: '2. Candidacy Scrutiny Milestones',
@@ -715,9 +724,20 @@ class ElectionDetailScreen extends ConsumerWidget {
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final isNarrow = constraints.maxWidth < 480;
+                  // During this window the server returns only the viewer's own
+                  // nomination to voters/candidates (आफ्नै नाममा मात्र).
+                  final visibleCandidates = election.positions.expand((p) => p.candidates).toList();
+                  final ownOnly = !isAdmin && !isObserverOrAuditor;
+                  final windowText = ownOnly
+                      ? (visibleCandidates.isEmpty
+                          ? 'Nominations are closed. During the claim period you can only see and file claims about your own nomination, and you have none in this election.'
+                          : 'Nominations are closed. During the claim period you can only see and file claims about your own nomination${candClaimDeadline != null ? ', until ${_formatIsoDate(election.candidacyClaimDate!)}' : ''}.')
+                      : (candClaimDeadline != null
+                          ? 'Nominations are closed. You may file eligibility objections against any candidate before ${_formatIsoDate(election.candidacyClaimDate!)}.'
+                          : 'Nominations are closed. You may file formal eligibility objections against candidates.');
                   final objectionBtn = ElevatedButton.icon(
-                    onPressed: () {
-                      final allCandidates = election.positions.expand((p) => p.candidates).toList();
+                    onPressed: visibleCandidates.isEmpty ? null : () {
+                      final allCandidates = visibleCandidates;
                       showDialog(
                         context: context,
                         builder: (_) => FileCandidateObjectionDialog(
@@ -733,7 +753,7 @@ class ElectionDetailScreen extends ConsumerWidget {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                     icon: const Icon(Icons.gavel, size: 16),
-                    label: const Text('File Objection'),
+                    label: Text(ownOnly ? 'File Claim on My Nomination' : 'File Objection'),
                   );
 
                   if (isNarrow) {
@@ -754,9 +774,7 @@ class ElectionDetailScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          candClaimDeadline != null
-                              ? 'Nominations are closed. You may file eligibility objections against any candidate before ${_formatIsoDate(election.candidacyClaimDate!)}.'
-                              : 'Nominations are closed. You may file formal eligibility objections against candidates.',
+                          windowText,
                           style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87),
                         ),
                         if (!isAdmin && !isObserverOrAuditor) ...[
@@ -781,9 +799,7 @@ class ElectionDetailScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              candClaimDeadline != null
-                                  ? 'Nominations are closed. You may file eligibility objections against any candidate before ${_formatIsoDate(election.candidacyClaimDate!)}.'
-                                  : 'Nominations are closed. You may file formal eligibility objections against candidates.',
+                              windowText,
                               style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87),
                             ),
                           ],
@@ -1799,12 +1815,14 @@ class _ScheduleBlock extends StatelessWidget {
   final String start;
   final String end;
   final IconData icon;
+  final List<String> extraLines;
 
   const _ScheduleBlock({
     required this.title,
     required this.start,
     required this.end,
     required this.icon,
+    this.extraLines = const [],
   });
 
   String _format(String iso) {
@@ -1842,6 +1860,8 @@ class _ScheduleBlock extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text('Starts: ${_format(start)} (BS)', style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.grey.shade600)),
                 Text('Ends: ${_format(end)} (BS)', style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.grey.shade600)),
+                for (final line in extraLines)
+                  Text(line, style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.grey.shade600)),
               ],
             ),
           ),

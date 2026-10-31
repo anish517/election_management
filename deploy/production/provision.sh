@@ -31,7 +31,7 @@ echo "== user + layout"
 id omway >/dev/null 2>&1 || useradd -m -s /bin/bash omway
 # $E and $E/deploy are root-owned: the deploy scripts run as root.
 install -d -o root  -g root  -m 755 $E $E/deploy
-install -d -o omway -g omway -m 755 $E/app $E/www $E/media $E/static $E/logs $E/run $E/backups
+install -d -o omway -g omway -m 755 $E/app $E/venv $E/www $E/media $E/static $E/logs $E/run $E/backups
 chown omway:omway $E/app/.env && chmod 600 $E/app/.env
 cat > $E/site.conf <<CONF
 # Per-host settings read by deploy/omway-internal/{install-release,install-frontend,2-install}.sh

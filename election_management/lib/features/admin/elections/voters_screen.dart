@@ -1,3 +1,4 @@
+import '../../../core/utils/id_card_link.dart';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -360,11 +361,12 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                         ),
                       ),
                       OutlinedButton.icon(
-                        onPressed: () {
-                          final baseUrl = ApiConstants.baseUrl.replaceAll('/v1', '');
-                          final url = '$baseUrl/v1/elections/${widget.electionId}/voters/id_cards_bulk/';
-                          launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-                        },
+                        onPressed: () => openIdCard(
+                          context,
+                          electionId: widget.electionId,
+                          kind: 'voter',
+                          id: 'bulk',
+                        ),
                         icon: const Icon(Icons.badge_rounded, size: 18, color: Color(0xFF10B981)),
                         label: const Text('Batch ID Cards (PDF)'),
                         style: OutlinedButton.styleFrom(
@@ -794,10 +796,11 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                       );
                     },
                   ),
-                  if (!isObserverOrAuditor && isVoterClaimOpen && !isOwnRecord)
+                  // Voters may only act on their own entry; officers on any.
+                  if (!isObserverOrAuditor && isVoterClaimOpen && (isAdmin || isOwnRecord))
                     IconButton(
                       icon: const Icon(Icons.rate_review_outlined, size: 18, color: Colors.orange),
-                      tooltip: 'File Claim / Correction on this Voter',
+                      tooltip: isOwnRecord ? 'File Claim / Correction on my entry' : 'File Claim / Correction on this Voter',
                       onPressed: () {
                         showDialog(
                           context: context,
@@ -1177,10 +1180,11 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                   );
                 },
               ),
-              if (!isObserverOrAuditor && isVoterClaimOpen && !isOwnRecord)
+              // Voters may only act on their own entry; officers on any.
+              if (!isObserverOrAuditor && isVoterClaimOpen && (isAdmin || isOwnRecord))
                 IconButton(
                   icon: const Icon(Icons.rate_review_outlined, size: 18, color: Colors.orange),
-                  tooltip: 'File Claim / Objection',
+                  tooltip: isOwnRecord ? 'File Claim / Correction on my entry' : 'File Claim / Objection',
                   onPressed: () {
                     showDialog(
                       context: context,
@@ -1248,20 +1252,6 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                   },
                 ),
               ],
-              if (!isAdmin && !isObserverOrAuditor && isVoterClaimOpen)
-                IconButton(
-                  icon: const Icon(Icons.rate_review_outlined, size: 18, color: Colors.orange),
-                  tooltip: 'File Claim / Correction',
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (_) => FileVoterClaimDialog(
-                        electionId: widget.electionId,
-                        initialVoterName: fullName,
-                      ),
-                    );
-                  },
-                ),
             ],
           ),
         ],

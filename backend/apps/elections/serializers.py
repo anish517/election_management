@@ -55,7 +55,15 @@ class PositionSerializer(serializers.ModelSerializer):
 
     def get_candidates(self, obj):
         # We manually serialize this to avoid circular imports with apps.candidates
-        return [
+        from apps.candidates.models import (
+            limit_to_own_nomination, can_see_private_nomination, public_candidate_view,
+        )
+        candidates = obj.candidates.all()
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if user is not None and limit_to_own_nomination(user, obj.election):
+            candidates = [c for c in candidates if c.email and c.email.lower() == user.email.lower()]
+        rows = [
             {
                 'id': str(c.id),
                 'name': c.full_name,
@@ -91,7 +99,12 @@ class PositionSerializer(serializers.ModelSerializer):
                         'signature_url': e.signature_url,
                     } for e in c.endorsements.all()
                 ]
-            } for c in obj.candidates.all()
+            } for c in candidates
+        ]
+        return [
+            row if can_see_private_nomination(user, row['email'], row['contact_number'])
+            else public_candidate_view(row)
+            for row in rows
         ]
 
 class ElectionSerializer(serializers.ModelSerializer):

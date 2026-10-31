@@ -4,6 +4,7 @@ import '../../core/theme/app_theme.dart';
 import '../../shared/models/models.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_constants.dart';
+import '../../core/utils/error_helper.dart';
 import '../../shared/widgets/shimmer_loaders.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/responsive_layout.dart';
@@ -131,7 +132,7 @@ class _NominationListScreenState extends ConsumerState<NominationListScreen> wit
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to process: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text(extractApiErrorMessage(e, fallback: 'Failed to process the nomination.')), backgroundColor: Colors.red),
         );
       }
     }
@@ -395,12 +396,7 @@ class _NominationListScreenState extends ConsumerState<NominationListScreen> wit
                   children: [
                     TextButton.icon(
                       onPressed: () {
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Colors.transparent,
-                          builder: (_) => CandidateProfileSheet(candidate: c),
-                        );
+                        showCandidateProfile(context, c);
                       },
                       icon: const Icon(Icons.person_search_rounded, size: 18),
                       label: const Text('View Full Dossier'),

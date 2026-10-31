@@ -30,6 +30,9 @@ class _FileCandidateObjectionDialogState extends ConsumerState<FileCandidateObje
   final _phoneController = TextEditingController();
   final _citizenshipController = TextEditingController();
   final _reasonController = TextEditingController();
+  // Officers may file on someone's behalf; voters/candidates only in their own name.
+  bool _isOfficer = false;
+  bool _phoneLocked = false;
   bool _isSubmitting = false;
 
   @override
@@ -40,6 +43,8 @@ class _FileCandidateObjectionDialogState extends ConsumerState<FileCandidateObje
       _selectedCandidateId = widget.candidates.first.id;
     }
     final user = ref.read(currentUserProvider);
+    _isOfficer = user != null && (user.canManageElections || user.isSuperAdmin);
+    _phoneLocked = !_isOfficer && (user?.phone.isNotEmpty ?? false);
     if (user != null) {
       _nameController.text = user.fullName.isNotEmpty ? user.fullName : user.email;
       _emailController.text = user.email;
@@ -192,8 +197,10 @@ class _FileCandidateObjectionDialogState extends ConsumerState<FileCandidateObje
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _nameController,
+                    readOnly: !_isOfficer,
                     decoration: InputDecoration(
                       labelText: 'Your Full Name (Claimant) *',
+                      helperText: _isOfficer ? null : 'Objections are filed in your own name (आफ्नै नाममा मात्र)',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       prefixIcon: const Icon(Icons.person_outline),
                     ),
@@ -205,6 +212,7 @@ class _FileCandidateObjectionDialogState extends ConsumerState<FileCandidateObje
                       final isNarrow = constraints.maxWidth < 360;
                       final emailField = TextFormField(
                         controller: _emailController,
+                        readOnly: !_isOfficer,
                         decoration: InputDecoration(
                           labelText: 'Your Email *',
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -214,6 +222,7 @@ class _FileCandidateObjectionDialogState extends ConsumerState<FileCandidateObje
                       );
                       final phoneField = TextFormField(
                         controller: _phoneController,
+                        readOnly: _phoneLocked,
                         decoration: InputDecoration(
                           labelText: 'Phone Number',
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),

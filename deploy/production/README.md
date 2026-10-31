@@ -28,4 +28,10 @@ backs up the database before migrating.
 3. Database: `pg_dump -Fc --no-owner --no-acl` on development, `pg_restore --no-owner
    --no-acl --role=election` here. Media: tar of `/srv/election/media`.
 4. First release through `receive-release.sh`, then
-   `certbot --nginx -d electionnepal.org -d www.electionnepal.org`.
+   `certbot --nginx -d electionnepal.org -d www.electionnepal.org --redirect`.
+5. Cloudflare for electionnepal.org was in **Flexible** SSL mode (it reaches the origin
+   over HTTP), so certbot's HTTP->HTTPS redirect looped. The certbot redirect block was
+   removed from `/etc/nginx/sites-available/election` and the main server block also
+   listens on 80 (backup of certbot's version: `/root/nginx-election.certbot.bak`).
+   Once the zone is set to **Full (strict)**, traffic uses the 443 listener and the
+   port-80 listener only matters for direct-to-origin requests.

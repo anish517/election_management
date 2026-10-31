@@ -55,3 +55,27 @@ class OrganizationStatsSerializer(serializers.Serializer):
     results_overview = serializers.ListField(
         child=serializers.DictField(), required=False
     )
+
+
+class PlatformOrganizationSerializer(serializers.ModelSerializer):
+    """
+    Super Admin console view of a tenant: identity, lifecycle and size.
+    Only status and trial_ends_at are writable from the console.
+    """
+    member_count = serializers.IntegerField(read_only=True)
+    election_count = serializers.IntegerField(read_only=True)
+    admin_emails = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Organization
+        fields = [
+            'id', 'name', 'slug', 'org_type', 'email', 'phone', 'logo_url',
+            'status', 'trial_ends_at', 'created_at',
+            'member_count', 'election_count', 'admin_emails',
+        ]
+        read_only_fields = [
+            'id', 'name', 'slug', 'org_type', 'email', 'phone', 'logo_url', 'created_at',
+        ]
+
+    def get_admin_emails(self, obj):
+        return [u.email for u in obj.users.all() if u.role == 'org_admin']

@@ -11,6 +11,7 @@ import '../../shared/widgets/admin_drawer.dart';
 import '../../shared/widgets/shimmer_loaders.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/responsive_layout.dart';
+import '../../shared/widgets/theme_mode_button.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class ElectionListScreen extends ConsumerStatefulWidget {
@@ -71,6 +72,7 @@ class _ElectionListScreenState extends ConsumerState<ElectionListScreen> {
             icon: const Icon(Icons.refresh_rounded),
             onPressed: () => ref.invalidate(electionsProvider),
           ),
+          const ThemeModeButton(),
         ],
       ),
       body: ResponsivePageWrapper(

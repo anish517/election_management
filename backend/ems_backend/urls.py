@@ -10,7 +10,7 @@ from rest_framework_nested import routers
 
 from apps.users.views import (
     RegisterView, LoginView, MeView, OTPRequestView, OTPVerifyView, LogoutView,
-    PasswordResetRequestView, PasswordResetConfirmView,
+    PasswordResetRequestView, PasswordResetConfirmView, PasswordChangeView,
 )
 from apps.members.views import MemberViewSet
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -25,7 +25,10 @@ from apps.voting.views import (
     PollingStationInitializeView, VoterPinSlipsPrintView,
 )
 from apps.results.views import ElectionResultsViewSet
-from apps.organizations.views import OrganizationView, OrganizationStatsView
+from apps.organizations.views import (
+    OrganizationView, OrganizationStatsView,
+    PlatformOrganizationListView, PlatformOrganizationDetailView,
+)
 from apps.core.views import FileUploadView
 from apps.audit.views import AuditExportView, AuditVerifyHashView, AuditReceiptLookupView, AuditLogsView
 
@@ -64,12 +67,17 @@ urlpatterns = [
     path('v1/auth/otp/verify/', OTPVerifyView.as_view(), name='otp-verify'),
     path('v1/auth/password-reset/request/', PasswordResetRequestView.as_view(), name='password-reset-request'),
     path('v1/auth/password-reset/confirm/', PasswordResetConfirmView.as_view(), name='password-reset-confirm'),
+    path('v1/auth/password/change/', PasswordChangeView.as_view(), name='password-change'),
     
     # Organization Settings (supports both /organization/ and /organizations/)
     path('v1/organization/', OrganizationView.as_view(), name='organization-profile'),
     path('v1/organization/stats/', OrganizationStatsView.as_view(), name='organization-stats'),
     path('v1/organizations/me/', OrganizationView.as_view(), name='org-me'),
     path('v1/organizations/stats/', OrganizationStatsView.as_view(), name='org-stats'),
+
+    # Super Admin platform console (all tenants)
+    path('v1/platform/organizations/', PlatformOrganizationListView.as_view(), name='platform-org-list'),
+    path('v1/platform/organizations/<uuid:org_id>/', PlatformOrganizationDetailView.as_view(), name='platform-org-detail'),
     
     # Core endpoints (REST)
     path('v1/upload/', FileUploadView.as_view(), name='file-upload'),

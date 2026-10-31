@@ -8,6 +8,8 @@ import '../../shared/widgets/shimmer_loaders.dart';
 import '../../shared/widgets/image_upload_widget.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_constants.dart';
+import '../../shared/widgets/theme_mode_button.dart';
+import 'change_password_dialog.dart';
 
 class UserProfileScreen extends ConsumerWidget {
   const UserProfileScreen({super.key});
@@ -31,6 +33,7 @@ class UserProfileScreen extends ConsumerWidget {
           },
         ),
         actions: [
+          const ThemeModeButton(),
           IconButton(
             icon: const Icon(Icons.logout_rounded, color: AppColors.error),
             tooltip: 'Logout',
@@ -78,7 +81,9 @@ class UserProfileScreen extends ConsumerWidget {
                       const SizedBox(height: 4),
                       Text(
                         user.email,
-                        style: const TextStyle(color: AppColors.textSecondary),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
                     ],
                     const SizedBox(height: 8),
@@ -103,7 +108,31 @@ class UserProfileScreen extends ConsumerWidget {
                     const SizedBox(height: 40),
                     _buildInfoTile(context, Icons.badge_rounded, 'Account ID', user.id),
                     _buildInfoTile(context, Icons.phone_rounded, 'Phone', user.phone.isNotEmpty ? user.phone : 'Not provided'),
-                    _buildInfoTile(context, Icons.business_rounded, 'Organization', user.organizationName),
+                    _buildInfoTile(
+                      context,
+                      Icons.business_rounded,
+                      'Organization',
+                      user.isSuperAdmin
+                          ? 'Platform (all organizations)'
+                          : (user.organizationName.isNotEmpty ? user.organizationName : 'None'),
+                    ),
+                    if (user.isSuperAdmin || user.isOrgAdmin || user.isElectionOfficer) ...[
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => showDialog(
+                            context: context,
+                            builder: (_) => const ChangePasswordDialog(),
+                          ),
+                          icon: const Icon(Icons.lock_reset_rounded),
+                          label: const Text('Change Password'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

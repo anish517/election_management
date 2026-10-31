@@ -16,6 +16,13 @@ class DashboardQuickActions extends StatelessWidget {
     if (user.isSuperAdmin) {
       actions = [
         _ActionItem(
+          icon: Icons.domain_rounded,
+          title: 'All Organizations',
+          subtitle: 'Tenants, status & trials',
+          routeName: 'platform-organizations',
+          color: AppColors.accent,
+        ),
+        _ActionItem(
           icon: Icons.business_rounded,
           title: 'Create Organization',
           subtitle: 'Onboard a new organization & admin',
@@ -23,10 +30,10 @@ class DashboardQuickActions extends StatelessWidget {
           color: AppColors.primary,
         ),
         _ActionItem(
-          icon: Icons.how_to_vote_rounded,
-          title: 'Elections',
-          subtitle: 'Browse all elections',
-          routeName: 'elections',
+          icon: Icons.badge_outlined,
+          title: 'My Profile',
+          subtitle: 'Account details & password',
+          routeName: 'profile',
           color: AppColors.stateVoting,
         ),
       ];

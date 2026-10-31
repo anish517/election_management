@@ -63,9 +63,70 @@ class ElectionManagementApp extends ConsumerWidget {
                 ? AppColors.globalBackgroundGradient
                 : AppColors.globalBackgroundGradientLight,
           ),
-          child: child,
+          child: Column(
+            children: [
+              Expanded(
+                // The footer owns the bottom safe-area inset.
+                child: MediaQuery.removePadding(
+                  context: context,
+                  removeBottom: true,
+                  child: child ?? const SizedBox.shrink(),
+                ),
+              ),
+              const PoweredByFooter(),
+            ],
+          ),
         );
       },
+    );
+  }
+}
+
+/// App-wide "Powered by Omway Technologies" strip shown under every screen.
+class PoweredByFooter extends StatelessWidget {
+  const PoweredByFooter({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+      color: isDark ? const Color(0xFF0B0F19) : Colors.white,
+      child: SafeArea(
+        top: false,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.06),
+              ),
+            ),
+          ),
+          child: Text.rich(
+            TextSpan(
+              text: 'Powered by ',
+              children: [
+                TextSpan(
+                  text: 'Omway Technologies',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? AppColors.primaryLight : AppColors.primary,
+                  ),
+                ),
+              ],
+            ),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11.5,
+              letterSpacing: 0.2,
+              color: isDark ? AppColors.textSecondary : AppColors.textMuted,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

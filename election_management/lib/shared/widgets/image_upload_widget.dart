@@ -120,7 +120,10 @@ class _ImageUploadWidgetState extends ConsumerState<ImageUploadWidget> {
                 decoration: BoxDecoration(
                   color: AppColors.primary,
                   shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.surface, width: 2),
+                  border: Border.all(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    width: 2,
+                  ),
                 ),
                 child: const Icon(
                   Icons.camera_alt,

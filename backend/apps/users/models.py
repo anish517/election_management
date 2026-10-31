@@ -108,6 +108,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return f"{self.email} ({self.get_role_display()})"
 
+    def save(self, *args, **kwargs):
+        # Super Admins are platform-wide and never belong to a tenant
+        if self.role == UserRole.SUPER_ADMIN and self.organization_id is not None:
+            self.organization = None
+            if kwargs.get('update_fields') is not None:
+                kwargs['update_fields'] = {*kwargs['update_fields'], 'organization'}
+        super().save(*args, **kwargs)
+
     @property
     def is_super_admin(self):
         return self.role == UserRole.SUPER_ADMIN

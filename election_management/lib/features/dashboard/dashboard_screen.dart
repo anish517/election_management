@@ -14,6 +14,7 @@ import '../../shared/widgets/responsive_layout.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'dashboard_quick_actions.dart';
 import '../../shared/widgets/live_clock.dart';
+import '../../shared/widgets/theme_mode_button.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -62,15 +63,17 @@ class DashboardScreen extends ConsumerWidget {
                           if (user != null) DashboardQuickActions(user: user),
                           const SizedBox(height: 32),
 
-                          // Elections Feed Section
-                          _buildSectionHeader(
-                            context,
-                            'Your Elections (निर्वाचनहरू)',
-                            Icons.how_to_vote_rounded,
-                            onTap: () => context.pushNamed('elections'),
-                          ),
-                          const SizedBox(height: 16),
-                          _buildElectionsSection(context, ref, user, isDark),
+                          // Elections Feed Section (super admins belong to no organization)
+                          if (user?.isSuperAdmin != true) ...[
+                            _buildSectionHeader(
+                              context,
+                              'Your Elections (निर्वाचनहरू)',
+                              Icons.how_to_vote_rounded,
+                              onTap: () => context.pushNamed('elections'),
+                            ),
+                            const SizedBox(height: 16),
+                            _buildElectionsSection(context, ref, user, isDark),
+                          ],
                         ],
                       ),
                     ),
@@ -131,7 +134,11 @@ class DashboardScreen extends ConsumerWidget {
           ],
           Expanded(
             child: Text(
-              user?.organizationName ?? 'Election Management Portal',
+              user?.isSuperAdmin == true
+                  ? 'Platform Administration'
+                  : (user?.organizationName.isNotEmpty == true
+                      ? user!.organizationName
+                      : 'Election Management Portal'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.3,
@@ -151,6 +158,7 @@ class DashboardScreen extends ConsumerWidget {
               ref.invalidate(orgStatsProvider);
             },
           ).animate().fade().scale(delay: 200.ms),
+          const ThemeModeButton(),
           const SizedBox(width: 4),
           _buildUserMenu(context, ref, user, isDark),
         ],
@@ -163,7 +171,9 @@ class DashboardScreen extends ConsumerWidget {
         ? user!.fullName
         : (user?.email.split('@').first ?? 'Member');
 
-    final roleLabel = user?.role == 'org_admin'
+    final roleLabel = user?.role == 'super_admin'
+        ? 'Super Admin'
+        : user?.role == 'org_admin'
         ? 'Organization Admin'
         : (user?.role == 'election_officer'
             ? 'Election Officer'

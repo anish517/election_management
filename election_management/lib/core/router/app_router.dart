@@ -24,6 +24,7 @@ import '../../features/admin/organization/org_settings_screen.dart';
 import '../../features/admin/election_rules/election_rules_screen.dart';
 import '../../features/admin/payment_settings/payment_settings_screen.dart';
 import '../../features/admin/payments/payment_management_screen.dart';
+import '../../features/admin/platform/platform_organizations_screen.dart';
 import '../../features/results/results_screen.dart';
 import '../../features/profile/user_profile_screen.dart';
 import '../../features/analytics/analytics_screen.dart';
@@ -91,8 +92,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         final isAdminRole = role == 'org_admin' || role == 'super_admin';
         if (isAdminRoute && !isAdminRole) return '/elections';
 
-        // Creating organizations is reserved for the platform super admin
-        if (loc.startsWith('/register') && role != 'super_admin') {
+        // Creating and managing organizations is reserved for the platform super admin
+        if ((loc.startsWith('/register') || loc.startsWith('/platform')) &&
+            role != 'super_admin') {
           return '/dashboard';
         }
 
@@ -152,6 +154,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/payment-settings',
         name: 'payment-settings',
         builder: (context, state) => const PaymentSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/platform/organizations',
+        name: 'platform-organizations',
+        builder: (context, state) => const PlatformOrganizationsScreen(),
       ),
       GoRoute(
         path: '/admin/payments',

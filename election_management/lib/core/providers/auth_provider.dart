@@ -220,6 +220,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = const AuthState();
   }
 
+  /// Logged-in admin changes their own password; the session stays as is.
+  Future<String?> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    try {
+      await _dio.post(ApiConstants.passwordChange, data: {
+        'current_password': currentPassword,
+        'new_password': newPassword,
+        'confirm_password': confirmPassword,
+      });
+      return null;
+    } on DioException catch (e) {
+      return _extractError(e);
+    }
+  }
+
   String _extractError(DioException e) {
     final data = e.response?.data;
     if (data is Map) {

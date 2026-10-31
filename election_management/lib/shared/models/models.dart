@@ -39,7 +39,7 @@ class UserModel {
         photoUrl: json['photo_url'] as String? ?? '',
         role: json['role'] as String,
         roleDisplay: json['role_display'] as String? ?? '',
-        organization: json['organization'] as String,
+        organization: json['organization'] as String? ?? '',
         organizationName: json['organization_name'] as String? ?? '',
         organizationLogoUrl: json['organization_logo_url'] as String? ?? '',
         organizationCoverImageUrl: json['organization_cover_image_url'] as String? ?? '',
@@ -1126,5 +1126,53 @@ class OrganizationStatsModel {
         turnoutPercentage: double.tryParse(json['turnout_percentage']?.toString() ?? '0.0') ?? 0.0,
         votingProgress: List<Map<String, dynamic>>.from(json['voting_progress'] ?? []),
         resultsOverview: List<Map<String, dynamic>>.from(json['results_overview'] ?? []),
+      );
+}
+
+class PlatformOrganizationModel {
+  final String id;
+  final String name;
+  final String slug;
+  final String orgType;
+  final String email;
+  final String logoUrl;
+  final String status;
+  final DateTime? trialEndsAt;
+  final DateTime? createdAt;
+  final int memberCount;
+  final int electionCount;
+  final List<String> adminEmails;
+
+  const PlatformOrganizationModel({
+    required this.id,
+    required this.name,
+    required this.slug,
+    required this.orgType,
+    required this.email,
+    required this.logoUrl,
+    required this.status,
+    this.trialEndsAt,
+    this.createdAt,
+    required this.memberCount,
+    required this.electionCount,
+    required this.adminEmails,
+  });
+
+  factory PlatformOrganizationModel.fromJson(Map<String, dynamic> json) =>
+      PlatformOrganizationModel(
+        id: json['id'] as String,
+        name: json['name'] as String? ?? '',
+        slug: json['slug'] as String? ?? '',
+        orgType: json['org_type'] as String? ?? '',
+        email: json['email'] as String? ?? '',
+        logoUrl: json['logo_url'] as String? ?? '',
+        status: json['status'] as String? ?? 'trial',
+        trialEndsAt: DateTime.tryParse(json['trial_ends_at'] as String? ?? ''),
+        createdAt: DateTime.tryParse(json['created_at'] as String? ?? ''),
+        memberCount: json['member_count'] as int? ?? 0,
+        electionCount: json['election_count'] as int? ?? 0,
+        adminEmails: (json['admin_emails'] as List<dynamic>? ?? [])
+            .map((e) => e as String)
+            .toList(),
       );
 }

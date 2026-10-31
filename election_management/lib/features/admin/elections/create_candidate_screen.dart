@@ -329,113 +329,194 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
     }
   }
 
+  /// Fill a proposer/supporter card from the election's voter list (default,
+  /// same list the candidate is chosen from) or the organization member roster.
   void _pickMemberForEndorsement({
     required TextEditingController nameCtrl,
     required TextEditingController phoneCtrl,
     required TextEditingController memIdCtrl,
     required TextEditingController citizenCtrl,
   }) {
+    var fromVoterList = true;
+    var query = '';
+
+    bool matches(List<String> fields) {
+      final q = query.trim().toLowerCase();
+      return q.isEmpty || fields.any((f) => f.toLowerCase().contains(q));
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
-        return Consumer(
-          builder: (context, ref, _) {
-            final membersAsync = ref.watch(membersProvider);
-            return Container(
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.surface : Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: DraggableScrollableSheet(
-                initialChildSize: 0.65,
-                minChildSize: 0.4,
-                maxChildSize: 0.9,
-                expand: false,
-                builder: (ctx, scrollCtrl) {
-                  return Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: const Icon(Icons.people_outline_rounded, color: AppColors.primaryLight, size: 20),
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) => Consumer(
+            builder: (context, ref, _) {
+              final membersAsync = ref.watch(membersProvider);
+              final votersAsync = ref.watch(votersProvider(widget.electionId));
+
+              Widget voterList(ScrollController scrollCtrl) => votersAsync.when(
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    error: (e, _) => Center(child: Text('Error loading voters: $e', style: const TextStyle(color: Colors.red))),
+                    data: (voters) {
+                      final rows = voters.where((v) {
+                        final name = (v['full_name'] ?? '${v['first_name'] ?? ''} ${v['last_name'] ?? ''}').toString();
+                        return matches([name, '${v['voter_id'] ?? ''}', '${v['phone'] ?? ''}', '${v['email'] ?? ''}']);
+                      }).toList();
+                      if (rows.isEmpty) {
+                        return Center(child: Text(voters.isEmpty ? 'No voters enrolled in this election yet.' : 'No voter matches "$query".'));
+                      }
+                      return ListView.separated(
+                        controller: scrollCtrl,
+                        itemCount: rows.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (ctx, idx) {
+                          final v = rows[idx];
+                          final name = (v['full_name'] ?? '${v['first_name'] ?? ''} ${v['last_name'] ?? ''}').toString().trim();
+                          final voterId = (v['voter_id'] ?? '').toString();
+                          final phone = (v['phone'] ?? '').toString();
+                          final isCandidate = _selectedVoterId != null && v['id'].toString() == _selectedVoterId;
+                          return ListTile(
+                            enabled: !isCandidate,
+                            leading: CircleAvatar(
+                              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                              child: Text(
+                                name.isNotEmpty ? name[0].toUpperCase() : '?',
+                                style: const TextStyle(color: AppColors.primaryLight, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                            subtitle: Text(
+                              isCandidate
+                                  ? 'Selected as the candidate'
+                                  : 'Voter ID: ${voterId.isNotEmpty ? voterId : "N/A"}${phone.isNotEmpty ? " • $phone" : ""}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
+                            onTap: () {
+                              nameCtrl.text = name;
+                              phoneCtrl.text = phone;
+                              memIdCtrl.text = voterId;
+                              final citizen = (v['citizenship_number'] ?? v['council_number'] ?? '').toString();
+                              if (citizen.isNotEmpty) citizenCtrl.text = citizen;
+                              Navigator.pop(ctx);
+                            },
+                          );
+                        },
+                      );
+                    },
+                  );
+
+              Widget memberList(ScrollController scrollCtrl) => membersAsync.when(
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    error: (e, _) => Center(child: Text('Error loading members: $e', style: const TextStyle(color: Colors.red))),
+                    data: (members) {
+                      final rows = members.where((m) => matches([m.fullName, m.memberCode, m.phone, m.email])).toList();
+                      if (rows.isEmpty) {
+                        return Center(child: Text(members.isEmpty ? 'No members found in organization roster.' : 'No member matches "$query".'));
+                      }
+                      return ListView.separated(
+                        controller: scrollCtrl,
+                        itemCount: rows.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (ctx, idx) {
+                          final m = rows[idx];
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                              child: Text(
+                                m.fullName.isNotEmpty ? m.fullName[0].toUpperCase() : '?',
+                                style: const TextStyle(color: AppColors.primaryLight, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            title: Text(m.fullName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                            subtitle: Text('${m.email} • Code: #${m.memberCode.isNotEmpty ? m.memberCode : "N/A"}', style: const TextStyle(fontSize: 12)),
+                            trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
+                            onTap: () {
+                              nameCtrl.text = m.fullName;
+                              phoneCtrl.text = m.phone;
+                              memIdCtrl.text = m.memberCode;
+                              if (m.citizenshipNumber.isNotEmpty) {
+                                citizenCtrl.text = m.citizenshipNumber;
+                              }
+                              Navigator.pop(ctx);
+                            },
+                          );
+                        },
+                      );
+                    },
+                  );
+
+              return Container(
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surface : Colors.white,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: DraggableScrollableSheet(
+                  initialChildSize: 0.7,
+                  minChildSize: 0.4,
+                  maxChildSize: 0.92,
+                  expand: false,
+                  builder: (ctx, scrollCtrl) {
+                    return Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
-                                const SizedBox(width: 12),
-                                const Text(
-                                  'Select Endorser from Member Roster',
+                                child: const Icon(Icons.people_outline_rounded, color: AppColors.primaryLight, size: 20),
+                              ),
+                              const SizedBox(width: 12),
+                              const Expanded(
+                                child: Text(
+                                  'Select Proposer / Supporter',
                                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                                 ),
-                              ],
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.close_rounded),
-                              onPressed: () => Navigator.pop(ctx),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        const Divider(height: 1),
-                        const SizedBox(height: 12),
-                        Expanded(
-                          child: membersAsync.when(
-                            loading: () => const Center(child: CircularProgressIndicator()),
-                            error: (e, _) => Center(child: Text('Error loading members: $e', style: const TextStyle(color: Colors.red))),
-                            data: (members) {
-                              if (members.isEmpty) {
-                                return const Center(child: Text('No members found in organization roster.'));
-                              }
-                              return ListView.separated(
-                                controller: scrollCtrl,
-                                itemCount: members.length,
-                                separatorBuilder: (_, _) => const Divider(height: 1),
-                                itemBuilder: (ctx, idx) {
-                                  final m = members[idx];
-                                  return ListTile(
-                                    leading: CircleAvatar(
-                                      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                                      child: Text(
-                                        m.fullName.isNotEmpty ? m.fullName[0].toUpperCase() : '?',
-                                        style: const TextStyle(color: AppColors.primaryLight, fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                    title: Text(m.fullName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                                    subtitle: Text('${m.email} • Code: #${m.memberCode.isNotEmpty ? m.memberCode : "N/A"}', style: const TextStyle(fontSize: 12)),
-                                    trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
-                                    onTap: () {
-                                      nameCtrl.text = m.fullName;
-                                      phoneCtrl.text = m.phone;
-                                      memIdCtrl.text = m.memberCode;
-                                      if (m.citizenshipNumber.isNotEmpty) {
-                                        citizenCtrl.text = m.citizenshipNumber;
-                                      }
-                                      Navigator.pop(ctx);
-                                    },
-                                  );
-                                },
-                              );
-                            },
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close_rounded),
+                                onPressed: () => Navigator.pop(ctx),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            );
-          },
+                          const SizedBox(height: 12),
+                          SegmentedButton<bool>(
+                            segments: const [
+                              ButtonSegment(value: true, label: Text('Voter List'), icon: Icon(Icons.how_to_vote_outlined, size: 16)),
+                              ButtonSegment(value: false, label: Text('Member Roster'), icon: Icon(Icons.badge_outlined, size: 16)),
+                            ],
+                            selected: {fromVoterList},
+                            onSelectionChanged: (sel) => setSheetState(() => fromVoterList = sel.first),
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            decoration: InputDecoration(
+                              hintText: fromVoterList ? 'Search by name, voter ID or phone' : 'Search by name, member code or phone',
+                              prefixIcon: const Icon(Icons.search_rounded),
+                              isDense: true,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onChanged: (v) => setSheetState(() => query = v),
+                          ),
+                          const SizedBox(height: 12),
+                          Expanded(child: fromVoterList ? voterList(scrollCtrl) : memberList(scrollCtrl)),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
         );
       },
     );
@@ -1372,7 +1453,7 @@ class _CreateCandidateScreenState extends ConsumerState<CreateCandidateScreen> {
                 OutlinedButton.icon(
                   onPressed: onPickRoster,
                   icon: const Icon(Icons.people_outline, size: 14),
-                  label: const Text('Pick from Roster', style: TextStyle(fontSize: 11)),
+                  label: const Text('Pick from Voter List', style: TextStyle(fontSize: 11)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: primaryColor,
                     side: BorderSide(color: primaryColor.withValues(alpha: 0.4)),

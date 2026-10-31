@@ -24,7 +24,7 @@ echo "== layout (owned by omway, like the other apps in /srv)"
 # $E and $E/deploy are root-owned: ci-deploy.sh in deploy/ runs as root via sudo.
 install -d -o root  -g root  -m 755 $E $E/deploy
 install -d -o omway -g omway -m 755 \
-  $E/app $E/www $E/media $E/static $E/logs $E/run $E/backups
+  $E/app $E/venv $E/www $E/media $E/static $E/logs $E/run $E/backups
 
 echo "== postgres role + database"
 PW=$(openssl rand -hex 24)

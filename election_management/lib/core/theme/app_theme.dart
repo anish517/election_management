@@ -38,6 +38,7 @@ class AppColors {
 
   // Light Theme specific colors
   static const backgroundLight = Color(0xFFF1F5F9); // Slate-100 for better contrast
+  static const pageBackgroundLight = Color(0xFFE8F4FD); // Soft sky blue page behind white cards
   static const surfaceLight = Color(0xFFFFFFFF);
   static const surfaceVariantLight = Color(0xFFF8FAFC); // Slate-50
   static const cardColorLight = Color(0xB3FFFFFF); // 70% white for frosted glass
@@ -62,9 +63,9 @@ class AppColors {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      Color(0xFFF8FAFC), // Slate-50
-      Color(0xFFEEF2FF), // Indigo-50
-      Color(0xFFE0E7FF), // Indigo-100
+      Color(0xFFF0F9FF), // Sky-50
+      Color(0xFFE8F4FD), // Soft sky
+      Color(0xFFE0F2FE), // Sky-100
     ],
     stops: [0.0, 0.5, 1.0],
   );
@@ -233,7 +234,7 @@ class AppTheme {
         onPrimary: Colors.white,
         onSurface: AppColors.textPrimaryLightMode,
       ),
-      scaffoldBackgroundColor: const Color(0xFFFAFAFA), // Clean crisp white-grey
+      scaffoldBackgroundColor: AppColors.pageBackgroundLight, // Soft sky blue so white cards stand out
       cardTheme: CardThemeData(
         color: const Color(0xFFFFFFFF), // Pure white cards
         elevation: 0,

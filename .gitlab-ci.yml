@@ -1,14 +1,23 @@
-# MR -> checks + Flutter build. Push to main -> the same, then deploy:production to
-# https://election.omwaytechnologies.com
+# Branches -> environments:
+#   main        -> development  https://election.omwaytechnologies.com  (omway-internal)
+#   PRODUCTION  -> production   https://electionnepal.org               (213.163.207.252)
+#   MRs         -> checks + Flutter build only, nothing is deployed.
+# Release to production by merging/pushing main into PRODUCTION.
 #
 # Two shell-executor runners, picked by tag (neither accepts untagged jobs):
-#   flutter-build   omway-gitlab. The Flutter web build peaks at ~1.6 GB, which
-#                   omway-internal cannot spare (1.8 GB shared with production).
-#   omway-internal  the production host. Installs backend/ from the checkout and the
-#                   prebuilt web bundle from build:web's artifacts.
-# deploy:production hands the checkout to /srv/election/deploy/ci-deploy.sh, the only
-# command the runner may sudo (/etc/sudoers.d/gitlab-runner-election). That script
-# backs up the database, syncs code, migrates, restarts services and smoke-tests.
+#   flutter-build   omway-gitlab. The Flutter web build peaks at ~1.6 GB, which neither
+#                   app host can spare.
+#   omway-internal  the development host. Runs the checks and both deploy jobs.
+# deploy:development hands the checkout to /srv/election/deploy/ci-deploy.sh, the only
+# command the runner may sudo (/etc/sudoers.d/gitlab-runner-election).
+# deploy:production streams a tarball over SSH to the production host, where the deploy
+# key is pinned (authorized_keys command=) to /srv/election/deploy/receive-release.sh.
+# Both end in deploy/omway-internal/install-release.sh: pg_dump, sync, migrate, restart,
+# smoke test.
+#
+# CI/CD variables (Settings > CI/CD > Variables), production job only:
+#   PROD_SSH_PRIVATE_KEY  File, Protected  private half of the key in prod's authorized_keys
+# PRODUCTION must be a protected branch, or protected variables never reach its pipelines.
 
 stages:
   - check
@@ -17,6 +26,10 @@ stages:
 workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "PRODUCTION"
+      variables:
+        SITE_URL: https://electionnepal.org
+        API_BASE_URL: https://electionnepal.org/v1
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - when: never
 
@@ -24,6 +37,7 @@ default:
   interruptible: true
 
 variables:
+  SITE_URL: https://election.omwaytechnologies.com
   API_BASE_URL: https://election.omwaytechnologies.com/v1
 
 check:backend:
@@ -32,7 +46,7 @@ check:backend:
     - omway-internal
   variables:
     PIP_DISABLE_PIP_VERSION_CHECK: "1"
-    # In-memory SQLite: checks must never connect to the production Postgres on this host.
+    # In-memory SQLite: checks must never connect to the Postgres on this host.
     DEBUG: "True"
     DATABASE_URL: "sqlite:///:memory:"
   cache:
@@ -46,7 +60,7 @@ check:backend:
     - .venv/bin/pip install -q -r backend/requirements.txt
     - cd backend
     - ../.venv/bin/python manage.py check
-    - 'for f in ../deploy/omway-internal/*.sh; do bash -n "$f"; done'
+    - 'for f in ../deploy/omway-internal/*.sh ../deploy/production/*.sh; do bash -n "$f"; done'
 
 # Model changes pushed without their migration. Reported, not blocking: deploy runs
 # `migrate`, which only applies migration files that exist in the repo.
@@ -71,6 +85,8 @@ check:migrations:
     - cd backend
     - ../.venv/bin/python manage.py makemigrations --check --dry-run
 
+# API_BASE_URL comes from the branch (workflow rules above), so each environment gets a
+# bundle built for its own host; install-frontend.sh refuses a bundle built for another.
 build:web:
   stage: check
   tags:
@@ -89,7 +105,16 @@ build:web:
     paths:
       - election_management/build/web/
 
-deploy:production:
+.smoke_public: &smoke_public
+  - 'curl -sS --fail -o /dev/null -w "public /             -> HTTP %{http_code}\n" "$SITE_URL/"'
+  - 'code=$(curl -sS -o /dev/null -w "%{http_code}" "$SITE_URL/v1/auth/me/"); echo "public /v1/auth/me/ -> HTTP $code"; [ "$code" = "401" ]'
+
+.validate_sha: &validate_sha |
+  case "$CI_COMMIT_SHA" in
+    *[!0-9a-f]*|"") echo "refusing to deploy: CI_COMMIT_SHA is not a hex sha"; exit 1 ;;
+  esac
+
+deploy:development:
   stage: deploy
   tags:
     - omway-internal
@@ -99,15 +124,52 @@ deploy:production:
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   interruptible: false
-  resource_group: production
+  resource_group: development
   environment:
-    name: production
+    name: development
     url: https://election.omwaytechnologies.com
   script:
-    - |
-      case "$CI_COMMIT_SHA" in
-        *[!0-9a-f]*|"") echo "refusing to deploy: CI_COMMIT_SHA is not a hex sha"; exit 1 ;;
-      esac
+    - *validate_sha
     - sudo /srv/election/deploy/ci-deploy.sh "$CI_PROJECT_DIR" "$CI_COMMIT_SHA"
-    - 'curl -sS --fail -o /dev/null -w "public /             -> HTTP %{http_code}\n" https://election.omwaytechnologies.com/'
-    - 'code=$(curl -sS -o /dev/null -w "%{http_code}" https://election.omwaytechnologies.com/v1/auth/me/); echo "public /v1/auth/me/ -> HTTP $code"; [ "$code" = "401" ]'
+    - *smoke_public
+
+deploy:production:
+  stage: deploy
+  tags:
+    - omway-internal
+  needs:
+    - check:backend
+    - build:web
+  rules:
+    - if: $CI_COMMIT_BRANCH == "PRODUCTION"
+  interruptible: false
+  resource_group: production        # never two production deploys at once
+  environment:
+    name: production
+    url: https://electionnepal.org
+  variables:
+    PROD_HOST: 213.163.207.252
+  before_script:
+    - '[ -n "${PROD_SSH_PRIVATE_KEY:-}" ] || { echo "PROD_SSH_PRIVATE_KEY is not set (File, Protected; PRODUCTION must be a protected branch)"; exit 1; }'
+    - SSH_DIR="$CI_PROJECT_DIR/.ci-ssh"
+    - rm -rf "$SSH_DIR" && install -d -m 700 "$SSH_DIR"
+    # Accept the key as a File variable (value is a path) or a plain variable (value is the key).
+    - |
+      if [ -f "$PROD_SSH_PRIVATE_KEY" ]; then
+        install -m 600 "$PROD_SSH_PRIVATE_KEY" "$SSH_DIR/id"
+      else
+        printf '%s\n' "$PROD_SSH_PRIVATE_KEY" > "$SSH_DIR/id" && chmod 600 "$SSH_DIR/id"
+      fi
+    # Host key of 213.163.207.252 (SHA256:+x0v7cCi46dTpiJPPYga2wtsy7RvLZ0mE0IVEsWRHFI,
+    # checked against the server on 2026-10-31). Update if the host is rebuilt.
+    - echo "213.163.207.252 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJso2Ej+XJWDHR2qJAnQXiz2kJn6DzWv1JNF+ElLd2c/" > "$SSH_DIR/known_hosts"
+    - export SSH_OPTS="-i $SSH_DIR/id -o IdentitiesOnly=yes -o UserKnownHostsFile=$SSH_DIR/known_hosts -o StrictHostKeyChecking=yes -o ServerAliveInterval=30"
+  after_script:
+    - rm -rf "$CI_PROJECT_DIR/.ci-ssh"
+  script:
+    - *validate_sha
+    - test -f election_management/build/web/index.html
+    - echo "$CI_COMMIT_SHA" > RELEASE_SHA
+    # The key can only run receive-release.sh; the sha is its sole argument, the tarball its stdin.
+    - tar -cz RELEASE_SHA backend deploy election_management/build/web | ssh $SSH_OPTS "root@$PROD_HOST" "$CI_COMMIT_SHA"
+    - *smoke_public

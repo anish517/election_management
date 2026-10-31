@@ -4,9 +4,12 @@
 set -euo pipefail
 SRC=${1:?usage: install-frontend.sh <build-dir>}
 E=/srv/election
+SITE_HOST=election.omwaytechnologies.com
+# shellcheck source=/dev/null
+[[ -f $E/site.conf ]] && . "$E/site.conf"
 [[ -f $SRC/index.html && -f $SRC/main.dart.js ]] || { echo "install-frontend: $SRC is not a Flutter web build" >&2; exit 1; }
-grep -q 'election.omwaytechnologies.com/v1' "$SRC/main.dart.js" \
-    || { echo "install-frontend: bundle does not reference election.omwaytechnologies.com/v1 — built without --dart-define=API_BASE_URL?" >&2; exit 1; }
+grep -qF "$SITE_HOST/v1" "$SRC/main.dart.js" \
+    || { echo "install-frontend: bundle does not reference $SITE_HOST/v1 — built for another host, or without --dart-define=API_BASE_URL?" >&2; exit 1; }
 
 echo "== install Flutter bundle -> $E/www"
 rm -rf "$E/www.next"

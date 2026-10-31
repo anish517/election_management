@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
-# Run as root on omway-internal after code is in /srv/election/app and this directory is
-# in /srv/election/deploy. Idempotent: safe to re-run on every deploy.
+# Run as root (development: omway-internal, production: electionnepal.org host) after code
+# is in /srv/election/app and this directory is in /srv/election/deploy. Idempotent: safe to
+# re-run on every deploy. Hostnames come from /srv/election/site.conf.
 set -euo pipefail
 E=/srv/election
+SITE_HOST=election.omwaytechnologies.com
+SITE_SERVER_NAMES=
+# shellcheck source=/dev/null
+[ -f $E/site.conf ] && . $E/site.conf
+SITE_SERVER_NAMES=${SITE_SERVER_NAMES:-$SITE_HOST}
 cd $E
 [ -f app/manage.py ] || { echo "no code at $E/app"; exit 1; }
 [ -f app/.env ]      || { echo "no .env — run 1-provision.sh first"; exit 1; }
@@ -37,7 +43,8 @@ echo "== nginx"
 install -m 644 deploy/nginx-election-proxy.conf /etc/nginx/snippets/election-proxy.conf
 if [ ! -e /etc/nginx/sites-available/election ]; then
   # First install only: afterwards certbot owns the 443 block in this file.
-  install -m 644 deploy/nginx-election.conf /etc/nginx/sites-available/election
+  sed "s/__SERVER_NAMES__/$SITE_SERVER_NAMES/" deploy/nginx-election.conf > /etc/nginx/sites-available/election
+  chmod 644 /etc/nginx/sites-available/election
 fi
 ln -sfn /etc/nginx/sites-available/election /etc/nginx/sites-enabled/election
 nginx -t && systemctl reload nginx

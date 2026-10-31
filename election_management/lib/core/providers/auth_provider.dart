@@ -111,9 +111,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     String? bankQrUrl,
     Map<String, dynamic>? typeMetadata,
   }) async {
-    state = state.copyWith(isLoading: true, error: null);
+    // Called by a logged-in super admin: create the org + its admin without
+    // replacing the current session.
     try {
-      final resp = await _dio.post(ApiConstants.register, data: {
+      await _dio.post(ApiConstants.register, data: {
         'email': email,
         'password': password,
         'org_name': orgName,
@@ -136,24 +137,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
         if (bankQrUrl != null && bankQrUrl.isNotEmpty) 'bank_qr_url': bankQrUrl,
         if (typeMetadata != null && typeMetadata.isNotEmpty) 'type_metadata': typeMetadata,
       });
-      final data = resp.data as Map<String, dynamic>;
-      await JwtInterceptor.saveTokens(
-        access: data['access'] as String,
-        refresh: data['refresh'] as String,
-      );
-      UserModel user;
-      if (data.containsKey('user') && data['user'] != null) {
-        user = UserModel.fromJson(data['user'] as Map<String, dynamic>);
-      } else {
-        final meResp = await _dio.get(ApiConstants.me);
-        user = UserModel.fromJson(meResp.data as Map<String, dynamic>);
-      }
-      state = AuthState(user: user);
       return null;
     } on DioException catch (e) {
-      final msg = _extractError(e);
-      state = AuthState(error: msg);
-      return msg;
+      return _extractError(e);
     }
   }
 

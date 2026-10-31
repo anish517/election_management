@@ -47,6 +47,7 @@ class UserModel {
         lastLoginAt: json['last_login_at'] as String?,
       );
 
+  bool get isSuperAdmin => role == 'super_admin';
   bool get isOrgAdmin => role == 'org_admin';
   bool get isElectionOfficer => role == 'election_officer';
   bool get isObserver => role == 'observer';

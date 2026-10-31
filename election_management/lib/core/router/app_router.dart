@@ -57,7 +57,6 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final isOnAuth = loc.startsWith('/login') ||
           loc.startsWith('/otp') ||
-          loc.startsWith('/register') ||
           loc.startsWith('/forgot-password') ||
           loc.startsWith('/reset-password');
 
@@ -91,6 +90,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             loc.startsWith('/payment-settings');
         final isAdminRole = role == 'org_admin' || role == 'super_admin';
         if (isAdminRoute && !isAdminRole) return '/elections';
+
+        // Creating organizations is reserved for the platform super admin
+        if (loc.startsWith('/register') && role != 'super_admin') {
+          return '/dashboard';
+        }
 
         final isOfficerRoute = loc.startsWith('/admin/payments');
         final isOfficerOrAdmin = isAdminRole || role == 'election_officer';

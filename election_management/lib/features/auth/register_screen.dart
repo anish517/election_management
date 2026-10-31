@@ -390,7 +390,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         _error = error;
       });
 
-      if (error != null) {
+      if (error == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Organization "${_orgNameCtrl.text.trim()}" created'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.goNamed('dashboard');
+        }
+      } else {
         if (_scrollController.hasClients) {
           _scrollController.animateTo(
             0,
@@ -824,10 +837,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       if (context.canPop()) {
                         context.pop();
                       } else {
-                        context.go('/');
+                        context.goNamed('dashboard');
                       }
                     },
-                    child: const Text('Already have an account? Sign in'),
+                    child: const Text('Cancel'),
                   ),
                 ),
               ],

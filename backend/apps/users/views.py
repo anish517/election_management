@@ -18,6 +18,7 @@ from apps.users.serializers import (
 )
 from apps.users.services import OTPService
 from apps.audit.models import log_action
+from apps.core.permissions import IsSuperAdmin
 
 
 def get_client_ip(request):
@@ -31,8 +32,9 @@ class RegisterView(APIView):
     """
     POST /v1/auth/register/
     Creates Org Admin + Organization (Trial state).
+    Super Admin only; the caller's session is unaffected, so no tokens are issued.
     """
-    permission_classes = [AllowAny]
+    permission_classes = [IsSuperAdmin]
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
@@ -42,10 +44,7 @@ class RegisterView(APIView):
             serializer.is_valid(raise_exception=True)
         user, org = serializer.create(serializer.validated_data)
 
-        refresh = RefreshToken.for_user(user)
         return Response({
-            'access': str(refresh.access_token),
-            'refresh': str(refresh),
             'user': UserProfileSerializer(user).data,
             'organization': {
                 'id': str(org.id),

@@ -249,9 +249,33 @@ class TestAuthAPI(TestCase):
 
     def setUp(self):
         self.client = APIClient()
+        self.super_admin = User.objects.create_superuser(
+            email='platform@ems.test', password='Super@12345',
+        )
+
+    def test_register_requires_super_admin(self):
+        """Anonymous users and org admins cannot create organizations."""
+        data = {
+            'email': 'blocked@neworg.com',
+            'password': 'Blocked@12345',
+            'org_name': 'Blocked Org',
+        }
+        response = self.client.post('/v1/auth/register/', data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        org = Organization.objects.create(name='Existing Org', slug='existing-org')
+        org_admin = User.objects.create_user(
+            email='orgadmin@existing.com', password='OrgAdmin@12345',
+            organization=org, role=UserRole.ORG_ADMIN,
+        )
+        self.client.force_authenticate(user=org_admin)
+        response = self.client.post('/v1/auth/register/', data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(Organization.objects.filter(name='Blocked Org').exists())
 
     def test_register_creates_org_and_admin(self):
         """POST /v1/auth/register/ creates org + admin user in one step."""
+        self.client.force_authenticate(user=self.super_admin)
         response = self.client.post('/v1/auth/register/', {
             'email': 'newadmin@neworg.com',
             'password': 'NewOrg@12345',
@@ -260,8 +284,7 @@ class TestAuthAPI(TestCase):
         }, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn('access', response.data)
-        self.assertIn('refresh', response.data)
+        self.assertNotIn('access', response.data)
         self.assertIn('organization', response.data)
         self.assertEqual(response.data['organization']['status'], 'trial')
 
@@ -281,6 +304,7 @@ class TestAuthAPI(TestCase):
             'password': 'Dup@12345',
             'org_name': 'First Org',
         }
+        self.client.force_authenticate(user=self.super_admin)
         self.client.post('/v1/auth/register/', data, format='json')
         response = self.client.post('/v1/auth/register/', data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

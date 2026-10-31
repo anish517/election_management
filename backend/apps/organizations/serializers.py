@@ -64,6 +64,7 @@ class PlatformOrganizationSerializer(serializers.ModelSerializer):
     """
     member_count = serializers.IntegerField(read_only=True)
     election_count = serializers.IntegerField(read_only=True)
+    voter_count = serializers.IntegerField(read_only=True)
     admin_emails = serializers.SerializerMethodField()
 
     class Meta:
@@ -71,7 +72,7 @@ class PlatformOrganizationSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'slug', 'org_type', 'email', 'phone', 'logo_url',
             'status', 'trial_ends_at', 'created_at',
-            'member_count', 'election_count', 'admin_emails',
+            'member_count', 'election_count', 'voter_count', 'admin_emails',
         ]
         read_only_fields = [
             'id', 'name', 'slug', 'org_type', 'email', 'phone', 'logo_url', 'created_at',

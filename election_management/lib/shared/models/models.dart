@@ -1140,6 +1140,7 @@ class PlatformOrganizationModel {
   final DateTime? trialEndsAt;
   final DateTime? createdAt;
   final int memberCount;
+  final int voterCount;
   final int electionCount;
   final List<String> adminEmails;
 
@@ -1154,6 +1155,7 @@ class PlatformOrganizationModel {
     this.trialEndsAt,
     this.createdAt,
     required this.memberCount,
+    this.voterCount = 0,
     required this.electionCount,
     required this.adminEmails,
   });
@@ -1170,6 +1172,7 @@ class PlatformOrganizationModel {
         trialEndsAt: DateTime.tryParse(json['trial_ends_at'] as String? ?? ''),
         createdAt: DateTime.tryParse(json['created_at'] as String? ?? ''),
         memberCount: json['member_count'] as int? ?? 0,
+        voterCount: json['voter_count'] as int? ?? 0,
         electionCount: json['election_count'] as int? ?? 0,
         adminEmails: (json['admin_emails'] as List<dynamic>? ?? [])
             .map((e) => e as String)

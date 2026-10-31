@@ -510,6 +510,7 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         user = self.validated_data['user']
         user.set_password(self.validated_data['new_password'])
         user.save(update_fields=['password', 'updated_at'])
+        user.end_other_sessions()
         return user
 
 

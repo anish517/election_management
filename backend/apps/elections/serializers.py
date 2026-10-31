@@ -148,16 +148,41 @@ class ElectionSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'state', 'voter_roll_frozen_at', 'created_at', 'updated_at']
         
+    # Schedule milestones that must follow one another: (earlier, later, strict, message).
+    # Unset dates are skipped. Withdrawal vs final candidate list is left open
+    # because institutions order those two differently.
+    _SCHEDULE_ORDER = [
+        ('first_voter_list_date', 'voter_list_claim_date', False, 'Voter list claims deadline must be on or after the first voter list date.'),
+        ('voter_list_claim_date', 'final_voter_list_date', False, 'Final voter list date must be on or after the voter list claims deadline.'),
+        ('first_voter_list_date', 'final_voter_list_date', False, 'Final voter list date must be on or after the first voter list date.'),
+        ('nomination_open_at', 'nomination_close_at', True, 'Candidacy end must be after candidacy start.'),
+        ('nomination_close_at', 'candidacy_claim_date', False, 'Candidacy claims deadline must be on or after nominations close.'),
+        ('candidacy_claim_date', 'candidacy_final_date', False, 'Final candidate list date must be on or after the candidacy claims deadline.'),
+        ('nomination_close_at', 'candidacy_final_date', False, 'Final candidate list date must be on or after nominations close.'),
+        ('nomination_close_at', 'withdrawal_deadline', False, 'Withdrawal deadline must be on or after nominations close.'),
+        ('final_voter_list_date', 'voting_start_at', False, 'Voting must start on or after the final voter list date.'),
+        ('candidacy_final_date', 'voting_start_at', False, 'Voting must start on or after the final candidate list date.'),
+        ('withdrawal_deadline', 'voting_start_at', False, 'Withdrawal deadline must be on or before voting starts.'),
+        ('campaign_silent_from', 'voting_start_at', False, 'Campaign silent period must begin on or before voting starts.'),
+        ('voting_start_at', 'voting_end_at', True, 'Voting end must be after voting start.'),
+        ('voting_end_at', 'result_contest_deadline', False, 'Result contest deadline must be on or after voting ends.'),
+    ]
+
     def validate(self, data):
-        # Validate date ordering where both are provided
-        vs = data.get('voting_start_at')
-        ve = data.get('voting_end_at')
-        if vs and ve and vs >= ve:
-            raise serializers.ValidationError('Voting end must be after voting start.')
-        no = data.get('nomination_open_at')
-        nc = data.get('nomination_close_at')
-        if no and nc and no >= nc:
-            raise serializers.ValidationError('Candidacy end must be after candidacy start.')
+        # On edits, compare against saved values for dates not being changed.
+        def value(field):
+            if field in data:
+                return data[field]
+            return getattr(self.instance, field, None) if self.instance else None
+
+        for earlier, later, strict, message in self._SCHEDULE_ORDER:
+            # Only check pairs this request touches, so an older election with
+            # out-of-order dates can still be edited (e.g. renamed).
+            if earlier not in data and later not in data:
+                continue
+            a, b = value(earlier), value(later)
+            if a and b and (a >= b if strict else a > b):
+                raise serializers.ValidationError({later: message})
         return data
 
 

@@ -117,3 +117,15 @@ class TestPlatformOrganizations(TestCase):
         self.client.force_authenticate(user=self.admin1)
         response = self.client.get(f'/v1/platform/elections/{election.id}/')
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_voter_count_counts_people_across_elections(self):
+        e1 = Election.objects.create(organization=self.org1, title='E1', state=ElectionState.DRAFT)
+        e2 = Election.objects.create(organization=self.org1, title='E2', state=ElectionState.DRAFT)
+        VoterRoll.objects.create(election=e1, voter_id='1', email='same@org.test')
+        VoterRoll.objects.create(election=e2, voter_id='1', email='Same@org.test')
+        VoterRoll.objects.create(election=e2, voter_id='2', email='other@org.test')
+        VoterRoll.objects.create(election=e2, voter_id='3')  # no email
+        self.client.force_authenticate(user=self.super_admin)
+        rows = {o['name']: o for o in self.client.get('/v1/platform/organizations/').data}
+        self.assertEqual(rows['Alpha Coop']['voter_count'], 3)
+        self.assertEqual(rows['Beta Union']['voter_count'], 0)

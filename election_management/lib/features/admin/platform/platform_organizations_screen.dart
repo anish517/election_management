@@ -16,6 +16,9 @@ const _statusLabels = {
   'cancelled': 'Cancelled',
 };
 
+/// "1 voter", "3 voters".
+String _count(int n, String noun) => '$n $noun${n == 1 ? '' : 's'}';
+
 Color _statusColor(String status) {
   switch (status) {
     case 'active':
@@ -223,9 +226,9 @@ class _OrgCard extends ConsumerWidget {
                 spacing: 16,
                 runSpacing: 6,
                 children: [
-                  _stat(Icons.people_alt_rounded, '${org.memberCount} members'),
-                  _stat(Icons.how_to_vote_rounded,
-                      '${org.electionCount} elections'),
+                  _stat(Icons.how_to_reg_rounded, _count(org.voterCount, 'voter')),
+                  _stat(Icons.people_alt_rounded, _count(org.memberCount, 'member')),
+                  _stat(Icons.how_to_vote_rounded, _count(org.electionCount, 'election')),
                   if (org.createdAt != null)
                     _stat(Icons.event_rounded,
                         'Created ${dateFmt.format(org.createdAt!.toLocal())}'),
@@ -415,9 +418,9 @@ class _OrgSummaryCard extends StatelessWidget {
               spacing: 16,
               runSpacing: 6,
               children: [
-                _iconText(Icons.people_alt_rounded, '${org.memberCount} members'),
-                _iconText(Icons.how_to_vote_rounded,
-                    '${org.electionCount} elections'),
+                _iconText(Icons.how_to_reg_rounded, _count(org.voterCount, 'voter')),
+                _iconText(Icons.people_alt_rounded, _count(org.memberCount, 'member')),
+                _iconText(Icons.how_to_vote_rounded, _count(org.electionCount, 'election')),
                 if (org.createdAt != null)
                   _iconText(Icons.event_rounded,
                       'Created ${dateFmt.format(org.createdAt!.toLocal())}'),

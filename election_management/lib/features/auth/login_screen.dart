@@ -158,7 +158,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
         labelColor: Colors.white,
-        unselectedLabelColor: isDark ? AppColors.textMuted : AppColors.textSecondaryLightMode,
+        // Slate-300 on the slate-700 tab track; textMuted was too faint in dark mode.
+        unselectedLabelColor: isDark ? const Color(0xFFCBD5E1) : AppColors.textSecondaryLightMode,
         labelPadding: const EdgeInsets.symmetric(horizontal: 6),
         tabs: const [
           Tab(text: 'Password'),

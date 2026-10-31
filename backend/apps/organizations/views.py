@@ -124,11 +124,21 @@ class OrganizationStatsView(APIView):
 
 
 def _platform_org_queryset():
+    from django.db.models import Case, CharField, When
+    from django.db.models.functions import Cast, Lower
+
+    # A voter is a person across the org's elections: same email counts once;
+    # roll entries without an email count individually.
+    voter_key = Case(
+        When(~Q(elections__voter_roll__email=''), then=Lower('elections__voter_roll__email')),
+        default=Cast('elections__voter_roll__id', CharField()),
+    )
     return (
         Organization.objects
         .annotate(
             member_count=Count('members', filter=Q(members__deleted_at__isnull=True), distinct=True),
             election_count=Count('elections', distinct=True),
+            voter_count=Count(voter_key, filter=Q(elections__voter_roll__isnull=False), distinct=True),
         )
         .prefetch_related('users')
         .order_by('-created_at')

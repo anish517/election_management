@@ -83,6 +83,9 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     # Tracking
     last_login_at = models.DateTimeField(null=True, blank=True)
+    # Sign-in tokens issued before this moment are rejected (set on password
+    # change / reset so other logged-in devices are signed out).
+    tokens_valid_after = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -115,6 +118,19 @@ class User(AbstractBaseUser, PermissionsMixin):
             if kwargs.get('update_fields') is not None:
                 kwargs['update_fields'] = {*kwargs['update_fields'], 'organization'}
         super().save(*args, **kwargs)
+
+    def end_other_sessions(self):
+        """
+        Sign out every device: tokens issued before now stop working and all
+        outstanding refresh tokens are blacklisted. Call after a password
+        change or reset, then issue fresh tokens for the current device.
+        """
+        from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+
+        self.tokens_valid_after = timezone.now()
+        self.save(update_fields=['tokens_valid_after'])
+        for token in OutstandingToken.objects.filter(user=self).exclude(blacklistedtoken__isnull=False):
+            BlacklistedToken.objects.get_or_create(token=token)
 
     @property
     def full_name(self):

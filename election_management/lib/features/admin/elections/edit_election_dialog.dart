@@ -1,3 +1,4 @@
+import '../../../core/utils/error_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -178,7 +179,7 @@ class _EditElectionDialogState extends ConsumerState<EditElectionDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update election: $e'),
+            content: Text(extractApiErrorMessage(e, fallback: 'Failed to update election.')),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
           ),

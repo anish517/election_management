@@ -263,6 +263,10 @@ class PasswordChangeView(APIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
+        # Sign out every other device; hand this one fresh tokens.
+        user.end_other_sessions()
+        refresh = RefreshToken.for_user(user)
+
         log_action(
             'user.password_changed',
             organization=user.organization,
@@ -271,4 +275,8 @@ class PasswordChangeView(APIView):
             ip_address=get_client_ip(request),
         )
 
-        return Response({'password_changed': True})
+        return Response({
+            'password_changed': True,
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+        })

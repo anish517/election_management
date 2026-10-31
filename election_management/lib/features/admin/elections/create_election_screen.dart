@@ -1,3 +1,4 @@
+import '../../../core/utils/error_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -633,30 +634,8 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
         );
       }
     } catch (e) {
-      String msg = 'Failed to create election.';
-      if (e is DioException) {
-        if (e.response?.data is Map) {
-          final data = e.response!.data as Map;
-          final errorList = <String>[];
-          data.forEach((key, val) {
-            final fieldName = key.toString().replaceAll('_', ' ');
-            if (val is List) {
-              errorList.add('• $fieldName: ${val.join(", ")}');
-            } else {
-              errorList.add('• $fieldName: $val');
-            }
-          });
-          if (errorList.isNotEmpty) {
-            msg = errorList.join('\n');
-          } else {
-            msg = data['error']?.toString() ?? data['detail']?.toString() ?? msg;
-          }
-        } else if (e.response?.data is String && (e.response!.data as String).isNotEmpty) {
-          msg = e.response!.data as String;
-        }
-      } else {
-        msg = e.toString().replaceAll('Exception: ', '');
-      }
+      // The API returns {"error": {"message": ...}}, e.g. a schedule date out of order.
+      final msg = extractApiErrorMessage(e, fallback: 'Failed to create election.');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

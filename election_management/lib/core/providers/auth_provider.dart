@@ -227,11 +227,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String confirmPassword,
   }) async {
     try {
-      await _dio.post(ApiConstants.passwordChange, data: {
+      final resp = await _dio.post(ApiConstants.passwordChange, data: {
         'current_password': currentPassword,
         'new_password': newPassword,
         'confirm_password': confirmPassword,
       });
+      // The server signs out every device; keep this one signed in with the
+      // fresh tokens it returns.
+      final data = resp.data as Map<String, dynamic>;
+      if (data['access'] is String && data['refresh'] is String) {
+        await JwtInterceptor.saveTokens(
+          access: data['access'] as String,
+          refresh: data['refresh'] as String,
+        );
+      }
       return null;
     } on DioException catch (e) {
       return _extractError(e);

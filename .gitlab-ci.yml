@@ -7,7 +7,8 @@
 # Two shell-executor runners, picked by tag (neither accepts untagged jobs):
 #   flutter-build   omway-gitlab. The Flutter web build peaks at ~1.6 GB, which neither
 #                   app host can spare.
-#   omway-internal  the development host. Runs the checks and both deploy jobs.
+#   omway-internal  the development host. Runs the checks and deploy:development.
+#                   deploy:production runs on flutter-build (locked runner, see below).
 # deploy:development hands the checkout to /srv/election/deploy/ci-deploy.sh, the only
 # command the runner may sudo (/etc/sudoers.d/gitlab-runner-election).
 # deploy:production streams a tarball over SSH to the production host, where the deploy
@@ -133,10 +134,13 @@ deploy:development:
     - sudo /srv/election/deploy/ci-deploy.sh "$CI_PROJECT_DIR" "$CI_COMMIT_SHA"
     - *smoke_public
 
+# Runs on the locked flutter-build runner (this project + gynocamp only), not the instance
+# runner every project on this GitLab shares: on a shell executor, a job left behind by
+# another project could read the prod key while it is on disk.
 deploy:production:
   stage: deploy
   tags:
-    - omway-internal
+    - flutter-build
   needs:
     - check:backend
     - build:web

@@ -29,7 +29,32 @@ class CandidateViewSet(viewsets.ModelViewSet):
         )
         if self.request.user.role == 'candidate':
             qs = qs.filter(email__iexact=self.request.user.email)
+        else:
+            from apps.elections.models import Election
+            from apps.candidates.models import limit_to_own_nomination
+            election = Election.objects.filter(id=self.kwargs['election_pk']).first()
+            if election and limit_to_own_nomination(self.request.user, election):
+                qs = qs.filter(email__iexact=self.request.user.email)
         return qs
+
+    def _require_reviewer(self, message):
+        from rest_framework.exceptions import PermissionDenied
+        user = self.request.user
+        if not (
+            user.role in ['org_admin', 'election_officer', 'super_admin']
+            or getattr(user, 'is_org_admin', False)
+        ):
+            raise PermissionDenied(message)
+
+    def perform_update(self, serializer):
+        # Status and payment status change only through approve / reject /
+        # payment verification; nominees withdraw via /withdraw/.
+        self._require_reviewer('Only election officials can edit a nomination.')
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        self._require_reviewer('Only election officials can delete a nomination.')
+        instance.delete()
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -103,6 +128,8 @@ class CandidateViewSet(viewsets.ModelViewSet):
             serializer.save(
                 election=election,
                 status=status_val,
+                # Admin-entered nominations: fee handled offline unless stated.
+                payment_status=serializer.validated_data.get('payment_status', 'waived'),
                 reviewed_by=self.request.user if status_val == NominationStatus.APPROVED else None,
                 reviewed_at=timezone.now() if status_val == NominationStatus.APPROVED else None,
                 review_notes="Admin created" if status_val == NominationStatus.APPROVED else ""
@@ -153,21 +180,21 @@ class CandidateViewSet(viewsets.ModelViewSet):
             phone = voter.phone if voter else (member.phone if member else self.request.user.phone)
 
             # Calculate applicable fee
-            pos_charge = float(pos.nominee_charge or 0.0) if pos else 0.0
-            el_charge = float(election.nominee_charge or 0.0)
-            ps = election.organization.payment_settings or {}
-            default_fee = float(ps.get('default_nomination_fee', 0.0) or 0.0)
-            fee = pos_charge if pos_charge > 0 else (el_charge if el_charge > 0 else default_fee)
+            from apps.candidates.models import nomination_fee
+            fee, is_payment_required = nomination_fee(election, pos)
 
-            is_payment_enabled = bool(ps.get('is_payment_enabled', False))
             txn_ref = (self.request.data.get('transaction_reference') or self.request.data.get('transaction_id') or '').strip()
             receipt_url = (self.request.data.get('receipt_image_url') or self.request.data.get('receipt_url') or '').strip()
             pay_notes = (self.request.data.get('payment_notes') or '').strip()
             pay_method = self.request.data.get('payment_method') or 'static_qr_bank'
 
-            is_payment_required = is_payment_enabled and fee > 0
+            # A required fee must come with proof; it is never silently waived.
+            if is_payment_required and not txn_ref:
+                raise ValidationError({
+                    'transaction_reference': f'A nomination fee of Rs. {fee:,.2f} applies. Enter the transaction reference of your payment.'
+                })
 
-            initial_payment_status = 'pending_verification' if (is_payment_required and (txn_ref or receipt_url)) else 'waived'
+            initial_payment_status = 'pending_verification' if is_payment_required else 'waived'
 
             candidate = serializer.save(
                 election=election,
@@ -205,6 +232,13 @@ class CandidateViewSet(viewsets.ModelViewSet):
 
         if candidate.status not in [NominationStatus.SUBMITTED, NominationStatus.UNDER_REVIEW]:
             return Response({'error': 'Can only approve submitted nominations.'}, status=400)
+
+        # The nomination fee must be verified before approval.
+        if candidate.payment_status in ('unpaid', 'pending_verification'):
+            return Response({
+                'error': 'Verify the nomination fee payment first (Payment History & Ledger). '
+                         f'Current payment status: {candidate.get_payment_status_display()}.'
+            }, status=400)
 
         candidate.status = NominationStatus.APPROVED
         candidate.reviewed_by = request.user
@@ -283,6 +317,10 @@ class CandidateViewSet(viewsets.ModelViewSet):
         GET /v1/elections/{election_id}/candidates/{candidate_id}/id_card/
         Renders official printable Candidate ID Card (उम्मेदवार परिचयपत्र).
         """
+        from apps.core.id_card_links import token_allows, denied_response
+        if not token_allows(request, 'candidate', election_pk, pk):
+            return denied_response()
+
         from django.http import HttpResponse
         from apps.elections.models import Election
 
@@ -300,7 +338,7 @@ class CandidateViewSet(viewsets.ModelViewSet):
         pos_title = cand.position.title if cand.position else 'Candidate'
         quota_label = f" ({cand.quota_name})" if cand.quota_name else ''
 
-        qr_data = f"EMS-CAND:{cand.id.hex[:8].upper()}:{election.id}:{cand.email or cand.contact_number}"
+        qr_data = f"EMS-CAND:{cand.id.hex[:8].upper()}:{election.id}"
         qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=120x120&data={qr_data}"
 
         html = f"""<!DOCTYPE html>
@@ -584,6 +622,10 @@ class CandidateViewSet(viewsets.ModelViewSet):
         GET /v1/elections/{election_id}/candidates/id_cards_bulk/
         Renders a printable sheet of all approved Candidate ID cards.
         """
+        from apps.core.id_card_links import token_allows, denied_response
+        if not token_allows(request, 'candidate', election_pk, 'bulk'):
+            return denied_response()
+
         from django.http import HttpResponse
         from apps.elections.models import Election
 
@@ -603,7 +645,7 @@ class CandidateViewSet(viewsets.ModelViewSet):
 
         cards_html = ""
         for c in candidates:
-            qr_data = f"EMS-CAND:{c.id.hex[:8].upper()}:{election.id}:{c.email or c.contact_number}"
+            qr_data = f"EMS-CAND:{c.id.hex[:8].upper()}:{election.id}"
             qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=120x120&data={qr_data}"
             pos_title = c.position.title if c.position else 'Candidate'
             quota_label = f" ({c.quota_name})" if c.quota_name else ''
@@ -801,11 +843,50 @@ class CandidateObjectionViewSet(viewsets.ModelViewSet):
         if election.candidacy_claim_date and now > election.candidacy_claim_date:
             raise ValidationError({'detail': 'Candidate objection deadline has passed.'})
 
+        is_officer = (
+            user.role in ['org_admin', 'election_officer', 'super_admin']
+            or getattr(user, 'is_org_admin', False)
+        )
+        from apps.candidates.models import limit_to_own_nomination
+        target = serializer.validated_data.get('candidate')
+        if (
+            limit_to_own_nomination(user, election)
+            and target is not None
+            and (target.email or '').lower() != user.email.lower()
+        ):
+            raise PermissionDenied('During the candidacy claim period you can only file a claim about your own nomination.')
+        if not is_officer:
+            # Voters and candidates object only in their own name.
+            serializer.save(
+                election=election,
+                claimant_name=user.full_name or user.email,
+                claimant_email=user.email,
+                claimant_phone=user.phone or serializer.validated_data.get('claimant_phone', ''),
+            )
+            return
+
         serializer.save(
             election=election,
             claimant_name=serializer.validated_data.get('claimant_name') or self.request.user.full_name or self.request.user.email,
             claimant_email=serializer.validated_data.get('claimant_email') or self.request.user.email,
         )
+
+    def _require_officer_for_change(self):
+        from rest_framework.exceptions import PermissionDenied
+        user = self.request.user
+        if not (
+            user.role in ['org_admin', 'election_officer', 'super_admin']
+            or getattr(user, 'is_org_admin', False)
+        ):
+            raise PermissionDenied('Candidate objections cannot be edited or withdrawn after filing.')
+
+    def perform_update(self, serializer):
+        self._require_officer_for_change()
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        self._require_officer_for_change()
+        instance.delete()
 
     @action(detail=True, methods=['post'])
     def resolve(self, request, election_pk=None, pk=None):
@@ -844,3 +925,58 @@ class CandidateObjectionViewSet(viewsets.ModelViewSet):
         })
         from apps.candidates.serializers import CandidateObjectionSerializer
         return Response(CandidateObjectionSerializer(objection).data)
+
+
+from rest_framework.views import APIView
+
+
+class NominationSummaryView(APIView):
+    """
+    GET /v1/nominations/summary/
+    Every election the reviewer can scrutinise, with nomination counts by status.
+    Org Admins see all their organization's elections; Election Officers only
+    the elections they are assigned to.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from django.db.models import Count, Q
+        from apps.elections.models import Election
+
+        user = request.user
+        if user.role == 'org_admin' or getattr(user, 'is_org_admin', False):
+            elections = Election.objects.filter(organization=user.organization)
+        elif user.role == 'election_officer':
+            elections = Election.objects.filter(
+                organization=user.organization,
+                role_assignments__user=user,
+                role_assignments__role='election_officer',
+            ).distinct()
+        else:
+            return Response({'detail': 'Only Org Admins and Election Officers review nominations.'},
+                            status=status.HTTP_403_FORBIDDEN)
+
+        submitted = [NominationStatus.SUBMITTED, NominationStatus.UNDER_REVIEW]
+        elections = elections.annotate(
+            pending=Count('candidates', filter=Q(candidates__status__in=submitted), distinct=True),
+            approved=Count('candidates', filter=Q(candidates__status=NominationStatus.APPROVED), distinct=True),
+            rejected=Count('candidates', filter=Q(candidates__status=NominationStatus.REJECTED), distinct=True),
+            total=Count('candidates', filter=~Q(candidates__status=NominationStatus.DRAFT), distinct=True),
+        ).order_by('-pending', '-created_at')
+
+        return Response([
+            {
+                'election_id': str(e.id),
+                'title': e.title,
+                'state': e.state,
+                'state_display': e.get_state_display(),
+                'nomination_open_at': e.nomination_open_at,
+                'nomination_close_at': e.nomination_close_at,
+                'candidacy_claim_date': e.candidacy_claim_date,
+                'pending': e.pending,
+                'approved': e.approved,
+                'rejected': e.rejected,
+                'total': e.total,
+            }
+            for e in elections
+        ])

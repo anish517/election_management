@@ -1,4 +1,5 @@
 import uuid
+from apps.core.id_card_links import make_token
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -152,6 +153,7 @@ class UncontestedAndScopingTestCase(TestCase):
     def test_voter_id_card_generation_endpoint(self):
         self.client.force_authenticate(user=self.admin)
         url = f"/v1/elections/{self.election_1.id}/voters/{self.roll_1a.id}/id_card/"
+        url += "?t=" + make_token('voter', self.election_1.id, self.roll_1a.id)
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         content = response.content.decode('utf-8')
@@ -175,6 +177,7 @@ class UncontestedAndScopingTestCase(TestCase):
             status=NominationStatus.APPROVED
         )
         url = f"/v1/elections/{self.election_1.id}/candidates/{cand.id}/id_card/"
+        url += "?t=" + make_token('candidate', self.election_1.id, cand.id)
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         content = response.content.decode('utf-8')
@@ -185,6 +188,7 @@ class UncontestedAndScopingTestCase(TestCase):
     def test_bulk_voter_id_cards_endpoint(self):
         self.client.force_authenticate(user=self.admin)
         url = f"/v1/elections/{self.election_1.id}/voters/id_cards_bulk/"
+        url += "?t=" + make_token('voter', self.election_1.id, 'bulk')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         content = response.content.decode('utf-8')
@@ -193,8 +197,9 @@ class UncontestedAndScopingTestCase(TestCase):
 
     def test_unauthenticated_browser_access_to_id_cards(self):
         """
-        Opening ID cards or bulk ID cards in a new browser tab sends NO Bearer token.
-        Both endpoints MUST return 200 OK without 401 Unauthorized.
+        Opening ID cards or bulk ID cards in a new browser tab sends NO Bearer token,
+        so the pages authorise via a short-lived signed link instead. With the
+        signed link they return 200; without it, 403.
         """
         unauthenticated_client = APIClient()
 
@@ -212,24 +217,29 @@ class UncontestedAndScopingTestCase(TestCase):
             status=NominationStatus.APPROVED
         )
         cand_bulk_url = f"/v1/elections/{self.election_1.id}/candidates/id_cards_bulk/"
-        cand_bulk_res = unauthenticated_client.get(cand_bulk_url)
+        self.assertEqual(unauthenticated_client.get(cand_bulk_url).status_code, 403)
+        cand_bulk_res = unauthenticated_client.get(
+            cand_bulk_url + "?t=" + make_token('candidate', self.election_1.id, 'bulk'))
         self.assertEqual(cand_bulk_res.status_code, 200)
         self.assertIn("Sunita Gurung", cand_bulk_res.content.decode('utf-8'))
 
         # 2. Individual candidate ID card
         cand_single_url = f"/v1/elections/{self.election_1.id}/candidates/{cand.id}/id_card/"
-        cand_single_res = unauthenticated_client.get(cand_single_url)
+        cand_single_res = unauthenticated_client.get(
+            cand_single_url + "?t=" + make_token('candidate', self.election_1.id, cand.id))
         self.assertEqual(cand_single_res.status_code, 200)
 
         # 3. Bulk voter ID cards
         voter_bulk_url = f"/v1/elections/{self.election_1.id}/voters/id_cards_bulk/"
-        voter_bulk_res = unauthenticated_client.get(voter_bulk_url)
+        voter_bulk_res = unauthenticated_client.get(
+            voter_bulk_url + "?t=" + make_token('voter', self.election_1.id, 'bulk'))
         self.assertEqual(voter_bulk_res.status_code, 200)
         self.assertIn("CIVIL-001", voter_bulk_res.content.decode('utf-8'))
 
         # 4. Individual voter ID card
         voter_single_url = f"/v1/elections/{self.election_1.id}/voters/{self.roll_1a.id}/id_card/"
-        voter_single_res = unauthenticated_client.get(voter_single_url)
+        voter_single_res = unauthenticated_client.get(
+            voter_single_url + "?t=" + make_token('voter', self.election_1.id, self.roll_1a.id))
         self.assertEqual(voter_single_res.status_code, 200)
 
     # --------------------------------------------------------------------------

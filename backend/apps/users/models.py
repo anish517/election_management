@@ -117,6 +117,12 @@ class User(AbstractBaseUser, PermissionsMixin):
         super().save(*args, **kwargs)
 
     @property
+    def full_name(self):
+        """Display name from the user's member record ('' when there is none)."""
+        member = self.memberships.filter(deleted_at__isnull=True).first()
+        return member.full_name if member else ''
+
+    @property
     def is_super_admin(self):
         return self.role == UserRole.SUPER_ADMIN
 

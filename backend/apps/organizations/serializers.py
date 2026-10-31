@@ -79,3 +79,107 @@ class PlatformOrganizationSerializer(serializers.ModelSerializer):
 
     def get_admin_emails(self, obj):
         return [u.email for u in obj.users.all() if u.role == 'org_admin']
+
+
+class PlatformElectionSerializer(serializers.Serializer):
+    """Read-only election summary for the Super Admin console."""
+    id = serializers.UUIDField()
+    title = serializers.CharField()
+    state = serializers.CharField()
+    state_display = serializers.CharField(source='get_state_display')
+    election_type = serializers.CharField()
+    election_method = serializers.CharField()
+    voting_start_at = serializers.DateTimeField()
+    voting_end_at = serializers.DateTimeField()
+    created_at = serializers.DateTimeField()
+    position_count = serializers.IntegerField()
+    voter_count = serializers.IntegerField()
+    voted_count = serializers.IntegerField()
+
+
+class PlatformCandidateSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    full_name = serializers.CharField()
+    status = serializers.CharField()
+    status_display = serializers.CharField(source='get_status_display')
+    candidate_image = serializers.CharField()
+
+
+class PlatformPositionSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    title = serializers.CharField()
+    seats_available = serializers.IntegerField()
+    voting_method = serializers.CharField(source='get_voting_method_display')
+    quota_name = serializers.CharField()
+    candidates = PlatformCandidateSerializer(many=True)
+
+
+class PlatformElectionDetailSerializer(serializers.Serializer):
+    """
+    Read-only election overview for the Super Admin console. No vote tallies:
+    those stay behind the results publication flow.
+    """
+    id = serializers.UUIDField()
+    title = serializers.CharField()
+    description = serializers.CharField()
+    prefix = serializers.CharField()
+    logo_url = serializers.CharField()
+    state = serializers.CharField()
+    state_display = serializers.CharField(source='get_state_display')
+    election_type = serializers.CharField(source='get_election_type_display')
+    election_method = serializers.CharField(source='get_election_method_display')
+    online_type = serializers.CharField(source='get_online_type_display')
+    venue_name = serializers.CharField()
+    venue_address = serializers.CharField()
+    is_secret_ballot = serializers.BooleanField()
+    is_paid_candidacy = serializers.BooleanField()
+    nominee_charge = serializers.DecimalField(max_digits=10, decimal_places=2)
+    results_visibility = serializers.CharField(source='get_results_visibility_display')
+    created_at = serializers.DateTimeField()
+    schedule = serializers.SerializerMethodField()
+    positions = PlatformPositionSerializer(many=True)
+    voters = serializers.SerializerMethodField()
+    history = serializers.SerializerMethodField()
+
+    _SCHEDULE = [
+        ('first_voter_list_date', 'First voter list'),
+        ('voter_list_claim_date', 'Voter list claims'),
+        ('final_voter_list_date', 'Final voter list'),
+        ('voter_roll_freeze_date', 'Voter roll freeze'),
+        ('nomination_open_at', 'Nominations open'),
+        ('nomination_close_at', 'Nominations close'),
+        ('candidacy_claim_date', 'Candidacy claims'),
+        ('candidacy_final_date', 'Final candidate list'),
+        ('withdrawal_deadline', 'Withdrawal deadline'),
+        ('campaign_silent_from', 'Silent period from'),
+        ('voting_start_at', 'Voting starts'),
+        ('voting_end_at', 'Voting ends'),
+        ('result_contest_deadline', 'Result contest deadline'),
+    ]
+
+    def get_schedule(self, obj):
+        rows = []
+        for field, label in self._SCHEDULE:
+            value = getattr(obj, field, None)
+            if value:
+                rows.append({'label': label, 'at': value.isoformat()})
+        return rows
+
+    def get_voters(self, obj):
+        from django.db.models import Count, Q
+        agg = obj.voter_roll.aggregate(
+            total=Count('id'),
+            eligible=Count('id', filter=Q(is_eligible=True)),
+            voted=Count('id', filter=Q(has_voted=True)),
+        )
+        return agg
+
+    def get_history(self, obj):
+        return [
+            {
+                'from_state': t.get_from_state_display(),
+                'to_state': t.get_to_state_display(),
+                'at': t.created_at.isoformat(),
+            }
+            for t in obj.state_transitions.order_by('created_at')
+        ]

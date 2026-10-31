@@ -7,6 +7,9 @@ from rest_framework import status
 from apps.organizations.models import Organization, OrgStatus
 from apps.users.models import User, UserRole
 from apps.audit.models import AuditLog
+from apps.elections.models import Election, ElectionState, Position
+from apps.voting.models import VoterRoll
+from apps.candidates.models import Candidate
 
 
 class TestPlatformOrganizations(TestCase):
@@ -64,3 +67,53 @@ class TestPlatformOrganizations(TestCase):
         self.assertEqual(self.org1.status, OrgStatus.ACTIVE)
         self.assertEqual(self.org1.name, 'Alpha Coop')
         self.assertTrue(AuditLog.objects.filter(action='org.platform_updated').exists())
+
+    def test_super_admin_lists_one_tenants_elections(self):
+        election = Election.objects.create(
+            organization=self.org1, title='Board 2083', state=ElectionState.VOTING_OPEN,
+        )
+        Election.objects.create(organization=self.org2, title='Other tenant', state=ElectionState.DRAFT)
+        Position.objects.create(election=election, title='President', seats_available=1)
+        Position.objects.create(election=election, title='Secretary', seats_available=1)
+        VoterRoll.objects.create(election=election, voter_id='V1', has_voted=True)
+        VoterRoll.objects.create(election=election, voter_id='V2')
+        VoterRoll.objects.create(election=election, voter_id='V3')
+
+        self.client.force_authenticate(user=self.super_admin)
+        response = self.client.get(f'/v1/platform/organizations/{self.org1.id}/elections/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        row = response.data[0]
+        self.assertEqual(row['title'], 'Board 2083')
+        self.assertEqual(row['state'], 'voting_open')
+        self.assertEqual((row['position_count'], row['voter_count'], row['voted_count']), (2, 3, 1))
+
+    def test_org_admin_cannot_list_tenant_elections(self):
+        self.client.force_authenticate(user=self.admin1)
+        response = self.client.get(f'/v1/platform/organizations/{self.org1.id}/elections/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_super_admin_views_election_detail(self):
+        election = Election.objects.create(
+            organization=self.org1, title='Board 2083', state=ElectionState.VOTING_OPEN,
+        )
+        pos = Position.objects.create(election=election, title='President', seats_available=1)
+        Candidate.objects.create(election=election, position=pos, first_name='Sita', last_name='Rai', status='approved')
+        VoterRoll.objects.create(election=election, voter_id='V1', has_voted=True)
+        VoterRoll.objects.create(election=election, voter_id='V2', is_eligible=False)
+
+        self.client.force_authenticate(user=self.super_admin)
+        response = self.client.get(f'/v1/platform/elections/{election.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.data
+        self.assertEqual(data['organization']['name'], 'Alpha Coop')
+        self.assertEqual(data['state'], 'voting_open')
+        self.assertEqual(data['positions'][0]['candidates'][0]['full_name'], 'Sita Rai')
+        self.assertEqual(data['voters'], {'total': 2, 'eligible': 1, 'voted': 1})
+        self.assertNotIn('votes', data)
+
+    def test_org_admin_cannot_view_platform_election_detail(self):
+        election = Election.objects.create(organization=self.org2, title='Other', state=ElectionState.DRAFT)
+        self.client.force_authenticate(user=self.admin1)
+        response = self.client.get(f'/v1/platform/elections/{election.id}/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

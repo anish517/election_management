@@ -24,6 +24,29 @@ final platformOrganizationsProvider =
       .toList();
 });
 
+final platformOrganizationProvider = FutureProvider.autoDispose
+    .family<PlatformOrganizationModel, String>((ref, orgId) async {
+  final dio = ref.watch(apiClientProvider);
+  final response = await dio.get(ApiConstants.platformOrganizationDetail(orgId));
+  return PlatformOrganizationModel.fromJson(response.data as Map<String, dynamic>);
+});
+
+final platformOrgElectionsProvider = FutureProvider.autoDispose
+    .family<List<PlatformElectionModel>, String>((ref, orgId) async {
+  final dio = ref.watch(apiClientProvider);
+  final response = await dio.get(ApiConstants.platformOrganizationElections(orgId));
+  return (response.data as List<dynamic>)
+      .map((e) => PlatformElectionModel.fromJson(e as Map<String, dynamic>))
+      .toList();
+});
+
+final platformElectionDetailProvider = FutureProvider.autoDispose
+    .family<PlatformElectionDetailModel, String>((ref, electionId) async {
+  final dio = ref.watch(apiClientProvider);
+  final response = await dio.get(ApiConstants.platformElectionDetail(electionId));
+  return PlatformElectionDetailModel.fromJson(response.data as Map<String, dynamic>);
+});
+
 /// PATCH status / trial_ends_at for one tenant, then refresh the list.
 Future<void> updatePlatformOrganization(
   WidgetRef ref,
@@ -33,4 +56,5 @@ Future<void> updatePlatformOrganization(
   final dio = ref.read(apiClientProvider);
   await dio.patch(ApiConstants.platformOrganizationDetail(orgId), data: data);
   ref.invalidate(platformOrganizationsProvider);
+  ref.invalidate(platformOrganizationProvider(orgId));
 }

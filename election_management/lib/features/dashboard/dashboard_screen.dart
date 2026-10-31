@@ -182,6 +182,36 @@ class DashboardScreen extends ConsumerWidget {
                 : (user?.role == 'observer' ? 'Observer' : 'Verified Elector')));
 
     final hasCover = user != null && user.organizationCoverImageUrl.isNotEmpty;
+    final isWideBanner = MediaQuery.sizeOf(context).width >= 600;
+    final Widget? orgPill = user?.organizationName.isNotEmpty == true
+        ? Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white24),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 14),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    user!.organizationName,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11.5,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+        : null;
     final coverUrl = hasCover ? ApiConstants.getFullImageUrl(user.organizationCoverImageUrl) : null;
 
     return Container(
@@ -346,35 +376,18 @@ class DashboardScreen extends ConsumerWidget {
                           height: 1.4,
                         ),
                       ),
+                      // On phones the org badge sits under the text instead of
+                      // squeezing the greeting into a narrow column.
+                      if (orgPill != null && !isWideBanner) ...[
+                        const SizedBox(height: 10),
+                        orgPill,
+                      ],
                     ],
                   ),
                 ),
-                if (user?.organizationName.isNotEmpty == true) ...[
+                if (orgPill != null && isWideBanner) ...[
                   const SizedBox(width: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.white24),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 14),
-                        const SizedBox(width: 6),
-                        Text(
-                          user!.organizationName,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11.5,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  orgPill,
                 ],
               ],
             ),

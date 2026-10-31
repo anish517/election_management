@@ -1176,3 +1176,194 @@ class PlatformOrganizationModel {
             .toList(),
       );
 }
+
+class PlatformElectionModel {
+  final String id;
+  final String title;
+  final String state;
+  final String stateDisplay;
+  final String electionType;
+  final String electionMethod;
+  final DateTime? votingStartAt;
+  final DateTime? votingEndAt;
+  final int positionCount;
+  final int voterCount;
+  final int votedCount;
+
+  const PlatformElectionModel({
+    required this.id,
+    required this.title,
+    required this.state,
+    required this.stateDisplay,
+    required this.electionType,
+    required this.electionMethod,
+    this.votingStartAt,
+    this.votingEndAt,
+    required this.positionCount,
+    required this.voterCount,
+    required this.votedCount,
+  });
+
+  factory PlatformElectionModel.fromJson(Map<String, dynamic> json) =>
+      PlatformElectionModel(
+        id: json['id'] as String,
+        title: json['title'] as String? ?? '',
+        state: json['state'] as String? ?? '',
+        stateDisplay: json['state_display'] as String? ?? '',
+        electionType: json['election_type'] as String? ?? '',
+        electionMethod: json['election_method'] as String? ?? '',
+        votingStartAt: DateTime.tryParse(json['voting_start_at'] as String? ?? ''),
+        votingEndAt: DateTime.tryParse(json['voting_end_at'] as String? ?? ''),
+        positionCount: json['position_count'] as int? ?? 0,
+        voterCount: json['voter_count'] as int? ?? 0,
+        votedCount: json['voted_count'] as int? ?? 0,
+      );
+}
+
+class PlatformCandidateSummary {
+  final String id;
+  final String fullName;
+  final String status;
+  final String statusDisplay;
+  final String imageUrl;
+
+  const PlatformCandidateSummary({
+    required this.id,
+    required this.fullName,
+    required this.status,
+    required this.statusDisplay,
+    required this.imageUrl,
+  });
+
+  factory PlatformCandidateSummary.fromJson(Map<String, dynamic> json) =>
+      PlatformCandidateSummary(
+        id: json['id'] as String,
+        fullName: json['full_name'] as String? ?? '',
+        status: json['status'] as String? ?? '',
+        statusDisplay: json['status_display'] as String? ?? '',
+        imageUrl: json['candidate_image'] as String? ?? '',
+      );
+}
+
+class PlatformPositionSummary {
+  final String id;
+  final String title;
+  final int seats;
+  final String votingMethod;
+  final String quotaName;
+  final List<PlatformCandidateSummary> candidates;
+
+  const PlatformPositionSummary({
+    required this.id,
+    required this.title,
+    required this.seats,
+    required this.votingMethod,
+    required this.quotaName,
+    required this.candidates,
+  });
+
+  factory PlatformPositionSummary.fromJson(Map<String, dynamic> json) =>
+      PlatformPositionSummary(
+        id: json['id'] as String,
+        title: json['title'] as String? ?? '',
+        seats: json['seats_available'] as int? ?? 1,
+        votingMethod: json['voting_method'] as String? ?? '',
+        quotaName: json['quota_name'] as String? ?? '',
+        candidates: (json['candidates'] as List<dynamic>? ?? [])
+            .map((c) => PlatformCandidateSummary.fromJson(c as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
+/// Read-only election overview for the Super Admin console.
+class PlatformElectionDetailModel {
+  final String id;
+  final String title;
+  final String description;
+  final String prefix;
+  final String state;
+  final String stateDisplay;
+  final String electionType;
+  final String electionMethod;
+  final String onlineType;
+  final String venueName;
+  final String venueAddress;
+  final bool isSecretBallot;
+  final bool isPaidCandidacy;
+  final String nomineeCharge;
+  final String resultsVisibility;
+  final String organizationId;
+  final String organizationName;
+  final List<(String, DateTime)> schedule;
+  final List<PlatformPositionSummary> positions;
+  final int votersTotal;
+  final int votersEligible;
+  final int votersVoted;
+  final List<(String, String, DateTime)> history;
+
+  const PlatformElectionDetailModel({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.prefix,
+    required this.state,
+    required this.stateDisplay,
+    required this.electionType,
+    required this.electionMethod,
+    required this.onlineType,
+    required this.venueName,
+    required this.venueAddress,
+    required this.isSecretBallot,
+    required this.isPaidCandidacy,
+    required this.nomineeCharge,
+    required this.resultsVisibility,
+    required this.organizationId,
+    required this.organizationName,
+    required this.schedule,
+    required this.positions,
+    required this.votersTotal,
+    required this.votersEligible,
+    required this.votersVoted,
+    required this.history,
+  });
+
+  factory PlatformElectionDetailModel.fromJson(Map<String, dynamic> json) {
+    final voters = json['voters'] as Map<String, dynamic>? ?? {};
+    final org = json['organization'] as Map<String, dynamic>? ?? {};
+    return PlatformElectionDetailModel(
+      id: json['id'] as String,
+      title: json['title'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      prefix: json['prefix'] as String? ?? '',
+      state: json['state'] as String? ?? '',
+      stateDisplay: json['state_display'] as String? ?? '',
+      electionType: json['election_type'] as String? ?? '',
+      electionMethod: json['election_method'] as String? ?? '',
+      onlineType: json['online_type'] as String? ?? '',
+      venueName: json['venue_name'] as String? ?? '',
+      venueAddress: json['venue_address'] as String? ?? '',
+      isSecretBallot: json['is_secret_ballot'] as bool? ?? true,
+      isPaidCandidacy: json['is_paid_candidacy'] as bool? ?? false,
+      nomineeCharge: '${json['nominee_charge'] ?? '0'}',
+      resultsVisibility: json['results_visibility'] as String? ?? '',
+      organizationId: org['id'] as String? ?? '',
+      organizationName: org['name'] as String? ?? '',
+      schedule: [
+        for (final r in json['schedule'] as List<dynamic>? ?? [])
+          if (DateTime.tryParse((r as Map)['at'] as String? ?? '') case final at?)
+            (r['label'] as String? ?? '', at),
+      ],
+      positions: (json['positions'] as List<dynamic>? ?? [])
+          .map((p) => PlatformPositionSummary.fromJson(p as Map<String, dynamic>))
+          .toList(),
+      votersTotal: voters['total'] as int? ?? 0,
+      votersEligible: voters['eligible'] as int? ?? 0,
+      votersVoted: voters['voted'] as int? ?? 0,
+      history: [
+        for (final h in json['history'] as List<dynamic>? ?? [])
+          if (DateTime.tryParse((h as Map)['at'] as String? ?? '') case final at?)
+            (h['from_state'] as String? ?? '', h['to_state'] as String? ?? '', at),
+      ],
+    );
+  }
+}

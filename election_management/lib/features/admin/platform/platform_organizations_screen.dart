@@ -62,6 +62,13 @@ class _PlatformOrganizationsScreenState
       appBar: AppBar(
         title: const Text('All Organizations'),
         centerTitle: false,
+        leading: IconButton(
+          tooltip: 'Back',
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => context.canPop()
+              ? context.pop()
+              : context.goNamed('dashboard'),
+        ),
         actions: [
           IconButton(
             tooltip: 'Refresh',
@@ -168,10 +175,9 @@ class _OrgCard extends ConsumerWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: () => showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          builder: (_) => _OrgLifecycleSheet(org: org),
+        onTap: () => context.pushNamed(
+          'platform-organization',
+          pathParameters: {'id': org.id},
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -244,6 +250,293 @@ class _OrgCard extends ConsumerWidget {
         ],
       );
 }
+
+String _electionStateLabel(PlatformElectionModel e) => e.stateDisplay.isNotEmpty
+    ? e.stateDisplay
+    : e.state.replaceAll('_', ' ');
+
+Color electionStateColor(String state) {
+  switch (state) {
+    case 'draft':
+      return AppColors.stateDraft;
+    case 'published':
+      return AppColors.statePublished;
+    case 'nomination_open':
+    case 'nomination_closed':
+      return AppColors.stateNominations;
+    case 'voting_open':
+      return AppColors.stateVoting;
+    case 'voting_closed':
+      return AppColors.stateClosed;
+    case 'results_provisional':
+    case 'results_final':
+      return AppColors.stateResults;
+    default:
+      return AppColors.textMuted;
+  }
+}
+
+/// Super Admin view of one tenant: lifecycle summary plus all its elections.
+class PlatformOrganizationDetailScreen extends ConsumerWidget {
+  final String orgId;
+  const PlatformOrganizationDetailScreen({super.key, required this.orgId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final orgAsync = ref.watch(platformOrganizationProvider(orgId));
+    final electionsAsync = ref.watch(platformOrgElectionsProvider(orgId));
+
+    Future<void> refresh() async {
+      ref.invalidate(platformOrganizationProvider(orgId));
+      ref.invalidate(platformOrgElectionsProvider(orgId));
+      await ref.read(platformOrgElectionsProvider(orgId).future);
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(orgAsync.valueOrNull?.name ?? 'Organization'),
+        centerTitle: false,
+        actions: [
+          IconButton(
+            tooltip: 'Refresh',
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: refresh,
+          ),
+        ],
+      ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 960),
+          child: RefreshIndicator(
+            onRefresh: refresh,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+              children: [
+                orgAsync.when(
+                  loading: () => const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                  error: (e, _) => Text('Could not load organization: $e'),
+                  data: (org) => _OrgSummaryCard(org: org),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Elections',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 12),
+                electionsAsync.when(
+                  loading: () => const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                  error: (e, _) => Text('Could not load elections: $e'),
+                  data: (elections) => elections.isEmpty
+                      ? const EmptyStateWidget(
+                          icon: Icons.how_to_vote_rounded,
+                          title: 'No elections yet',
+                        )
+                      : Column(
+                          children: [
+                            for (final e in elections) ...[
+                              _ElectionRow(election: e),
+                              const SizedBox(height: 10),
+                            ],
+                          ],
+                        ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OrgSummaryCard extends StatelessWidget {
+  final PlatformOrganizationModel org;
+  const _OrgSummaryCard({required this.org});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = _statusColor(org.status);
+    final dateFmt = DateFormat('d MMM yyyy');
+
+    return Card(
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    org.name,
+                    style: theme.textTheme.titleLarge
+                        ?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    _statusLabels[org.status] ?? org.status,
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              org.adminEmails.isEmpty
+                  ? 'No org admin'
+                  : 'Admin: ${org.adminEmails.join(', ')}',
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 16,
+              runSpacing: 6,
+              children: [
+                _iconText(Icons.people_alt_rounded, '${org.memberCount} members'),
+                _iconText(Icons.how_to_vote_rounded,
+                    '${org.electionCount} elections'),
+                if (org.createdAt != null)
+                  _iconText(Icons.event_rounded,
+                      'Created ${dateFmt.format(org.createdAt!.toLocal())}'),
+                if (org.status == 'trial' && org.trialEndsAt != null)
+                  _iconText(Icons.hourglass_bottom_rounded,
+                      'Trial ends ${dateFmt.format(org.trialEndsAt!.toLocal())}'),
+              ],
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: () => showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => _OrgLifecycleSheet(org: org),
+              ),
+              icon: const Icon(Icons.tune_rounded, size: 18),
+              label: const Text('Status & Trial'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ElectionRow extends StatelessWidget {
+  final PlatformElectionModel election;
+  const _ElectionRow({required this.election});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = electionStateColor(election.state);
+    final dateFmt = DateFormat('d MMM yyyy, h:mm a');
+    final turnout = election.voterCount == 0
+        ? null
+        : (election.votedCount * 100 / election.voterCount).toStringAsFixed(0);
+
+    return Card(
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.pushNamed(
+          'platform-election',
+          pathParameters: {'id': election.id},
+        ),
+        child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    election.title,
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: color.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(
+                    _electionStateLabel(election).toUpperCase(),
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 16,
+              runSpacing: 6,
+              children: [
+                _iconText(Icons.work_outline_rounded,
+                    '${election.positionCount} positions'),
+                _iconText(Icons.people_outline_rounded,
+                    '${election.voterCount} voters'),
+                _iconText(
+                  Icons.check_circle_outline_rounded,
+                  turnout == null
+                      ? 'No votes'
+                      : '${election.votedCount} voted ($turnout%)',
+                ),
+                if (election.votingStartAt != null)
+                  _iconText(
+                    Icons.schedule_rounded,
+                    'Voting ${dateFmt.format(election.votingStartAt!.toLocal())}'
+                    '${election.votingEndAt != null ? ' – ${dateFmt.format(election.votingEndAt!.toLocal())}' : ''}',
+                  ),
+              ],
+            ),
+          ],
+        ),
+        ),
+      ),
+    );
+  }
+}
+
+Widget _iconText(IconData icon, String text) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: AppColors.textMuted),
+        const SizedBox(width: 4),
+        Text(text, style: const TextStyle(fontSize: 13)),
+      ],
+    );
 
 /// Change a tenant's status or extend its trial.
 class _OrgLifecycleSheet extends ConsumerStatefulWidget {

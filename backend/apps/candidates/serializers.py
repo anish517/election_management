@@ -39,6 +39,15 @@ class CandidateSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'election', 'reviewed_by', 'review_notes', 'reviewed_at', 'created_at', 'updated_at', 'full_name', 'latest_payment']
 
+    def to_representation(self, instance):
+        from apps.candidates.models import can_see_private_nomination, public_candidate_view
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if can_see_private_nomination(user, instance.email, instance.contact_number):
+            return data
+        return public_candidate_view(data)
+
     def get_latest_payment(self, obj):
         payment = obj.payments.order_by('-created_at').first()
         if not payment:

@@ -167,8 +167,16 @@ class AdminDrawer extends ConsumerWidget {
                       context,
                       title: 'Elections',
                       icon: Icons.how_to_vote_rounded,
-                      isActive: currentRoute.startsWith('/elections'),
+                      isActive: currentRoute.startsWith('/elections') && !currentRoute.endsWith('/nominations'),
                       onTap: () => handleNav('elections', '/elections'),
+                      isDark: isDark,
+                    ),
+                    _buildNavItem(
+                      context,
+                      title: 'Nominee Applications',
+                      icon: Icons.assignment_ind_rounded,
+                      isActive: currentRoute == '/nominations' || currentRoute.endsWith('/nominations'),
+                      onTap: () => handleNav('nominations', '/nominations'),
                       isDark: isDark,
                     ),
 

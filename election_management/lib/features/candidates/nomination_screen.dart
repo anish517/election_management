@@ -58,6 +58,15 @@ class _EndorsementItem {
       };
 }
 
+/// Same rule as the server: position fee, else election fee, else the
+/// organization's default nomination fee.
+double _nominationFee(ElectionModel? election, PositionModel? pos, OrganizationModel? org) {
+  if (pos != null && pos.nomineeCharge > 0) return pos.nomineeCharge;
+  if (election != null && election.nomineeCharge > 0) return election.nomineeCharge;
+  final raw = org?.paymentSettings['default_nomination_fee'];
+  return raw is num ? raw.toDouble() : double.tryParse('${raw ?? ''}') ?? 0.0;
+}
+
 class NominationScreen extends ConsumerStatefulWidget {
   final String electionId;
   const NominationScreen({super.key, required this.electionId});
@@ -380,14 +389,8 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
 
     final org = ref.read(orgProfileProvider).valueOrNull;
 
-    // Check fee calculation directly from designation
-    double fee = 0.0;
-    if (election != null && _selectedPositionId != null) {
-      final pos = election.positions.where((p) => p.id == _selectedPositionId).firstOrNull;
-      if (pos != null) {
-        fee = pos.nomineeCharge;
-      }
-    }
+    final pos = election?.positions.where((p) => p.id == _selectedPositionId).firstOrNull;
+    final fee = _nominationFee(election, pos, org);
 
     final isPaymentEnabled = (org?.isPaymentEnabled ?? false) && fee > 0;
 
@@ -1679,7 +1682,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
 
     final pos = election?.positions.where((p) => p.id == effectivePositionId).firstOrNull;
     final positionTitle = pos?.title ?? 'Selected Designation';
-    final fee = pos?.nomineeCharge ?? 0.0;
+    final fee = _nominationFee(election, pos, org);
 
     final isGlobalPaymentEnabled = org?.isPaymentEnabled ?? false;
     final isPaymentEnabled = isGlobalPaymentEnabled && fee > 0;
@@ -2642,10 +2645,12 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
     required VoidCallback onPickRoster,
     required ValueChanged<String> onSignatureUploaded,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        // Was hard-coded white, so dark-theme field text was white on white.
+        color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.4) : Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: primaryColor.withValues(alpha: 0.25), width: 1.5),
         boxShadow: [
@@ -2697,7 +2702,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                           const SizedBox(height: 4),
                           Text(
                             roleSubtitle,
-                            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                            style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : Colors.grey.shade600),
                           ),
                           const SizedBox(height: 10),
                           SizedBox(
@@ -2730,7 +2735,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
                                 ),
                                 Text(
                                   roleSubtitle,
-                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                  style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : Colors.grey.shade600),
                                 ),
                               ],
                             ),

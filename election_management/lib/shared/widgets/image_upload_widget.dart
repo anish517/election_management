@@ -77,6 +77,59 @@ class _ImageUploadWidgetState extends ConsumerState<ImageUploadWidget> {
     }
   }
 
+  /// Initials render as a large letter. Longer labels ("Upload Sign") used to
+  /// overflow the circle, so small circles show an icon (label as tooltip) and
+  /// larger ones an icon plus wrapped label.
+  Widget _buildPlaceholder() {
+    final text = widget.placeholderText;
+    if (text.characters.length <= 2) {
+      return Text(
+        text,
+        style: TextStyle(
+          fontSize: widget.radius * 0.6,
+          color: AppColors.primaryLight,
+          fontWeight: FontWeight.bold,
+        ),
+      );
+    }
+    final icon = Icon(
+      Icons.add_photo_alternate_outlined,
+      size: widget.radius * (widget.radius < 40 ? 0.6 : 0.42),
+      color: AppColors.primaryLight,
+    );
+    if (widget.radius < 40) {
+      // Nudged up-left so the camera badge (bottom-right) doesn't cover it.
+      return Tooltip(
+        message: text,
+        child: Align(alignment: const Alignment(-0.3, -0.3), child: icon),
+      );
+    }
+    return Padding(
+      padding: EdgeInsets.all(widget.radius * 0.25),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          icon,
+          const SizedBox(height: 4),
+          Flexible(
+            child: Text(
+              text,
+              textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: (widget.radius * 0.16).clamp(9.0, 13.0),
+                height: 1.2,
+                color: AppColors.primaryLight,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -91,14 +144,7 @@ class _ImageUploadWidgetState extends ConsumerState<ImageUploadWidget> {
                 ? NetworkImage(_currentImageUrl!)
                 : null,
             child: (_currentImageUrl == null || _currentImageUrl!.isEmpty)
-                ? Text(
-                    widget.placeholderText,
-                    style: TextStyle(
-                      fontSize: widget.radius * 0.6,
-                      color: AppColors.primaryLight,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  )
+                ? _buildPlaceholder()
                 : null,
           ),
           if (_isUploading)

@@ -29,11 +29,16 @@ class _FileVoterClaimDialogState extends ConsumerState<FileVoterClaimDialog> {
   final _targetVoterController = TextEditingController();
   final _descriptionController = TextEditingController();
   bool _isSubmitting = false;
+  // Officers may file on someone's behalf; voters only in their own name.
+  bool _isOfficer = false;
+  bool _phoneLocked = false;
 
   @override
   void initState() {
     super.initState();
     final user = ref.read(currentUserProvider);
+    _isOfficer = user != null && (user.canManageElections || user.isSuperAdmin);
+    _phoneLocked = !_isOfficer && (user?.phone.isNotEmpty ?? false);
     if (user != null) {
       _nameController.text = user.fullName.isNotEmpty ? user.fullName : user.email;
       _emailController.text = user.email;
@@ -104,6 +109,34 @@ class _FileVoterClaimDialogState extends ConsumerState<FileVoterClaimDialog> {
         setState(() => _isSubmitting = false);
       }
     }
+  }
+
+  Widget _ownNameNotice() {
+    final aboutSelf = _claimType != 'objection';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.info.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.info.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline_rounded, size: 18, color: AppColors.info),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              aboutSelf
+                  ? 'This claim is filed in your own name and applies to your own voter-roll entry (आफ्नै नाममा मात्र).'
+                  : 'This objection is filed in your own name. Enter the voter you are objecting to below.',
+              style: const TextStyle(fontSize: 12, height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -196,8 +229,13 @@ class _FileVoterClaimDialogState extends ConsumerState<FileVoterClaimDialog> {
                     },
                   ),
                   const SizedBox(height: 16),
+                  if (!_isOfficer) ...[
+                    _ownNameNotice(),
+                    const SizedBox(height: 12),
+                  ],
                   TextFormField(
                     controller: _nameController,
+                    readOnly: !_isOfficer,
                     decoration: InputDecoration(
                       labelText: 'Your Full Name *',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -211,6 +249,7 @@ class _FileVoterClaimDialogState extends ConsumerState<FileVoterClaimDialog> {
                       final isNarrow = constraints.maxWidth < 360;
                       final emailField = TextFormField(
                         controller: _emailController,
+                        readOnly: !_isOfficer,
                         decoration: InputDecoration(
                           labelText: 'Your Email *',
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -220,6 +259,7 @@ class _FileVoterClaimDialogState extends ConsumerState<FileVoterClaimDialog> {
                       );
                       final phoneField = TextFormField(
                         controller: _phoneController,
+                        readOnly: _phoneLocked,
                         decoration: InputDecoration(
                           labelText: 'Phone Number',
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -254,7 +294,7 @@ class _FileVoterClaimDialogState extends ConsumerState<FileVoterClaimDialog> {
                       prefixIcon: const Icon(Icons.badge_outlined),
                     ),
                   ),
-                  if (_claimType != 'omission') ...[
+                  if (_isOfficer ? _claimType != 'omission' : _claimType == 'objection') ...[
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _targetVoterController,

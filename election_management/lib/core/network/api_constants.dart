@@ -165,6 +165,12 @@ class ApiConstants {
   static const String platformOrganizations = '/platform/organizations/';
   static String platformOrganizationDetail(String id) =>
       '/platform/organizations/$id/';
+  static String platformOrganizationElections(String id) =>
+      '/platform/organizations/$id/elections/';
+  static String platformElectionDetail(String id) => '/platform/elections/$id/';
+
+  // Signed, short-lived link for the printable ID card pages
+  static String idCardLink(String electionId) => '/elections/$electionId/id-card-link/';
 
   // Payments & Static QR Ledger
   static const String payments = '/payments/';

@@ -1,8 +1,6 @@
+import '../../core/utils/id_card_link.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/network/api_constants.dart';
 
 class DigitalIdCardDialog extends StatelessWidget {
   final String title;
@@ -36,36 +34,12 @@ class DigitalIdCardDialog extends StatelessWidget {
     required this.entityId,
   });
 
-  String get _printUrl {
-    final baseUrl = ApiConstants.baseUrl.replaceAll('/v1', '');
-    if (cardType == 'candidate') {
-      return '$baseUrl/v1/elections/$electionId/candidates/$entityId/id_card/';
-    }
-    return '$baseUrl/v1/elections/$electionId/voters/$entityId/id_card/';
-  }
-
-  void _openPrintUrl(BuildContext context) async {
-    final uri = Uri.parse(_printUrl);
-    try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        await Clipboard.setData(ClipboardData(text: _printUrl));
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('ID Card link copied to clipboard!')),
-          );
-        }
-      }
-    } catch (_) {
-      await Clipboard.setData(ClipboardData(text: _printUrl));
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('ID Card link copied to clipboard!')),
-        );
-      }
-    }
-  }
+  void _openPrintUrl(BuildContext context) => openIdCard(
+        context,
+        electionId: electionId,
+        kind: cardType == 'candidate' ? 'candidate' : 'voter',
+        id: entityId,
+      );
 
   @override
   Widget build(BuildContext context) {

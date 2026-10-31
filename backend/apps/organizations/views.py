@@ -8,7 +8,9 @@ from django.shortcuts import get_object_or_404
 
 from apps.organizations.models import Organization
 from apps.organizations.serializers import (
-    OrganizationSerializer, OrganizationStatsSerializer, PlatformOrganizationSerializer,
+    OrganizationSerializer, OrganizationStatsSerializer,
+    PlatformOrganizationSerializer, PlatformElectionSerializer,
+    PlatformElectionDetailSerializer,
 )
 from apps.core.permissions import IsOrgAdmin, IsSuperAdmin
 from apps.audit.models import log_action
@@ -172,3 +174,52 @@ class PlatformOrganizationDetailView(APIView):
             metadata={'before': before, 'after': {k: str(v) for k, v in serializer.validated_data.items()}},
         )
         return Response(serializer.data)
+
+
+class PlatformOrganizationElectionsView(APIView):
+    """
+    GET /v1/platform/organizations/<id>/elections/ - One tenant's elections (Super Admin only)
+    """
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request, org_id):
+        from apps.elections.models import Election
+
+        org = get_object_or_404(Organization, id=org_id)
+        elections = (
+            Election.objects.filter(organization=org)
+            .annotate(
+                position_count=Count('positions', distinct=True),
+                voter_count=Count('voter_roll', distinct=True),
+                voted_count=Count('voter_roll', filter=Q(voter_roll__has_voted=True), distinct=True),
+            )
+            .order_by('-created_at')
+        )
+        return Response(PlatformElectionSerializer(elections, many=True).data)
+
+
+class PlatformElectionDetailView(APIView):
+    """
+    GET /v1/platform/elections/<id>/ - Read-only election overview (Super Admin only)
+    """
+    permission_classes = [IsSuperAdmin]
+
+    def get(self, request, election_id):
+        from django.db.models import Prefetch
+        from apps.elections.models import Election, Position
+        from apps.candidates.models import Candidate
+
+        election = get_object_or_404(
+            Election.objects.select_related('organization').prefetch_related(
+                Prefetch(
+                    'positions',
+                    queryset=Position.objects.order_by('result_order', 'created_at').prefetch_related(
+                        Prefetch('candidates', queryset=Candidate.objects.order_by('first_name', 'last_name'))
+                    ),
+                ),
+            ),
+            id=election_id,
+        )
+        data = PlatformElectionDetailSerializer(election).data
+        data['organization'] = {'id': str(election.organization_id), 'name': election.organization.name}
+        return Response(data)

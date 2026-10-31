@@ -162,23 +162,19 @@ class _ElectionListScreenState extends ConsumerState<ElectionListScreen> {
                     ),
                   ),
 
-                  // Filter Chips
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
+                  // Filter Chips (wrap so every filter stays visible on narrow screens)
+                  Padding(
                     padding: const EdgeInsets.only(bottom: 16),
-                    child: Row(
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
                         _buildFilterChip('all', 'All Elections (${elections.length})'),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('voting_open', '🗳️ Voting Active'),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('nominations', '📝 Nominations'),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('results', '🏆 Results Ready'),
-                        if (isAdmin) ...[
-                          const SizedBox(width: 8),
-                          _buildFilterChip('draft', '📋 Draft / Published'),
-                        ],
+                        _buildFilterChip('voting_open', 'Voting Active', icon: Icons.how_to_vote_rounded),
+                        _buildFilterChip('nominations', 'Nominations', icon: Icons.edit_note_rounded),
+                        _buildFilterChip('results', 'Results Ready', icon: Icons.emoji_events_rounded),
+                        if (isAdmin)
+                          _buildFilterChip('draft', 'Draft / Published', icon: Icons.assignment_rounded),
                       ],
                     ),
                   ),
@@ -229,20 +225,25 @@ class _ElectionListScreenState extends ConsumerState<ElectionListScreen> {
     );
   }
 
-  Widget _buildFilterChip(String key, String label) {
+  // Icons rather than emoji: on web the emoji font loads lazily, so emoji labels
+  // were measured too narrow and got clipped.
+  Widget _buildFilterChip(String key, String label, {IconData? icon}) {
     final isSelected = _selectedFilter == key;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fg = isSelected
+        ? Colors.white
+        : (isDark ? Colors.white70 : Colors.grey.shade800);
 
     return FilterChip(
       selected: isSelected,
+      showCheckmark: icon == null,
+      avatar: icon == null ? null : Icon(icon, size: 16, color: fg),
       label: Text(
         label,
         style: TextStyle(
           fontSize: 12,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          color: isSelected
-              ? Colors.white
-              : (isDark ? Colors.white70 : Colors.grey.shade800),
+          color: fg,
         ),
       ),
       selectedColor: AppColors.primary,

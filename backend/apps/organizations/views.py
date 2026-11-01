@@ -1,6 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework import status
 
 from django.db.models import Count, Q
@@ -10,7 +10,8 @@ from apps.organizations.models import Organization
 from apps.organizations.serializers import (
     OrganizationSerializer, OrganizationStatsSerializer,
     PlatformOrganizationSerializer, PlatformElectionSerializer,
-    PlatformElectionDetailSerializer,
+    PlatformElectionDetailSerializer, PlatformOverviewElectionSerializer,
+    PublicOrganizationSerializer, PublicElectionSerializer,
 )
 from apps.core.permissions import IsOrgAdmin, IsSuperAdmin
 from apps.audit.models import log_action
@@ -155,7 +156,10 @@ class PlatformOrganizationListView(APIView):
         qs = _platform_org_queryset()
         search = request.query_params.get('search', '').strip()
         if search:
-            qs = qs.filter(Q(name__icontains=search) | Q(slug__icontains=search) | Q(email__icontains=search))
+            qs = qs.filter(
+                Q(name__icontains=search) | Q(slug__icontains=search)
+                | Q(prefix__icontains=search) | Q(email__icontains=search)
+            )
         org_status = request.query_params.get('status', '').strip()
         if org_status:
             qs = qs.filter(status=org_status)
@@ -232,4 +236,60 @@ class PlatformElectionDetailView(APIView):
         )
         data = PlatformElectionDetailSerializer(election).data
         data['organization'] = {'id': str(election.organization_id), 'name': election.organization.name}
+        return Response(data)
+
+
+# Elections under way: announced but without final results yet.
+ACTIVE_ELECTION_STATES = [
+    'published', 'nomination_open', 'nomination_closed',
+    'voting_open', 'voting_closed', 'results_provisional',
+]
+
+
+class PlatformOverviewView(APIView):
+    """
+    GET /v1/platform/overview/ - Super Admin dashboard: platform totals, running
+    and past elections (with their organization) and the newest organizations.
+    """
+    permission_classes = [IsSuperAdmin]
+    LIST_LIMIT = 20
+
+    def get(self, request):
+        from apps.elections.models import Election
+
+        elections = Election.objects.select_related('organization')
+        running = elections.filter(state__in=ACTIVE_ELECTION_STATES).order_by('voting_start_at', '-created_at')
+        past = elections.filter(state='results_final').order_by('-voting_end_at', '-created_at')
+        return Response({
+            'stats': {
+                'organizations': Organization.objects.count(),
+                'elections': elections.count(),
+                'active_elections': running.count(),
+            },
+            'running_elections': PlatformOverviewElectionSerializer(running[:self.LIST_LIMIT], many=True).data,
+            'past_elections': PlatformOverviewElectionSerializer(past[:self.LIST_LIMIT], many=True).data,
+            'organizations': PlatformOrganizationSerializer(
+                _platform_org_queryset()[:self.LIST_LIMIT], many=True
+            ).data,
+        })
+
+
+class PublicOrganizationView(APIView):
+    """
+    GET /v1/public/organizations/<prefix>/ - An organization's public page
+    (electionnepal.org/<prefix>): its profile and announced elections.
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request, prefix):
+        org = Organization.objects.filter(prefix__iexact=prefix.strip()).exclude(prefix='').first()
+        if not org:
+            return Response(
+                {'error': {'code': 'not_found', 'message': 'No organization uses this address.'}},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        elections = org.elections.exclude(state='draft').order_by('-voting_start_at', '-created_at')
+        data = PublicOrganizationSerializer(org).data
+        data['elections'] = PublicElectionSerializer(elections, many=True).data
         return Response(data)

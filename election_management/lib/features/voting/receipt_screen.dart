@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/providers/app_providers.dart';
+import '../../shared/widgets/responsive_layout.dart';
 
 class ReceiptScreen extends ConsumerStatefulWidget {
   final String electionId;
@@ -31,23 +32,21 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
     return Scaffold(
       backgroundColor: isDark ? AppColors.background : const Color(0xFFF8FAFC),
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
-              child: Column(
-                children: [
-                  _buildSuccessIcon(),
-                  const SizedBox(height: 24),
-                  _buildTitle(context, isDark),
-                  const SizedBox(height: 28),
-                  _buildReceiptCard(context, electionTitle, isDark),
-                  const SizedBox(height: 32),
-                  _buildActions(context),
-                  const SizedBox(height: 20),
-                ],
-              ),
+        child: CenteredScroll(
+          maxWidth: 600,
+          builder: (context, pad) => SingleChildScrollView(
+            padding: pad(const EdgeInsets.symmetric(horizontal: 24, vertical: 48)),
+            child: Column(
+              children: [
+                _buildSuccessIcon(),
+                const SizedBox(height: 24),
+                _buildTitle(context, isDark),
+                const SizedBox(height: 28),
+                _buildReceiptCard(context, electionTitle, isDark),
+                const SizedBox(height: 32),
+                _buildActions(context),
+                const SizedBox(height: 20),
+              ],
             ),
           ),
         ),

@@ -79,6 +79,8 @@ class ElectionModel {
   final String? firstVoterListDate;
   final String? voterListClaimDate;
   final String? finalVoterListDate;
+  /// Final voter list published: roster locked; only an org admin may fix email/phone.
+  final bool voterListFinal;
   // Candidacy schedule
   final String? nominationOpenAt;
   final String? nominationCloseAt;
@@ -129,6 +131,7 @@ class ElectionModel {
     this.firstVoterListDate,
     this.voterListClaimDate,
     this.finalVoterListDate,
+    this.voterListFinal = false,
     this.nominationOpenAt,
     this.nominationCloseAt,
     this.candidacyClaimDate,
@@ -174,6 +177,7 @@ class ElectionModel {
         firstVoterListDate: json['first_voter_list_date'] as String?,
         voterListClaimDate: json['voter_list_claim_date'] as String?,
         finalVoterListDate: json['final_voter_list_date'] as String?,
+        voterListFinal: json['voter_list_final'] as bool? ?? false,
         nominationOpenAt: json['nomination_open_at'] as String?,
         nominationCloseAt: json['nomination_close_at'] as String?,
         candidacyClaimDate: json['candidacy_claim_date'] as String?,
@@ -1133,6 +1137,7 @@ class PlatformOrganizationModel {
   final String id;
   final String name;
   final String slug;
+  final String prefix;
   final String orgType;
   final String email;
   final String logoUrl;
@@ -1148,6 +1153,7 @@ class PlatformOrganizationModel {
     required this.id,
     required this.name,
     required this.slug,
+    this.prefix = '',
     required this.orgType,
     required this.email,
     required this.logoUrl,
@@ -1165,6 +1171,7 @@ class PlatformOrganizationModel {
         id: json['id'] as String,
         name: json['name'] as String? ?? '',
         slug: json['slug'] as String? ?? '',
+        prefix: json['prefix'] as String? ?? '',
         orgType: json['org_type'] as String? ?? '',
         email: json['email'] as String? ?? '',
         logoUrl: json['logo_url'] as String? ?? '',
@@ -1178,6 +1185,89 @@ class PlatformOrganizationModel {
             .map((e) => e as String)
             .toList(),
       );
+}
+
+/// Organization name and logo shown next to an election in a list.
+class OrgBadge {
+  final String id;
+  final String name;
+  final String prefix;
+  final String logoUrl;
+
+  const OrgBadge({required this.id, required this.name, this.prefix = '', this.logoUrl = ''});
+
+  factory OrgBadge.fromJson(Map<String, dynamic> json) => OrgBadge(
+        id: json['id'] as String? ?? '',
+        name: json['name'] as String? ?? '',
+        prefix: json['prefix'] as String? ?? '',
+        logoUrl: json['logo_url'] as String? ?? '',
+      );
+}
+
+class PlatformOverviewElection {
+  final String id;
+  final String title;
+  final String state;
+  final String stateDisplay;
+  final DateTime? votingStartAt;
+  final DateTime? votingEndAt;
+  final OrgBadge organization;
+
+  const PlatformOverviewElection({
+    required this.id,
+    required this.title,
+    required this.state,
+    required this.stateDisplay,
+    this.votingStartAt,
+    this.votingEndAt,
+    required this.organization,
+  });
+
+  factory PlatformOverviewElection.fromJson(Map<String, dynamic> json) => PlatformOverviewElection(
+        id: json['id'] as String,
+        title: json['title'] as String? ?? '',
+        state: json['state'] as String? ?? '',
+        stateDisplay: json['state_display'] as String? ?? '',
+        votingStartAt: DateTime.tryParse(json['voting_start_at'] as String? ?? ''),
+        votingEndAt: DateTime.tryParse(json['voting_end_at'] as String? ?? ''),
+        organization: OrgBadge.fromJson(json['organization'] as Map<String, dynamic>? ?? const {}),
+      );
+}
+
+/// Super Admin dashboard: platform totals plus running/past elections and organizations.
+class PlatformOverview {
+  final int organizationCount;
+  final int electionCount;
+  final int activeElectionCount;
+  final List<PlatformOverviewElection> runningElections;
+  final List<PlatformOverviewElection> pastElections;
+  final List<PlatformOrganizationModel> organizations;
+
+  const PlatformOverview({
+    required this.organizationCount,
+    required this.electionCount,
+    required this.activeElectionCount,
+    required this.runningElections,
+    required this.pastElections,
+    required this.organizations,
+  });
+
+  factory PlatformOverview.fromJson(Map<String, dynamic> json) {
+    final stats = json['stats'] as Map<String, dynamic>? ?? const {};
+    List<PlatformOverviewElection> elections(String key) => (json[key] as List<dynamic>? ?? [])
+        .map((e) => PlatformOverviewElection.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return PlatformOverview(
+      organizationCount: stats['organizations'] as int? ?? 0,
+      electionCount: stats['elections'] as int? ?? 0,
+      activeElectionCount: stats['active_elections'] as int? ?? 0,
+      runningElections: elections('running_elections'),
+      pastElections: elections('past_elections'),
+      organizations: (json['organizations'] as List<dynamic>? ?? [])
+          .map((e) => PlatformOrganizationModel.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
 }
 
 class PlatformElectionModel {

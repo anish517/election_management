@@ -247,6 +247,20 @@ class Election(TimestampedModel):
     def __str__(self):
         return f"{self.title} [{self.state}] — {self.organization.name}"
 
+    @property
+    def voter_list_final(self):
+        """
+        The final voter list is published: voters can no longer be added,
+        removed or renamed. Only an org admin may still fix a voter's email
+        or phone. Voting starting implies the list is final.
+        """
+        if self.final_voter_list_date and self.final_voter_list_date <= timezone.now():
+            return True
+        return self.state in (
+            ElectionState.VOTING_OPEN, ElectionState.VOTING_CLOSED,
+            ElectionState.RESULTS_PROVISIONAL, ElectionState.RESULTS_FINAL,
+        )
+
     # ------------------------------------------------------------------
     # State machine helpers (doc: 07-System-Architecture.md §7.5)
     # ------------------------------------------------------------------

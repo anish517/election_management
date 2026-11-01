@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/providers/theme_provider.dart';
+import 'shared/widgets/api_activity_bar.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -64,17 +65,22 @@ class ElectionManagementApp extends ConsumerWidget {
                 ? AppColors.globalBackgroundGradient
                 : AppColors.globalBackgroundGradientLight,
           ),
-          child: Column(
+          child: Stack(
             children: [
-              Expanded(
-                // The footer owns the bottom safe-area inset.
-                child: MediaQuery.removePadding(
-                  context: context,
-                  removeBottom: true,
-                  child: child ?? const SizedBox.shrink(),
-                ),
+              Column(
+                children: [
+                  Expanded(
+                    // The footer owns the bottom safe-area inset.
+                    child: MediaQuery.removePadding(
+                      context: context,
+                      removeBottom: true,
+                      child: child ?? const SizedBox.shrink(),
+                    ),
+                  ),
+                  const PoweredByFooter(),
+                ],
               ),
-              const PoweredByFooter(),
+              const Positioned(top: 0, left: 0, right: 0, child: ApiActivityBar()),
             ],
           ),
         );

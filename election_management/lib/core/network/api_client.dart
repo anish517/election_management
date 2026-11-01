@@ -19,9 +19,41 @@ final apiClientProvider = Provider<Dio>((ref) {
     ),
   );
 
+  // First, so it sees every response and error before the JWT retry logic.
+  dio.interceptors.add(ApiActivityInterceptor());
   dio.interceptors.add(JwtInterceptor(dio));
   return dio;
 });
+
+/// Number of API requests in flight; drives the app-wide loading bar.
+final apiActivity = ValueNotifier<int>(0);
+
+class ApiActivityInterceptor extends Interceptor {
+  static const _key = 'api_activity_counted';
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    options.extra[_key] = true;
+    apiActivity.value++;
+    handler.next(options);
+  }
+
+  void _done(RequestOptions options) {
+    if (options.extra.remove(_key) == true && apiActivity.value > 0) apiActivity.value--;
+  }
+
+  @override
+  void onResponse(Response response, ResponseInterceptorHandler handler) {
+    _done(response.requestOptions);
+    handler.next(response);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    _done(err.requestOptions);
+    handler.next(err);
+  }
+}
 
 class JwtInterceptor extends Interceptor {
   final Dio _dio;

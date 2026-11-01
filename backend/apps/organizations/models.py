@@ -5,6 +5,7 @@ Organization Model (Tenant)
 
 Each organization is a tenant. All core models have an FK to this.
 """
+import re
 import uuid
 from django.db import models
 from apps.core.models import TimestampedModel
@@ -43,8 +44,8 @@ class Organization(TimestampedModel):
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255, unique=True)
     prefix = models.CharField(
-        max_length=10, blank=True, default='',
-        help_text='Short prefix/abbreviation, e.g. SOC, NMB, HAN'
+        max_length=30, blank=True, default='',
+        help_text='Short handle, e.g. SOC, NMB, HAN. Also the public page URL: electionnepal.org/<prefix>'
     )
     org_type = models.CharField(max_length=50, choices=OrgType.choices, default=OrgType.OTHER)
     council_number = models.CharField(
@@ -170,3 +171,29 @@ class Organization(TimestampedModel):
             return self.subscription_plan.voter_cap
         from django.conf import settings
         return settings.ORG_TRIAL_VOTER_CAP  # Default trial cap
+
+
+# Single path segments the web server already uses, so no organization can take them.
+RESERVED_PREFIXES = {'v1', 'api', 'admin', 'static', 'media', 'assets', 'icons', 'canvaskit', 'www', 'o'}
+PREFIX_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9-]*$')
+
+
+def clean_org_prefix(value, exclude_id=None):
+    """
+    Validate an organization prefix, which doubles as its public URL
+    (electionnepal.org/<prefix>): URL-safe, not reserved, and unique
+    regardless of case. Returns the stripped value; raises ValueError.
+    """
+    value = (value or '').strip()
+    if not value:
+        return ''
+    if not PREFIX_RE.match(value):
+        raise ValueError('Use only letters, numbers and hyphens (it becomes the web address).')
+    if value.lower() in RESERVED_PREFIXES:
+        raise ValueError(f'"{value}" is reserved. Please choose another prefix.')
+    taken = Organization.objects.filter(prefix__iexact=value)
+    if exclude_id:
+        taken = taken.exclude(id=exclude_id)
+    if taken.exists():
+        raise ValueError(f'The prefix "{value}" is already used by another organization.')
+    return value

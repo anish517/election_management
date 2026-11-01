@@ -8,6 +8,7 @@ import '../../core/network/api_constants.dart';
 import '../../core/providers/analytics_provider.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/theme/app_theme.dart';
+import '../../shared/widgets/responsive_layout.dart';
 
 class AnalyticsScreen extends ConsumerWidget {
   final String electionId;
@@ -113,117 +114,115 @@ class _AnalyticsBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1200),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isWide = constraints.maxWidth >= 900;
+    return CenteredScroll(
+      maxWidth: 1200,
+      builder: (context, pad) => LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth >= 900;
 
-            if (isWide) {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Left Column (Turnout Donut & Hourly Velocity)
-                    Expanded(
-                      flex: 5,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _SectionHeader(icon: Icons.donut_large_rounded, title: 'Voter Turnout (मतदान सहभागिता)'),
-                          const SizedBox(height: 12),
-                          _TurnoutRingCard(analytics: analytics, isDark: isDark)
-                              .animate()
-                              .fadeIn(duration: 400.ms)
-                              .scale(begin: const Offset(0.95, 0.95), duration: 400.ms, curve: Curves.easeOut),
-                          const SizedBox(height: 24),
-                          if (analytics.activityByHour.isNotEmpty) ...[
-                            _SectionHeader(icon: Icons.bar_chart_rounded, title: 'Hourly Voting Velocity (समयगत मतदान दर)'),
-                            const SizedBox(height: 12),
-                            _VotingActivityCard(analytics: analytics, isDark: isDark)
-                                .animate()
-                                .fadeIn(duration: 500.ms, delay: 150.ms)
-                                .slideY(begin: 0.1, duration: 500.ms, curve: Curves.easeOut),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 24),
-
-                    // Right Column (Candidate Momentum Leaderboard)
-                    Expanded(
-                      flex: 6,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _SectionHeader(
-                            icon: Icons.leaderboard_rounded,
-                            title: isLive ? 'Live Candidate & Party Momentum (अग्रता तालिका)' : 'Candidate & Party Results Breakdown (नतिजा विवरण)',
-                            badge: isLive ? 'LIVE' : null,
-                          ),
-                          const SizedBox(height: 12),
-                          if (analytics.topCandidates.isNotEmpty)
-                            ...analytics.topCandidates.asMap().entries.map(
-                              (entry) => _CandidateMomentumRow(
-                                candidate: entry.value,
-                                rank: entry.key + 1,
-                                maxScore: analytics.topCandidates.first.score,
-                                isLive: isLive,
-                                isDark: isDark,
-                              ).animate().fadeIn(duration: 300.ms, delay: Duration(milliseconds: 150 + entry.key * 50)),
-                            )
-                          else
-                            _EmptyState(isDark: isDark),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            // Stacked Mobile / Narrow Layout
+          if (isWide) {
             return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
+              padding: pad(const EdgeInsets.all(24)),
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _SectionHeader(icon: Icons.donut_large_rounded, title: 'Voter Turnout (मतदान सहभागिता)'),
-                  const SizedBox(height: 12),
-                  _TurnoutRingCard(analytics: analytics, isDark: isDark),
-                  const SizedBox(height: 24),
-                  if (analytics.activityByHour.isNotEmpty) ...[
-                    _SectionHeader(icon: Icons.bar_chart_rounded, title: 'Hourly Voting Velocity (समयगत मतदान दर)'),
-                    const SizedBox(height: 12),
-                    _VotingActivityCard(analytics: analytics, isDark: isDark),
-                    const SizedBox(height: 24),
-                  ],
-                  _SectionHeader(
-                    icon: Icons.leaderboard_rounded,
-                    title: isLive ? 'Live Candidate & Party Momentum (अग्रता तालिका)' : 'Candidate & Party Results Breakdown (नतिजा विवरण)',
-                    badge: isLive ? 'LIVE' : null,
+                  // Left Column (Turnout Donut & Hourly Velocity)
+                  Expanded(
+                    flex: 5,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _SectionHeader(icon: Icons.donut_large_rounded, title: 'Voter Turnout (मतदान सहभागिता)'),
+                        const SizedBox(height: 12),
+                        _TurnoutRingCard(analytics: analytics, isDark: isDark)
+                            .animate()
+                            .fadeIn(duration: 400.ms)
+                            .scale(begin: const Offset(0.95, 0.95), duration: 400.ms, curve: Curves.easeOut),
+                        const SizedBox(height: 24),
+                        if (analytics.activityByHour.isNotEmpty) ...[
+                          _SectionHeader(icon: Icons.bar_chart_rounded, title: 'Hourly Voting Velocity (समयगत मतदान दर)'),
+                          const SizedBox(height: 12),
+                          _VotingActivityCard(analytics: analytics, isDark: isDark)
+                              .animate()
+                              .fadeIn(duration: 500.ms, delay: 150.ms)
+                              .slideY(begin: 0.1, duration: 500.ms, curve: Curves.easeOut),
+                        ],
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  if (analytics.topCandidates.isNotEmpty)
-                    ...analytics.topCandidates.asMap().entries.map(
-                      (entry) => _CandidateMomentumRow(
-                        candidate: entry.value,
-                        rank: entry.key + 1,
-                        maxScore: analytics.topCandidates.first.score,
-                        isLive: isLive,
-                        isDark: isDark,
-                      ),
-                    )
-                  else
-                    _EmptyState(isDark: isDark),
-                  const SizedBox(height: 32),
+                  const SizedBox(width: 24),
+
+                  // Right Column (Candidate Momentum Leaderboard)
+                  Expanded(
+                    flex: 6,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _SectionHeader(
+                          icon: Icons.leaderboard_rounded,
+                          title: isLive ? 'Live Candidate & Party Momentum (अग्रता तालिका)' : 'Candidate & Party Results Breakdown (नतिजा विवरण)',
+                          badge: isLive ? 'LIVE' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        if (analytics.topCandidates.isNotEmpty)
+                          ...analytics.topCandidates.asMap().entries.map(
+                            (entry) => _CandidateMomentumRow(
+                              candidate: entry.value,
+                              rank: entry.key + 1,
+                              maxScore: analytics.topCandidates.first.score,
+                              isLive: isLive,
+                              isDark: isDark,
+                            ).animate().fadeIn(duration: 300.ms, delay: Duration(milliseconds: 150 + entry.key * 50)),
+                          )
+                        else
+                          _EmptyState(isDark: isDark),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             );
-          },
-        ),
+          }
+
+          // Stacked Mobile / Narrow Layout
+          return SingleChildScrollView(
+            padding: pad(const EdgeInsets.all(16)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _SectionHeader(icon: Icons.donut_large_rounded, title: 'Voter Turnout (मतदान सहभागिता)'),
+                const SizedBox(height: 12),
+                _TurnoutRingCard(analytics: analytics, isDark: isDark),
+                const SizedBox(height: 24),
+                if (analytics.activityByHour.isNotEmpty) ...[
+                  _SectionHeader(icon: Icons.bar_chart_rounded, title: 'Hourly Voting Velocity (समयगत मतदान दर)'),
+                  const SizedBox(height: 12),
+                  _VotingActivityCard(analytics: analytics, isDark: isDark),
+                  const SizedBox(height: 24),
+                ],
+                _SectionHeader(
+                  icon: Icons.leaderboard_rounded,
+                  title: isLive ? 'Live Candidate & Party Momentum (अग्रता तालिका)' : 'Candidate & Party Results Breakdown (नतिजा विवरण)',
+                  badge: isLive ? 'LIVE' : null,
+                ),
+                const SizedBox(height: 12),
+                if (analytics.topCandidates.isNotEmpty)
+                  ...analytics.topCandidates.asMap().entries.map(
+                    (entry) => _CandidateMomentumRow(
+                      candidate: entry.value,
+                      rank: entry.key + 1,
+                      maxScore: analytics.topCandidates.first.score,
+                      isLive: isLive,
+                      isDark: isDark,
+                    ),
+                  )
+                else
+                  _EmptyState(isDark: isDark),
+                const SizedBox(height: 32),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

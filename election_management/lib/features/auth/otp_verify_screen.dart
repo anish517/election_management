@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/loading_button.dart';
+import '../../shared/widgets/responsive_layout.dart';
 
 class OtpVerifyScreen extends ConsumerStatefulWidget {
   final String identifier;
@@ -100,71 +101,67 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
         ),
       ),
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 10),
-                    const Icon(Icons.verified_user_outlined, size: 48, color: AppColors.primaryLight),
-                    const SizedBox(height: 20),
-                    Text('Verify Your Identity', style: Theme.of(context).textTheme.headlineMedium),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Enter the 6-digit code sent to\n${widget.identifier}',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 36),
-                    _buildOtpFields(),
-                    if (_errorMessage != null) ...[
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.error.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 16),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(_errorMessage!, style: const TextStyle(color: AppColors.error, fontSize: 13)),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 32),
-                    LoadingButton(
-                      onPressed: _verify,
-                      isLoading: _isLoading,
-                      label: 'Verify Code',
-                      icon: Icons.check_circle_outline_rounded,
-                    ),
-                    const SizedBox(height: 16),
-                    Center(
-                      child: TextButton(
-                        onPressed: () async {
-                          final messenger = ScaffoldMessenger.of(context);
-                          await ref.read(authProvider.notifier).requestOtp(widget.identifier);
-                          if (mounted) {
-                            messenger.showSnackBar(
-                              const SnackBar(content: Text('New OTP sent!')),
-                            );
-                          }
-                        },
-                        child: const Text('Resend Code'),
-                      ),
-                    ),
-                  ],
+        child: CenteredScroll(
+          maxWidth: 480,
+          builder: (context, pad) => SingleChildScrollView(
+            padding: pad(const EdgeInsets.symmetric(horizontal: 20, vertical: 16)),
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 10),
+                const Icon(Icons.verified_user_outlined, size: 48, color: AppColors.primaryLight),
+                const SizedBox(height: 20),
+                Text('Verify Your Identity', style: Theme.of(context).textTheme.headlineMedium),
+                const SizedBox(height: 8),
+                Text(
+                  'Enter the 6-digit code sent to\n${widget.identifier}',
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
-              ),
+                const SizedBox(height: 36),
+                _buildOtpFields(),
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(_errorMessage!, style: const TextStyle(color: AppColors.error, fontSize: 13)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 32),
+                LoadingButton(
+                  onPressed: _verify,
+                  isLoading: _isLoading,
+                  label: 'Verify Code',
+                  icon: Icons.check_circle_outline_rounded,
+                ),
+                const SizedBox(height: 16),
+                Center(
+                  child: TextButton(
+                    onPressed: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      await ref.read(authProvider.notifier).requestOtp(widget.identifier);
+                      if (mounted) {
+                        messenger.showSnackBar(
+                          const SnackBar(content: Text('New OTP sent!')),
+                        );
+                      }
+                    },
+                    child: const Text('Resend Code'),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

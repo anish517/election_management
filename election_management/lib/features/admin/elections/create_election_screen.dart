@@ -10,6 +10,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_button.dart';
+import '../../../shared/widgets/responsive_layout.dart';
 
 // ---------------------------------------------------------------------------
 // Nepali Date/time picker helper
@@ -703,1298 +704,1296 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
           ),
         ],
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 860),
-          child: Form(
-            key: _formKey,
-            child: ListView(
-              controller: _scrollCtrl,
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
-              children: [
-                // Top Welcome Card
-                Container(
-                  margin: const EdgeInsets.only(bottom: 24),
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        _hexToColor(_primaryColor),
-                        _hexToColor(_secondaryColor),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _hexToColor(
-                          _primaryColor,
-                        ).withValues(alpha: 0.3),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
+      body: CenteredScroll(
+        maxWidth: 860,
+        builder: (context, pad) => Form(
+          key: _formKey,
+          child: ListView(
+            controller: _scrollCtrl,
+            padding: pad(const EdgeInsets.fromLTRB(20, 20, 20, 100)),
+            children: [
+              // Top Welcome Card
+              Container(
+                margin: const EdgeInsets.only(bottom: 24),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      _hexToColor(_primaryColor),
+                      _hexToColor(_secondaryColor),
                     ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Icon(
-                          Icons.how_to_vote_rounded,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Election Setup Wizard',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Configure your election identity, timeline milestones, candidacy rules, and security.',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.85),
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // ══════════════════════════════════════════════════════════
-                // 1. ELECTION INFORMATION
-                // ══════════════════════════════════════════════════════════
-                _sectionCard(
-                  context,
-                  step: 'STEP 1',
-                  title: 'Election Identity & Branding',
-                  subtitle: 'Basic name, code, contact information, and theme',
-                  icon: Icons.badge_outlined,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: TextFormField(
-                            controller: _titleCtrl,
-                            decoration: _dec(
-                              'Election Title *',
-                              hint:
-                                  'e.g. Annual Executive Committee Election 2083',
-                              prefix: const Icon(Icons.how_to_vote_outlined),
-                            ),
-                            validator: (v) => (v == null || v.trim().isEmpty)
-                                ? 'Election title is required'
-                                : null,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          flex: 1,
-                          child: TextFormField(
-                            controller: _prefixCtrl,
-                            decoration: _dec(
-                              'Prefix Code *',
-                              hint: 'e.g. ELEC',
-                              prefix: const Icon(Icons.tag_rounded),
-                            ),
-                            textCapitalization: TextCapitalization.characters,
-                            maxLength: 10,
-                            buildCounter:
-                                (
-                                  _, {
-                                  required currentLength,
-                                  required isFocused,
-                                  required maxLength,
-                                }) => null,
-                            validator: (v) => (v == null || v.trim().isEmpty)
-                                ? 'Required'
-                                : null,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextFormField(
-                      controller: _descCtrl,
-                      decoration: _dec(
-                        'Description',
-                        hint:
-                            'Provide a brief overview of this election for members',
-                        prefix: const Icon(Icons.notes_rounded),
-                      ),
-                      maxLines: 3,
-                    ),
-                    const SizedBox(height: 16),
-
-                    TextFormField(
-                      controller: _contactCtrl,
-                      decoration: _dec(
-                        'Official Helpline / Contact *',
-                        hint: 'e.g. +977-9841234567',
-                        prefix: const Icon(Icons.phone_outlined),
-                      ),
-                      keyboardType: TextInputType.phone,
-                      validator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Contact number is required'
-                          : null,
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Logo Upload Card
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.image_outlined,
-                              size: 16,
-                              color: AppColors.primary,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Official Election Emblem / Logo',
-                              style: Theme.of(context).textTheme.labelMedium
-                                  ?.copyWith(fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        GestureDetector(
-                          onTap: _uploading ? null : _uploadLogo,
-                          child: Container(
-                            height: 120,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFF1E293B)
-                                  : const Color(0xFFF8FAFC),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: _logoUrl.isNotEmpty
-                                    ? AppColors.primary
-                                    : (isDark
-                                          ? Colors.white12
-                                          : Colors.grey.shade300),
-                                width: 1.5,
-                              ),
-                            ),
-                            child: _uploading
-                                ? const Center(
-                                    child: CircularProgressIndicator(),
-                                  )
-                                : _logoUrl.isEmpty
-                                ? Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.cloud_upload_outlined,
-                                        color: AppColors.primary,
-                                        size: 34,
-                                      ),
-                                      const SizedBox(height: 8),
-                                      const Text(
-                                        'Click or tap to upload election logo',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 13,
-                                        ),
-                                      ),
-                                      Text(
-                                        'Supported: JPG, PNG, SVG (Max 2MB)',
-                                        style: TextStyle(
-                                          color: Colors.grey.shade500,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                : Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: Image.network(
-                                          _logoUrl,
-                                          fit: BoxFit.contain,
-                                          height: 100,
-                                        ),
-                                      ),
-                                      Positioned(
-                                        right: 12,
-                                        bottom: 12,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 6,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.black87,
-                                            borderRadius: BorderRadius.circular(
-                                              20,
-                                            ),
-                                          ),
-                                          child: const Row(
-                                            children: [
-                                              Icon(
-                                                Icons.edit,
-                                                color: Colors.white,
-                                                size: 12,
-                                              ),
-                                              SizedBox(width: 4),
-                                              Text(
-                                                'Change',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 11,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Color Palettes
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Theme Palette Presets',
-                          style: Theme.of(context).textTheme.labelMedium
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: _presetColors.map((p) {
-                            final isSelected =
-                                _primaryColor.toLowerCase() ==
-                                p['primary']!.toLowerCase();
-                            final pColor = _hexToColor(p['primary']!);
-                            final sColor = _hexToColor(p['secondary']!);
-
-                            return InkWell(
-                              onTap: () {
-                                setState(() {
-                                  _primaryColor = p['primary']!;
-                                  _secondaryColor = p['secondary']!;
-                                });
-                              },
-                              borderRadius: BorderRadius.circular(20),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? pColor.withValues(alpha: 0.15)
-                                      : (isDark
-                                            ? Colors.white10
-                                            : Colors.grey.shade100),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? pColor
-                                        : Colors.transparent,
-                                    width: 1.5,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      width: 12,
-                                      height: 12,
-                                      decoration: BoxDecoration(
-                                        color: pColor,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Container(
-                                      width: 12,
-                                      height: 12,
-                                      decoration: BoxDecoration(
-                                        color: sColor,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      p['name']!,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: isSelected
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                        color: isSelected
-                                            ? pColor
-                                            : (isDark
-                                                  ? Colors.white70
-                                                  : Colors.black87),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ],
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _hexToColor(
+                        _primaryColor,
+                      ).withValues(alpha: 0.3),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
                     ),
                   ],
                 ),
-
-                // ══════════════════════════════════════════════════════════
-                // 2. ELECTION METHOD & DELIVERY (Method 1 vs Method 2)
-                // ══════════════════════════════════════════════════════════
-                _sectionCard(
-                  context,
-                  step: 'STEP 2',
-                  title: 'Election Method & Voting Delivery (मतदान प्रणाली तथा माध्यम)',
-                  subtitle:
-                      'Choose between Online/Remote Voting (Method 1) or Physical Venue Booths (Method 2)',
-                  icon: Icons.hub_rounded,
+                child: Row(
                   children: [
-                    // Method 1 vs Method 2 Toggle Cards
-                    Row(
-                      children: [
-                        Expanded(
-                          child: InkWell(
-                            onTap: () => setState(() => _electionMethod = 'online'),
-                            borderRadius: BorderRadius.circular(14),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: _electionMethod == 'online'
-                                    ? AppColors.primary.withValues(alpha: 0.12)
-                                    : (isDark ? Colors.white10 : Colors.grey.shade100),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: _electionMethod == 'online'
-                                      ? AppColors.primary
-                                      : Colors.transparent,
-                                  width: 2,
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.language_rounded,
-                                        color: _electionMethod == 'online'
-                                            ? AppColors.primary
-                                            : Colors.grey,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          'Method 1: Online / Remote',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 13.5,
-                                            color: _electionMethod == 'online'
-                                                ? (isDark ? Colors.white : AppColors.primary)
-                                                : (isDark ? Colors.white70 : Colors.black87),
-                                          ),
-                                        ),
-                                      ),
-                                      Icon(
-                                        _electionMethod == 'online'
-                                            ? Icons.check_circle_rounded
-                                            : Icons.radio_button_off,
-                                        color: _electionMethod == 'online'
-                                            ? AppColors.primary
-                                            : Colors.grey,
-                                        size: 20,
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    'Voters cast ballots remotely via internet using mobile app or web browser.',
-                                    style: TextStyle(
-                                      fontSize: 11.5,
-                                      color: isDark ? Colors.white60 : Colors.grey.shade600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: InkWell(
-                            onTap: () => setState(() => _electionMethod = 'venue'),
-                            borderRadius: BorderRadius.circular(14),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: _electionMethod == 'venue'
-                                    ? AppColors.primary.withValues(alpha: 0.12)
-                                    : (isDark ? Colors.white10 : Colors.grey.shade100),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: _electionMethod == 'venue'
-                                      ? AppColors.primary
-                                      : Colors.transparent,
-                                  width: 2,
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.storefront_rounded,
-                                        color: _electionMethod == 'venue'
-                                            ? AppColors.primary
-                                            : Colors.grey,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          'Method 2: Venue / Device',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 13.5,
-                                            color: _electionMethod == 'venue'
-                                                ? (isDark ? Colors.white : AppColors.primary)
-                                                : (isDark ? Colors.white70 : Colors.black87),
-                                          ),
-                                        ),
-                                      ),
-                                      Icon(
-                                        _electionMethod == 'venue'
-                                            ? Icons.check_circle_rounded
-                                            : Icons.radio_button_off,
-                                        color: _electionMethod == 'venue'
-                                            ? AppColors.primary
-                                            : Colors.grey,
-                                        size: 20,
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    'Supervised on-site voting on laptops/iPads provided at the physical election venue.',
-                                    style: TextStyle(
-                                      fontSize: 11.5,
-                                      color: isDark ? Colors.white60 : Colors.grey.shade600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-
-                    // Method 1 Sub-types (Online Options)
-                    if (_electionMethod == 'online') ...[
-                      Text(
-                        'Select Online Delivery Type (अनलाइन प्रकार)',
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(14),
                       ),
-                      const SizedBox(height: 8),
-                      Row(
+                      child: const Icon(
+                        Icons.how_to_vote_rounded,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: _deliveryTypeTile(
-                              type: 'hybrid',
-                              title: 'Type 3: Hybrid',
-                              subtitle: 'Auto-routes App vs Web voters',
-                              badge: 'Recommended',
-                              isSelected: _onlineType == 'hybrid',
-                              onTap: () => setState(() => _onlineType = 'hybrid'),
+                          const Text(
+                            'Election Setup Wizard',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _deliveryTypeTile(
-                              type: 'mobile_app',
-                              title: 'Type 1: Mobile App',
-                              subtitle: 'SMS + Email OTP in-app',
-                              isSelected: _onlineType == 'mobile_app',
-                              onTap: () => setState(() => _onlineType = 'mobile_app'),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _deliveryTypeTile(
-                              type: 'web_based',
-                              title: 'Type 2: Web Based',
-                              subtitle: 'Email OTP + Single-use link',
-                              isSelected: _onlineType == 'web_based',
-                              onTap: () => setState(() => _onlineType = 'web_based'),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Configure your election identity, timeline milestones, candidacy rules, and security.',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.85),
+                              fontSize: 13,
                             ),
                           ),
                         ],
                       ),
-                    ],
-
-                    // Method 2 Venue Configuration
-                    if (_electionMethod == 'venue') ...[
-                      TextFormField(
-                        controller: _venueNameCtrl,
-                        decoration: _dec(
-                          'Election Venue Location Name *',
-                          hint: 'e.g. Birendra International Convention Centre / City Hall',
-                          prefix: const Icon(Icons.location_on_outlined),
-                        ),
-                        validator: (v) => (_electionMethod == 'venue' && (v == null || v.trim().isEmpty))
-                            ? 'Venue name is required for Venue-based voting'
-                            : null,
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _venueAddressCtrl,
-                        maxLines: 2,
-                        decoration: _dec(
-                          'Full Physical Venue Address',
-                          hint: 'e.g. New Baneshwor, Ward 10, Kathmandu, Nepal',
-                          prefix: const Icon(Icons.map_outlined),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      SwitchListTile(
-                        value: _requireVenueOtp,
-                        onChanged: (val) => setState(() => _requireVenueOtp = val),
-                        title: const Text(
-                          'Require 2nd Layer OTP at Booth (दोस्रो तहको सुरक्षा OTP)',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
-                        ),
-                        subtitle: const Text(
-                          'Baseline is Unique Voter ID. Enable this for an additional SMS OTP or Email check at the booth.',
-                          style: TextStyle(fontSize: 11.5),
-                        ),
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                      if (_requireVenueOtp) ...[
-                        const SizedBox(height: 8),
-                        DropdownButtonFormField<String>(
-                          initialValue: _venueOtpChannel,
-                          decoration: _dec(
-                            'Secondary Verification Channel',
-                            prefix: const Icon(Icons.lock_outline_rounded),
-                          ),
-                          items: const [
-                            DropdownMenuItem(value: 'sms', child: Text('SMS OTP to Voter Mobile')),
-                            DropdownMenuItem(value: 'email', child: Text('Email Confirmation Link')),
-                            DropdownMenuItem(value: 'both', child: Text('Both SMS OTP & Email Confirmation')),
-                          ],
-                          onChanged: (val) {
-                            if (val != null) setState(() => _venueOtpChannel = val);
-                          },
-                        ),
-                      ],
-                    ],
+                    ),
                   ],
                 ),
+              ),
 
-                // ══════════════════════════════════════════════════════════
-                // 2B. ELECTORAL SYSTEM & ADVANCED SETTINGS (Requirements 4-9)
-                // ══════════════════════════════════════════════════════════
-                _sectionCard(
-                  context,
-                  step: 'SETTINGS',
-                  title: 'Electoral System & Display Settings (निर्वाचन प्रणाली र सेटिङ)',
-                  subtitle:
-                      'Configure voting system (FPTP vs Samānupātik), party/panel affiliations, symbols, and branch scope',
-                  icon: Icons.tune_rounded,
-                  children: [
-                    // System Selector: FPTP vs Samānupātik vs Mixed
-                    const Text(
-                      'Voting System (निर्वाचन प्रणाली):',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              // ══════════════════════════════════════════════════════════
+              // 1. ELECTION INFORMATION
+              // ══════════════════════════════════════════════════════════
+              _sectionCard(
+                context,
+                step: 'STEP 1',
+                title: 'Election Identity & Branding',
+                subtitle: 'Basic name, code, contact information, and theme',
+                icon: Icons.badge_outlined,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: TextFormField(
+                          controller: _titleCtrl,
+                          decoration: _dec(
+                            'Election Title *',
+                            hint:
+                                'e.g. Annual Executive Committee Election 2083',
+                            prefix: const Icon(Icons.how_to_vote_outlined),
+                          ),
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? 'Election title is required'
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        flex: 1,
+                        child: TextFormField(
+                          controller: _prefixCtrl,
+                          decoration: _dec(
+                            'Prefix Code *',
+                            hint: 'e.g. ELEC',
+                            prefix: const Icon(Icons.tag_rounded),
+                          ),
+                          textCapitalization: TextCapitalization.characters,
+                          maxLength: 10,
+                          buildCounter:
+                              (
+                                _, {
+                                required currentLength,
+                                required isFocused,
+                                required maxLength,
+                              }) => null,
+                          validator: (v) => (v == null || v.trim().isEmpty)
+                              ? 'Required'
+                              : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  TextFormField(
+                    controller: _descCtrl,
+                    decoration: _dec(
+                      'Description',
+                      hint:
+                          'Provide a brief overview of this election for members',
+                      prefix: const Icon(Icons.notes_rounded),
+                    ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 16),
+
+                  TextFormField(
+                    controller: _contactCtrl,
+                    decoration: _dec(
+                      'Official Helpline / Contact *',
+                      hint: 'e.g. +977-9841234567',
+                      prefix: const Icon(Icons.phone_outlined),
+                    ),
+                    keyboardType: TextInputType.phone,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Contact number is required'
+                        : null,
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Logo Upload Card
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.image_outlined,
+                            size: 16,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Official Election Emblem / Logo',
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: _uploading ? null : _uploadLogo,
+                        child: Container(
+                          height: 120,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF1E293B)
+                                : const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: _logoUrl.isNotEmpty
+                                  ? AppColors.primary
+                                  : (isDark
+                                        ? Colors.white12
+                                        : Colors.grey.shade300),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: _uploading
+                              ? const Center(
+                                  child: CircularProgressIndicator(),
+                                )
+                              : _logoUrl.isEmpty
+                              ? Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.cloud_upload_outlined,
+                                      color: AppColors.primary,
+                                      size: 34,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    const Text(
+                                      'Click or tap to upload election logo',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Supported: JPG, PNG, SVG (Max 2MB)',
+                                      style: TextStyle(
+                                        color: Colors.grey.shade500,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Image.network(
+                                        _logoUrl,
+                                        fit: BoxFit.contain,
+                                        height: 100,
+                                      ),
+                                    ),
+                                    Positioned(
+                                      right: 12,
+                                      bottom: 12,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black87,
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                        ),
+                                        child: const Row(
+                                          children: [
+                                            Icon(
+                                              Icons.edit,
+                                              color: Colors.white,
+                                              size: 12,
+                                            ),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              'Change',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Color Palettes
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Theme Palette Presets',
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _presetColors.map((p) {
+                          final isSelected =
+                              _primaryColor.toLowerCase() ==
+                              p['primary']!.toLowerCase();
+                          final pColor = _hexToColor(p['primary']!);
+                          final sColor = _hexToColor(p['secondary']!);
+
+                          return InkWell(
+                            onTap: () {
+                              setState(() {
+                                _primaryColor = p['primary']!;
+                                _secondaryColor = p['secondary']!;
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? pColor.withValues(alpha: 0.15)
+                                    : (isDark
+                                          ? Colors.white10
+                                          : Colors.grey.shade100),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? pColor
+                                      : Colors.transparent,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 12,
+                                    height: 12,
+                                    decoration: BoxDecoration(
+                                      color: pColor,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Container(
+                                    width: 12,
+                                    height: 12,
+                                    decoration: BoxDecoration(
+                                      color: sColor,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    p['name']!,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: isSelected
+                                          ? FontWeight.bold
+                                          : FontWeight.normal,
+                                      color: isSelected
+                                          ? pColor
+                                          : (isDark
+                                                ? Colors.white70
+                                                : Colors.black87),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              // ══════════════════════════════════════════════════════════
+              // 2. ELECTION METHOD & DELIVERY (Method 1 vs Method 2)
+              // ══════════════════════════════════════════════════════════
+              _sectionCard(
+                context,
+                step: 'STEP 2',
+                title: 'Election Method & Voting Delivery (मतदान प्रणाली तथा माध्यम)',
+                subtitle:
+                    'Choose between Online/Remote Voting (Method 1) or Physical Venue Booths (Method 2)',
+                icon: Icons.hub_rounded,
+                children: [
+                  // Method 1 vs Method 2 Toggle Cards
+                  Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => setState(() => _electionMethod = 'online'),
+                          borderRadius: BorderRadius.circular(14),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: _electionMethod == 'online'
+                                  ? AppColors.primary.withValues(alpha: 0.12)
+                                  : (isDark ? Colors.white10 : Colors.grey.shade100),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: _electionMethod == 'online'
+                                    ? AppColors.primary
+                                    : Colors.transparent,
+                                width: 2,
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.language_rounded,
+                                      color: _electionMethod == 'online'
+                                          ? AppColors.primary
+                                          : Colors.grey,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Method 1: Online / Remote',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13.5,
+                                          color: _electionMethod == 'online'
+                                              ? (isDark ? Colors.white : AppColors.primary)
+                                              : (isDark ? Colors.white70 : Colors.black87),
+                                        ),
+                                      ),
+                                    ),
+                                    Icon(
+                                      _electionMethod == 'online'
+                                          ? Icons.check_circle_rounded
+                                          : Icons.radio_button_off,
+                                      color: _electionMethod == 'online'
+                                          ? AppColors.primary
+                                          : Colors.grey,
+                                      size: 20,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Voters cast ballots remotely via internet using mobile app or web browser.',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: isDark ? Colors.white60 : Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => setState(() => _electionMethod = 'venue'),
+                          borderRadius: BorderRadius.circular(14),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: _electionMethod == 'venue'
+                                  ? AppColors.primary.withValues(alpha: 0.12)
+                                  : (isDark ? Colors.white10 : Colors.grey.shade100),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: _electionMethod == 'venue'
+                                    ? AppColors.primary
+                                    : Colors.transparent,
+                                width: 2,
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.storefront_rounded,
+                                      color: _electionMethod == 'venue'
+                                          ? AppColors.primary
+                                          : Colors.grey,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Method 2: Venue / Device',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13.5,
+                                          color: _electionMethod == 'venue'
+                                              ? (isDark ? Colors.white : AppColors.primary)
+                                              : (isDark ? Colors.white70 : Colors.black87),
+                                        ),
+                                      ),
+                                    ),
+                                    Icon(
+                                      _electionMethod == 'venue'
+                                          ? Icons.check_circle_rounded
+                                          : Icons.radio_button_off,
+                                      color: _electionMethod == 'venue'
+                                          ? AppColors.primary
+                                          : Colors.grey,
+                                      size: 20,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Supervised on-site voting on laptops/iPads provided at the physical election venue.',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: isDark ? Colors.white60 : Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Method 1 Sub-types (Online Options)
+                  if (_electionMethod == 'online') ...[
+                    Text(
+                      'Select Online Delivery Type (अनलाइन प्रकार)',
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
                     ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
                         Expanded(
-                          child: InkWell(
-                            onTap: () => setState(() => _electionType = 'fptp'),
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: _electionType == 'fptp'
-                                    ? AppColors.primary.withValues(alpha: 0.1)
-                                    : (isDark ? Colors.white10 : Colors.grey.shade100),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: _electionType == 'fptp' ? AppColors.primary : Colors.transparent,
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    _electionType == 'fptp'
-                                        ? Icons.radio_button_checked
-                                        : Icons.radio_button_off,
-                                    color: _electionType == 'fptp' ? AppColors.primary : Colors.grey,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'FPTP (प्रत्यक्ष)',
-                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
-                                        ),
-                                        Text(
-                                          'First-Past-The-Post direct voting',
-                                          style: TextStyle(fontSize: 10.5, color: Colors.grey),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          child: _deliveryTypeTile(
+                            type: 'hybrid',
+                            title: 'Type 3: Hybrid',
+                            subtitle: 'Auto-routes App vs Web voters',
+                            badge: 'Recommended',
+                            isSelected: _onlineType == 'hybrid',
+                            onTap: () => setState(() => _onlineType = 'hybrid'),
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: InkWell(
-                            onTap: () => setState(() => _electionType = 'samanupatik'),
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: _electionType == 'samanupatik'
-                                    ? AppColors.primary.withValues(alpha: 0.1)
-                                    : (isDark ? Colors.white10 : Colors.grey.shade100),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: _electionType == 'samanupatik' ? AppColors.primary : Colors.transparent,
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    _electionType == 'samanupatik'
-                                        ? Icons.radio_button_checked
-                                        : Icons.radio_button_off,
-                                    color: _electionType == 'samanupatik' ? AppColors.primary : Colors.grey,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Samānupātik (समानुपातिक)',
-                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
-                                        ),
-                                        Text(
-                                          'Proportional party-list voting',
-                                          style: TextStyle(fontSize: 10.5, color: Colors.grey),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          child: _deliveryTypeTile(
+                            type: 'mobile_app',
+                            title: 'Type 1: Mobile App',
+                            subtitle: 'SMS + Email OTP in-app',
+                            isSelected: _onlineType == 'mobile_app',
+                            onTap: () => setState(() => _onlineType = 'mobile_app'),
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: InkWell(
-                            onTap: () => setState(() => _electionType = 'mixed'),
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: _electionType == 'mixed'
-                                    ? AppColors.primary.withValues(alpha: 0.1)
-                                    : (isDark ? Colors.white10 : Colors.grey.shade100),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: _electionType == 'mixed' ? AppColors.primary : Colors.transparent,
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    _electionType == 'mixed'
-                                        ? Icons.radio_button_checked
-                                        : Icons.radio_button_off,
-                                    color: _electionType == 'mixed' ? AppColors.primary : Colors.grey,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Mixed (मिश्रित)',
-                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
-                                        ),
-                                        Text(
-                                          'Direct (FPTP) + PR Proportional',
-                                          style: TextStyle(fontSize: 10.5, color: Colors.grey),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          child: _deliveryTypeTile(
+                            type: 'web_based',
+                            title: 'Type 2: Web Based',
+                            subtitle: 'Email OTP + Single-use link',
+                            isSelected: _onlineType == 'web_based',
+                            onTap: () => setState(() => _onlineType = 'web_based'),
                           ),
                         ),
                       ],
                     ),
+                  ],
 
-                    // Samānupātik & Mixed PR Configuration Card
-                    if (_electionType == 'samanupatik' || _electionType == 'mixed') ...[
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.05),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Row(
-                              children: [
-                                Icon(Icons.calculate_outlined, color: AppColors.primary, size: 20),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Proportional Representation (PR) Allocation Parameters',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextFormField(
-                                    controller: _totalPrSeatsCtrl,
-                                    keyboardType: TextInputType.number,
-                                    decoration: _dec(
-                                      'Total PR Seats (जम्मा सिट संख्या)',
-                                      prefix: const Icon(Icons.event_seat_rounded),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: TextFormField(
-                                    controller: _prThresholdCtrl,
-                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                    decoration: _dec(
-                                      'Threshold % (न्यूनतम थ्रेसहोल्ड प्रतिशत)',
-                                      prefix: const Icon(Icons.percent_rounded),
-                                      hint: 'e.g. 3.0',
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Icon(Icons.verified_rounded, color: AppColors.primary, size: 20),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  const Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          'Seat Allocation Method: Modified Sainte-Laguë',
-                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
-                                        ),
-                                        SizedBox(height: 2),
-                                        Text(
-                                          'संशोधित सेन्ट-लागु पद्धति (नेपाल निर्वाचन मापदण्ड — Divisors: 1.4, 3, 5, 7, 9...)',
-                                          style: TextStyle(fontSize: 11, color: Colors.grey),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                  // Method 2 Venue Configuration
+                  if (_electionMethod == 'venue') ...[
+                    TextFormField(
+                      controller: _venueNameCtrl,
+                      decoration: _dec(
+                        'Election Venue Location Name *',
+                        hint: 'e.g. Birendra International Convention Centre / City Hall',
+                        prefix: const Icon(Icons.location_on_outlined),
                       ),
-                    ],
-
-                    const SizedBox(height: 16),
-                    const Divider(),
-                    const SizedBox(height: 8),
-
-                    // Display Badges & Symbols Toggles (Requirements 4, 5, 6)
-                    const Text(
-                      'Candidate Display Settings (उम्मेदवार विवरण प्रदर्शन):',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      validator: (v) => (_electionMethod == 'venue' && (v == null || v.trim().isEmpty))
+                          ? 'Venue name is required for Venue-based voting'
+                          : null,
                     ),
-                    const SizedBox(height: 4),
-                    SwitchListTile(
-                      value: _enableParty,
-                      onChanged: (val) => setState(() => _enableParty = val),
-                      title: const Text('Enable Party Affiliation (पार्टी / दल)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
-                      subtitle: const Text('Display political/organization party affiliation on nomination and ballot cards', style: TextStyle(fontSize: 11.5)),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    SwitchListTile(
-                      value: _enablePanel,
-                      onChanged: (val) => setState(() => _enablePanel = val),
-                      title: const Text('Enable Panel / Slate (प्यानल / समूह)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
-                      subtitle: const Text('Display panel / group label on nomination and ballot cards', style: TextStyle(fontSize: 11.5)),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    SwitchListTile(
-                      value: _enableSymbol,
-                      onChanged: (val) => setState(() => _enableSymbol = val),
-                      title: const Text('Enable Election Symbol (चुनाव चिन्ह)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
-                      subtitle: const Text('Allow candidates/parties to have official symbols displayed during voting', style: TextStyle(fontSize: 11.5)),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    SwitchListTile(
-                      value: _enableCandidatePhoto,
-                      onChanged: (val) => setState(() => _enableCandidatePhoto = val),
-                      title: const Text('Enable Candidate Photo (उम्मेदवार फोटो)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
-                      subtitle: const Text('Display profile photographs of nominated candidates on the ballot paper', style: TextStyle(fontSize: 11.5)),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-
                     const SizedBox(height: 12),
-                    const Divider(),
-                    const SizedBox(height: 8),
-
-                    // Partial Election / Target Branches (Requirement 7)
+                    TextFormField(
+                      controller: _venueAddressCtrl,
+                      maxLines: 2,
+                      decoration: _dec(
+                        'Full Physical Venue Address',
+                        hint: 'e.g. New Baneshwor, Ward 10, Kathmandu, Nepal',
+                        prefix: const Icon(Icons.map_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     SwitchListTile(
-                      value: _isPartialElection,
-                      onChanged: (val) => setState(() => _isPartialElection = val),
+                      value: _requireVenueOtp,
+                      onChanged: (val) => setState(() => _requireVenueOtp = val),
                       title: const Text(
-                        'Partial Election / Branch Restricted (आंशिक निर्वाचन)',
+                        'Require 2nd Layer OTP at Booth (दोस्रो तहको सुरक्षा OTP)',
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
                       ),
                       subtitle: const Text(
-                        'Restrict voting strictly to electors registered under specific target branches',
+                        'Baseline is Unique Voter ID. Enable this for an additional SMS OTP or Email check at the booth.',
                         style: TextStyle(fontSize: 11.5),
                       ),
                       contentPadding: EdgeInsets.zero,
                     ),
-                    if (_isPartialElection) ...[
+                    if (_requireVenueOtp) ...[
                       const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _branchesCtrl,
+                      DropdownButtonFormField<String>(
+                        initialValue: _venueOtpChannel,
                         decoration: _dec(
-                          'Target Branches (शाखाहरू - अल्पविरामले छुट्याउनुहोस्)',
-                          hint: 'e.g. Kathmandu Central, Lalitpur, Pokhara',
-                          prefix: const Icon(Icons.location_city_rounded),
+                          'Secondary Verification Channel',
+                          prefix: const Icon(Icons.lock_outline_rounded),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Electors outside these branches will be automatically rejected with branch verification message.',
-                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                        items: const [
+                          DropdownMenuItem(value: 'sms', child: Text('SMS OTP to Voter Mobile')),
+                          DropdownMenuItem(value: 'email', child: Text('Email Confirmation Link')),
+                          DropdownMenuItem(value: 'both', child: Text('Both SMS OTP & Email Confirmation')),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) setState(() => _venueOtpChannel = val);
+                        },
                       ),
                     ],
                   ],
-                ),
+                ],
+              ),
 
-                // ══════════════════════════════════════════════════════════
-                // 3. VOTER LIST SCHEDULE (Step 3)
-                // ══════════════════════════════════════════════════════════
-                _sectionCard(
-                  context,
-                  step: 'STEP 3',
-                  title: 'Voter List Schedule (नामावली तालिका)',
-                  subtitle:
-                      'Initial publication, voter claims & objections, and certified final list',
-                  icon: Icons.people_outline_rounded,
-                  children: [
-                    _DateTile(
-                      label:
-                          '1. Preliminary Voter List Published (पहिलो नामावली)',
-                      value: _firstVoterList,
-                      onTap: () =>
-                          _pick(_firstVoterList, (d) => _firstVoterList = d),
-                    ),
-                    const SizedBox(height: 10),
-                    _DateTile(
-                      label:
-                          '2. Voter List Claim Deadline (दाबी-विरोध अन्तिम मिति)',
-                      value: _voterListClaim,
-                      onTap: () =>
-                          _pick(_voterListClaim, (d) => _voterListClaim = d),
-                    ),
-                    const SizedBox(height: 10),
-                    _DateTile(
-                      label:
-                          '3. Certified Final Voter List (अन्तिम नामावली प्रकाशन)',
-                      value: _finalVoterList,
-                      onTap: () =>
-                          _pick(_finalVoterList, (d) => _finalVoterList = d),
-                    ),
-                  ],
-                ),
-
-                // ══════════════════════════════════════════════════════════
-                // 4. CANDIDACY SCHEDULE (Step 4)
-                // ══════════════════════════════════════════════════════════
-                _sectionCard(
-                  context,
-                  step: 'STEP 4',
-                  title: 'Candidacy & Nomination Schedule (उम्मेदवारी तालिका)',
-                  subtitle:
-                      'Filing period, scrutiny / objections, and certified candidate roster',
-                  icon: Icons.assignment_ind_outlined,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _DateTile(
-                            label: '1. Nominations Open',
-                            value: _candidacyStart,
-                            onTap: () => _pick(
-                              _candidacyStart,
-                              (d) => _candidacyStart = d,
+              // ══════════════════════════════════════════════════════════
+              // 2B. ELECTORAL SYSTEM & ADVANCED SETTINGS (Requirements 4-9)
+              // ══════════════════════════════════════════════════════════
+              _sectionCard(
+                context,
+                step: 'SETTINGS',
+                title: 'Electoral System & Display Settings (निर्वाचन प्रणाली र सेटिङ)',
+                subtitle:
+                    'Configure voting system (FPTP vs Samānupātik), party/panel affiliations, symbols, and branch scope',
+                icon: Icons.tune_rounded,
+                children: [
+                  // System Selector: FPTP vs Samānupātik vs Mixed
+                  const Text(
+                    'Voting System (निर्वाचन प्रणाली):',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => setState(() => _electionType = 'fptp'),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: _electionType == 'fptp'
+                                  ? AppColors.primary.withValues(alpha: 0.1)
+                                  : (isDark ? Colors.white10 : Colors.grey.shade100),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _electionType == 'fptp' ? AppColors.primary : Colors.transparent,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _electionType == 'fptp'
+                                      ? Icons.radio_button_checked
+                                      : Icons.radio_button_off,
+                                  color: _electionType == 'fptp' ? AppColors.primary : Colors.grey,
+                                ),
+                                const SizedBox(width: 8),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'FPTP (प्रत्यक्ष)',
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                                      ),
+                                      Text(
+                                        'First-Past-The-Post direct voting',
+                                        style: TextStyle(fontSize: 10.5, color: Colors.grey),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _DateTile(
-                            label: '2. Nominations Close',
-                            value: _candidacyEnd,
-                            onTap: () =>
-                                _pick(_candidacyEnd, (d) => _candidacyEnd = d),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _DateTile(
-                            label: '3. Scrutiny / Objection Deadline',
-                            value: _candidacyClaim,
-                            onTap: () => _pick(
-                              _candidacyClaim,
-                              (d) => _candidacyClaim = d,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => setState(() => _electionType = 'samanupatik'),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: _electionType == 'samanupatik'
+                                  ? AppColors.primary.withValues(alpha: 0.1)
+                                  : (isDark ? Colors.white10 : Colors.grey.shade100),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _electionType == 'samanupatik' ? AppColors.primary : Colors.transparent,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _electionType == 'samanupatik'
+                                      ? Icons.radio_button_checked
+                                      : Icons.radio_button_off,
+                                  color: _electionType == 'samanupatik' ? AppColors.primary : Colors.grey,
+                                ),
+                                const SizedBox(width: 8),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Samānupātik (समानुपातिक)',
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                                      ),
+                                      Text(
+                                        'Proportional party-list voting',
+                                        style: TextStyle(fontSize: 10.5, color: Colors.grey),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _DateTile(
-                            label: '4. Final Candidate List Published',
-                            value: _candidacyFinal,
-                            onTap: () => _pick(
-                              _candidacyFinal,
-                              (d) => _candidacyFinal = d,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => setState(() => _electionType = 'mixed'),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: _electionType == 'mixed'
+                                  ? AppColors.primary.withValues(alpha: 0.1)
+                                  : (isDark ? Colors.white10 : Colors.grey.shade100),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _electionType == 'mixed' ? AppColors.primary : Colors.transparent,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _electionType == 'mixed'
+                                      ? Icons.radio_button_checked
+                                      : Icons.radio_button_off,
+                                  color: _electionType == 'mixed' ? AppColors.primary : Colors.grey,
+                                ),
+                                const SizedBox(width: 8),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Mixed (मिश्रित)',
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                                      ),
+                                      Text(
+                                        'Direct (FPTP) + PR Proportional',
+                                        style: TextStyle(fontSize: 10.5, color: Colors.grey),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+
+                  // Samānupātik & Mixed PR Configuration Card
+                  if (_electionType == 'samanupatik' || _electionType == 'mixed') ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.calculate_outlined, color: AppColors.primary, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'Proportional Representation (PR) Allocation Parameters',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _totalPrSeatsCtrl,
+                                  keyboardType: TextInputType.number,
+                                  decoration: _dec(
+                                    'Total PR Seats (जम्मा सिट संख्या)',
+                                    prefix: const Icon(Icons.event_seat_rounded),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _prThresholdCtrl,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  decoration: _dec(
+                                    'Threshold % (न्यूनतम थ्रेसहोल्ड प्रतिशत)',
+                                    prefix: const Icon(Icons.percent_rounded),
+                                    hint: 'e.g. 3.0',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(Icons.verified_rounded, color: AppColors.primary, size: 20),
+                                ),
+                                const SizedBox(width: 12),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Seat Allocation Method: Modified Sainte-Laguë',
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                                      ),
+                                      SizedBox(height: 2),
+                                      Text(
+                                        'संशोधित सेन्ट-लागु पद्धति (नेपाल निर्वाचन मापदण्ड — Divisors: 1.4, 3, 5, 7, 9...)',
+                                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
-                ),
 
-                // ══════════════════════════════════════════════════════════
-                // 5. VOTING SCHEDULE (Step 5 - Core Required)
-                // ══════════════════════════════════════════════════════════
-                _sectionCard(
-                  context,
-                  step: 'STEP 5',
-                  title: 'Voting & Polling Window (मतदान अवधि)',
-                  subtitle: 'Official balloting start and end dates (Required)',
-                  icon: Icons.how_to_vote_rounded,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _DateTile(
-                            label: 'Polling Opens (मतदान सुरु)',
-                            value: _votingStart,
-                            onTap: () =>
-                                _pick(_votingStart, (d) => _votingStart = d),
-                            required: true,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _DateTile(
-                            label: 'Polling Closes (मतदान समाप्त)',
-                            value: _votingEnd,
-                            onTap: () =>
-                                _pick(_votingEnd, (d) => _votingEnd = d),
-                            required: true,
-                          ),
-                        ),
-                      ],
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 8),
+
+                  // Display Badges & Symbols Toggles (Requirements 4, 5, 6)
+                  const Text(
+                    'Candidate Display Settings (उम्मेदवार विवरण प्रदर्शन):',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  const SizedBox(height: 4),
+                  SwitchListTile(
+                    value: _enableParty,
+                    onChanged: (val) => setState(() => _enableParty = val),
+                    title: const Text('Enable Party Affiliation (पार्टी / दल)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                    subtitle: const Text('Display political/organization party affiliation on nomination and ballot cards', style: TextStyle(fontSize: 11.5)),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  SwitchListTile(
+                    value: _enablePanel,
+                    onChanged: (val) => setState(() => _enablePanel = val),
+                    title: const Text('Enable Panel / Slate (प्यानल / समूह)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                    subtitle: const Text('Display panel / group label on nomination and ballot cards', style: TextStyle(fontSize: 11.5)),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  SwitchListTile(
+                    value: _enableSymbol,
+                    onChanged: (val) => setState(() => _enableSymbol = val),
+                    title: const Text('Enable Election Symbol (चुनाव चिन्ह)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                    subtitle: const Text('Allow candidates/parties to have official symbols displayed during voting', style: TextStyle(fontSize: 11.5)),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  SwitchListTile(
+                    value: _enableCandidatePhoto,
+                    onChanged: (val) => setState(() => _enableCandidatePhoto = val),
+                    title: const Text('Enable Candidate Photo (उम्मेदवार फोटो)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                    subtitle: const Text('Display profile photographs of nominated candidates on the ballot paper', style: TextStyle(fontSize: 11.5)),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+
+                  const SizedBox(height: 12),
+                  const Divider(),
+                  const SizedBox(height: 8),
+
+                  // Partial Election / Target Branches (Requirement 7)
+                  SwitchListTile(
+                    value: _isPartialElection,
+                    onChanged: (val) => setState(() => _isPartialElection = val),
+                    title: const Text(
+                      'Partial Election / Branch Restricted (आंशिक निर्वाचन)',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                    ),
+                    subtitle: const Text(
+                      'Restrict voting strictly to electors registered under specific target branches',
+                      style: TextStyle(fontSize: 11.5),
+                    ),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  if (_isPartialElection) ...[
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _branchesCtrl,
+                      decoration: _dec(
+                        'Target Branches (शाखाहरू - अल्पविरामले छुट्याउनुहोस्)',
+                        hint: 'e.g. Kathmandu Central, Lalitpur, Pokhara',
+                        prefix: const Icon(Icons.location_city_rounded),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Electors outside these branches will be automatically rejected with branch verification message.',
+                      style: TextStyle(fontSize: 11, color: Colors.grey),
                     ),
                   ],
-                ),
+                ],
+              ),
 
-                // ══════════════════════════════════════════════════════════
-                // 6. PAID STATUS
-                // ══════════════════════════════════════════════════════════
-                _sectionCard(
-                  context,
-                  step: 'STEP 6',
-                  title: 'Candidacy Nomination Fee',
-                  subtitle:
-                      'Configure whether candidates are charged a nomination fee',
-                  icon: Icons.payments_outlined,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: InkWell(
-                            onTap: () => setState(() => _isPaid = false),
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
+              // ══════════════════════════════════════════════════════════
+              // 3. VOTER LIST SCHEDULE (Step 3)
+              // ══════════════════════════════════════════════════════════
+              _sectionCard(
+                context,
+                step: 'STEP 3',
+                title: 'Voter List Schedule (नामावली तालिका)',
+                subtitle:
+                    'Initial publication, voter claims & objections, and certified final list',
+                icon: Icons.people_outline_rounded,
+                children: [
+                  _DateTile(
+                    label:
+                        '1. Preliminary Voter List Published (पहिलो नामावली)',
+                    value: _firstVoterList,
+                    onTap: () =>
+                        _pick(_firstVoterList, (d) => _firstVoterList = d),
+                  ),
+                  const SizedBox(height: 10),
+                  _DateTile(
+                    label:
+                        '2. Voter List Claim Deadline (दाबी-विरोध अन्तिम मिति)',
+                    value: _voterListClaim,
+                    onTap: () =>
+                        _pick(_voterListClaim, (d) => _voterListClaim = d),
+                  ),
+                  const SizedBox(height: 10),
+                  _DateTile(
+                    label:
+                        '3. Certified Final Voter List (अन्तिम नामावली प्रकाशन)',
+                    value: _finalVoterList,
+                    onTap: () =>
+                        _pick(_finalVoterList, (d) => _finalVoterList = d),
+                  ),
+                ],
+              ),
+
+              // ══════════════════════════════════════════════════════════
+              // 4. CANDIDACY SCHEDULE (Step 4)
+              // ══════════════════════════════════════════════════════════
+              _sectionCard(
+                context,
+                step: 'STEP 4',
+                title: 'Candidacy & Nomination Schedule (उम्मेदवारी तालिका)',
+                subtitle:
+                    'Filing period, scrutiny / objections, and certified candidate roster',
+                icon: Icons.assignment_ind_outlined,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _DateTile(
+                          label: '1. Nominations Open',
+                          value: _candidacyStart,
+                          onTap: () => _pick(
+                            _candidacyStart,
+                            (d) => _candidacyStart = d,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _DateTile(
+                          label: '2. Nominations Close',
+                          value: _candidacyEnd,
+                          onTap: () =>
+                              _pick(_candidacyEnd, (d) => _candidacyEnd = d),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _DateTile(
+                          label: '3. Scrutiny / Objection Deadline',
+                          value: _candidacyClaim,
+                          onTap: () => _pick(
+                            _candidacyClaim,
+                            (d) => _candidacyClaim = d,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _DateTile(
+                          label: '4. Final Candidate List Published',
+                          value: _candidacyFinal,
+                          onTap: () => _pick(
+                            _candidacyFinal,
+                            (d) => _candidacyFinal = d,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              // ══════════════════════════════════════════════════════════
+              // 5. VOTING SCHEDULE (Step 5 - Core Required)
+              // ══════════════════════════════════════════════════════════
+              _sectionCard(
+                context,
+                step: 'STEP 5',
+                title: 'Voting & Polling Window (मतदान अवधि)',
+                subtitle: 'Official balloting start and end dates (Required)',
+                icon: Icons.how_to_vote_rounded,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _DateTile(
+                          label: 'Polling Opens (मतदान सुरु)',
+                          value: _votingStart,
+                          onTap: () =>
+                              _pick(_votingStart, (d) => _votingStart = d),
+                          required: true,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _DateTile(
+                          label: 'Polling Closes (मतदान समाप्त)',
+                          value: _votingEnd,
+                          onTap: () =>
+                              _pick(_votingEnd, (d) => _votingEnd = d),
+                          required: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              // ══════════════════════════════════════════════════════════
+              // 6. PAID STATUS
+              // ══════════════════════════════════════════════════════════
+              _sectionCard(
+                context,
+                step: 'STEP 6',
+                title: 'Candidacy Nomination Fee',
+                subtitle:
+                    'Configure whether candidates are charged a nomination fee',
+                icon: Icons.payments_outlined,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => setState(() => _isPaid = false),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: !_isPaid
+                                  ? AppColors.primary.withValues(alpha: 0.1)
+                                  : (isDark
+                                        ? Colors.white10
+                                        : Colors.grey.shade100),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
                                 color: !_isPaid
-                                    ? AppColors.primary.withValues(alpha: 0.1)
-                                    : (isDark
-                                          ? Colors.white10
-                                          : Colors.grey.shade100),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
+                                    ? AppColors.primary
+                                    : Colors.transparent,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  !_isPaid
+                                      ? Icons.radio_button_checked
+                                      : Icons.radio_button_off,
                                   color: !_isPaid
                                       ? AppColors.primary
-                                      : Colors.transparent,
-                                  width: 1.5,
+                                      : Colors.grey,
                                 ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    !_isPaid
-                                        ? Icons.radio_button_checked
-                                        : Icons.radio_button_off,
-                                    color: !_isPaid
-                                        ? AppColors.primary
-                                        : Colors.grey,
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Free (निःशुल्क)',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
                                   ),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    'Free (निःशुल्क)',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: InkWell(
-                            onTap: () => setState(() => _isPaid = true),
-                            borderRadius: BorderRadius.circular(12),
-                            child: Container(
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => setState(() => _isPaid = true),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: _isPaid
+                                  ? AppColors.primary.withValues(alpha: 0.1)
+                                  : (isDark
+                                        ? Colors.white10
+                                        : Colors.grey.shade100),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
                                 color: _isPaid
-                                    ? AppColors.primary.withValues(alpha: 0.1)
-                                    : (isDark
-                                          ? Colors.white10
-                                          : Colors.grey.shade100),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
+                                    ? AppColors.primary
+                                    : Colors.transparent,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _isPaid
+                                      ? Icons.radio_button_checked
+                                      : Icons.radio_button_off,
                                   color: _isPaid
                                       ? AppColors.primary
-                                      : Colors.transparent,
-                                  width: 1.5,
+                                      : Colors.grey,
                                 ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    _isPaid
-                                        ? Icons.radio_button_checked
-                                        : Icons.radio_button_off,
-                                    color: _isPaid
-                                        ? AppColors.primary
-                                        : Colors.grey,
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Paid Fee (शुल्क)',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
                                   ),
-                                  const SizedBox(width: 8),
-                                  const Text(
-                                    'Paid Fee (शुल्क)',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                    if (_isPaid) ...[
-                      const SizedBox(height: 14),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: Colors.blue.withValues(alpha: 0.2),
-                          ),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(
-                              Icons.info_outline,
-                              size: 18,
-                              color: Colors.blue,
-                            ),
-                            SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                'Nomination filing charges will be configured individually during the Designation / Position Creation step.',
-                                style: TextStyle(fontSize: 12, height: 1.4),
-                              ),
-                            ),
-                          ],
                         ),
                       ),
                     ],
-                  ],
-                ),
-
-                // ══════════════════════════════════════════════════════════
-                // 7. BALLOT & VOTING RULES
-                // ══════════════════════════════════════════════════════════
-                _sectionCard(
-                  context,
-                  step: 'STEP 7',
-                  title: 'Electoral Privacy & Ballot Rules',
-                  subtitle:
-                      'Cryptographic secrecy, anonymity, and boycott configurations',
-                  icon: Icons.security_rounded,
-                  children: [
-                    SwitchListTile(
-                      value: _isSecretBallot,
-                      onChanged: (val) => setState(() => _isSecretBallot = val),
-                      title: const Text(
-                        'Cryptographic Secret Ballot',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  if (_isPaid) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: Colors.blue.withValues(alpha: 0.2),
+                        ),
                       ),
-                      subtitle: const Text(
-                        'Strictly decouple voter identities from cast ballots with SHA-256 receipts',
+                      child: const Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            size: 18,
+                            color: Colors.blue,
+                          ),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Nomination filing charges will be configured individually during the Designation / Position Creation step.',
+                              style: TextStyle(fontSize: 12, height: 1.4),
+                            ),
+                          ),
+                        ],
                       ),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    const Divider(),
-                    SwitchListTile(
-                      value: _allowBoycott,
-                      onChanged: (val) => setState(() => _allowBoycott = val),
-                      title: const Text(
-                        'Allow No Vote / Boycott (बहिष्कार)',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: const Text(
-                        'Allow voters to select "No Vote / Boycott" on candidate ballots',
-                      ),
-                      contentPadding: EdgeInsets.zero,
                     ),
                   ],
-                ),
+                ],
+              ),
 
-                // Submit Button
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 52,
-                  child: LoadingButton(
-                    isLoading: state.isLoading,
-                    label: 'Create Election as Draft',
-                    icon: Icons.how_to_vote_rounded,
-                    onPressed: _submit,
+              // ══════════════════════════════════════════════════════════
+              // 7. BALLOT & VOTING RULES
+              // ══════════════════════════════════════════════════════════
+              _sectionCard(
+                context,
+                step: 'STEP 7',
+                title: 'Electoral Privacy & Ballot Rules',
+                subtitle:
+                    'Cryptographic secrecy, anonymity, and boycott configurations',
+                icon: Icons.security_rounded,
+                children: [
+                  SwitchListTile(
+                    value: _isSecretBallot,
+                    onChanged: (val) => setState(() => _isSecretBallot = val),
+                    title: const Text(
+                      'Cryptographic Secret Ballot',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: const Text(
+                      'Strictly decouple voter identities from cast ballots with SHA-256 receipts',
+                    ),
+                    contentPadding: EdgeInsets.zero,
                   ),
-                ),
-                const SizedBox(height: 12),
-                Center(
-                  child: TextButton.icon(
-                    icon: const Icon(Icons.arrow_back_rounded, size: 16),
-                    label: const Text('Back to Elections'),
-                    onPressed: () {
-                      if (context.canPop()) {
-                        context.pop();
-                      } else {
-                        context.go('/admin/elections');
-                      }
-                    },
+                  const Divider(),
+                  SwitchListTile(
+                    value: _allowBoycott,
+                    onChanged: (val) => setState(() => _allowBoycott = val),
+                    title: const Text(
+                      'Allow No Vote / Boycott (बहिष्कार)',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: const Text(
+                      'Allow voters to select "No Vote / Boycott" on candidate ballots',
+                    ),
+                    contentPadding: EdgeInsets.zero,
                   ),
+                ],
+              ),
+
+              // Submit Button
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 52,
+                child: LoadingButton(
+                  isLoading: state.isLoading,
+                  label: 'Create Election as Draft',
+                  icon: Icons.how_to_vote_rounded,
+                  onPressed: _submit,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 12),
+              Center(
+                child: TextButton.icon(
+                  icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                  label: const Text('Back to Elections'),
+                  onPressed: () {
+                    if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go('/admin/elections');
+                    }
+                  },
+                ),
+              ),
+            ],
           ),
         ),
       ),

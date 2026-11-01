@@ -71,23 +71,26 @@ class NominationInboxScreen extends ConsumerWidget {
           );
         }
         final pendingTotal = rows.fold<int>(0, (n, r) => n + r.pending);
-        return RefreshIndicator(
-          onRefresh: () => ref.refresh(nominationSummaryProvider.future),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
-            children: [
-              Text(
-                pendingTotal == 0
-                    ? 'No applications waiting for review.'
-                    : '$pendingTotal application${pendingTotal == 1 ? '' : 's'} waiting for review.',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 12),
-              for (final r in rows) ...[
-                _ElectionNominationCard(row: r),
-                const SizedBox(height: 10),
+        return CenteredScroll(
+          maxWidth: 960,
+          builder: (context, pad) => RefreshIndicator(
+            onRefresh: () => ref.refresh(nominationSummaryProvider.future),
+            child: ListView(
+              padding: pad(const EdgeInsets.fromLTRB(16, 16, 16, 40)),
+              children: [
+                Text(
+                  pendingTotal == 0
+                      ? 'No applications waiting for review.'
+                      : '$pendingTotal application${pendingTotal == 1 ? '' : 's'} waiting for review.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 12),
+                for (final r in rows) ...[
+                  _ElectionNominationCard(row: r),
+                  const SizedBox(height: 10),
+                ],
               ],
-            ],
+            ),
           ),
         );
       },
@@ -108,12 +111,7 @@ class NominationInboxScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 960),
-          child: body,
-        ),
-      ),
+      body: body,
     );
 
     if (!isDesktop) return content;

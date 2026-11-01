@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,6 +32,7 @@ import '../../features/results/results_screen.dart';
 import '../../features/profile/user_profile_screen.dart';
 import '../../features/analytics/analytics_screen.dart';
 import '../../features/venue_kiosk/venue_kiosk_screen.dart';
+import '../../features/public/public_organization_screen.dart';
 
 /// Bridges Riverpod auth state into a ChangeNotifier so GoRouter
 /// can call [refreshListenable] and re-run the redirect logic whenever
@@ -46,6 +48,17 @@ final _routerNotifierProvider = ChangeNotifierProvider(
   (ref) => _RouterNotifier(ref),
 );
 
+/// `electionnepal.org/<prefix>` opens that organization's public page. The app
+/// routes by URL hash, so a bare first path segment is read here once.
+String _initialLocation() {
+  if (!kIsWeb || Uri.base.fragment.isNotEmpty) return '/login';
+  final segments = Uri.base.pathSegments.where((s) => s.isNotEmpty).toList();
+  if (segments.length == 1 && RegExp(r'^[A-Za-z0-9][A-Za-z0-9-]*$').hasMatch(segments.first)) {
+    return '/o/${segments.first}';
+  }
+  return '/login';
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
   // Read, don't watch: watching rebuilt the GoRouter on every auth change
   // (even "loading"), which reset navigation to /login, so e.g. a wrong OTP
@@ -53,7 +66,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   final notifier = ref.read(_routerNotifierProvider);
 
   return GoRouter(
-    initialLocation: '/login',
+    initialLocation: _initialLocation(),
     refreshListenable: notifier,
     redirect: (context, state) {
       final authState = ref.read(authProvider);
@@ -67,7 +80,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           loc.startsWith('/reset-password');
 
       final isDirectVoteRoute = loc.startsWith('/vote/direct') ||
-          loc.startsWith('/vote/receipt');
+          loc.startsWith('/vote/receipt') ||
+          loc.startsWith('/o/');
 
       // Unauthenticated users are allowed on auth pages and direct ballot link pages
       if (!isLoggedIn && !isOnAuth && !isDirectVoteRoute) return '/login';
@@ -115,6 +129,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/login',
         name: 'login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/o/:prefix',
+        name: 'public-org',
+        builder: (context, state) => PublicOrganizationScreen(
+          prefix: state.pathParameters['prefix']!,
+        ),
       ),
       GoRoute(
         path: '/forgot-password',

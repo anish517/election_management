@@ -49,3 +49,36 @@ class ResponsiveFormWrapper extends StatelessWidget {
     );
   }
 }
+
+/// Lays a page's scroll view across the full available width, so its
+/// scrollbar sits at the window edge and the wheel scrolls from anywhere,
+/// while keeping the content centred within [maxWidth].
+///
+/// [builder] gets `pad`, which widens a padding by the side gutters; pass the
+/// scroll view's padding through it.
+class CenteredScroll extends StatelessWidget {
+  final double maxWidth;
+  final Widget Function(
+      BuildContext context, EdgeInsets Function(EdgeInsets) pad) builder;
+
+  const CenteredScroll({
+    super.key,
+    required this.maxWidth,
+    required this.builder,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final gutter = constraints.maxWidth > maxWidth
+            ? (constraints.maxWidth - maxWidth) / 2
+            : 0.0;
+        return builder(
+          context,
+          (base) => base + EdgeInsets.symmetric(horizontal: gutter),
+        );
+      },
+    );
+  }
+}

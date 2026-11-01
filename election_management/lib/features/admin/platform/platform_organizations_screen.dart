@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../core/network/api_constants.dart';
 import '../../../core/providers/platform_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/org_logo.dart';
+import '../../../shared/widgets/responsive_layout.dart';
 
 const _statusLabels = {
   'trial': 'Trial',
@@ -85,66 +88,64 @@ class _PlatformOrganizationsScreenState
         icon: const Icon(Icons.add_business_rounded),
         label: const Text('New Organization'),
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 960),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: TextField(
-                  controller: _searchCtrl,
-                  decoration: const InputDecoration(
-                    hintText: 'Search by name, slug or email',
-                    prefixIcon: Icon(Icons.search_rounded),
-                  ),
-                  onSubmitted: (v) =>
-                      ref.read(platformOrgSearchProvider.notifier).state = v.trim(),
+      body: CenteredScroll(
+        maxWidth: 960,
+        builder: (context, pad) => Column(
+          children: [
+            Padding(
+              padding: pad(const EdgeInsets.fromLTRB(16, 16, 16, 8)),
+              child: TextField(
+                controller: _searchCtrl,
+                decoration: const InputDecoration(
+                  hintText: 'Search by name, prefix or email',
+                  prefixIcon: Icon(Icons.search_rounded),
                 ),
+                onSubmitted: (v) =>
+                    ref.read(platformOrgSearchProvider.notifier).state = v.trim(),
               ),
-              SizedBox(
-                height: 48,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  children: [
-                    _filterChip('All', null, statusFilter),
-                    for (final e in _statusLabels.entries)
-                      _filterChip(e.value, e.key, statusFilter),
-                  ],
-                ),
+            ),
+            SizedBox(
+              height: 48,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: pad(const EdgeInsets.symmetric(horizontal: 16)),
+                children: [
+                  _filterChip('All', null, statusFilter),
+                  for (final e in _statusLabels.entries)
+                    _filterChip(e.value, e.key, statusFilter),
+                ],
               ),
-              Expanded(
-                child: orgsAsync.when(
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text('Could not load organizations: $e'),
-                    ),
+            ),
+            Expanded(
+              child: orgsAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Text('Could not load organizations: $e'),
                   ),
-                  data: (orgs) {
-                    if (orgs.isEmpty) {
-                      return const EmptyStateWidget(
-                        icon: Icons.business_rounded,
-                        title: 'No organizations found',
-                      );
-                    }
-                    return RefreshIndicator(
-                      onRefresh: () =>
-                          ref.refresh(platformOrganizationsProvider.future),
-                      child: ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
-                        itemCount: orgs.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 10),
-                        itemBuilder: (context, i) => _OrgCard(org: orgs[i]),
-                      ),
+                ),
+                data: (orgs) {
+                  if (orgs.isEmpty) {
+                    return const EmptyStateWidget(
+                      icon: Icons.business_rounded,
+                      title: 'No organizations found',
                     );
-                  },
-                ),
+                  }
+                  return RefreshIndicator(
+                    onRefresh: () =>
+                        ref.refresh(platformOrganizationsProvider.future),
+                    child: ListView.separated(
+                      padding: pad(const EdgeInsets.fromLTRB(16, 8, 16, 96)),
+                      itemCount: orgs.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      itemBuilder: (context, i) => _OrgCard(org: orgs[i]),
+                    ),
+                  );
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -189,6 +190,8 @@ class _OrgCard extends ConsumerWidget {
             children: [
               Row(
                 children: [
+                  OrgLogo(name: org.name, logoUrl: org.logoUrl, size: 40),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       org.name,
@@ -221,6 +224,11 @@ class _OrgCard extends ConsumerWidget {
                     : 'Admin: ${org.adminEmails.join(', ')}',
                 style: theme.textTheme.bodySmall,
               ),
+              if (org.prefix.isNotEmpty)
+                Text(
+                  ApiConstants.orgPublicUrl(org.prefix).replaceFirst(RegExp(r'^https?://'), ''),
+                  style: theme.textTheme.bodySmall?.copyWith(color: AppColors.primaryLight),
+                ),
               const SizedBox(height: 10),
               Wrap(
                 spacing: 16,
@@ -307,53 +315,51 @@ class PlatformOrganizationDetailScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 960),
-          child: RefreshIndicator(
-            onRefresh: refresh,
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
-              children: [
-                orgAsync.when(
-                  loading: () => const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                  error: (e, _) => Text('Could not load organization: $e'),
-                  data: (org) => _OrgSummaryCard(org: org),
+      body: CenteredScroll(
+        maxWidth: 960,
+        builder: (context, pad) => RefreshIndicator(
+          onRefresh: refresh,
+          child: ListView(
+            padding: pad(const EdgeInsets.fromLTRB(16, 16, 16, 40)),
+            children: [
+              orgAsync.when(
+                loading: () => const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: CircularProgressIndicator()),
                 ),
-                const SizedBox(height: 24),
-                Text(
-                  'Elections',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w800),
+                error: (e, _) => Text('Could not load organization: $e'),
+                data: (org) => _OrgSummaryCard(org: org),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Elections',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 12),
+              electionsAsync.when(
+                loading: () => const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: CircularProgressIndicator()),
                 ),
-                const SizedBox(height: 12),
-                electionsAsync.when(
-                  loading: () => const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                  error: (e, _) => Text('Could not load elections: $e'),
-                  data: (elections) => elections.isEmpty
-                      ? const EmptyStateWidget(
-                          icon: Icons.how_to_vote_rounded,
-                          title: 'No elections yet',
-                        )
-                      : Column(
-                          children: [
-                            for (final e in elections) ...[
-                              _ElectionRow(election: e),
-                              const SizedBox(height: 10),
-                            ],
+                error: (e, _) => Text('Could not load elections: $e'),
+                data: (elections) => elections.isEmpty
+                    ? const EmptyStateWidget(
+                        icon: Icons.how_to_vote_rounded,
+                        title: 'No elections yet',
+                      )
+                    : Column(
+                        children: [
+                          for (final e in elections) ...[
+                            _ElectionRow(election: e),
+                            const SizedBox(height: 10),
                           ],
-                        ),
-                ),
-              ],
-            ),
+                        ],
+                      ),
+              ),
+            ],
           ),
         ),
       ),
@@ -381,6 +387,8 @@ class _OrgSummaryCard extends StatelessWidget {
           children: [
             Row(
               children: [
+                OrgLogo(name: org.name, logoUrl: org.logoUrl, size: 52),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     org.name,
@@ -413,6 +421,11 @@ class _OrgSummaryCard extends StatelessWidget {
                   : 'Admin: ${org.adminEmails.join(', ')}',
               style: theme.textTheme.bodySmall,
             ),
+            if (org.prefix.isNotEmpty)
+              Text(
+                ApiConstants.orgPublicUrl(org.prefix).replaceFirst(RegExp(r'^https?://'), ''),
+                style: theme.textTheme.bodySmall?.copyWith(color: AppColors.primaryLight),
+              ),
             const SizedBox(height: 12),
             Wrap(
               spacing: 16,

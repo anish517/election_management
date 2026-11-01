@@ -50,6 +50,8 @@ class ApiConstants {
       '/elections/$eid/quotas/$qid/';
   static String electionCandidates(String id) => '/elections/$id/candidates/';
   static String electionVoters(String id) => '/elections/$id/voters/';
+  static String voterBallotLink(String electionId, String voterId) =>
+      '/elections/$electionId/voters/$voterId/ballot-link/';
   static String approveCandidate(String eid, String cid) =>
       '/elections/$eid/candidates/$cid/approve/';
   static String rejectCandidate(String eid, String cid) =>
@@ -162,7 +164,13 @@ class ApiConstants {
   static const String organizationStats = '/organization/stats/';
 
   // Platform (Super Admin, all tenants)
+  static const String platformOverview = '/platform/overview/';
   static const String platformOrganizations = '/platform/organizations/';
+  /// An organization's public page, e.g. https://electionnepal.org/SOC.
+  static String orgPublicUrl(String prefix) =>
+      '${kIsWeb ? Uri.base.origin : baseUrl.replaceAll('/v1', '')}/$prefix';
+  static String publicOrganization(String prefix) =>
+      '/public/organizations/${Uri.encodeComponent(prefix)}/';
   static String platformOrganizationDetail(String id) =>
       '/platform/organizations/$id/';
   static String platformOrganizationElections(String id) =>

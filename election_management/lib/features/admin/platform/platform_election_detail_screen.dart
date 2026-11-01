@@ -7,6 +7,7 @@ import '../../../core/providers/platform_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/models.dart';
 import 'platform_organizations_screen.dart' show electionStateColor;
+import '../../../shared/widgets/responsive_layout.dart';
 
 final _dateFmt = DateFormat('d MMM yyyy, h:mm a');
 
@@ -54,64 +55,62 @@ class PlatformElectionDetailScreen extends ConsumerWidget {
             child: Text('Could not load election: $e'),
           ),
         ),
-        data: (e) => Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 960),
-            child: RefreshIndicator(
-              onRefresh: () => ref.refresh(platformElectionDetailProvider(electionId).future),
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
-                children: [
-                  _Header(e: e),
-                  const SizedBox(height: 16),
-                  _VoterStats(e: e),
-                  const SizedBox(height: 16),
-                  _Section(
-                    title: 'Settings',
-                    icon: Icons.tune_rounded,
-                    child: _Settings(e: e),
-                  ),
-                  if (e.schedule.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    _Section(
-                      title: 'Schedule',
-                      icon: Icons.event_note_rounded,
-                      child: Column(
-                        children: [
-                          for (final (label, at) in e.schedule)
-                            _KeyValue(label, _dateFmt.format(at.toLocal())),
-                        ],
-                      ),
-                    ),
-                  ],
+        data: (e) => CenteredScroll(
+          maxWidth: 960,
+          builder: (context, pad) => RefreshIndicator(
+            onRefresh: () => ref.refresh(platformElectionDetailProvider(electionId).future),
+            child: ListView(
+              padding: pad(const EdgeInsets.fromLTRB(16, 16, 16, 40)),
+              children: [
+                _Header(e: e),
+                const SizedBox(height: 16),
+                _VoterStats(e: e),
+                const SizedBox(height: 16),
+                _Section(
+                  title: 'Settings',
+                  icon: Icons.tune_rounded,
+                  child: _Settings(e: e),
+                ),
+                if (e.schedule.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   _Section(
-                    title: 'Positions & Candidates',
-                    icon: Icons.work_outline_rounded,
-                    child: e.positions.isEmpty
-                        ? const Text('No positions yet')
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              for (final p in e.positions) _PositionBlock(p: p),
-                            ],
-                          ),
-                  ),
-                  if (e.history.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    _Section(
-                      title: 'State History',
-                      icon: Icons.history_rounded,
-                      child: Column(
-                        children: [
-                          for (final (from, to, at) in e.history)
-                            _KeyValue('$from → $to', _dateFmt.format(at.toLocal())),
-                        ],
-                      ),
+                    title: 'Schedule',
+                    icon: Icons.event_note_rounded,
+                    child: Column(
+                      children: [
+                        for (final (label, at) in e.schedule)
+                          _KeyValue(label, _dateFmt.format(at.toLocal())),
+                      ],
                     ),
-                  ],
+                  ),
                 ],
-              ),
+                const SizedBox(height: 16),
+                _Section(
+                  title: 'Positions & Candidates',
+                  icon: Icons.work_outline_rounded,
+                  child: e.positions.isEmpty
+                      ? const Text('No positions yet')
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            for (final p in e.positions) _PositionBlock(p: p),
+                          ],
+                        ),
+                ),
+                if (e.history.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  _Section(
+                    title: 'State History',
+                    icon: Icons.history_rounded,
+                    child: Column(
+                      children: [
+                        for (final (from, to, at) in e.history)
+                          _KeyValue('$from → $to', _dateFmt.format(at.toLocal())),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ),

@@ -18,6 +18,7 @@ import 'edit_voter_dialog.dart';
 import 'import_members_dialog.dart';
 import 'voter_csv_import_wizard_screen.dart';
 import 'voter_profile_sheet.dart';
+import 'whatsapp_ballot_link_dialog.dart';
 
 class VotersScreen extends ConsumerStatefulWidget {
   final String electionId;
@@ -30,6 +31,11 @@ class VotersScreen extends ConsumerStatefulWidget {
 class _VotersScreenState extends ConsumerState<VotersScreen> {
   String _searchQuery = '';
   String _eligibilityFilter = 'all'; // 'all', 'eligible', 'ineligible'
+
+  // Set in build from the election and user; read by the row builders.
+  bool _listFinal = false;
+  bool _votingOpen = false;
+  bool _isOrgAdmin = false;
 
   Future<void> _exportCsv() async {
     try {
@@ -205,6 +211,9 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
 
     final election = electionAsync.valueOrNull;
     final isVoterClaimOpen = election?.isVoterClaimOpen ?? false;
+    _listFinal = election?.voterListFinal ?? false;
+    _votingOpen = election?.state == 'voting_open';
+    _isOrgAdmin = user?.isOrgAdmin ?? false;
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.background : const Color(0xFFF8F9FA),
@@ -305,52 +314,65 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                         ),
                       ),
                     ] else if (isAdmin) ...[
-                      FilledButton.icon(
-                        onPressed: () {
-                          showDialog(
-                            context: context,
-                            builder: (context) => AddVoterDialog(electionId: widget.electionId),
-                          );
-                        },
-                        icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
-                        label: const Text('Add New Voter'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF4F46E5),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      if (_listFinal)
+                        Chip(
+                          avatar: const Icon(Icons.lock_outline_rounded, size: 16, color: Colors.amber),
+                          label: Text(
+                            _isOrgAdmin
+                                ? 'Final list published: only email and phone can be edited'
+                                : 'Final voter list published: the roll is locked',
+                            style: const TextStyle(fontSize: 12),
+                          ),
                         ),
-                      ),
-                      FilledButton.icon(
-                        onPressed: () {
-                          showDialog(
-                            context: context,
-                            builder: (context) => ImportMembersDialog(electionId: widget.electionId),
-                          );
-                        },
-                        icon: const Icon(Icons.people_alt_outlined, size: 18),
-                        label: const Text('Import Members'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF7C3AED),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      if (!_listFinal)
+                        FilledButton.icon(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => AddVoterDialog(electionId: widget.electionId),
+                            );
+                          },
+                          icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+                          label: const Text('Add New Voter'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF4F46E5),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
                         ),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => VoterCsvImportWizardScreen(electionId: widget.electionId),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.upload_file_rounded, size: 18),
-                        label: const Text('Import CSV'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      if (!_listFinal)
+                        FilledButton.icon(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => ImportMembersDialog(electionId: widget.electionId),
+                            );
+                          },
+                          icon: const Icon(Icons.people_alt_outlined, size: 18),
+                          label: const Text('Import Members'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF7C3AED),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
                         ),
-                      ),
+                      if (!_listFinal)
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => VoterCsvImportWizardScreen(electionId: widget.electionId),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.upload_file_rounded, size: 18),
+                          label: const Text('Import CSV'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
                       OutlinedButton.icon(
                         onPressed: _exportCsv,
                         icon: const Icon(Icons.download_rounded, size: 18),
@@ -960,48 +982,65 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                   },
                 ),
                 const SizedBox(width: 4),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 18, color: Colors.indigo),
-                  tooltip: 'Edit Voter',
-                  padding: const EdgeInsets.all(4),
-                  constraints: const BoxConstraints(),
-                  visualDensity: VisualDensity.compact,
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => EditVoterDialog(electionId: widget.electionId, voter: voter),
-                    );
-                  },
-                ),
+                if (_canSendBallotLink(voter)) ...[
+                  IconButton(
+                    icon: const Icon(Icons.chat_rounded, size: 18, color: WhatsAppBallotLinkDialog.whatsAppGreen),
+                    tooltip: 'Send ballot link on WhatsApp',
+                    padding: const EdgeInsets.all(4),
+                    constraints: const BoxConstraints(),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => WhatsAppBallotLinkDialog.show(context, ref, widget.electionId, voter),
+                  ),
+                  const SizedBox(width: 4),
+                ],
+                if (!_listFinal || _isOrgAdmin)
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 18, color: Colors.indigo),
+                    tooltip: _listFinal ? 'Edit email / phone' : 'Edit Voter',
+                    padding: const EdgeInsets.all(4),
+                    constraints: const BoxConstraints(),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => EditVoterDialog(
+                          electionId: widget.electionId,
+                          voter: voter,
+                          contactOnly: _listFinal,
+                        ),
+                      );
+                    },
+                  ),
                 const SizedBox(width: 4),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
-                  tooltip: 'Delete Voter',
-                  padding: const EdgeInsets.all(4),
-                  constraints: const BoxConstraints(),
-                  visualDensity: VisualDensity.compact,
-                  onPressed: () async {
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        title: const Text('Delete Voter from Roll'),
-                        content: Text('Are you sure you want to delete "$fullName" from this election roll?'),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                          FilledButton(
-                            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-                            onPressed: () => Navigator.pop(ctx, true),
-                            child: const Text('Delete Voter'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirm == true) {
-                      ref.read(publishElectionProvider.notifier).deleteVoter(widget.electionId, voter['id'].toString());
-                    }
-                  },
-                ),
+                if (!_listFinal)
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
+                    tooltip: 'Delete Voter',
+                    padding: const EdgeInsets.all(4),
+                    constraints: const BoxConstraints(),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          title: const Text('Delete Voter from Roll'),
+                          content: Text('Are you sure you want to delete "$fullName" from this election roll?'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                            FilledButton(
+                              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('Delete Voter'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true) {
+                        ref.read(publishElectionProvider.notifier).deleteVoter(widget.electionId, voter['id'].toString());
+                      }
+                    },
+                  ),
               ],
             ),
           ),
@@ -1216,41 +1255,53 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                   },
                 ),
               if (isAdmin) ...[
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 18, color: Colors.indigo),
-                  tooltip: 'Edit Voter',
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => EditVoterDialog(electionId: widget.electionId, voter: voter),
-                    );
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
-                  tooltip: 'Delete Voter',
-                  onPressed: () async {
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        title: const Text('Delete Voter from Roll'),
-                        content: Text('Are you sure you want to delete "$fullName" from this election roll?'),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                          FilledButton(
-                            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-                            onPressed: () => Navigator.pop(ctx, true),
-                            child: const Text('Delete Voter'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirm == true) {
-                      ref.read(publishElectionProvider.notifier).deleteVoter(widget.electionId, voter['id'].toString());
-                    }
-                  },
-                ),
+                if (_canSendBallotLink(voter))
+                  IconButton(
+                    icon: const Icon(Icons.chat_rounded, size: 18, color: WhatsAppBallotLinkDialog.whatsAppGreen),
+                    tooltip: 'Send ballot link on WhatsApp',
+                    onPressed: () => WhatsAppBallotLinkDialog.show(context, ref, widget.electionId, voter),
+                  ),
+                if (!_listFinal || _isOrgAdmin)
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 18, color: Colors.indigo),
+                    tooltip: _listFinal ? 'Edit email / phone' : 'Edit Voter',
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => EditVoterDialog(
+                          electionId: widget.electionId,
+                          voter: voter,
+                          contactOnly: _listFinal,
+                        ),
+                      );
+                    },
+                  ),
+                if (!_listFinal)
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
+                    tooltip: 'Delete Voter',
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          title: const Text('Delete Voter from Roll'),
+                          content: Text('Are you sure you want to delete "$fullName" from this election roll?'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                            FilledButton(
+                              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('Delete Voter'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true) {
+                        ref.read(publishElectionProvider.notifier).deleteVoter(widget.electionId, voter['id'].toString());
+                      }
+                    },
+                  ),
               ],
             ],
           ),
@@ -1258,6 +1309,13 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
       ),
     );
   }
+
+  /// During voting, staff can send a voter who hasn't voted their ballot link on WhatsApp.
+  bool _canSendBallotLink(Map<String, dynamic> voter) =>
+      _votingOpen &&
+      voter['has_voted'] != true &&
+      voter['is_eligible'] == true &&
+      (voter['phone']?.toString().trim().isNotEmpty ?? false);
 
   Widget _buildVerificationChannelBadge(String? channel) {
     switch (channel) {

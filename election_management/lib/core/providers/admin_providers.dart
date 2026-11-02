@@ -272,7 +272,7 @@ class PublishElectionNotifier extends AsyncNotifier<void> {
     state = const AsyncValue.loading();
     try {
       final dio = ref.read(apiClientProvider);
-      await dio.put('${ApiConstants.electionVoters(electionId)}$voterId/', data: data);
+      await dio.patch('${ApiConstants.electionVoters(electionId)}$voterId/', data: data);
       ref.invalidate(votersProvider(electionId));
       state = const AsyncValue.data(null);
     } catch (e) {

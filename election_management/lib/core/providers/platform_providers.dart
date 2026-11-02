@@ -7,6 +7,12 @@ import '../network/api_constants.dart';
 final platformOrgSearchProvider = StateProvider.autoDispose<String>((ref) => '');
 final platformOrgStatusProvider = StateProvider.autoDispose<String?>((ref) => null);
 
+final platformOverviewProvider = FutureProvider.autoDispose<PlatformOverview>((ref) async {
+  final dio = ref.watch(apiClientProvider);
+  final response = await dio.get(ApiConstants.platformOverview);
+  return PlatformOverview.fromJson(response.data as Map<String, dynamic>);
+});
+
 final platformOrganizationsProvider =
     FutureProvider.autoDispose<List<PlatformOrganizationModel>>((ref) async {
   final dio = ref.watch(apiClientProvider);

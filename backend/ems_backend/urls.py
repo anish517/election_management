@@ -30,6 +30,7 @@ from apps.organizations.views import (
     OrganizationView, OrganizationStatsView,
     PlatformOrganizationListView, PlatformOrganizationDetailView,
     PlatformOrganizationElectionsView, PlatformElectionDetailView,
+    PlatformOverviewView, PublicOrganizationView,
 )
 from apps.core.views import FileUploadView
 from apps.audit.views import AuditExportView, AuditVerifyHashView, AuditReceiptLookupView, AuditLogsView
@@ -83,7 +84,11 @@ urlpatterns = [
     # Nomination review across elections (left-menu inbox)
     path('v1/nominations/summary/', NominationSummaryView.as_view(), name='nomination-summary'),
 
+    # Public organization page (electionnepal.org/<prefix>)
+    path('v1/public/organizations/<str:prefix>/', PublicOrganizationView.as_view(), name='public-org'),
+
     # Super Admin platform console (all tenants)
+    path('v1/platform/overview/', PlatformOverviewView.as_view(), name='platform-overview'),
     path('v1/platform/organizations/', PlatformOrganizationListView.as_view(), name='platform-org-list'),
     path('v1/platform/organizations/<uuid:org_id>/', PlatformOrganizationDetailView.as_view(), name='platform-org-detail'),
     path('v1/platform/organizations/<uuid:org_id>/elections/', PlatformOrganizationElectionsView.as_view(), name='platform-org-elections'),

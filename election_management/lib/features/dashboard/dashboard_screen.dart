@@ -13,6 +13,8 @@ import '../../shared/widgets/glass_card.dart';
 import '../../shared/widgets/responsive_layout.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'dashboard_quick_actions.dart';
+import 'platform_overview_section.dart';
+import '../../core/providers/platform_providers.dart';
 import '../../shared/widgets/live_clock.dart';
 import '../../shared/widgets/theme_mode_button.dart';
 
@@ -42,6 +44,7 @@ class DashboardScreen extends ConsumerWidget {
                     onRefresh: () async {
                       ref.invalidate(electionsProvider);
                       ref.invalidate(orgStatsProvider);
+                      if (user?.isSuperAdmin == true) ref.invalidate(platformOverviewProvider);
                     },
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
@@ -59,9 +62,18 @@ class DashboardScreen extends ConsumerWidget {
                             const SizedBox(height: 28),
                           ],
 
+                          // Platform totals (super admin)
+                          if (user?.isSuperAdmin == true) ...[
+                            const PlatformStatCards(),
+                            const SizedBox(height: 28),
+                          ],
+
                           // Quick Actions Row/Grid
                           if (user != null) DashboardQuickActions(user: user),
                           const SizedBox(height: 32),
+
+                          // Running / past elections and organizations (super admin)
+                          if (user?.isSuperAdmin == true) const PlatformLists(),
 
                           // Elections Feed Section (super admins belong to no organization)
                           if (user?.isSuperAdmin != true) ...[

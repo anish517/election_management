@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from apps.organizations.models import Organization
+from apps.organizations.models import Organization, clean_org_prefix
 
 class OrganizationSerializer(serializers.ModelSerializer):
     logo_url = serializers.CharField(required=False, allow_blank=True, default='')
@@ -34,6 +34,12 @@ class OrganizationSerializer(serializers.ModelSerializer):
                 data = dict(data)
                 data['email'] = data.pop('org_email')
         return super().to_internal_value(data)
+
+    def validate_prefix(self, value):
+        try:
+            return clean_org_prefix(value, exclude_id=self.instance.id if self.instance else None)
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))
 
     def validate_website(self, value):
         if not value:
@@ -70,12 +76,12 @@ class PlatformOrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
         fields = [
-            'id', 'name', 'slug', 'org_type', 'email', 'phone', 'logo_url',
+            'id', 'name', 'slug', 'prefix', 'org_type', 'email', 'phone', 'logo_url',
             'status', 'trial_ends_at', 'created_at',
             'member_count', 'election_count', 'voter_count', 'admin_emails',
         ]
         read_only_fields = [
-            'id', 'name', 'slug', 'org_type', 'email', 'phone', 'logo_url', 'created_at',
+            'id', 'name', 'slug', 'prefix', 'org_type', 'email', 'phone', 'logo_url', 'created_at',
         ]
 
     def get_admin_emails(self, obj):
@@ -96,6 +102,46 @@ class PlatformElectionSerializer(serializers.Serializer):
     position_count = serializers.IntegerField()
     voter_count = serializers.IntegerField()
     voted_count = serializers.IntegerField()
+
+
+class OrgBadgeSerializer(serializers.Serializer):
+    """Just enough of an organization to label an election in a list."""
+    id = serializers.UUIDField()
+    name = serializers.CharField()
+    prefix = serializers.CharField()
+    logo_url = serializers.CharField()
+
+
+class PlatformOverviewElectionSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    title = serializers.CharField()
+    state = serializers.CharField()
+    state_display = serializers.CharField(source='get_state_display')
+    voting_start_at = serializers.DateTimeField()
+    voting_end_at = serializers.DateTimeField()
+    organization = OrgBadgeSerializer()
+
+
+class PublicElectionSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    title = serializers.CharField()
+    state = serializers.CharField()
+    state_display = serializers.CharField(source='get_state_display')
+    election_method = serializers.CharField(source='get_election_method_display')
+    nomination_open_at = serializers.DateTimeField()
+    voting_start_at = serializers.DateTimeField()
+    voting_end_at = serializers.DateTimeField()
+
+
+class PublicOrganizationSerializer(serializers.ModelSerializer):
+    """An organization's public page (electionnepal.org/<prefix>): no private settings."""
+
+    class Meta:
+        model = Organization
+        fields = [
+            'id', 'name', 'prefix', 'org_type', 'address', 'phone', 'email', 'website',
+            'logo_url', 'cover_image_url', 'brand_color',
+        ]
 
 
 class PlatformCandidateSerializer(serializers.Serializer):

@@ -8,8 +8,10 @@ import '../../../shared/widgets/loading_button.dart';
 class EditVoterDialog extends ConsumerStatefulWidget {
   final String electionId;
   final Map<String, dynamic> voter;
+  /// The final voter list is published: only email and phone can be changed.
+  final bool contactOnly;
 
-  const EditVoterDialog({super.key, required this.electionId, required this.voter});
+  const EditVoterDialog({super.key, required this.electionId, required this.voter, this.contactOnly = false});
 
   @override
   ConsumerState<EditVoterDialog> createState() => _EditVoterDialogState();
@@ -65,19 +67,21 @@ class _EditVoterDialogState extends ConsumerState<EditVoterDialog> {
 
     setState(() => _isLoading = true);
     try {
-      final data = {
-        'election': widget.electionId,
-        'voter_id': _voterIdController.text.trim(),
-        'prefix': _prefixController.text.trim(),
-        'first_name': _firstNameController.text.trim(),
-        'middle_name': _middleNameController.text.trim(),
-        'last_name': _lastNameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'phone': _phoneController.text.trim(),
-        'council_number': _councilNumberController.text.trim(),
-        'citizenship_number': _citizenshipController.text.trim(),
-        'is_eligible': _isEligible,
-      };
+      final data = widget.contactOnly
+          ? {'email': _emailController.text.trim(), 'phone': _phoneController.text.trim()}
+          : {
+            'election': widget.electionId,
+            'voter_id': _voterIdController.text.trim(),
+            'prefix': _prefixController.text.trim(),
+            'first_name': _firstNameController.text.trim(),
+            'middle_name': _middleNameController.text.trim(),
+            'last_name': _lastNameController.text.trim(),
+            'email': _emailController.text.trim(),
+            'phone': _phoneController.text.trim(),
+            'council_number': _councilNumberController.text.trim(),
+            'citizenship_number': _citizenshipController.text.trim(),
+            'is_eligible': _isEligible,
+          };
 
       await ref.read(publishElectionProvider.notifier).editVoter(widget.electionId, widget.voter['id'].toString(), data);
       if (mounted) {
@@ -198,6 +202,28 @@ class _EditVoterDialogState extends ConsumerState<EditVoterDialog> {
                   key: _formKey,
                   child: ListView(
                     children: [
+                      if (widget.contactOnly)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 14),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: isDark ? 0.15 : 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.lock_outline_rounded, color: Colors.amber, size: 18),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  'The final voter list is published. Only the email address and phone number can be changed.',
+                                  style: TextStyle(fontSize: 12.5),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       // ════════════════════════════════════════════════════════
                       // 1. VOTER IDENTITY & CLASSIFICATION
                       // ════════════════════════════════════════════════════════
@@ -215,6 +241,7 @@ class _EditVoterDialogState extends ConsumerState<EditVoterDialog> {
                                 flex: 2,
                                 child: TextFormField(
                                   controller: _voterIdController,
+                                  enabled: !widget.contactOnly,
                                   decoration: _dec('Voter ID / Roll Number *', hint: 'e.g. V-001, MEM-104', prefix: const Icon(Icons.tag_rounded), isDark: isDark),
                                   validator: (v) => (v == null || v.trim().isEmpty) ? 'Voter ID is required' : null,
                                 ),
@@ -224,6 +251,7 @@ class _EditVoterDialogState extends ConsumerState<EditVoterDialog> {
                                 flex: 1,
                                 child: TextFormField(
                                   controller: _prefixController,
+                                  enabled: !widget.contactOnly,
                                   decoration: _dec('Prefix', hint: 'Mr. / Ms. / Dr.', isDark: isDark),
                                 ),
                               ),
@@ -237,6 +265,7 @@ class _EditVoterDialogState extends ConsumerState<EditVoterDialog> {
                               Expanded(
                                 child: TextFormField(
                                   controller: _firstNameController,
+                                  enabled: !widget.contactOnly,
                                   decoration: _dec('First Name *', hint: 'e.g. Ramesh', prefix: const Icon(Icons.person_outline_rounded), isDark: isDark),
                                   validator: (v) => (v == null || v.trim().isEmpty) ? 'First name is required' : null,
                                 ),
@@ -245,6 +274,7 @@ class _EditVoterDialogState extends ConsumerState<EditVoterDialog> {
                               Expanded(
                                 child: TextFormField(
                                   controller: _middleNameController,
+                                  enabled: !widget.contactOnly,
                                   decoration: _dec('Middle Name', hint: 'e.g. Prasad', isDark: isDark),
                                 ),
                               ),
@@ -252,6 +282,7 @@ class _EditVoterDialogState extends ConsumerState<EditVoterDialog> {
                               Expanded(
                                 child: TextFormField(
                                   controller: _lastNameController,
+                                  enabled: !widget.contactOnly,
                                   decoration: _dec('Last Name *', hint: 'e.g. Shrestha', isDark: isDark),
                                   validator: (v) => (v == null || v.trim().isEmpty) ? 'Last name is required' : null,
                                 ),
@@ -312,6 +343,7 @@ class _EditVoterDialogState extends ConsumerState<EditVoterDialog> {
                               Expanded(
                                 child: TextFormField(
                                   controller: _citizenshipController,
+                                  enabled: !widget.contactOnly,
                                   decoration: _dec('Citizenship Number', hint: 'e.g. 27-01-76-12345', prefix: const Icon(Icons.credit_card_rounded), isDark: isDark),
                                 ),
                               ),
@@ -319,6 +351,7 @@ class _EditVoterDialogState extends ConsumerState<EditVoterDialog> {
                               Expanded(
                                 child: TextFormField(
                                   controller: _councilNumberController,
+                                  enabled: !widget.contactOnly,
                                   decoration: _dec('Council / License Number', hint: 'e.g. NNC-1234', prefix: const Icon(Icons.badge_outlined), isDark: isDark),
                                 ),
                               ),
@@ -343,7 +376,7 @@ class _EditVoterDialogState extends ConsumerState<EditVoterDialog> {
                               subtitle: const Text('Permit this voter to receive ballots and cast votes when election opens.', style: TextStyle(fontSize: 11)),
                               value: _isEligible,
                               activeThumbColor: Colors.green,
-                              onChanged: (val) => setState(() => _isEligible = val),
+                              onChanged: widget.contactOnly ? null : (val) => setState(() => _isEligible = val),
                             ),
                           ),
                         ],

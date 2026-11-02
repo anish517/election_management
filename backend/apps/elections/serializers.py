@@ -109,6 +109,7 @@ class PositionSerializer(serializers.ModelSerializer):
 
 class ElectionSerializer(serializers.ModelSerializer):
     positions = PositionSerializer(many=True, read_only=True)
+    voter_list_final = serializers.BooleanField(read_only=True)
     
     class Meta:
         model = Election
@@ -123,6 +124,7 @@ class ElectionSerializer(serializers.ModelSerializer):
             'voter_roll_freeze_date', 'voter_roll_frozen_at',
             # Voter list schedule
             'first_voter_list_date', 'voter_list_claim_date', 'final_voter_list_date',
+            'voter_list_final',
             # Candidacy schedule
             'nomination_open_at', 'nomination_close_at',
             'candidacy_claim_date', 'candidacy_final_date',

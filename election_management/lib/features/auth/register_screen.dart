@@ -9,6 +9,8 @@ import '../../core/network/api_client.dart';
 import '../../core/network/api_constants.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/loading_button.dart';
+import '../../shared/widgets/org_prefix_field.dart';
+import '../../shared/widgets/responsive_layout.dart';
 
 // ---------------------------------------------------------------------------
 // Org-type specific metadata field descriptors
@@ -483,368 +485,357 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         centerTitle: false,
         elevation: 0,
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
-          child: Form(
-            key: _formKey,
-            child: ListView(
-              controller: _scrollController,
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 120),
-              children: [
-                // ── Error banner ─────────────────────────────────────────
-                if (_error != null) ...[
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    margin: const EdgeInsets.only(bottom: 20),
-                    decoration: BoxDecoration(
-                      color: AppColors.error.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: AppColors.error.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.error_outline, color: AppColors.error),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            _error!,
-                            style: const TextStyle(color: AppColors.error),
-                          ),
-                        ),
-                      ],
+      body: CenteredScroll(
+        maxWidth: 720,
+        builder: (context, pad) => Form(
+          key: _formKey,
+          child: ListView(
+            controller: _scrollController,
+            padding: pad(const EdgeInsets.fromLTRB(20, 24, 20, 120)),
+            children: [
+              // ── Error banner ─────────────────────────────────────────
+              if (_error != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppColors.error.withValues(alpha: 0.3),
                     ),
                   ),
-                ],
-
-                // ══════════════════════════════════════════════════════════
-                // 1. ORGANIZATION INFORMATION
-                // ══════════════════════════════════════════════════════════
-                _sectionHeader(
-                  context,
-                  'Organization Information',
-                  Icons.business_rounded,
-                ),
-                const SizedBox(height: 20),
-
-                // Row: Name + Prefix
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: TextFormField(
-                        controller: _orgNameCtrl,
-                        decoration: _field(
-                          'Organization Name',
-                          hint: 'Enter organization name',
-                        ),
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Required' : null,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _prefixCtrl,
-                        decoration: _field(
-                          'Prefix',
-                          hint: 'e.g. SOC',
-                          required: false,
-                        ),
-                        textCapitalization: TextCapitalization.characters,
-                        maxLength: 10,
-                        buildCounter:
-                            (
-                              _, {
-                              required currentLength,
-                              required isFocused,
-                              required maxLength,
-                            }) => null,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-
-                // Org type
-                DropdownButtonFormField<String>(
-                  initialValue: _orgType,
-                  decoration: _field('Organization Type'),
-                  items: _orgTypeItems,
-                  onChanged: _onTypeChanged,
-                ),
-                const SizedBox(height: 14),
-
-                // Council number
-                TextFormField(
-                  controller: _councilCtrl,
-                  decoration: _field(
-                    'Council / Registration No.',
-                    hint: 'e.g. 1234/2078',
-                    required: false,
-                  ),
-                ),
-                const SizedBox(height: 14),
-
-                // Row: Email + Phone
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _orgEmailCtrl,
-                        decoration: _field(
-                          'Organization Email',
-                          hint: 'organization@example.com',
-                        ),
-                        keyboardType: TextInputType.emailAddress,
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) return 'Required';
-                          if (!v.contains('@')) return 'Invalid email';
-                          return null;
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _orgPhoneCtrl,
-                        decoration: _field('Phone', hint: '9876543210'),
-                        keyboardType: TextInputType.phone,
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Required' : null,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-
-                // Website
-                TextFormField(
-                  controller: _websiteCtrl,
-                  decoration: _field(
-                    'Website',
-                    hint: 'https://example.com',
-                    required: false,
-                  ),
-                  keyboardType: TextInputType.url,
-                ),
-                const SizedBox(height: 14),
-
-                // Address
-                TextFormField(
-                  controller: _addressCtrl,
-                  decoration: _field(
-                    'Address',
-                    hint: 'Enter full address',
-                  ).copyWith(alignLabelWithHint: true),
-                  maxLines: 3,
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Required' : null,
-                ),
-                const SizedBox(height: 20),
-
-                // Logo + Cover
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: _ImagePickerTile(
-                        label: 'Logo *',
-                        currentUrl: _logoUrl.isEmpty ? null : _logoUrl,
-                        onUpload: _upload,
-                        onUploaded: (url) => setState(() => _logoUrl = url),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: _ImagePickerTile(
-                        label: 'Cover Image',
-                        currentUrl: _coverUrl.isEmpty ? null : _coverUrl,
-                        onUpload: _upload,
-                        onUploaded: (url) => setState(() => _coverUrl = url),
-                      ),
-                    ),
-                  ],
-                ),
-
-                // ── Type-specific metadata ──────────────────────────────
-                if (metaFields.isNotEmpty) ...[
-                  const SizedBox(height: 28),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryLight.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppColors.primaryLight.withValues(alpha: 0.2),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.tune_rounded,
-                              size: 16,
-                              color: AppColors.primaryLight,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              '${_orgTypeLabel(_orgType)} Details',
-                              style: Theme.of(context).textTheme.labelLarge
-                                  ?.copyWith(
-                                    color: AppColors.primaryLight,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        ...metaFields.map(
-                          (f) => Padding(
-                            padding: const EdgeInsets.only(bottom: 14),
-                            child: TextFormField(
-                              controller: _metaCtrls[f['key']!],
-                              decoration: _field(
-                                f['label']!,
-                                hint: f['hint'],
-                                required: false,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-
-                // ══════════════════════════════════════════════════════════
-                // 2. ORGANIZATION ADMIN
-                // ══════════════════════════════════════════════════════════
-                const SizedBox(height: 32),
-                _sectionHeader(
-                  context,
-                  'Organization Admin',
-                  Icons.admin_panel_settings_rounded,
-                ),
-                const SizedBox(height: 20),
-
-                TextFormField(
-                  controller: _adminNameCtrl,
-                  decoration: _field('Admin Name', hint: 'Enter admin name'),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Required' : null,
-                ),
-                const SizedBox(height: 14),
-
-                TextFormField(
-                  controller: _adminEmailCtrl,
-                  decoration: _field('Admin Email', hint: 'admin@example.com'),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Required';
-                    if (!v.contains('@')) return 'Invalid email';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 14),
-
-                TextFormField(
-                  controller: _adminPhoneCtrl,
-                  decoration: _field(
-                    'Admin Phone',
-                    hint: '9876543210',
-                    required: false,
-                  ),
-                  keyboardType: TextInputType.phone,
-                ),
-                const SizedBox(height: 14),
-
-                TextFormField(
-                  controller: _passwordCtrl,
-                  obscureText: !_passwordVisible,
-                  decoration:
-                      _field(
-                        'Admin Password',
-                        hint: 'Enter admin password',
-                      ).copyWith(
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _passwordVisible
-                                ? Icons.visibility_off
-                                : Icons.visibility,
-                          ),
-                          onPressed: () => setState(
-                            () => _passwordVisible = !_passwordVisible,
-                          ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline, color: AppColors.error),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _error!,
+                          style: const TextStyle(color: AppColors.error),
                         ),
                       ),
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return 'Required';
-                    if (v.length < 8) return 'Minimum 8 characters';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 14),
-
-                TextFormField(
-                  controller: _confirmPasswordCtrl,
-                  obscureText: !_confirmVisible,
-                  decoration:
-                      _field(
-                        'Confirm Password',
-                        hint: 'Re-enter password',
-                      ).copyWith(
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _confirmVisible
-                                ? Icons.visibility_off
-                                : Icons.visibility,
-                          ),
-                          onPressed: () => setState(
-                            () => _confirmVisible = !_confirmVisible,
-                          ),
-                        ),
-                      ),
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return 'Required';
-                    if (v != _passwordCtrl.text) {
-                      return 'Passwords do not match';
-                    }
-                    return null;
-                  },
-                ),
-
-                // ── Submit ─────────────────────────────────────────────
-                const SizedBox(height: 36),
-                SizedBox(
-                  height: 52,
-                  child: LoadingButton(
-                    isLoading: _isLoading,
-                    label: 'Create Organization',
-                    onPressed: _submit,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Center(
-                  child: TextButton(
-                    onPressed: () {
-                      if (context.canPop()) {
-                        context.pop();
-                      } else {
-                        context.goNamed('dashboard');
-                      }
-                    },
-                    child: const Text('Cancel'),
+                    ],
                   ),
                 ),
               ],
-            ),
+
+              // ══════════════════════════════════════════════════════════
+              // 1. ORGANIZATION INFORMATION
+              // ══════════════════════════════════════════════════════════
+              _sectionHeader(
+                context,
+                'Organization Information',
+                Icons.business_rounded,
+              ),
+              const SizedBox(height: 20),
+
+              // Row: Name + Prefix
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: TextFormField(
+                      controller: _orgNameCtrl,
+                      decoration: _field(
+                        'Organization Name',
+                        hint: 'Enter organization name',
+                      ),
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OrgPrefixField(
+                      controller: _prefixCtrl,
+                      decoration: _field(
+                        'Prefix (web address)',
+                        hint: 'e.g. SOC',
+                        required: false,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // Org type
+              DropdownButtonFormField<String>(
+                initialValue: _orgType,
+                decoration: _field('Organization Type'),
+                items: _orgTypeItems,
+                onChanged: _onTypeChanged,
+              ),
+              const SizedBox(height: 14),
+
+              // Council number
+              TextFormField(
+                controller: _councilCtrl,
+                decoration: _field(
+                  'Council / Registration No.',
+                  hint: 'e.g. 1234/2078',
+                  required: false,
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Row: Email + Phone
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _orgEmailCtrl,
+                      decoration: _field(
+                        'Organization Email',
+                        hint: 'organization@example.com',
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return 'Required';
+                        if (!v.contains('@')) return 'Invalid email';
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _orgPhoneCtrl,
+                      decoration: _field('Phone', hint: '9876543210'),
+                      keyboardType: TextInputType.phone,
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty) ? 'Required' : null,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // Website
+              TextFormField(
+                controller: _websiteCtrl,
+                decoration: _field(
+                  'Website',
+                  hint: 'https://example.com',
+                  required: false,
+                ),
+                keyboardType: TextInputType.url,
+              ),
+              const SizedBox(height: 14),
+
+              // Address
+              TextFormField(
+                controller: _addressCtrl,
+                decoration: _field(
+                  'Address',
+                  hint: 'Enter full address',
+                ).copyWith(alignLabelWithHint: true),
+                maxLines: 3,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Required' : null,
+              ),
+              const SizedBox(height: 20),
+
+              // Logo + Cover
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _ImagePickerTile(
+                      label: 'Logo *',
+                      currentUrl: _logoUrl.isEmpty ? null : _logoUrl,
+                      onUpload: _upload,
+                      onUploaded: (url) => setState(() => _logoUrl = url),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: _ImagePickerTile(
+                      label: 'Cover Image',
+                      currentUrl: _coverUrl.isEmpty ? null : _coverUrl,
+                      onUpload: _upload,
+                      onUploaded: (url) => setState(() => _coverUrl = url),
+                    ),
+                  ),
+                ],
+              ),
+
+              // ── Type-specific metadata ──────────────────────────────
+              if (metaFields.isNotEmpty) ...[
+                const SizedBox(height: 28),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.primaryLight.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.tune_rounded,
+                            size: 16,
+                            color: AppColors.primaryLight,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${_orgTypeLabel(_orgType)} Details',
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(
+                                  color: AppColors.primaryLight,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      ...metaFields.map(
+                        (f) => Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: TextFormField(
+                            controller: _metaCtrls[f['key']!],
+                            decoration: _field(
+                              f['label']!,
+                              hint: f['hint'],
+                              required: false,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              // ══════════════════════════════════════════════════════════
+              // 2. ORGANIZATION ADMIN
+              // ══════════════════════════════════════════════════════════
+              const SizedBox(height: 32),
+              _sectionHeader(
+                context,
+                'Organization Admin',
+                Icons.admin_panel_settings_rounded,
+              ),
+              const SizedBox(height: 20),
+
+              TextFormField(
+                controller: _adminNameCtrl,
+                decoration: _field('Admin Name', hint: 'Enter admin name'),
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Required' : null,
+              ),
+              const SizedBox(height: 14),
+
+              TextFormField(
+                controller: _adminEmailCtrl,
+                decoration: _field('Admin Email', hint: 'admin@example.com'),
+                keyboardType: TextInputType.emailAddress,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return 'Required';
+                  if (!v.contains('@')) return 'Invalid email';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
+
+              TextFormField(
+                controller: _adminPhoneCtrl,
+                decoration: _field(
+                  'Admin Phone',
+                  hint: '9876543210',
+                  required: false,
+                ),
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 14),
+
+              TextFormField(
+                controller: _passwordCtrl,
+                obscureText: !_passwordVisible,
+                decoration:
+                    _field(
+                      'Admin Password',
+                      hint: 'Enter admin password',
+                    ).copyWith(
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _passwordVisible
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                        ),
+                        onPressed: () => setState(
+                          () => _passwordVisible = !_passwordVisible,
+                        ),
+                      ),
+                    ),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Required';
+                  if (v.length < 8) return 'Minimum 8 characters';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
+
+              TextFormField(
+                controller: _confirmPasswordCtrl,
+                obscureText: !_confirmVisible,
+                decoration:
+                    _field(
+                      'Confirm Password',
+                      hint: 'Re-enter password',
+                    ).copyWith(
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _confirmVisible
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                        ),
+                        onPressed: () => setState(
+                          () => _confirmVisible = !_confirmVisible,
+                        ),
+                      ),
+                    ),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Required';
+                  if (v != _passwordCtrl.text) {
+                    return 'Passwords do not match';
+                  }
+                  return null;
+                },
+              ),
+
+              // ── Submit ─────────────────────────────────────────────
+              const SizedBox(height: 36),
+              SizedBox(
+                height: 52,
+                child: LoadingButton(
+                  isLoading: _isLoading,
+                  label: 'Create Organization',
+                  onPressed: _submit,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: TextButton(
+                  onPressed: () {
+                    if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.goNamed('dashboard');
+                    }
+                  },
+                  child: const Text('Cancel'),
+                ),
+              ),
+            ],
           ),
         ),
       ),

@@ -13,6 +13,7 @@ import '../../../shared/models/models.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/admin_drawer.dart';
 import '../../../shared/widgets/shimmer_loaders.dart';
+import '../../../shared/widgets/org_prefix_field.dart';
 import '../../../shared/widgets/responsive_layout.dart';
 
 // ---------------------------------------------------------------------------
@@ -387,11 +388,11 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       );
 
-  Widget _buildProfileTab() {
+  Widget _buildProfileTab(EdgeInsets Function(EdgeInsets) pad) {
     final metaFields = _typeMetaFields[_selectedOrgType] ?? [];
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+      padding: pad(const EdgeInsets.fromLTRB(20, 20, 20, 100)),
       children: [
         // Live Preview banner
         _buildPreviewBanner()
@@ -419,12 +420,9 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextFormField(
+                  child: OrgPrefixField(
                     controller: _prefixCtrl,
-                    decoration: _dec('Prefix Tag', hint: 'e.g. SOC'),
-                    textCapitalization: TextCapitalization.characters,
-                    maxLength: 10,
-                    buildCounter: (_, {required currentLength, required isFocused, required maxLength}) => null,
+                    decoration: _dec('Prefix (web address)', hint: 'e.g. SOC'),
                   ),
                 ),
               ],
@@ -751,13 +749,11 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
           error: (err, _) => Center(child: Text('Error: $err')),
           data: (org) {
             _populateForm(org);
-            return Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 860),
-                child: Form(
-                  key: _formKey,
-                  child: _buildProfileTab(),
-                ),
+            return CenteredScroll(
+              maxWidth: 860,
+              builder: (context, pad) => Form(
+                key: _formKey,
+                child: _buildProfileTab(pad),
               ),
             );
           },

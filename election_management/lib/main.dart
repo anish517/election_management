@@ -2,9 +2,11 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/providers/theme_provider.dart';
+import 'shared/widgets/api_activity_bar.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,7 +50,7 @@ class ElectionManagementApp extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
-      title: 'EMS — Election Management',
+      title: 'EMS - Election Management System in Nepal',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
@@ -63,17 +65,22 @@ class ElectionManagementApp extends ConsumerWidget {
                 ? AppColors.globalBackgroundGradient
                 : AppColors.globalBackgroundGradientLight,
           ),
-          child: Column(
+          child: Stack(
             children: [
-              Expanded(
-                // The footer owns the bottom safe-area inset.
-                child: MediaQuery.removePadding(
-                  context: context,
-                  removeBottom: true,
-                  child: child ?? const SizedBox.shrink(),
-                ),
+              Column(
+                children: [
+                  Expanded(
+                    // The footer owns the bottom safe-area inset.
+                    child: MediaQuery.removePadding(
+                      context: context,
+                      removeBottom: true,
+                      child: child ?? const SizedBox.shrink(),
+                    ),
+                  ),
+                  const PoweredByFooter(),
+                ],
               ),
-              const PoweredByFooter(),
+              const Positioned(top: 0, left: 0, right: 0, child: ApiActivityBar()),
             ],
           ),
         );
@@ -82,13 +89,21 @@ class ElectionManagementApp extends ConsumerWidget {
   }
 }
 
-/// App-wide "Powered by Omway Technologies" strip shown under every screen.
+/// App-wide "Powered by: Omway Technologies" strip shown under every screen;
+/// the name links to the Omway website.
 class PoweredByFooter extends StatelessWidget {
   const PoweredByFooter({super.key});
+
+  static final _omwayUrl = Uri.parse('https://omwaytechnologies.com');
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseStyle = TextStyle(
+      fontSize: 11.5,
+      letterSpacing: 0.2,
+      color: isDark ? AppColors.textSecondary : AppColors.textMuted,
+    );
     return Material(
       color: isDark ? const Color(0xFF0B0F19) : Colors.white,
       child: SafeArea(
@@ -105,25 +120,25 @@ class PoweredByFooter extends StatelessWidget {
               ),
             ),
           ),
-          child: Text.rich(
-            TextSpan(
-              text: 'Powered by ',
-              children: [
-                TextSpan(
-                  text: 'Omway Technologies',
-                  style: TextStyle(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Powered by: ', style: baseStyle),
+              // Not focusable: a focus node out here, beside the router's
+              // Navigator, trips Flutter's startup focus traversal.
+              InkWell(
+                canRequestFocus: false,
+                onTap: () => launchUrl(_omwayUrl, webOnlyWindowName: '_blank'),
+                borderRadius: BorderRadius.circular(4),
+                child: Text(
+                  'Omway Technologies',
+                  style: baseStyle.copyWith(
                     fontWeight: FontWeight.w700,
                     color: isDark ? AppColors.primaryLight : AppColors.primary,
                   ),
                 ),
-              ],
-            ),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 11.5,
-              letterSpacing: 0.2,
-              color: isDark ? AppColors.textSecondary : AppColors.textMuted,
-            ),
+              ),
+            ],
           ),
         ),
       ),

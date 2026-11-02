@@ -23,7 +23,7 @@ class RegisterSerializer(serializers.Serializer):
     # Organization Information
     org_name = serializers.CharField(max_length=255)
     org_type = serializers.ChoiceField(choices=OrgType.choices, required=False, default='other')
-    prefix = serializers.CharField(max_length=10, required=False, allow_blank=True, default='')
+    prefix = serializers.CharField(max_length=30, required=False, allow_blank=True, default='')
     council_number = serializers.CharField(max_length=100, required=False, allow_blank=True, default='')
     org_email = serializers.EmailField(required=False, allow_blank=True, default='')
     org_phone = serializers.CharField(max_length=30, required=False, allow_blank=True, default='')
@@ -48,6 +48,13 @@ class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField()
     phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
     password = serializers.CharField(min_length=8, write_only=True)
+
+    def validate_prefix(self, value):
+        from apps.organizations.models import clean_org_prefix
+        try:
+            return clean_org_prefix(value)
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))
 
     def validate_email(self, value):
         if User.objects.filter(email=value.lower()).exists():

@@ -257,6 +257,19 @@ class VotingViewSet(viewsets.ViewSet):
             return Response({'error': str(e)}, status=400)
 
 
+def whatsapp_number(phone):
+    """
+    Digits-only international number for wa.me links, or '' if unusable.
+    A bare 10-digit Nepali mobile (98XXXXXXXX / 97XXXXXXXX) gets the 977 code.
+    """
+    digits = ''.join(ch for ch in (phone or '') if ch.isdigit())
+    if digits.startswith('00'):
+        digits = digits[2:]
+    if len(digits) == 10 and digits.startswith('9'):
+        digits = '977' + digits
+    return digits if 10 <= len(digits) <= 15 else ''
+
+
 class VoterRollViewSet(viewsets.ModelViewSet):
     """
     Manage voters for a specific election.
@@ -275,6 +288,105 @@ class VoterRollViewSet(viewsets.ModelViewSet):
             election__organization=self.request.user.organization,
             election_id=self.kwargs.get('election_pk')
         )
+
+    # Actions that change the roll: org admins and election officers only.
+    WRITE_ACTIONS = {
+        'create', 'update', 'partial_update', 'destroy', 'preview_csv',
+        'import_csv', 'import_members', 'import_external_api', 'ballot_link',
+    }
+    # Actions that add or remove voters: closed once the final list is published.
+    ROSTER_ACTIONS = {'create', 'destroy', 'preview_csv', 'import_csv', 'import_members', 'import_external_api'}
+    # What an org admin may still correct on a voter after the final list.
+    FINAL_LIST_EDITABLE = {'email', 'phone'}
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        if self.action not in self.WRITE_ACTIONS:
+            return
+        from rest_framework.exceptions import PermissionDenied
+        if request.user.role not in ('org_admin', 'election_officer'):
+            raise PermissionDenied('Only organization admins and election officers can change the voter list.')
+        election = Election.objects.filter(
+            id=self.kwargs.get('election_pk'), organization=request.user.organization
+        ).first()
+        if election and election.voter_list_final and self.action in self.ROSTER_ACTIONS:
+            raise PermissionDenied(
+                'The final voter list is published, so voters can no longer be added or removed.'
+            )
+
+    def perform_update(self, serializer):
+        from rest_framework.exceptions import PermissionDenied
+        roll = serializer.instance
+        if roll.election.voter_list_final:
+            if self.request.user.role != 'org_admin':
+                raise PermissionDenied(
+                    "The final voter list is published. Only an organization admin can update a voter's email or phone."
+                )
+            changed = {
+                field for field, value in serializer.validated_data.items()
+                if getattr(roll, field) != value
+            }
+            if changed - self.FINAL_LIST_EDITABLE:
+                raise PermissionDenied(
+                    'The final voter list is published. Only email and phone number can be changed.'
+                )
+        serializer.save()
+
+    @action(detail=True, methods=['post'], url_path='ballot-link')
+    def ballot_link(self, request, election_pk=None, pk=None):
+        """
+        POST /v1/elections/<id>/voters/<id>/ballot-link/
+        During voting, an org admin or election officer gets the voter's
+        single-use ballot link and a WhatsApp click-to-chat URL to send it.
+        """
+        import secrets
+        from datetime import timedelta
+        from urllib.parse import quote
+        from django.conf import settings
+
+        roll = self.get_object()
+        election = roll.election
+        if election.state != 'voting_open':
+            return Response({'error': 'Ballot links can only be sent while voting is open.'}, status=400)
+        if roll.has_voted:
+            return Response({'error': 'This voter has already voted.'}, status=400)
+        if not roll.is_eligible:
+            return Response({'error': 'This voter is not eligible to vote.'}, status=400)
+        phone = whatsapp_number(roll.phone)
+        if not phone:
+            return Response({'error': 'This voter has no valid phone number for WhatsApp.'}, status=400)
+
+        # Reuse a live link so one already sent by email keeps working.
+        now = timezone.now()
+        if (not roll.direct_ballot_token or roll.direct_ballot_token_used
+                or (roll.direct_ballot_token_expires_at and roll.direct_ballot_token_expires_at <= now)):
+            roll.direct_ballot_token = secrets.token_urlsafe(36)
+            roll.direct_ballot_token_expires_at = now + timedelta(hours=24)
+            roll.direct_ballot_token_used = False
+            roll.save(update_fields=[
+                'direct_ballot_token', 'direct_ballot_token_expires_at', 'direct_ballot_token_used',
+            ])
+
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000').rstrip('/')
+        link = f"{frontend_url}/#/vote/direct/{roll.direct_ballot_token}"
+        message = (
+            f"Namaste {roll.full_name},\n"
+            f"Your personal ballot link for \"{election.title}\" ({election.organization.name}):\n"
+            f"{link}\n"
+            "This link is for you only and works once. Please do not share it."
+        )
+        log_action(
+            'voter.ballot_link_whatsapp', organization=election.organization, actor=request.user,
+            target=roll, metadata={'election_id': str(election.id), 'voter_id': roll.voter_id},
+            ip_address=get_client_ip(request),
+        )
+        return Response({
+            'direct_link_url': link,
+            'phone': phone,
+            'message': message,
+            'whatsapp_url': f"https://wa.me/{phone}?text={quote(message)}",
+            'expires_at': roll.direct_ballot_token_expires_at,
+        })
 
     def perform_create(self, serializer):
         from apps.elections.models import Election

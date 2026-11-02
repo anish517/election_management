@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/shimmer_loaders.dart';
+import '../../../shared/widgets/responsive_layout.dart';
 
 class VoterTurnoutScreen extends ConsumerStatefulWidget {
   final String electionId;
@@ -98,421 +99,426 @@ class _VoterTurnoutScreenState extends ConsumerState<VoterTurnoutScreen> {
             return true;
           }).toList();
 
-          return Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1200),
-              child: CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  // Top Hero Banner & Metrics
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Turnout Progress Meter Hero Card
-                          Material(
-                            color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.5) : Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              side: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200),
-                            ),
-                            elevation: isDark ? 0 : 2,
-                            shadowColor: Colors.black.withValues(alpha: 0.05),
-                            child: Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          return CenteredScroll(
+            maxWidth: 1200,
+            builder: (context, pad) => CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                SliverPadding(
+                  padding: pad(EdgeInsets.zero),
+                  sliver: SliverMainAxisGroup(
+                    slivers: [
+                      // Top Hero Banner & Metrics
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Turnout Progress Meter Hero Card
+                              Material(
+                                color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.5) : Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                  side: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200),
+                                ),
+                                elevation: isDark ? 0 : 2,
+                                shadowColor: Colors.black.withValues(alpha: 0.05),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(24),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                         children: [
-                                          Container(
-                                            width: 10,
-                                            height: 10,
-                                            decoration: const BoxDecoration(
-                                              color: Colors.green,
-                                              shape: BoxShape.circle,
-                                            ),
+                                          Row(
+                                            children: [
+                                              Container(
+                                                width: 10,
+                                                height: 10,
+                                                decoration: const BoxDecoration(
+                                                  color: Colors.green,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                'LIVE TURNOUT PROGRESS (प्रत्यक्ष सहभागिता)',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                  letterSpacing: 0.5,
+                                                  color: isDark ? Colors.white70 : Colors.grey.shade700,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            'LIVE TURNOUT PROGRESS (प्रत्यक्ष सहभागिता)',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                              letterSpacing: 0.5,
-                                              color: isDark ? Colors.white70 : Colors.grey.shade700,
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: (turnoutPercent >= 50 ? Colors.green : Colors.orange).withValues(alpha: 0.12),
+                                              borderRadius: BorderRadius.circular(20),
+                                            ),
+                                            child: Text(
+                                              '${turnoutPercent.toStringAsFixed(1)}% Turnout',
+                                              style: TextStyle(
+                                                color: turnoutPercent >= 50 ? Colors.green : Colors.orange.shade800,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                              ),
                                             ),
                                           ),
                                         ],
                                       ),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: (turnoutPercent >= 50 ? Colors.green : Colors.orange).withValues(alpha: 0.12),
-                                          borderRadius: BorderRadius.circular(20),
-                                        ),
-                                        child: Text(
-                                          '${turnoutPercent.toStringAsFixed(1)}% Turnout',
-                                          style: TextStyle(
-                                            color: turnoutPercent >= 50 ? Colors.green : Colors.orange.shade800,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 13,
+                                      const SizedBox(height: 16),
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: LinearProgressIndicator(
+                                          value: turnoutRatio.clamp(0.0, 1.0),
+                                          minHeight: 14,
+                                          backgroundColor: isDark ? Colors.white10 : Colors.grey.shade200,
+                                          valueColor: AlwaysStoppedAnimation<Color>(
+                                            turnoutPercent >= 60 ? Colors.green : AppColors.primaryLight,
                                           ),
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: LinearProgressIndicator(
-                                      value: turnoutRatio.clamp(0.0, 1.0),
-                                      minHeight: 14,
-                                      backgroundColor: isDark ? Colors.white10 : Colors.grey.shade200,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        turnoutPercent >= 60 ? Colors.green : AppColors.primaryLight,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    '$totalVoted out of $totalEligible qualified electors have cast their electronic ballot.',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: isDark ? Colors.white60 : Colors.grey.shade600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-
-                          // 4 Quick Metric Stat Cards
-                          LayoutBuilder(
-                            builder: (context, constraints) {
-                              final isNarrow = constraints.maxWidth < 700;
-                              return Wrap(
-                                spacing: 14,
-                                runSpacing: 14,
-                                children: [
-                                  SizedBox(
-                                    width: isNarrow ? (constraints.maxWidth - 14) / 2 : (constraints.maxWidth - 42) / 4,
-                                    child: _StatCard(
-                                      title: 'Total Eligible',
-                                      nepaliLabel: 'कुल योग्य मतदाता',
-                                      value: totalEligible.toString(),
-                                      icon: Icons.people_alt_outlined,
-                                      color: AppColors.primaryLight,
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    width: isNarrow ? (constraints.maxWidth - 14) / 2 : (constraints.maxWidth - 42) / 4,
-                                    child: _StatCard(
-                                      title: 'Total Voted',
-                                      nepaliLabel: 'मतदान गरेका',
-                                      value: totalVoted.toString(),
-                                      icon: Icons.how_to_vote_outlined,
-                                      color: Colors.green,
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    width: isNarrow ? (constraints.maxWidth - 14) / 2 : (constraints.maxWidth - 42) / 4,
-                                    child: _StatCard(
-                                      title: 'Remaining Pending',
-                                      nepaliLabel: 'मतदान बाँकी',
-                                      value: remainingPending.toString(),
-                                      icon: Icons.schedule_outlined,
-                                      color: Colors.orange,
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    width: isNarrow ? (constraints.maxWidth - 14) / 2 : (constraints.maxWidth - 42) / 4,
-                                    child: _StatCard(
-                                      title: 'Turnout Rate',
-                                      nepaliLabel: 'सहभागिता प्रतिशत',
-                                      value: '${turnoutPercent.toStringAsFixed(1)}%',
-                                      icon: Icons.pie_chart_outline_rounded,
-                                      color: Colors.purple,
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 20),
-
-                          // Verification Status Breakdown Card (Method 1 & 2 Admin Telemetry)
-                          _VerificationStatusCard(electionId: widget.electionId),
-                          const SizedBox(height: 24),
-
-                          // Search & Status Filter Toolbar
-                          Material(
-                            color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.3) : const Color(0xFFF8FAFC),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              side: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              child: Row(
-                                children: [
-                                  // Search Field
-                                  Expanded(
-                                    child: TextField(
-                                      decoration: InputDecoration(
-                                        hintText: 'Search voter by name, email, ID, or IP address...',
-                                        hintStyle: const TextStyle(fontSize: 13),
-                                        prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                                        isDense: true,
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                        filled: true,
-                                        fillColor: isDark ? AppColors.surfaceVariant : Colors.white,
-                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                                        enabledBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(10),
-                                          borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade300),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        '$totalVoted out of $totalEligible qualified electors have cast their electronic ballot.',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: isDark ? Colors.white60 : Colors.grey.shade600,
                                         ),
                                       ),
-                                      onChanged: (v) => setState(() => _searchQuery = v),
-                                    ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 16),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
 
-                                  // Status Filter Chips
-                                  Wrap(
-                                    spacing: 8,
+                              // 4 Quick Metric Stat Cards
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final isNarrow = constraints.maxWidth < 700;
+                                  return Wrap(
+                                    spacing: 14,
+                                    runSpacing: 14,
                                     children: [
-                                      ChoiceChip(
-                                        label: Text('All (${rawList.length})', style: const TextStyle(fontSize: 12)),
-                                        selected: _statusFilter == 'all',
-                                        onSelected: (val) => setState(() => _statusFilter = 'all'),
+                                      SizedBox(
+                                        width: isNarrow ? (constraints.maxWidth - 14) / 2 : (constraints.maxWidth - 42) / 4,
+                                        child: _StatCard(
+                                          title: 'Total Eligible',
+                                          nepaliLabel: 'कुल योग्य मतदाता',
+                                          value: totalEligible.toString(),
+                                          icon: Icons.people_alt_outlined,
+                                          color: AppColors.primaryLight,
+                                        ),
                                       ),
-                                      ChoiceChip(
-                                        label: Text('Voted ($totalVoted)', style: const TextStyle(fontSize: 12)),
-                                        selected: _statusFilter == 'voted',
-                                        selectedColor: Colors.green.withValues(alpha: 0.2),
-                                        onSelected: (val) => setState(() => _statusFilter = 'voted'),
+                                      SizedBox(
+                                        width: isNarrow ? (constraints.maxWidth - 14) / 2 : (constraints.maxWidth - 42) / 4,
+                                        child: _StatCard(
+                                          title: 'Total Voted',
+                                          nepaliLabel: 'मतदान गरेका',
+                                          value: totalVoted.toString(),
+                                          icon: Icons.how_to_vote_outlined,
+                                          color: Colors.green,
+                                        ),
                                       ),
-                                      ChoiceChip(
-                                        label: Text('Pending ($remainingPending)', style: const TextStyle(fontSize: 12)),
-                                        selected: _statusFilter == 'pending',
-                                        selectedColor: Colors.orange.withValues(alpha: 0.2),
-                                        onSelected: (val) => setState(() => _statusFilter = 'pending'),
+                                      SizedBox(
+                                        width: isNarrow ? (constraints.maxWidth - 14) / 2 : (constraints.maxWidth - 42) / 4,
+                                        child: _StatCard(
+                                          title: 'Remaining Pending',
+                                          nepaliLabel: 'मतदान बाँकी',
+                                          value: remainingPending.toString(),
+                                          icon: Icons.schedule_outlined,
+                                          color: Colors.orange,
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: isNarrow ? (constraints.maxWidth - 14) / 2 : (constraints.maxWidth - 42) / 4,
+                                        child: _StatCard(
+                                          title: 'Turnout Rate',
+                                          nepaliLabel: 'सहभागिता प्रतिशत',
+                                          value: '${turnoutPercent.toStringAsFixed(1)}%',
+                                          icon: Icons.pie_chart_outline_rounded,
+                                          color: Colors.purple,
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 20),
+
+                              // Verification Status Breakdown Card (Method 1 & 2 Admin Telemetry)
+                              _VerificationStatusCard(electionId: widget.electionId),
+                              const SizedBox(height: 24),
+
+                              // Search & Status Filter Toolbar
+                              Material(
+                                color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.3) : const Color(0xFFF8FAFC),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  side: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade200),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  child: Row(
+                                    children: [
+                                      // Search Field
+                                      Expanded(
+                                        child: TextField(
+                                          decoration: InputDecoration(
+                                            hintText: 'Search voter by name, email, ID, or IP address...',
+                                            hintStyle: const TextStyle(fontSize: 13),
+                                            prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                                            isDense: true,
+                                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                            filled: true,
+                                            fillColor: isDark ? AppColors.surfaceVariant : Colors.white,
+                                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                            enabledBorder: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(10),
+                                              borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.grey.shade300),
+                                            ),
+                                          ),
+                                          onChanged: (v) => setState(() => _searchQuery = v),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+
+                                      // Status Filter Chips
+                                      Wrap(
+                                        spacing: 8,
+                                        children: [
+                                          ChoiceChip(
+                                            label: Text('All (${rawList.length})', style: const TextStyle(fontSize: 12)),
+                                            selected: _statusFilter == 'all',
+                                            onSelected: (val) => setState(() => _statusFilter = 'all'),
+                                          ),
+                                          ChoiceChip(
+                                            label: Text('Voted ($totalVoted)', style: const TextStyle(fontSize: 12)),
+                                            selected: _statusFilter == 'voted',
+                                            selectedColor: Colors.green.withValues(alpha: 0.2),
+                                            onSelected: (val) => setState(() => _statusFilter = 'voted'),
+                                          ),
+                                          ChoiceChip(
+                                            label: Text('Pending ($remainingPending)', style: const TextStyle(fontSize: 12)),
+                                            selected: _statusFilter == 'pending',
+                                            selectedColor: Colors.orange.withValues(alpha: 0.2),
+                                            onSelected: (val) => setState(() => _statusFilter = 'pending'),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
-                                ],
+                                ),
                               ),
-                            ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Elector Turnout List
-                  if (filteredList.isEmpty)
-                    const SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: 40),
-                        child: EmptyStateWidget(
-                          icon: Icons.search_off_rounded,
-                          title: 'No matching voters',
-                          subtitle: 'Try adjusting your search criteria or status filter.',
                         ),
                       ),
-                    )
-                  else
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate((context, index) {
-                          final item = filteredList[index] as Map<String, dynamic>;
-                          final hasVoted = item['has_voted'] == true;
-                          final fullName = item['full_name'] ?? 'Unknown Member';
-                          final email = item['email'] ?? '';
-                          final voterId = item['voter_id']?.toString() ?? '';
-                          final ipAddress = item['voted_ip_address']?.toString() ?? '';
-                          final macAddress = item['voted_mac_address']?.toString() ?? '';
 
-                          String votedTimeFormatted = '';
-                          if (hasVoted && item['voted_at'] != null) {
-                            try {
-                              final dt = DateTime.parse(item['voted_at']).toLocal();
-                              votedTimeFormatted = DateFormat('MMM d, y • hh:mm a').format(dt);
-                            } catch (_) {}
-                          }
-
-                          return Card(
-                            elevation: 0,
-                            margin: const EdgeInsets.only(bottom: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              side: BorderSide(
-                                color: hasVoted
-                                    ? Colors.green.withValues(alpha: isDark ? 0.3 : 0.2)
-                                    : (isDark ? Colors.white12 : Colors.grey.shade200),
-                              ),
+                      // Elector Turnout List
+                      if (filteredList.isEmpty)
+                        const SliverToBoxAdapter(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 40),
+                            child: EmptyStateWidget(
+                              icon: Icons.search_off_rounded,
+                              title: 'No matching voters',
+                              subtitle: 'Try adjusting your search criteria or status filter.',
                             ),
-                            color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.4) : Colors.white,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  // Avatar
-                                  CircleAvatar(
-                                    radius: 20,
-                                    backgroundColor: hasVoted
-                                        ? Colors.green.withValues(alpha: 0.15)
-                                        : Colors.orange.withValues(alpha: 0.15),
-                                    child: Icon(
-                                      hasVoted ? Icons.check_circle_rounded : Icons.schedule_rounded,
-                                      color: hasVoted ? Colors.green : Colors.orange,
-                                      size: 22,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 14),
+                          ),
+                        )
+                      else
+                        SliverPadding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate((context, index) {
+                              final item = filteredList[index] as Map<String, dynamic>;
+                              final hasVoted = item['has_voted'] == true;
+                              final fullName = item['full_name'] ?? 'Unknown Member';
+                              final email = item['email'] ?? '';
+                              final voterId = item['voter_id']?.toString() ?? '';
+                              final ipAddress = item['voted_ip_address']?.toString() ?? '';
+                              final macAddress = item['voted_mac_address']?.toString() ?? '';
 
-                                  // Member identity & telemetry
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
+                              String votedTimeFormatted = '';
+                              if (hasVoted && item['voted_at'] != null) {
+                                try {
+                                  final dt = DateTime.parse(item['voted_at']).toLocal();
+                                  votedTimeFormatted = DateFormat('MMM d, y • hh:mm a').format(dt);
+                                } catch (_) {}
+                              }
+
+                              return Card(
+                                elevation: 0,
+                                margin: const EdgeInsets.only(bottom: 10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  side: BorderSide(
+                                    color: hasVoted
+                                        ? Colors.green.withValues(alpha: isDark ? 0.3 : 0.2)
+                                        : (isDark ? Colors.white12 : Colors.grey.shade200),
+                                  ),
+                                ),
+                                color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.4) : Colors.white,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      // Avatar
+                                      CircleAvatar(
+                                        radius: 20,
+                                        backgroundColor: hasVoted
+                                            ? Colors.green.withValues(alpha: 0.15)
+                                            : Colors.orange.withValues(alpha: 0.15),
+                                        child: Icon(
+                                          hasVoted ? Icons.check_circle_rounded : Icons.schedule_rounded,
+                                          color: hasVoted ? Colors.green : Colors.orange,
+                                          size: 22,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 14),
+
+                                      // Member identity & telemetry
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
-                                            Text(
-                                              fullName,
-                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                            Row(
+                                              children: [
+                                                Text(
+                                                  fullName,
+                                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                                ),
+                                                if (voterId.isNotEmpty) ...[
+                                                  const SizedBox(width: 8),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                                    decoration: BoxDecoration(
+                                                      color: AppColors.primary.withValues(alpha: 0.1),
+                                                      borderRadius: BorderRadius.circular(4),
+                                                    ),
+                                                    child: Text(
+                                                      voterId,
+                                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primaryLight),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
                                             ),
-                                            if (voterId.isNotEmpty) ...[
-                                              const SizedBox(width: 8),
-                                              Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                                                decoration: BoxDecoration(
-                                                  color: AppColors.primary.withValues(alpha: 0.1),
-                                                  borderRadius: BorderRadius.circular(4),
-                                                ),
-                                                child: Text(
-                                                  voterId,
-                                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primaryLight),
-                                                ),
+                                            const SizedBox(height: 3),
+                                            Text(
+                                              email.isNotEmpty ? email : 'No email registered',
+                                              style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.grey.shade600),
+                                            ),
+                                            if (hasVoted) ...[
+                                              const SizedBox(height: 6),
+                                              Wrap(
+                                                spacing: 8,
+                                                runSpacing: 4,
+                                                children: [
+                                                  if (votedTimeFormatted.isNotEmpty)
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.green.withValues(alpha: 0.08),
+                                                        borderRadius: BorderRadius.circular(4),
+                                                        border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
+                                                      ),
+                                                      child: Row(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
+                                                          const Icon(Icons.access_time_rounded, size: 11, color: Colors.green),
+                                                          const SizedBox(width: 4),
+                                                          Text(
+                                                            votedTimeFormatted,
+                                                            style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.w600),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  if (ipAddress.isNotEmpty)
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.blue.withValues(alpha: 0.08),
+                                                        borderRadius: BorderRadius.circular(4),
+                                                        border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+                                                      ),
+                                                      child: Row(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
+                                                          const Icon(Icons.language_rounded, size: 11, color: Colors.blue),
+                                                          const SizedBox(width: 4),
+                                                          Text('IP: $ipAddress', style: const TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.w600)),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  if (macAddress.isNotEmpty)
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.purple.withValues(alpha: 0.08),
+                                                        borderRadius: BorderRadius.circular(4),
+                                                        border: Border.all(color: Colors.purple.withValues(alpha: 0.2)),
+                                                      ),
+                                                      child: Row(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
+                                                          const Icon(Icons.devices_rounded, size: 11, color: Colors.purple),
+                                                          const SizedBox(width: 4),
+                                                          Text('Device: $macAddress', style: const TextStyle(fontSize: 11, color: Colors.purple, fontWeight: FontWeight.w600)),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                ],
                                               ),
                                             ],
                                           ],
                                         ),
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          email.isNotEmpty ? email : 'No email registered',
-                                          style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.grey.shade600),
-                                        ),
-                                        if (hasVoted) ...[
-                                          const SizedBox(height: 6),
-                                          Wrap(
-                                            spacing: 8,
-                                            runSpacing: 4,
-                                            children: [
-                                              if (votedTimeFormatted.isNotEmpty)
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.green.withValues(alpha: 0.08),
-                                                    borderRadius: BorderRadius.circular(4),
-                                                    border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisSize: MainAxisSize.min,
-                                                    children: [
-                                                      const Icon(Icons.access_time_rounded, size: 11, color: Colors.green),
-                                                      const SizedBox(width: 4),
-                                                      Text(
-                                                        votedTimeFormatted,
-                                                        style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.w600),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              if (ipAddress.isNotEmpty)
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.blue.withValues(alpha: 0.08),
-                                                    borderRadius: BorderRadius.circular(4),
-                                                    border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisSize: MainAxisSize.min,
-                                                    children: [
-                                                      const Icon(Icons.language_rounded, size: 11, color: Colors.blue),
-                                                      const SizedBox(width: 4),
-                                                      Text('IP: $ipAddress', style: const TextStyle(fontSize: 11, color: Colors.blue, fontWeight: FontWeight.w600)),
-                                                    ],
-                                                  ),
-                                                ),
-                                              if (macAddress.isNotEmpty)
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.purple.withValues(alpha: 0.08),
-                                                    borderRadius: BorderRadius.circular(4),
-                                                    border: Border.all(color: Colors.purple.withValues(alpha: 0.2)),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisSize: MainAxisSize.min,
-                                                    children: [
-                                                      const Icon(Icons.devices_rounded, size: 11, color: Colors.purple),
-                                                      const SizedBox(width: 4),
-                                                      Text('Device: $macAddress', style: const TextStyle(fontSize: 11, color: Colors.purple, fontWeight: FontWeight.w600)),
-                                                    ],
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
+                                      ),
 
-                                  // Status Badge
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: hasVoted ? Colors.green.withValues(alpha: 0.12) : Colors.orange.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(color: hasVoted ? Colors.green.withValues(alpha: 0.3) : Colors.orange.withValues(alpha: 0.3)),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(hasVoted ? Icons.check_circle_rounded : Icons.pending_outlined, size: 14, color: hasVoted ? Colors.green : Colors.orange),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          hasVoted ? 'Voted (मतदान सम्पन्न)' : 'Pending (मतदान बाँकी)',
-                                          style: TextStyle(
-                                            color: hasVoted ? Colors.green : Colors.orange.shade800,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 11,
-                                          ),
+                                      // Status Badge
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: hasVoted ? Colors.green.withValues(alpha: 0.12) : Colors.orange.withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(20),
+                                          border: Border.all(color: hasVoted ? Colors.green.withValues(alpha: 0.3) : Colors.orange.withValues(alpha: 0.3)),
                                         ),
-                                      ],
-                                    ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(hasVoted ? Icons.check_circle_rounded : Icons.pending_outlined, size: 14, color: hasVoted ? Colors.green : Colors.orange),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              hasVoted ? 'Voted (मतदान सम्पन्न)' : 'Pending (मतदान बाँकी)',
+                                              style: TextStyle(
+                                                color: hasVoted ? Colors.green : Colors.orange.shade800,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 11,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }, childCount: filteredList.length),
-                      ),
-                    ),
-                  const SliverToBoxAdapter(child: SizedBox(height: 40)),
-                ],
-              ),
+                                ),
+                              );
+                            }, childCount: filteredList.length),
+                          ),
+                        ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                    ],
+                  ),
+                ),
+              ],
             ),
           );
         },

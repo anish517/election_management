@@ -40,8 +40,11 @@ Color _statusColor(String status) {
 /// Super Admin console: every organization (tenant) on the platform.
 Widget _buildOrgLinks(BuildContext context, PlatformOrganizationModel org) {
   if (org.prefix.isEmpty) return const SizedBox.shrink();
-  final loginUrl = ApiConstants.orgLoginUrl(org.prefix);
+  final loginUrl = ApiConstants.orgLoginUrl(org.prefix, portalToken: org.portalToken);
   final publicUrl = ApiConstants.orgPublicUrl(org.prefix);
+  final shortLogin = org.portalToken.isNotEmpty
+      ? '#/${org.portalToken}/${org.prefix}/login'
+      : '#/login?org=${org.prefix}';
 
   return Padding(
     padding: const EdgeInsets.only(top: 8, bottom: 4),
@@ -74,7 +77,7 @@ Widget _buildOrgLinks(BuildContext context, PlatformOrganizationModel org) {
                 const Icon(Icons.login_rounded, size: 14, color: AppColors.primary),
                 const SizedBox(width: 5),
                 Text(
-                  'Login: #/login?org=${org.prefix}',
+                  'Login: $shortLogin',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,

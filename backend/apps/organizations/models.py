@@ -47,6 +47,13 @@ class Organization(TimestampedModel):
         max_length=30, blank=True, default='',
         help_text='Short handle, e.g. SOC, NMB, HAN. Also the public page URL: electionnepal.org/<prefix>'
     )
+    portal_token = models.CharField(
+        max_length=64,
+        blank=True,
+        default='',
+        db_index=True,
+        help_text='Secret token for private branded portal URL (e.g. sldfe21324vfbgf)'
+    )
     org_type = models.CharField(max_length=50, choices=OrgType.choices, default=OrgType.OTHER)
     council_number = models.CharField(
         max_length=100, blank=True, default='',
@@ -164,6 +171,12 @@ class Organization(TimestampedModel):
     @property
     def is_active(self):
         return self.status in [OrgStatus.TRIAL, OrgStatus.ACTIVE]
+
+    def save(self, *args, **kwargs):
+        if not self.portal_token:
+            import secrets
+            self.portal_token = secrets.token_urlsafe(12).replace('-', '').replace('_', '')[:16]
+        super().save(*args, **kwargs)
 
     def get_voter_cap(self):
         """Returns the voter cap based on the subscription plan."""

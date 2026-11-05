@@ -89,6 +89,14 @@ String _initialLocation() {
     return frag;
   }
   final segments = Uri.base.pathSegments.where((s) => s.isNotEmpty).toList();
+  // Case 1: /<token>/<prefix>/login (CEO format: sldfe21324vfbgf/nesog/login)
+  if (segments.length == 3 && segments[2].toLowerCase() == 'login') {
+    return '/${segments[0]}/${segments[1]}/login';
+  }
+  // Case 2: /o/<token>/<prefix>/login
+  if (segments.length == 4 && segments[0].toLowerCase() == 'o' && segments[3].toLowerCase() == 'login') {
+    return '/${segments[1]}/${segments[2]}/login';
+  }
   if (segments.length == 1 && RegExp(r'^[A-Za-z0-9][A-Za-z0-9-]*$').hasMatch(segments.first)) {
     final seg = segments.first;
     if (seg.toLowerCase() == 'login') {
@@ -125,7 +133,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isOnAuth = loc.startsWith('/login') ||
           loc.startsWith('/otp') ||
           loc.startsWith('/forgot-password') ||
-          loc.startsWith('/reset-password');
+          loc.startsWith('/reset-password') ||
+          loc.endsWith('/login');
 
       final isDirectVoteRoute = loc.startsWith('/vote/direct') ||
           loc.startsWith('/vote/receipt') ||
@@ -192,6 +201,21 @@ final routerProvider = Provider<GoRouter>((ref) {
               ref.read(authProvider).lastOrgPrefix;
           return LoginScreen(orgPrefix: org);
         },
+      ),
+      GoRoute(
+        path: '/:token/:prefix/login',
+        name: 'token-org-login',
+        builder: (context, state) => LoginScreen(
+          orgPrefix: state.pathParameters['prefix'],
+          portalToken: state.pathParameters['token'],
+        ),
+      ),
+      GoRoute(
+        path: '/o/:token/:prefix/login',
+        builder: (context, state) => LoginScreen(
+          orgPrefix: state.pathParameters['prefix'],
+          portalToken: state.pathParameters['token'],
+        ),
       ),
       GoRoute(
         path: '/o/:prefix/login',

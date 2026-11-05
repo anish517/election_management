@@ -8,12 +8,14 @@ class OrgPrefixField extends StatelessWidget {
   final TextEditingController controller;
   final InputDecoration decoration;
   final bool readOnly;
+  final String? portalToken;
 
   const OrgPrefixField({
     super.key,
     required this.controller,
     required this.decoration,
     this.readOnly = false,
+    this.portalToken,
   });
 
   static final _allowed = RegExp(r'^[A-Za-z0-9][A-Za-z0-9-]*$');
@@ -56,7 +58,7 @@ class OrgPrefixField extends StatelessWidget {
                     icon: const Icon(Icons.copy_rounded, size: 18),
                     tooltip: 'Copy Login Link',
                     onPressed: () {
-                      final url = ApiConstants.orgLoginUrl(prefix);
+                      final url = ApiConstants.orgLoginUrl(prefix, portalToken: portalToken);
                       Clipboard.setData(ClipboardData(text: url));
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(

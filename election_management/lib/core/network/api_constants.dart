@@ -173,8 +173,11 @@ class ApiConstants {
   }
 
   /// An organization's dedicated login portal, e.g. https://electionnepal.org/#/login?org=SOC.
-  static String orgLoginUrl(String prefix) {
+  static String orgLoginUrl(String prefix, {String? portalToken}) {
     final origin = kIsWeb ? Uri.base.origin : baseUrl.replaceAll('/v1', '');
+    if (portalToken != null && portalToken.isNotEmpty) {
+      return '$origin/#/$portalToken/$prefix/login';
+    }
     return '$origin/#/login?org=$prefix';
   }
   static String publicOrganization(String prefix) =>

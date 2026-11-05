@@ -24,6 +24,7 @@ class PublicOrganization {
   final String id;
   final String name;
   final String prefix;
+  final String portalToken;
   final String orgType;
   final String address;
   final String phone;
@@ -38,6 +39,7 @@ class PublicOrganization {
       : id = j['id'] as String? ?? '',
         name = j['name'] as String? ?? '',
         prefix = j['prefix'] as String? ?? '',
+        portalToken = j['portal_token'] as String? ?? '',
         orgType = j['org_type'] as String? ?? '',
         address = j['address'] as String? ?? '',
         phone = j['phone'] as String? ?? '',
@@ -71,7 +73,18 @@ final publicOrganizationProvider = FutureProvider.autoDispose
     throw Exception('No organization handle provided');
   }
   final dio = ref.watch(apiClientProvider);
-  final response = await dio.get(ApiConstants.publicOrganization(cleanHandle));
+  String path;
+  if (cleanHandle.contains('/')) {
+    final parts = cleanHandle.split('/');
+    // e.g. "sldfe21324vfbgf/nesog"
+    path = '/public/organizations/${Uri.encodeComponent(parts[0])}/${Uri.encodeComponent(parts[1])}/';
+  } else if (cleanHandle.contains('?token=')) {
+    final parts = cleanHandle.split('?token=');
+    path = '${ApiConstants.publicOrganization(parts[0])}?token=${Uri.encodeQueryComponent(parts[1])}';
+  } else {
+    path = ApiConstants.publicOrganization(cleanHandle);
+  }
+  final response = await dio.get(path);
   return PublicOrganization.fromJson(response.data as Map<String, dynamic>);
 });
 

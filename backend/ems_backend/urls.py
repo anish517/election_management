@@ -86,6 +86,7 @@ urlpatterns = [
 
     # Public organization page (electionnepal.org/<prefix>)
     path('v1/public/organizations/<str:prefix>/', PublicOrganizationView.as_view(), name='public-org'),
+    path('v1/public/organizations/<str:token>/<str:prefix>/', PublicOrganizationView.as_view(), name='public-org-token'),
 
     # Super Admin platform console (all tenants)
     path('v1/platform/overview/', PlatformOverviewView.as_view(), name='platform-overview'),

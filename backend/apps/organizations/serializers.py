@@ -11,7 +11,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
         fields = [
-            'id', 'name', 'slug', 'prefix', 'org_type', 'council_number',
+            'id', 'name', 'slug', 'prefix', 'portal_token', 'org_type', 'council_number',
             'address', 'phone', 'email', 'website', 'timezone',
             'default_language', 'logo_url', 'cover_image_url', 'brand_color',
             'type_metadata',
@@ -25,7 +25,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'election_officers_can_publish', 'data_retention_years',
             'legal_hold', 'created_at'
         ]
-        read_only_fields = ['id', 'slug', 'prefix', 'status', 'trial_ends_at', 'legal_hold', 'created_at']
+        read_only_fields = ['id', 'slug', 'prefix', 'portal_token', 'status', 'trial_ends_at', 'legal_hold', 'created_at']
 
     def to_internal_value(self, data):
         # Support both 'email' and 'org_email'
@@ -76,12 +76,12 @@ class PlatformOrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
         fields = [
-            'id', 'name', 'slug', 'prefix', 'org_type', 'email', 'phone', 'logo_url',
+            'id', 'name', 'slug', 'prefix', 'portal_token', 'org_type', 'email', 'phone', 'logo_url',
             'status', 'trial_ends_at', 'created_at',
             'member_count', 'election_count', 'voter_count', 'admin_emails',
         ]
         read_only_fields = [
-            'id', 'name', 'slug', 'prefix', 'org_type', 'email', 'phone', 'logo_url', 'created_at',
+            'id', 'name', 'slug', 'prefix', 'portal_token', 'org_type', 'email', 'phone', 'logo_url', 'created_at',
         ]
 
     def get_admin_emails(self, obj):
@@ -139,7 +139,7 @@ class PublicOrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
         fields = [
-            'id', 'name', 'prefix', 'org_type', 'address', 'phone', 'email', 'website',
+            'id', 'name', 'prefix', 'portal_token', 'org_type', 'address', 'phone', 'email', 'website',
             'logo_url', 'cover_image_url', 'brand_color',
         ]
 

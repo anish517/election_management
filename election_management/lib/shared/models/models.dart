@@ -850,6 +850,7 @@ class OrganizationModel {
   final String name;
   final String slug;
   final String prefix;
+  final String portalToken;
   final String orgType;
   final String councilNumber;
   final String address;
@@ -889,6 +890,7 @@ class OrganizationModel {
     required this.name,
     required this.slug,
     required this.prefix,
+    this.portalToken = '',
     required this.orgType,
     required this.councilNumber,
     required this.address,
@@ -926,6 +928,7 @@ class OrganizationModel {
         name: json['name'] as String? ?? '',
         slug: json['slug'] as String? ?? '',
         prefix: json['prefix'] as String? ?? '',
+        portalToken: json['portal_token'] as String? ?? '',
         orgType: json['org_type'] as String? ?? '',
         councilNumber: json['council_number'] as String? ?? '',
         address: json['address'] as String? ?? '',
@@ -1141,6 +1144,7 @@ class PlatformOrganizationModel {
   final String name;
   final String slug;
   final String prefix;
+  final String portalToken;
   final String orgType;
   final String email;
   final String logoUrl;
@@ -1157,6 +1161,7 @@ class PlatformOrganizationModel {
     required this.name,
     required this.slug,
     this.prefix = '',
+    this.portalToken = '',
     required this.orgType,
     required this.email,
     required this.logoUrl,
@@ -1175,6 +1180,7 @@ class PlatformOrganizationModel {
         name: json['name'] as String? ?? '',
         slug: json['slug'] as String? ?? '',
         prefix: json['prefix'] as String? ?? '',
+        portalToken: json['portal_token'] as String? ?? '',
         orgType: json['org_type'] as String? ?? '',
         email: json['email'] as String? ?? '',
         logoUrl: json['logo_url'] as String? ?? '',

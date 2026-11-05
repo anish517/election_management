@@ -13,6 +13,7 @@ class UserModel {
   final String organizationLogoUrl;
   final String organizationCoverImageUrl;
   final String organizationPrefix;
+  final String portalToken;
   final bool is2faEnabled;
   final String? lastLoginAt;
 
@@ -29,6 +30,7 @@ class UserModel {
     required this.organizationLogoUrl,
     required this.organizationCoverImageUrl,
     this.organizationPrefix = '',
+    this.portalToken = '',
     required this.is2faEnabled,
     this.lastLoginAt,
   });
@@ -46,6 +48,7 @@ class UserModel {
         organizationLogoUrl: json['organization_logo_url'] as String? ?? '',
         organizationCoverImageUrl: json['organization_cover_image_url'] as String? ?? '',
         organizationPrefix: json['organization_prefix'] as String? ?? '',
+        portalToken: json['portal_token'] as String? ?? '',
         is2faEnabled: json['is_2fa_enabled'] as bool? ?? false,
         lastLoginAt: json['last_login_at'] as String?,
       );

@@ -143,6 +143,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Unauthenticated users are allowed on auth pages and direct ballot link pages
       if (!isLoggedIn && !isOnAuth && !isDirectVoteRoute) {
         final lastOrg = authState.lastOrgPrefix;
+        final lastToken = authState.lastPortalToken;
+        if (lastToken != null && lastToken.trim().isNotEmpty && lastOrg != null && lastOrg.trim().isNotEmpty) {
+          return '/${lastToken.trim()}/${lastOrg.trim()}/login';
+        }
         if (lastOrg != null && lastOrg.trim().isNotEmpty) {
           return '/login?org=${lastOrg.trim()}';
         }

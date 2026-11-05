@@ -12,17 +12,31 @@ class AuthState {
   final bool isLoading;
   final String? error;
   final String? lastOrgPrefix;
+  final String? lastPortalToken;
 
-  const AuthState({this.user, this.isLoading = false, this.error, this.lastOrgPrefix});
+  const AuthState({
+    this.user,
+    this.isLoading = false,
+    this.error,
+    this.lastOrgPrefix,
+    this.lastPortalToken,
+  });
 
   bool get isAuthenticated => user != null;
 
-  AuthState copyWith({UserModel? user, bool? isLoading, String? error, String? lastOrgPrefix}) =>
+  AuthState copyWith({
+    UserModel? user,
+    bool? isLoading,
+    String? error,
+    String? lastOrgPrefix,
+    String? lastPortalToken,
+  }) =>
       AuthState(
         user: user ?? this.user,
         isLoading: isLoading ?? this.isLoading,
         error: error,
         lastOrgPrefix: lastOrgPrefix ?? this.lastOrgPrefix,
+        lastPortalToken: lastPortalToken ?? this.lastPortalToken,
       );
 }
 
@@ -42,7 +56,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final resp = await _dio.get(ApiConstants.me);
       final user = UserModel.fromJson(resp.data as Map<String, dynamic>);
       final prefix = user.organizationPrefix.isNotEmpty ? user.organizationPrefix : state.lastOrgPrefix;
-      state = AuthState(user: user, lastOrgPrefix: prefix);
+      final token = user.portalToken.isNotEmpty ? user.portalToken : state.lastPortalToken;
+      state = AuthState(user: user, lastOrgPrefix: prefix, lastPortalToken: token);
     } catch (_) {
       // Don't log out if refresh fails, just keep existing state
     }
@@ -92,10 +107,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
         user = UserModel.fromJson(meResp.data as Map<String, dynamic>);
       }
       final prefix = user.organizationPrefix.isNotEmpty ? user.organizationPrefix : state.lastOrgPrefix;
+      final pToken = user.portalToken.isNotEmpty ? user.portalToken : state.lastPortalToken;
       if (prefix != null && prefix.isNotEmpty) {
         await TokenStorage.write('last_org_prefix', prefix);
       }
-      state = AuthState(user: user, lastOrgPrefix: prefix);
+      if (pToken != null && pToken.isNotEmpty) {
+        await TokenStorage.write('last_portal_token', pToken);
+      }
+      state = AuthState(user: user, lastOrgPrefix: prefix, lastPortalToken: pToken);
       return null;
     } on DioException catch (e) {
       final msg = _extractError(e);
@@ -180,10 +199,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
         user = UserModel.fromJson(meResp.data as Map<String, dynamic>);
       }
       final prefix = user.organizationPrefix.isNotEmpty ? user.organizationPrefix : state.lastOrgPrefix;
+      final pToken = user.portalToken.isNotEmpty ? user.portalToken : state.lastPortalToken;
       if (prefix != null && prefix.isNotEmpty) {
         await TokenStorage.write('last_org_prefix', prefix);
       }
-      state = AuthState(user: user, lastOrgPrefix: prefix);
+      if (pToken != null && pToken.isNotEmpty) {
+        await TokenStorage.write('last_portal_token', pToken);
+      }
+      state = AuthState(user: user, lastOrgPrefix: prefix, lastPortalToken: pToken);
       return null;
     } on DioException catch (e) {
       final msg = _extractError(e);
@@ -231,6 +254,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     final prefix = state.user?.organizationPrefix ?? state.lastOrgPrefix;
+    final token = state.user?.portalToken ?? state.lastPortalToken;
     try {
       final refresh = await TokenStorage.read('refresh_token');
       if (refresh != null) {
@@ -241,7 +265,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (prefix != null && prefix.isNotEmpty) {
       await TokenStorage.write('last_org_prefix', prefix);
     }
-    state = AuthState(lastOrgPrefix: prefix);
+    if (token != null && token.isNotEmpty) {
+      await TokenStorage.write('last_portal_token', token);
+    }
+    state = AuthState(lastOrgPrefix: prefix, lastPortalToken: token);
   }
 
   /// Logged-in admin changes their own password; the session stays as is.

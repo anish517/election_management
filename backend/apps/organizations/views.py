@@ -310,12 +310,13 @@ class PublicOrganizationView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # If access token was specified, verify it matches the organization's portal_token
-        if access_token and org.portal_token and org.portal_token != access_token:
-            return Response(
-                {'error': {'code': 'invalid_token', 'message': 'Invalid portal access token.'}},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        # Strictly enforce portal_token: every organization requires its secret token to view
+        if org.portal_token:
+            if not access_token or org.portal_token != access_token:
+                return Response(
+                    {'error': {'code': 'invalid_token', 'message': 'Private portal access token is required.'}},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
         elections = org.elections.exclude(state='draft').order_by('-voting_start_at', '-created_at')
         data = PublicOrganizationSerializer(org).data

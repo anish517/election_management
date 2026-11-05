@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:ui';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +11,8 @@ import '../../core/network/api_constants.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/models.dart';
+import '../../core/utils/error_helper.dart';
+import '../../shared/widgets/app_error_view.dart';
 import 'qr_scanner_view.dart';
 import 'kiosk_fullscreen.dart';
 
@@ -60,6 +61,7 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
   String _votedAt = '';
   int _resetCountdown = 5;
   Timer? _resetTimer;
+  Timer? _inactivityTimer;
 
   @override
   void initState() {
@@ -86,6 +88,7 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
     _voterIdController.dispose();
     _otpController.dispose();
     _resetTimer?.cancel();
+    _inactivityTimer?.cancel();
     super.dispose();
   }
 
@@ -179,6 +182,7 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
         });
       } else {
         _loadBallotSession(data);
+        _recordUserActivity();
       }
     } catch (e) {
       setState(() {
@@ -188,17 +192,76 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
     }
   }
 
-  String _extractErrorMessage(dynamic e) {
-    if (e is DioException) {
-      final data = e.response?.data;
-      if (data is Map) {
-        if (data['error'] != null) return data['error'].toString();
-        if (data['message'] != null) return data['message'].toString();
-        if (data['detail'] != null) return data['detail'].toString();
+  void _recordUserActivity() {
+    _inactivityTimer?.cancel();
+    if (_stage == KioskStage.voterPin || _stage == KioskStage.voteConfirmed) return;
+    _inactivityTimer = Timer(const Duration(minutes: 3), () {
+      if (!mounted) return;
+      if (_stage != KioskStage.voterPin && _stage != KioskStage.voteConfirmed) {
+        _resetKioskToStandby();
       }
-      return e.message ?? 'A network or server error occurred.';
-    }
-    return e.toString().replaceAll('Exception: ', '');
+    });
+  }
+
+  String _extractErrorMessage(dynamic e) {
+    return extractApiErrorMessage(e, fallback: 'A network or polling station error occurred. Please try again.');
+  }
+
+  void _showKioskSessionExpiredDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFFE11D48), width: 1.5),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.timer_off_rounded, color: Color(0xFFFB7185), size: 28),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Voting Session Timed Out',
+                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'For voter privacy and booth security, official voting sessions automatically expire after 15 minutes of booth time.',
+              style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 14, height: 1.45),
+            ),
+            SizedBox(height: 12),
+            Text(
+              '- Your secret ballot was NOT submitted.\n- Your voting eligibility remains completely intact.\n- Please re-enter your PIN or consult the Polling Officer.',
+              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13, height: 1.4),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _resetKioskToStandby();
+            },
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Return to Station Standby', style: TextStyle(fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _verifyOtpAndUnlock() async {
@@ -375,10 +438,22 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
 
       _startAutoResetTimer();
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = _extractErrorMessage(e);
-      });
+      final errorMsg = _extractErrorMessage(e);
+      final isExpired = isSessionExpiredError(e) ||
+          errorMsg.toLowerCase().contains('session is expired') ||
+          errorMsg.toLowerCase().contains('expired or already used') ||
+          errorMsg.toLowerCase().contains('invalid session');
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = errorMsg;
+        });
+
+        if (isExpired) {
+          _showKioskSessionExpiredDialog();
+        }
+      }
     }
   }
 
@@ -396,6 +471,7 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
 
   void _resetKioskToStandby() {
     _resetTimer?.cancel();
+    _inactivityTimer?.cancel();
     setState(() {
       _stage = KioskStage.voterPin;
       _enteredVoterPin = '';
@@ -572,7 +648,10 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
   Widget build(BuildContext context) {
     final electionAsync = ref.watch(electionProvider(widget.electionId));
 
-    return PopScope(
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (_) => _recordUserActivity(),
+      child: PopScope(
       canPop: false, // Prevent accidental Android back button exit
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _showOfficerExitDialog();
@@ -582,7 +661,13 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
         body: electionAsync.when(
           loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryLight)),
           error: (e, _) => Center(
-            child: Text('Failed to load election: $e', style: const TextStyle(color: Colors.white)),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: AppErrorView(
+                error: e,
+                onRetry: () => ref.invalidate(electionProvider(widget.electionId)),
+              ),
+            ),
           ),
           data: (election) {
             final isCasting = _stage == KioskStage.ballotCasting;
@@ -610,6 +695,7 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
               ),
             );
           },
+          ),
         ),
       ),
     );
@@ -1162,6 +1248,34 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
               ),
             ),
 
+            if (_errorMessage != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7F1D1D).withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFEF4444)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline_rounded, color: Color(0xFFFCA5A5), size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: Color(0xFFFEE2E2), fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 20),
+                      tooltip: 'Dismiss',
+                      onPressed: () => setState(() => _errorMessage = null),
+                    ),
+                  ],
+                ),
+              ),
+
           // Contests
           ..._ballotPositions.map((pos) {
             final posId = pos['id'].toString();
@@ -1597,6 +1711,31 @@ class _VenueKioskScreenState extends ConsumerState<VenueKioskScreen> {
           }),
 
           const SizedBox(height: 16),
+
+          if (_errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.redAccent, size: 18),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
           // Submit Action Button
           SizedBox(

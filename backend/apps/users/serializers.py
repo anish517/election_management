@@ -143,10 +143,12 @@ class LoginSerializer(serializers.Serializer):
     """
     email_or_phone = serializers.CharField()
     password = serializers.CharField(write_only=True)
+    portal_token = serializers.CharField(required=False, allow_blank=True, default='')
 
     def validate(self, attrs):
         identifier = attrs['email_or_phone'].strip()
         password = attrs['password']
+        portal_token = attrs.get('portal_token', '').strip()
 
         # Try email first, then phone
         user = None
@@ -163,6 +165,14 @@ class LoginSerializer(serializers.Serializer):
 
         if not user.is_active:
             raise serializers.ValidationError({'non_field_errors': 'Account is disabled.'})
+
+        # If a portal_token was passed, verify user belongs to this portal
+        if portal_token and user.organization and user.organization.portal_token:
+            if user.organization.portal_token != portal_token:
+                raise serializers.ValidationError(
+                    {'non_field_errors': 'Invalid portal security token. Access denied.'},
+                    code='invalid_portal_token'
+                )
 
         attrs['user'] = user
         return attrs

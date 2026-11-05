@@ -163,6 +163,40 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       );
     }
 
+    if (orgAsync != null && orgAsync.hasError && widget.portalToken != null && widget.portalToken!.isNotEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.red.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.red.withValues(alpha: 0.25)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.gpp_bad_rounded, color: Colors.redAccent, size: 28),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Invalid or Expired Portal Link',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent, fontSize: 15),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'The security token in this URL is incorrect. Access to this private election portal is restricted. Please use the exact link provided by your organization.',
+                    style: TextStyle(fontSize: 12.5, color: Theme.of(context).textTheme.bodySmall?.color, height: 1.4),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (org != null) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,

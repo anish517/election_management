@@ -74,7 +74,7 @@ Widget _buildOrgLinks(BuildContext context, PlatformOrganizationModel org) {
                 const Icon(Icons.login_rounded, size: 14, color: AppColors.primary),
                 const SizedBox(width: 5),
                 Text(
-                  'Login: #/login?org=${org.prefix}\',
+                  'Login: #/login?org=${org.prefix}',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -103,7 +103,7 @@ Widget _buildOrgLinks(BuildContext context, PlatformOrganizationModel org) {
                 const Icon(Icons.public_rounded, size: 14, color: Colors.grey),
                 const SizedBox(width: 5),
                 Text(
-                  'Public: #/o/${org.prefix}\',
+                  'Public: #/o/${org.prefix}',
                   style: TextStyle(
                     fontSize: 12,
                     color: Theme.of(context).textTheme.bodySmall?.color,

@@ -8,6 +8,7 @@ import '../../../core/network/api_constants.dart';
 import '../../../shared/models/models.dart';
 import 'create_candidate_screen.dart';
 import '../../candidates/candidate_profile_sheet.dart';
+import '../../../core/utils/error_helper.dart';
 import '../../shared/digital_id_card_dialog.dart';
 
 class CandidatesScreen extends ConsumerStatefulWidget {
@@ -115,7 +116,7 @@ class _CandidatesScreenState extends ConsumerState<CandidatesScreen> {
                           children: [
                             const Icon(Icons.error_outline_rounded, color: Colors.red, size: 36),
                             const SizedBox(height: 10),
-                            Text('Failed to load candidate roster: $err', style: const TextStyle(color: Colors.red)),
+                            Text(extractApiErrorMessage(err, fallback: 'Failed to load candidate roster.'), style: const TextStyle(color: Colors.red, fontSize: 13), textAlign: TextAlign.center),
                             const SizedBox(height: 12),
                             ElevatedButton.icon(
                               onPressed: () => ref.invalidate(electionProvider(widget.electionId)),

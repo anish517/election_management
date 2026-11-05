@@ -21,6 +21,7 @@ final apiClientProvider = Provider<Dio>((ref) {
 
   // First, so it sees every response and error before the JWT retry logic.
   dio.interceptors.add(ApiActivityInterceptor());
+  dio.interceptors.add(NetworkSanitizerInterceptor());
   dio.interceptors.add(JwtInterceptor(dio));
   return dio;
 });
@@ -51,6 +52,27 @@ class ApiActivityInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     _done(err.requestOptions);
+    handler.next(err);
+  }
+}
+
+/// Sanitizes low-level browser network drops and CORS exceptions into clean messages
+class NetworkSanitizerInterceptor extends Interceptor {
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    final rawMsg = err.message ?? '';
+    final rawErr = err.error?.toString() ?? '';
+    if (err.type == DioExceptionType.connectionError ||
+        rawMsg.contains('XMLHttpRequest') ||
+        rawMsg.contains('CORS') ||
+        rawErr.contains('XMLHttpRequest') ||
+        rawErr.contains('CORS')) {
+      final sanitized = err.copyWith(
+        message: 'Unable to reach the election server. Please check your network connection and try again.',
+      );
+      handler.next(sanitized);
+      return;
+    }
     handler.next(err);
   }
 }

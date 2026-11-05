@@ -11,6 +11,8 @@ import '../../core/network/api_constants.dart';
 import '../../shared/models/models.dart';
 import '../candidates/candidate_profile_sheet.dart';
 import 'ballot_l10n.dart';
+import '../../shared/widgets/app_error_view.dart';
+import '../../core/services/ballot_draft_storage.dart';
 
 class BallotScreen extends ConsumerStatefulWidget {
   final String electionId;
@@ -36,6 +38,28 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final currentSelections = ref.read(ballotSelectionsProvider);
+      if (currentSelections.isEmpty) {
+        final draft = await BallotDraftStorage.loadDraft(widget.electionId);
+        if (draft != null && draft.isNotEmpty && mounted) {
+          ref.read(ballotSelectionsProvider.notifier).restoreDraft(draft);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Row(children: [
+                  Icon(Icons.restore_page_rounded, color: Colors.white, size: 18),
+                  SizedBox(width: 8),
+                  Text('Restored your previous candidate selections.'),
+                ]),
+                duration: Duration(seconds: 3),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        }
+      }
+    });
     _stopwatch.start();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
@@ -245,6 +269,9 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<Map<String, List<String>>>(ballotSelectionsProvider, (prev, next) {
+      BallotDraftStorage.saveDraft(widget.electionId, next);
+    });
     final ballotAsync = ref.watch(ballotDataProvider(widget.electionId));
     final orgAsync = ref.watch(orgProfileProvider);
     final selections = ref.watch(ballotSelectionsProvider);
@@ -482,26 +509,10 @@ class _BallotScreenState extends ConsumerState<BallotScreen> {
       ),
       body: ballotAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 48),
-              const SizedBox(height: 16),
-              Text('Cannot Load Ballot', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Text(e.toString(), style: const TextStyle(color: AppColors.textMuted, fontSize: 13), textAlign: TextAlign.center),
-              ),
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: () => context.pop(),
-                icon: const Icon(Icons.arrow_back_rounded),
-                label: const Text('Go Back'),
-              ),
-            ],
-          ),
+        error: (e, _) => AppErrorView(
+          error: e,
+          title: 'Unable to Load Official Ballot',
+          onRetry: () => ref.invalidate(ballotProvider(widget.electionId)),
         ),
         data: (ballotData) {
           // 1. Admin / non-voter block

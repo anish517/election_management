@@ -16,6 +16,8 @@ import '../../core/providers/org_providers.dart';
 import '../../core/providers/payment_providers.dart';
 import '../../shared/models/models.dart';
 
+import '../../shared/widgets/app_error_view.dart';
+import '../../core/utils/error_helper.dart';
 class _EndorsementItem {
   final String endorsementType;
   final TextEditingController nameCtrl = TextEditingController();
@@ -647,7 +649,7 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to withdraw nomination: $e')),
+            SnackBar(content: Text(extractApiErrorMessage(e, fallback: 'Failed to withdraw nomination.'))),
           );
         }
       }
@@ -662,7 +664,11 @@ class _NominationScreenState extends ConsumerState<NominationScreen> {
       appBar: AppBar(title: const Text('Self Nomination')),
       body: electionAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => AppErrorView(
+          error: e,
+          title: 'Unable to Load Election Details',
+          onRetry: () => ref.invalidate(electionProvider(widget.electionId)),
+        ),
         data: (election) {
           final user = ref.watch(authProvider).user;
           final isRestricted = user != null && (user.canManageElections || user.isObserver || user.isAuditor);

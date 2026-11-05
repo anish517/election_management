@@ -13,6 +13,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../shared/widgets/loading_button.dart';
 
+import '../../../core/utils/error_helper.dart';
 class NoticeScreen extends ConsumerStatefulWidget {
   final String electionId;
   final bool? showAppBar;
@@ -956,7 +957,7 @@ class _NoticeDialogState extends ConsumerState<_NoticeDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${e.response?.data ?? e.message}'),
+            content: Text(extractApiErrorMessage(e, fallback: 'Failed to publish notice. Please try again.')),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
           ),

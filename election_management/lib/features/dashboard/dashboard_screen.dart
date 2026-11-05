@@ -13,6 +13,7 @@ import '../../shared/widgets/glass_card.dart';
 import '../../shared/widgets/responsive_layout.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'dashboard_quick_actions.dart';
+import '../../shared/widgets/app_error_view.dart';
 import 'platform_overview_section.dart';
 import '../../core/providers/platform_providers.dart';
 import '../../shared/widgets/live_clock.dart';
@@ -582,7 +583,12 @@ class DashboardScreen extends ConsumerWidget {
           child: CircularProgressIndicator(),
         ),
       ),
-      error: (e, _) => Text('Error loading stats: $e'),
+      error: (e, _) => AppErrorView(
+        error: e,
+        title: 'Unable to Load Statistics',
+        isCompact: true,
+        onRetry: () => ref.invalidate(orgStatsProvider),
+      ),
       data: (stats) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -962,7 +968,7 @@ class DashboardScreen extends ConsumerWidget {
     final electionsAsync = ref.watch(electionsProvider);
     return electionsAsync.when(
       loading: () => _buildShimmerList(),
-      error: (e, _) => _buildError(e.toString(), () => ref.invalidate(electionsProvider)),
+      error: (e, _) => AppErrorView(error: e, title: 'Unable to Load Elections', onRetry: () => ref.invalidate(electionsProvider)),
       data: (elections) => _buildElectionList(context, elections, user, isDark),
     );
   }
@@ -1021,28 +1027,6 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildError(String message, VoidCallback onRetry) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.error.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        children: [
-          const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 32),
-          const SizedBox(height: 8),
-          const Text('Failed to load elections', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          ElevatedButton(
-            onPressed: onRetry,
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
-            child: const Text('Retry'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _ElectionCard extends StatelessWidget {

@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/services/ballot_draft_storage.dart';
+import '../../core/utils/error_helper.dart';
 import '../../core/network/api_constants.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/loading_button.dart';
@@ -211,6 +213,7 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
 
       // Step 3: Clear ballot selections (security)
       ref.read(ballotSelectionsProvider.notifier).clear();
+      await BallotDraftStorage.clearDraft(widget.electionId);
 
       if (mounted) {
         context.goNamed(
@@ -220,20 +223,11 @@ class _VoteConfirmationScreenState extends ConsumerState<VoteConfirmationScreen>
         );
       }
     } on DioException catch (e) {
-      final data = e.response?.data;
-      String msg = 'Failed to submit your vote. Please try again.';
-      if (data is Map) {
-        if (data.containsKey('error')) {
-          msg = data['error'].toString();
-        } else if (data.containsKey('non_field_errors')) {
-          msg = (data['non_field_errors'] as List).join('\n');
-        } else {
-          final errors = <String>[];
-          data.forEach((key, value) {
-            errors.add('$key: $value');
-          });
-          msg = errors.join('\n');
-        }
+      String msg;
+      if (e.response?.statusCode == 401) {
+        msg = 'Your session timed out for security. Please sign in again. Your candidate selections have been preserved.';
+      } else {
+        msg = extractApiErrorMessage(e, fallback: 'Failed to submit your vote. Please check your connection and try again.');
       }
       if (msg.toLowerCase().contains('already cast') || msg.toLowerCase().contains('already voted')) {
         msg = 'Already Submitted (मतदान भइसकेको छ). Your ballot has already been cast and recorded for this election.';

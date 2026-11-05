@@ -8,6 +8,8 @@ import '../../../shared/models/models.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/admin_drawer.dart';
 import '../../../shared/widgets/shimmer_loaders.dart';
+import '../../../shared/widgets/app_error_view.dart';
+import '../../../core/utils/error_helper.dart';
 import '../../../shared/widgets/responsive_layout.dart';
 
 class ElectionRulesScreen extends ConsumerStatefulWidget {
@@ -140,7 +142,7 @@ class _ElectionRulesScreenState extends ConsumerState<ElectionRulesScreen> {
             children: [
               const Icon(Icons.error_outline, color: Colors.white),
               const SizedBox(width: 12),
-              Expanded(child: Text('Error: $e')),
+              Expanded(child: Text(extractApiErrorMessage(e, fallback: 'Failed to update election rules.'))),
             ],
           ),
           backgroundColor: Colors.red.shade700,
@@ -255,7 +257,11 @@ class _ElectionRulesScreenState extends ConsumerState<ElectionRulesScreen> {
       body: ResponsivePageWrapper(
         child: orgAsync.when(
           loading: () => const ListSkeleton(count: 4),
-          error: (err, _) => Center(child: Text('Error loading rules: $err')),
+          error: (err, _) => AppErrorView(
+            error: err,
+            title: 'Unable to Load Election Rules',
+            onRetry: () => ref.invalidate(orgProfileProvider),
+          ),
           data: (org) {
             _populateForm(org);
             return CenteredScroll(

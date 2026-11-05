@@ -258,6 +258,7 @@ class BallotSelectionsNotifier extends StateNotifier<Map<String, List<String>>> 
     return index + 1;
   }
 
+  void restoreDraft(Map<String, List<String>> draft) => state = Map<String, List<String>>.from(draft);
   void clear() => state = {};
 
   bool get hasAnySelection => state.values.any((list) => list.isNotEmpty);

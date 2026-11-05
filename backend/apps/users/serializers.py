@@ -346,6 +346,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     organization_logo_url = serializers.SerializerMethodField()
     organization_cover_image_url = serializers.SerializerMethodField()
     organization_prefix = serializers.SerializerMethodField()
+    portal_token = serializers.SerializerMethodField()
     role_display = serializers.SerializerMethodField()
     full_name = serializers.SerializerMethodField()
     photo_url = serializers.SerializerMethodField()
@@ -356,7 +357,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'email', 'phone', 'role', 'role_display',
             'organization', 'organization_name', 'organization_logo_url', 'organization_cover_image_url',
-            'organization_prefix',
+            'organization_prefix', 'portal_token',
             'full_name', 'photo_url', 'enrolled_elections',
             'is_2fa_enabled', 'last_login_at', 'created_at',
         ]
@@ -373,6 +374,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def get_organization_prefix(self, obj):
         return obj.organization.prefix if obj.organization else ''
+
+    def get_portal_token(self, obj):
+        return obj.organization.portal_token if obj.organization else ''
 
     def get_role_display(self, obj):
         return obj.get_role_display()

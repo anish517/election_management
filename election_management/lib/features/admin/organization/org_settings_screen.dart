@@ -59,6 +59,7 @@ class _ImageTile extends StatefulWidget {
   final IconData icon;
   final Future<String?> Function(Uint8List bytes, String name) onUpload;
   final void Function(String url) onUploaded;
+  final VoidCallback? onRemoved;
   final double height;
 
   const _ImageTile({
@@ -67,6 +68,7 @@ class _ImageTile extends StatefulWidget {
     required this.icon,
     required this.onUpload,
     required this.onUploaded,
+    this.onRemoved,
     this.height = 140,
   });
 
@@ -82,6 +84,14 @@ class _ImageTileState extends State<_ImageTile> {
   void initState() {
     super.initState();
     _url = widget.initialUrl;
+  }
+
+  @override
+  void didUpdateWidget(covariant _ImageTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialUrl != widget.initialUrl) {
+      setState(() => _url = widget.initialUrl);
+    }
   }
 
   Future<void> _pick() async {
@@ -102,15 +112,46 @@ class _ImageTileState extends State<_ImageTile> {
     }
   }
 
+  void _remove() {
+    setState(() => _url = null);
+    widget.onUploaded('');
+    widget.onRemoved?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final hasImg = _url != null && _url!.isNotEmpty;
+    final resolvedUrl = hasImg ? (ApiConstants.getFullImageUrl(_url!) ?? _url!) : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(widget.label, style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(widget.label, style: Theme.of(context).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600)),
+            if (hasImg)
+              InkWell(
+                onTap: _remove,
+                borderRadius: BorderRadius.circular(6),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.delete_outline_rounded, size: 14, color: Colors.redAccent),
+                      SizedBox(width: 4),
+                      Text(
+                        'Remove',
+                        style: TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
         const SizedBox(height: 8),
         GestureDetector(
           onTap: _uploading ? null : _pick,
@@ -124,7 +165,9 @@ class _ImageTileState extends State<_ImageTile> {
                 color: isDark ? Colors.white12 : Colors.grey.shade300,
                 width: 1.5,
               ),
-              image: hasImg ? DecorationImage(image: NetworkImage(_url!), fit: BoxFit.cover) : null,
+              image: (hasImg && resolvedUrl != null)
+                  ? DecorationImage(image: NetworkImage(resolvedUrl), fit: BoxFit.cover)
+                  : null,
             ),
             child: _uploading
                 ? const Center(child: CircularProgressIndicator())
@@ -151,7 +194,7 @@ class _ImageTileState extends State<_ImageTile> {
                           const SizedBox(height: 8),
                           const Text('Tap to upload', style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600)),
                           const SizedBox(height: 2),
-                          const Text('Max 2MB · jpeg, png, jpg, gif, svg', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                          const Text('Max 2MB Â· jpeg, png, jpg, gif, svg', style: TextStyle(color: AppColors.textMuted, fontSize: 10)),
                         ],
                       ),
           ),
@@ -160,7 +203,6 @@ class _ImageTileState extends State<_ImageTile> {
     );
   }
 }
-
 // ---------------------------------------------------------------------------
 // Main OrgSettingsScreen
 // ---------------------------------------------------------------------------
@@ -517,6 +559,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
                     height: 130,
                     onUpload: _upload,
                     onUploaded: (url) => setState(() => _logoUrl = url),
+                    onRemoved: () => setState(() => _logoUrl = ''),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -528,6 +571,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
                     height: 130,
                     onUpload: _upload,
                     onUploaded: (url) => setState(() => _coverUrl = url),
+                    onRemoved: () => setState(() => _coverUrl = ''),
                   ),
                 ),
               ],
@@ -617,7 +661,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
                 ? DecorationImage(
                     image: NetworkImage(ApiConstants.getFullImageUrl(_coverUrl)!),
                     fit: BoxFit.cover,
-                    colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.6), BlendMode.darken),
+                    colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.82), BlendMode.darken),
                   )
                 : null,
             borderRadius: BorderRadius.circular(20),
@@ -632,22 +676,31 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
           child: Row(
             children: [
               Container(
-                width: 72,
-                height: 72,
+                width: 68,
+                height: 68,
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.2),
-                  border: Border.all(color: Colors.white30, width: 2),
-                  image: _logoUrl.isNotEmpty
-                      ? DecorationImage(
-                          image: NetworkImage(ApiConstants.getFullImageUrl(_logoUrl)!),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
+                  borderRadius: BorderRadius.circular(16),
+                  color: Colors.white,
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                child: _logoUrl.isEmpty
-                    ? const Icon(Icons.business_rounded, color: Colors.white, size: 36)
-                    : null,
+                padding: const EdgeInsets.all(4),
+                child: _logoUrl.isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          ApiConstants.getFullImageUrl(_logoUrl)!,
+                          fit: BoxFit.contain,
+                          errorBuilder: (ctx, err, stack) => const Icon(Icons.corporate_fare_rounded, color: AppColors.primary, size: 28),
+                        ),
+                      )
+                    : const Icon(Icons.corporate_fare_rounded, color: AppColors.primary, size: 28),
               ),
               const SizedBox(width: 20),
               Expanded(

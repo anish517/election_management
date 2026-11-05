@@ -135,11 +135,32 @@ class DashboardScreen extends ConsumerWidget {
               onPressed: () => Scaffold.of(context).openDrawer(),
             ),
           if (user?.organizationLogoUrl.isNotEmpty == true) ...[
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.white,
-              backgroundImage: NetworkImage(
-                ApiConstants.getFullImageUrl(user!.organizationLogoUrl)!,
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isDark ? Colors.white24 : Colors.grey.shade300,
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(2),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  ApiConstants.getFullImageUrl(user!.organizationLogoUrl)!,
+                  fit: BoxFit.contain,
+                  errorBuilder: (ctx, err, stack) => const Icon(Icons.corporate_fare_rounded, size: 18, color: AppColors.primary),
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -179,9 +200,12 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildGreetingBanner(BuildContext context, UserModel? user, bool isDark) {
-    final name = user?.fullName.isNotEmpty == true
-        ? user!.fullName
+    final rawName = user?.fullName.trim().isNotEmpty == true
+        ? user!.fullName.trim()
         : (user?.email.split('@').first ?? 'Member');
+    final name = rawName.isNotEmpty
+        ? (rawName[0].toUpperCase() + rawName.substring(1))
+        : 'Member';
 
     final roleLabel = user?.role == 'super_admin'
         ? 'Super Admin'
@@ -197,25 +221,46 @@ class DashboardScreen extends ConsumerWidget {
     final isWideBanner = MediaQuery.sizeOf(context).width >= 600;
     final Widget? orgPill = user?.organizationName.isNotEmpty == true
         ? Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.white24),
+              color: Colors.white.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.12),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 14),
-                const SizedBox(width: 6),
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF10B981),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0xFF10B981),
+                        blurRadius: 4,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Flexible(
                   child: Text(
                     user!.organizationName,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
                       letterSpacing: 0.3,
                     ),
                   ),
@@ -228,13 +273,14 @@ class DashboardScreen extends ConsumerWidget {
 
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 110),
+      constraints: const BoxConstraints(minHeight: 124),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
           colors: isDark
               ? [const Color(0xFF1E1B4B), const Color(0xFF312E81)]
-              : [const Color(0xFF4338CA), const Color(0xFF6366F1)],
+              : [const Color(0xFF3730A3), const Color(0xFF4F46E5)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -243,7 +289,7 @@ class DashboardScreen extends ConsumerWidget {
                 image: NetworkImage(coverUrl),
                 fit: BoxFit.cover,
                 colorFilter: ColorFilter.mode(
-                  Colors.black.withValues(alpha: isDark ? 0.78 : 0.68),
+                  Colors.black.withValues(alpha: 0.82),
                   BlendMode.darken,
                 ),
               )
@@ -258,6 +304,24 @@ class DashboardScreen extends ConsumerWidget {
       ),
       child: Stack(
         children: [
+          // Strong progressive scrim layer when a cover photo is present so background
+          // noise/text never interferes with foreground text legibility.
+          if (coverUrl != null)
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      (isDark ? const Color(0xFF0F172A) : const Color(0xFF1E1B4B)).withValues(alpha: 0.94),
+                      (isDark ? const Color(0xFF1E1B4B) : const Color(0xFF312E81)).withValues(alpha: 0.86),
+                      (isDark ? const Color(0xFF0F172A) : const Color(0xFF1E1B4B)).withValues(alpha: 0.76),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           if (coverUrl == null)
             Positioned(
               right: -20,
@@ -272,55 +336,73 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    // User Photo Avatar / Org Icon
+                    // Executive Emblem Frame (Squircle with clean backing)
                     Container(
-                      width: 52,
-                      height: 52,
+                      width: 58,
+                      height: 58,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
+                            color: Colors.black.withValues(alpha: 0.2),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
                           ),
                         ],
                       ),
-                      child: ClipOval(
-                        child: (user?.photoUrl.isNotEmpty == true)
+                      padding: const EdgeInsets.all(4),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: (user?.organizationLogoUrl.isNotEmpty == true)
                             ? Image.network(
-                                ApiConstants.getFullImageUrl(user!.photoUrl)!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (ctx, err, stack) => Center(
-                                  child: Text(
-                                    name.isNotEmpty ? name[0].toUpperCase() : 'U',
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
-                                  ),
-                                ),
+                                ApiConstants.getFullImageUrl(user!.organizationLogoUrl)!,
+                                fit: BoxFit.contain,
+                                errorBuilder: (ctx, err, stack) => (user.photoUrl.isNotEmpty == true)
+                                    ? Image.network(
+                                        ApiConstants.getFullImageUrl(user.photoUrl)!,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (ctx2, err2, stack2) => Center(
+                                          child: Text(
+                                            name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                                            style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 22),
+                                          ),
+                                        ),
+                                      )
+                                    : const Icon(Icons.corporate_fare_rounded, color: AppColors.primary, size: 28),
                               )
-                            : (user?.organizationLogoUrl.isNotEmpty == true)
+                            : (user?.photoUrl.isNotEmpty == true)
                                 ? Image.network(
-                                    ApiConstants.getFullImageUrl(user!.organizationLogoUrl)!,
+                                    ApiConstants.getFullImageUrl(user!.photoUrl)!,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (ctx, err, stack) => const Icon(Icons.person_rounded, color: Colors.white, size: 28),
+                                    errorBuilder: (ctx, err, stack) => Center(
+                                      child: Text(
+                                        name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                                        style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 22),
+                                      ),
+                                    ),
                                   )
-                                : const Icon(Icons.person_rounded, color: Colors.white, size: 28),
+                                : Center(
+                                    child: Text(
+                                      name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                                      style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 22),
+                                    ),
+                                  ),
                       ),
                     ),
-                    // Small Organization Logo Badge on bottom-right of avatar
+                    // Small user photo badge if user has distinct photo and org logo is displayed
                     if (user?.photoUrl.isNotEmpty == true && user?.organizationLogoUrl.isNotEmpty == true)
                       Positioned(
-                        bottom: -2,
-                        right: -2,
+                        bottom: -3,
+                        right: -3,
                         child: Container(
                           width: 22,
                           height: 22,
@@ -328,19 +410,25 @@ class DashboardScreen extends ConsumerWidget {
                             color: Colors.white,
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 1.5),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 4,
+                              ),
+                            ],
                           ),
                           child: ClipOval(
                             child: Image.network(
-                              ApiConstants.getFullImageUrl(user!.organizationLogoUrl)!,
+                              ApiConstants.getFullImageUrl(user!.photoUrl)!,
                               fit: BoxFit.cover,
-                              errorBuilder: (ctx, err, stack) => const Icon(Icons.how_to_vote, size: 12, color: AppColors.primary),
+                              errorBuilder: (ctx, err, stack) => const Icon(Icons.person, size: 12, color: AppColors.primary),
                             ),
                           ),
                         ),
                       ),
                   ],
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 18),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -355,50 +443,55 @@ class DashboardScreen extends ConsumerWidget {
                             'Welcome back, $name',
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 18,
+                              fontSize: 19,
                               fontWeight: FontWeight.bold,
                               letterSpacing: -0.3,
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.22),
+                              color: Colors.white.withValues(alpha: 0.18),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
                             ),
-                            child: Text(
-                              roleLabel,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.3,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.verified_user_outlined, size: 12, color: Colors.white),
+                                const SizedBox(width: 4),
+                                Text(
+                                  roleLabel,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 6),
                       Text(
                         'Manage elections, monitor live ballots, and oversee electoral verifiability securely.',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.88),
-                          fontSize: 12.5,
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 13,
                           height: 1.4,
                         ),
                       ),
-                      // On phones the org badge sits under the text instead of
-                      // squeezing the greeting into a narrow column.
                       if (orgPill != null && !isWideBanner) ...[
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
                         orgPill,
                       ],
                     ],
                   ),
                 ),
                 if (orgPill != null && isWideBanner) ...[
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 16),
                   orgPill,
                 ],
               ],

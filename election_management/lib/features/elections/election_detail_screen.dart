@@ -24,6 +24,7 @@ import '../../core/network/api_constants.dart';
 import '../../core/network/api_client.dart';
 import '../../shared/models/models.dart';
 import '../../shared/widgets/shimmer_loaders.dart';
+import '../../shared/widgets/app_error_view.dart';
 import 'package:nepali_date_picker/nepali_date_picker.dart';
 import '../../shared/widgets/responsive_layout.dart';
 import '../candidates/candidate_profile_sheet.dart';
@@ -97,7 +98,11 @@ class ElectionDetailScreen extends ConsumerWidget {
       ),
       body: electionAsync.when(
         loading: () => const CardListSkeleton(count: 3),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => AppErrorView(
+          error: e,
+          title: 'Unable to Load Election Details',
+          onRetry: () => ref.invalidate(electionProvider(electionId)),
+        ),
         data: (election) => _buildBody(context, ref, election, user),
       ),
     );

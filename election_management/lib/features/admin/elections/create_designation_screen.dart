@@ -8,6 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/responsive_layout.dart';
+import '../../../core/utils/error_helper.dart';
 
 class _QuotaDraft {
   final String? id;
@@ -334,7 +335,7 @@ class _CreateDesignationScreenState extends ConsumerState<CreateDesignationScree
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error saving designation: ${e.toString()}'),
+            content: Text(extractApiErrorMessage(e, fallback: 'Failed to save designation. Please try again.')),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

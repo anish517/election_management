@@ -6,6 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/admin_drawer.dart';
 import '../../shared/widgets/empty_state.dart';
 import '../../shared/widgets/responsive_layout.dart';
+import '../../shared/widgets/app_error_view.dart';
 
 class NominationSummaryRow {
   final String electionId;
@@ -61,7 +62,11 @@ class NominationInboxScreen extends ConsumerWidget {
 
     final body = async.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Could not load nominations: $e')),
+      error: (e, _) => AppErrorView(
+        error: e,
+        title: 'Unable to Load Nominations',
+        onRetry: () => ref.invalidate(nominationSummaryProvider),
+      ),
       data: (rows) {
         if (rows.isEmpty) {
           return const EmptyStateWidget(

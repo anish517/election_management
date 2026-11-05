@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/utils/download_helper.dart';
 import '../../voters/dialogs/file_voter_claim_dialog.dart';
 import '../../shared/digital_id_card_dialog.dart';
+import '../../../shared/widgets/app_error_view.dart';
 import 'add_voter_dialog.dart';
 import 'edit_voter_dialog.dart';
 import 'import_members_dialog.dart';
@@ -581,7 +582,11 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
 
                     return votersAsync.when(
                       loading: () => const Center(child: CircularProgressIndicator()),
-                      error: (err, stack) => Center(child: Text('Error loading voters: $err', style: const TextStyle(color: Colors.red))),
+                      error: (err, stack) => AppErrorView(
+                        error: err,
+                        title: 'Unable to Load Voter Roll',
+                        onRetry: () => ref.invalidate(votersProvider(widget.electionId)),
+                      ),
                       data: (voters) {
                         if (voters.isEmpty) {
                           return const Center(

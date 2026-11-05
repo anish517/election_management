@@ -10,6 +10,7 @@ import '../../core/network/api_constants.dart';
 import '../../shared/models/models.dart';
 import '../candidates/candidate_profile_sheet.dart';
 import 'ballot_l10n.dart';
+import '../../core/utils/error_helper.dart';
 
 class DirectBallotScreen extends ConsumerStatefulWidget {
   final String directToken;
@@ -315,7 +316,7 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
       if (mounted) {
         setState(() {
           _isCasting = false;
-          _castError = e.toString().replaceAll('Exception: ', '');
+          _castError = extractApiErrorMessage(e, fallback: 'Failed to cast ballot. Please try again.');
         });
       }
     }

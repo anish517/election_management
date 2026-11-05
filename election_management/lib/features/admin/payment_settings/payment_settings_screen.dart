@@ -12,6 +12,8 @@ import '../../../core/network/api_constants.dart';
 import '../../../shared/widgets/loading_button.dart';
 import '../../../shared/widgets/admin_drawer.dart';
 import '../../../shared/widgets/shimmer_loaders.dart';
+import '../../../shared/widgets/app_error_view.dart';
+import '../../../core/utils/error_helper.dart';
 import '../../../shared/widgets/responsive_layout.dart';
 
 class PaymentSettingsScreen extends ConsumerStatefulWidget {
@@ -165,7 +167,7 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
           content: Row(children: [
             const Icon(Icons.error_outline, color: Colors.white),
             const SizedBox(width: 12),
-            Expanded(child: Text('Error saving settings: $e'))
+            Expanded(child: Text(extractApiErrorMessage(e, fallback: 'Failed to save payment settings.')))
           ]),
           backgroundColor: Colors.red.shade700,
           behavior: SnackBarBehavior.floating,
@@ -255,7 +257,11 @@ class _PaymentSettingsScreenState extends ConsumerState<PaymentSettingsScreen> {
       body: ResponsivePageWrapper(
         child: orgAsync.when(
           loading: () => const ListSkeleton(count: 4),
-          error: (err, _) => Center(child: Text('Error loading organization profile: $err')),
+          error: (err, _) => AppErrorView(
+            error: err,
+            title: 'Unable to Load Payment Settings',
+            onRetry: () => ref.invalidate(orgProfileProvider),
+          ),
           data: (org) {
             _populateForm(org.paymentSettings, org);
 

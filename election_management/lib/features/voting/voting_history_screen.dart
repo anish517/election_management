@@ -7,6 +7,7 @@ import '../../core/theme/app_theme.dart';
 import 'package:intl/intl.dart';
 import '../../shared/widgets/shimmer_loaders.dart';
 import '../../shared/widgets/empty_state.dart';
+import '../../shared/widgets/app_error_view.dart';
 import '../../shared/widgets/responsive_layout.dart';
 
 final votingHistoryProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
@@ -30,7 +31,11 @@ class VotingHistoryScreen extends ConsumerWidget {
       body: ResponsivePageWrapper(
         child: historyAsync.when(
         loading: () => const ListSkeleton(count: 5),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => AppErrorView(
+          error: e,
+          title: 'Unable to Load Voting History',
+          onRetry: () => ref.invalidate(votingHistoryProvider),
+        ),
         data: (history) {
           if (history.isEmpty) {
             return const EmptyStateWidget(

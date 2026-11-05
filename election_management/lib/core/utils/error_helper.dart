@@ -2,7 +2,19 @@ import 'package:dio/dio.dart';
 
 /// Formats and extracts clean, human-readable error messages from any API error / DioException
 String extractApiErrorMessage(dynamic e, {String fallback = 'An unexpected error occurred. Please try again.'}) {
+  if (e == null) return fallback;
+
   if (e is DioException) {
+    // 1. Intercept low-level browser network/CORS crashes before checking response
+    final rawMsg = e.message ?? '';
+    final rawErr = e.error?.toString() ?? '';
+    if (rawMsg.contains('XMLHttpRequest') ||
+        rawMsg.contains('CORS') ||
+        rawErr.contains('XMLHttpRequest') ||
+        rawErr.contains('CORS')) {
+      return 'Unable to reach the election server. Please check your network connection and try again.';
+    }
+
     if (e.response != null) {
       final statusCode = e.response!.statusCode;
       final data = e.response!.data;
@@ -56,20 +68,24 @@ String extractApiErrorMessage(dynamic e, {String fallback = 'An unexpected error
 
       // Default status code fallbacks
       if (statusCode == 400) return 'Invalid request. Please verify your details.';
-      if (statusCode == 401) return 'Session expired. Please log in again.';
-      if (statusCode == 403) return 'Permission denied. You do not have permission for this action.';
+      if (statusCode == 401) return 'Session expired. Please log in again to continue.';
+      if (statusCode == 403) return 'Access denied. You do not have permission for this action.';
       if (statusCode == 404) return 'The requested resource was not found.';
       if (statusCode == 409) return 'Conflict: A duplicate entry already exists.';
-      if (statusCode != null && statusCode >= 500) return 'Server error. Please contact the administrator.';
+      if (statusCode == 410) return 'This single-use link has expired or has already been used.';
+      if (statusCode != null && statusCode >= 500) {
+        return 'The election server is momentarily unavailable. Please try again in a few moments.';
+      }
     }
 
     switch (e.type) {
       case DioExceptionType.connectionTimeout:
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
-        return 'Connection timed out. Please check your network and try again.';
+        return 'Connection timed out. Please check your network connection and try again.';
       case DioExceptionType.connectionError:
-        return 'Unable to reach the server. Please check your network connection.';
+      case DioExceptionType.unknown:
+        return 'Unable to reach the election server. Please check your network connection and try again.';
       case DioExceptionType.cancel:
         return 'The request was cancelled.';
       default:
@@ -77,11 +93,20 @@ String extractApiErrorMessage(dynamic e, {String fallback = 'An unexpected error
     }
   }
 
-  if (e is String && e.isNotEmpty) return e;
-  if (e is Exception) {
-    final str = e.toString().replaceFirst('Exception: ', '').trim();
-    if (str.isNotEmpty && !str.contains('DioException')) return str;
+  // Handle String representations that might contain raw browser errors
+  final str = e.toString().replaceFirst('Exception: ', '').trim();
+  if (str.contains('XMLHttpRequest') || str.contains('DioException') || str.contains('CORS')) {
+    return 'Unable to reach the election server. Please check your network connection and try again.';
   }
 
+  if (str.isNotEmpty && str != 'null') return str;
+
   return fallback;
+}
+
+/// Helper to detect if an error is due to session or authentication expiration
+bool isSessionExpiredError(dynamic e) {
+  if (e is DioException && e.response?.statusCode == 401) return true;
+  final s = e.toString().toLowerCase();
+  return s.contains('session expired') || s.contains('unauthorized') || s.contains('token is invalid') || s.contains('token expired');
 }

@@ -12,6 +12,8 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/widgets/loading_button.dart';
+import '../../../shared/widgets/app_error_view.dart';
+import '../../../core/utils/error_helper.dart';
 import '../../../shared/widgets/admin_drawer.dart';
 import '../../../shared/widgets/shimmer_loaders.dart';
 import '../../../shared/widgets/org_prefix_field.dart';
@@ -368,7 +370,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
           content: Row(children: [
             const Icon(Icons.error_outline, color: Colors.white),
             const SizedBox(width: 12),
-            Expanded(child: Text('Error: $e')),
+            Expanded(child: Text(extractApiErrorMessage(e, fallback: 'Failed to save organization settings.'))),
           ]),
           backgroundColor: Colors.red.shade700,
           behavior: SnackBarBehavior.floating,
@@ -810,7 +812,11 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
       body: ResponsivePageWrapper(
         child: orgAsync.when(
           loading: () => const ListSkeleton(count: 5),
-          error: (err, _) => Center(child: Text('Error: $err')),
+          error: (err, _) => AppErrorView(
+            error: err,
+            title: 'Unable to Load Organization Settings',
+            onRetry: () => ref.invalidate(orgProfileProvider),
+          ),
           data: (org) {
             _populateForm(org);
             return CenteredScroll(

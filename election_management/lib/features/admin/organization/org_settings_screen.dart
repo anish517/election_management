@@ -185,6 +185,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
   String _selectedOrgType = 'other';
   String _logoUrl = '';
   String _coverUrl = '';
+  String _portalToken = '';
 
   // --- Type metadata ---
   final Map<String, TextEditingController> _metaCtrls = {};
@@ -233,6 +234,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
     _addressCtrl.text = org.address;
     _logoUrl = org.logoUrl;
     _coverUrl = org.coverImageUrl;
+    _portalToken = org.portalToken;
     _selectedOrgType = org.orgType.isNotEmpty ? org.orgType : 'other';
 
     // Populate meta fields for this org type
@@ -430,6 +432,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
                   child: OrgPrefixField(
                     controller: _prefixCtrl,
                     readOnly: !isSuperAdmin,
+                    portalToken: _portalToken,
                     decoration: _dec('Prefix (web address)', hint: 'e.g. SOC'),
                   ),
                 ),

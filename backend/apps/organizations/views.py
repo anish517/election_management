@@ -276,14 +276,18 @@ class PlatformOverviewView(APIView):
 
 class PublicOrganizationView(APIView):
     """
-    GET /v1/public/organizations/<prefix>/ - An organization's public page
-    (electionnepal.org/<prefix>): its profile and announced elections.
+    GET /v1/public/organizations/<prefix>/
+    GET /v1/public/organizations/<token>/<prefix>/
+    An organization's public page & branded portal discovery.
     """
     permission_classes = [AllowAny]
     authentication_classes = []
 
-    def get(self, request, prefix):
+    def get(self, request, prefix, token=None):
         handle = (prefix or '').strip()
+        query_token = request.query_params.get('token', '').strip()
+        access_token = (token or query_token).strip()
+
         if not handle:
             return Response(
                 {'error': {'code': 'not_found', 'message': 'No organization uses this address.'}},
@@ -293,11 +297,26 @@ class PublicOrganizationView(APIView):
         org = Organization.objects.filter(
             Q(prefix__iexact=handle) | Q(slug__iexact=handle)
         ).first()
+
+        # If not matched by prefix, check if handle or access_token is portal_token
+        if not org and access_token:
+            org = Organization.objects.filter(portal_token=access_token).first()
+        if not org:
+            org = Organization.objects.filter(portal_token=handle).first()
+
         if not org:
             return Response(
                 {'error': {'code': 'not_found', 'message': 'No organization uses this address.'}},
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+        # If access token was specified, verify it matches the organization's portal_token
+        if access_token and org.portal_token and org.portal_token != access_token:
+            return Response(
+                {'error': {'code': 'invalid_token', 'message': 'Invalid portal access token.'}},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         elections = org.elections.exclude(state='draft').order_by('-voting_start_at', '-created_at')
         data = PublicOrganizationSerializer(org).data
         data['elections'] = PublicElectionSerializer(elections, many=True).data

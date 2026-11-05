@@ -12,7 +12,8 @@ import '../../shared/widgets/theme_mode_button.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   final String? orgPrefix;
-  const LoginScreen({super.key, this.orgPrefix});
+  final String? portalToken;
+  const LoginScreen({super.key, this.orgPrefix, this.portalToken});
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -77,7 +78,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   @override
   Widget build(BuildContext context) {
     final hasOrg = widget.orgPrefix != null && widget.orgPrefix!.trim().isNotEmpty;
-    final orgAsync = hasOrg ? ref.watch(publicOrganizationProvider(widget.orgPrefix!.trim())) : null;
+    final orgHandle = hasOrg
+        ? (widget.portalToken != null && widget.portalToken!.isNotEmpty
+            ? '${widget.portalToken}/${widget.orgPrefix!.trim()}'
+            : widget.orgPrefix!.trim())
+        : '';
+    final orgAsync = hasOrg ? ref.watch(publicOrganizationProvider(orgHandle)) : null;
     final org = orgAsync?.valueOrNull;
     final brandColor = parseBrandColor(org?.brandColor) ?? AppColors.primary;
 

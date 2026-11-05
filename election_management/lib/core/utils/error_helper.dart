@@ -106,7 +106,24 @@ String extractApiErrorMessage(dynamic e, {String fallback = 'An unexpected error
 
 /// Helper to detect if an error is due to session or authentication expiration
 bool isSessionExpiredError(dynamic e) {
-  if (e is DioException && e.response?.statusCode == 401) return true;
+  if (e is DioException) {
+    if (e.response?.statusCode == 401) return true;
+    final data = e.response?.data;
+    if (data is Map) {
+      final msg = (data['error'] ?? data['detail'] ?? data['message'] ?? '').toString().toLowerCase();
+      if (msg.contains('session') && (msg.contains('expired') || msg.contains('invalid') || msg.contains('used'))) {
+        return true;
+      }
+      if (msg.contains('token is invalid') || msg.contains('token expired') || msg.contains('unauthorized')) {
+        return true;
+      }
+    }
+  }
   final s = e.toString().toLowerCase();
-  return s.contains('session expired') || s.contains('unauthorized') || s.contains('token is invalid') || s.contains('token expired');
+  return s.contains('session expired') ||
+      s.contains('session is expired') ||
+      s.contains('unauthorized') ||
+      s.contains('token is invalid') ||
+      s.contains('token expired') ||
+      (s.contains('session') && s.contains('expired'));
 }

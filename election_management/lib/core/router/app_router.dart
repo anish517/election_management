@@ -81,10 +81,12 @@ String _initialLocation() {
   if (!kIsWeb) return '/login';
   final sub = _detectSubdomain();
   if (Uri.base.fragment.isNotEmpty) {
-    if (Uri.base.fragment == '/login' && sub != null) {
+    var frag = Uri.base.fragment;
+    if (!frag.startsWith('/')) frag = '/$frag';
+    if (frag == '/login' && sub != null) {
       return '/login?org=$sub';
     }
-    return '/login';
+    return frag;
   }
   final segments = Uri.base.pathSegments.where((s) => s.isNotEmpty).toList();
   if (segments.length == 1 && RegExp(r'^[A-Za-z0-9][A-Za-z0-9-]*$').hasMatch(segments.first)) {
@@ -130,7 +132,17 @@ final routerProvider = Provider<GoRouter>((ref) {
           loc.startsWith('/o/');
 
       // Unauthenticated users are allowed on auth pages and direct ballot link pages
-      if (!isLoggedIn && !isOnAuth && !isDirectVoteRoute) return '/login';
+      if (!isLoggedIn && !isOnAuth && !isDirectVoteRoute) {
+        final lastOrg = authState.lastOrgPrefix;
+        if (lastOrg != null && lastOrg.trim().isNotEmpty) {
+          return '/login?org=${lastOrg.trim()}';
+        }
+        final sub = _detectSubdomain();
+        if (sub != null && sub.isNotEmpty) {
+          return '/login?org=$sub';
+        }
+        return '/login';
+      }
 
       // Already logged in and on an auth page → route by role
       if (isLoggedIn && isOnAuth && user != null) {
@@ -174,9 +186,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         name: 'login',
-        builder: (context, state) => LoginScreen(
-          orgPrefix: state.uri.queryParameters['org'] ?? _detectSubdomain(),
-        ),
+        builder: (context, state) {
+          final org = state.uri.queryParameters['org'] ??
+              _detectSubdomain() ??
+              ref.read(authProvider).lastOrgPrefix;
+          return LoginScreen(orgPrefix: org);
+        },
       ),
       GoRoute(
         path: '/o/:prefix/login',

@@ -11,16 +11,18 @@ class AuthState {
   final UserModel? user;
   final bool isLoading;
   final String? error;
+  final String? lastOrgPrefix;
 
-  const AuthState({this.user, this.isLoading = false, this.error});
+  const AuthState({this.user, this.isLoading = false, this.error, this.lastOrgPrefix});
 
   bool get isAuthenticated => user != null;
 
-  AuthState copyWith({UserModel? user, bool? isLoading, String? error}) =>
+  AuthState copyWith({UserModel? user, bool? isLoading, String? error, String? lastOrgPrefix}) =>
       AuthState(
         user: user ?? this.user,
         isLoading: isLoading ?? this.isLoading,
         error: error,
+        lastOrgPrefix: lastOrgPrefix ?? this.lastOrgPrefix,
       );
 }
 
@@ -39,7 +41,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final resp = await _dio.get(ApiConstants.me);
       final user = UserModel.fromJson(resp.data as Map<String, dynamic>);
-      state = AuthState(user: user);
+      final prefix = user.organizationPrefix.isNotEmpty ? user.organizationPrefix : state.lastOrgPrefix;
+      state = AuthState(user: user, lastOrgPrefix: prefix);
     } catch (_) {
       // Don't log out if refresh fails, just keep existing state
     }
@@ -52,7 +55,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(isLoading: true);
       final resp = await _dio.get(ApiConstants.me);
       final user = UserModel.fromJson(resp.data as Map<String, dynamic>);
-      state = AuthState(user: user);
+      final prefix = user.organizationPrefix.isNotEmpty ? user.organizationPrefix : state.lastOrgPrefix;
+      state = AuthState(user: user, lastOrgPrefix: prefix);
     } catch (_) {
       await JwtInterceptor.clearTokens();
       state = const AuthState();
@@ -79,7 +83,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final meResp = await _dio.get(ApiConstants.me);
         user = UserModel.fromJson(meResp.data as Map<String, dynamic>);
       }
-      state = AuthState(user: user);
+      final prefix = user.organizationPrefix.isNotEmpty ? user.organizationPrefix : state.lastOrgPrefix;
+      if (prefix != null && prefix.isNotEmpty) {
+        await TokenStorage.write('last_org_prefix', prefix);
+      }
+      state = AuthState(user: user, lastOrgPrefix: prefix);
       return null;
     } on DioException catch (e) {
       final msg = _extractError(e);
@@ -163,7 +171,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final meResp = await _dio.get(ApiConstants.me);
         user = UserModel.fromJson(meResp.data as Map<String, dynamic>);
       }
-      state = AuthState(user: user);
+      final prefix = user.organizationPrefix.isNotEmpty ? user.organizationPrefix : state.lastOrgPrefix;
+      if (prefix != null && prefix.isNotEmpty) {
+        await TokenStorage.write('last_org_prefix', prefix);
+      }
+      state = AuthState(user: user, lastOrgPrefix: prefix);
       return null;
     } on DioException catch (e) {
       final msg = _extractError(e);
@@ -210,6 +222,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    final prefix = state.user?.organizationPrefix ?? state.lastOrgPrefix;
     try {
       final refresh = await TokenStorage.read('refresh_token');
       if (refresh != null) {
@@ -217,7 +230,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
     } catch (_) {}
     await JwtInterceptor.clearTokens();
-    state = const AuthState();
+    if (prefix != null && prefix.isNotEmpty) {
+      await TokenStorage.write('last_org_prefix', prefix);
+    }
+    state = AuthState(lastOrgPrefix: prefix);
   }
 
   /// Logged-in admin changes their own password; the session stays as is.

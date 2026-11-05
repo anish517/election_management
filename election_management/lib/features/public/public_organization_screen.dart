@@ -4,65 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../core/network/api_client.dart';
 import '../../core/network/api_constants.dart';
 import '../../core/providers/auth_provider.dart';
+import '../../core/providers/tenant_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/error_helper.dart';
 import '../../shared/widgets/org_logo.dart';
 import '../../shared/widgets/responsive_layout.dart';
 import '../../shared/widgets/theme_mode_button.dart';
 import '../dashboard/platform_overview_section.dart' show electionStateColor;
-
-class _PublicElection {
-  final String title;
-  final String state;
-  final String stateDisplay;
-  final String method;
-  final DateTime? votingStartAt;
-  final DateTime? votingEndAt;
-
-  _PublicElection.fromJson(Map<String, dynamic> j)
-      : title = j['title'] as String? ?? '',
-        state = j['state'] as String? ?? '',
-        stateDisplay = j['state_display'] as String? ?? '',
-        method = j['election_method'] as String? ?? '',
-        votingStartAt = DateTime.tryParse(j['voting_start_at'] as String? ?? ''),
-        votingEndAt = DateTime.tryParse(j['voting_end_at'] as String? ?? '');
-}
-
-class _PublicOrg {
-  final String name;
-  final String prefix;
-  final String orgType;
-  final String address;
-  final String phone;
-  final String email;
-  final String website;
-  final String logoUrl;
-  final String coverImageUrl;
-  final List<_PublicElection> elections;
-
-  _PublicOrg.fromJson(Map<String, dynamic> j)
-      : name = j['name'] as String? ?? '',
-        prefix = j['prefix'] as String? ?? '',
-        orgType = j['org_type'] as String? ?? '',
-        address = j['address'] as String? ?? '',
-        phone = j['phone'] as String? ?? '',
-        email = j['email'] as String? ?? '',
-        website = j['website'] as String? ?? '',
-        logoUrl = j['logo_url'] as String? ?? '',
-        coverImageUrl = j['cover_image_url'] as String? ?? '',
-        elections = (j['elections'] as List<dynamic>? ?? [])
-            .map((e) => _PublicElection.fromJson(e as Map<String, dynamic>))
-            .toList();
-}
-
-final _publicOrgProvider = FutureProvider.autoDispose.family<_PublicOrg, String>((ref, prefix) async {
-  final dio = ref.watch(apiClientProvider);
-  final response = await dio.get(ApiConstants.publicOrganization(prefix));
-  return _PublicOrg.fromJson(response.data as Map<String, dynamic>);
-});
 
 /// An organization's public page, reached at `electionnepal.org/<prefix>`.
 class PublicOrganizationScreen extends ConsumerWidget {
@@ -71,7 +21,7 @@ class PublicOrganizationScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(_publicOrgProvider(prefix));
+    final async = ref.watch(publicOrganizationProvider(prefix));
     final loggedIn = ref.read(authProvider).isAuthenticated;
 
     return Scaffold(
@@ -83,7 +33,7 @@ class PublicOrganizationScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: FilledButton.icon(
-              onPressed: () => context.go(loggedIn ? '/dashboard' : '/login'),
+              onPressed: () => context.go(loggedIn ? '/dashboard' : '/login?org=$prefix'),
               icon: Icon(loggedIn ? Icons.dashboard_rounded : Icons.login_rounded, size: 18),
               label: Text(loggedIn ? 'Dashboard' : 'Sign in'),
             ),
@@ -100,7 +50,7 @@ class PublicOrganizationScreen extends ConsumerWidget {
           message: e is DioException && e.response?.statusCode == 404
               ? 'Check the web address, or sign in to find your organization.'
               : extractApiErrorMessage(e),
-          onRetry: () => ref.invalidate(_publicOrgProvider(prefix)),
+          onRetry: () => ref.invalidate(publicOrganizationProvider(prefix)),
         ),
         data: (org) => CenteredScroll(
           maxWidth: 900,
@@ -137,7 +87,7 @@ class PublicOrganizationScreen extends ConsumerWidget {
 }
 
 class _Hero extends StatelessWidget {
-  final _PublicOrg org;
+  final PublicOrganization org;
   const _Hero({required this.org});
 
   @override
@@ -226,7 +176,7 @@ class _Hero extends StatelessWidget {
 }
 
 class _ElectionCard extends StatelessWidget {
-  final _PublicElection election;
+  final PublicElection election;
   const _ElectionCard({required this.election});
 
   @override

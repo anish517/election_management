@@ -283,7 +283,16 @@ class PublicOrganizationView(APIView):
     authentication_classes = []
 
     def get(self, request, prefix):
-        org = Organization.objects.filter(prefix__iexact=prefix.strip()).exclude(prefix='').first()
+        handle = (prefix or '').strip()
+        if not handle:
+            return Response(
+                {'error': {'code': 'not_found', 'message': 'No organization uses this address.'}},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        from django.db.models import Q
+        org = Organization.objects.filter(
+            Q(prefix__iexact=handle) | Q(slug__iexact=handle)
+        ).first()
         if not org:
             return Response(
                 {'error': {'code': 'not_found', 'message': 'No organization uses this address.'}},

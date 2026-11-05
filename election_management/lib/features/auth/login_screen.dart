@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/providers/auth_provider.dart';
+import '../../core/providers/tenant_provider.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/loading_button.dart';
+import '../../shared/widgets/org_logo.dart';
 import '../../shared/widgets/responsive_layout.dart';
 import '../../shared/widgets/glass_card.dart';
 import '../../shared/widgets/theme_mode_button.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  final String? orgPrefix;
+  const LoginScreen({super.key, this.orgPrefix});
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -73,6 +76,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
+    final hasOrg = widget.orgPrefix != null && widget.orgPrefix!.trim().isNotEmpty;
+    final orgAsync = hasOrg ? ref.watch(publicOrganizationProvider(widget.orgPrefix!.trim())) : null;
+    final org = orgAsync?.valueOrNull;
+    final brandColor = parseBrandColor(org?.brandColor) ?? AppColors.primary;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -91,12 +99,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeader(),
-                    const SizedBox(height: 40),
-                    _buildTabBar(),
+                    _buildHeader(orgAsync: orgAsync, org: org, brandColor: brandColor),
+                    const SizedBox(height: 36),
+                    _buildTabBar(brandColor: brandColor),
                     const SizedBox(height: 28),
                     if (_errorMessage != null) _buildError(),
-                    _buildTabContent(),
+                    _buildTabContent(brandColor: brandColor),
+                    if (hasOrg) ...[
+                      const SizedBox(height: 24),
+                      const Divider(height: 1),
+                      const SizedBox(height: 16),
+                      Center(
+                        child: TextButton.icon(
+                          onPressed: () => context.go('/login'),
+                          icon: const Icon(Icons.arrow_back_rounded, size: 15),
+                          label: const Text(
+                            'Sign in to central Election Nepal portal',
+                            style: TextStyle(fontSize: 12.5),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -107,14 +130,105 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader({
+    AsyncValue<PublicOrganization>? orgAsync,
+    PublicOrganization? org,
+    required Color brandColor,
+  }) {
+    if (orgAsync != null && orgAsync.isLoading) {
+      return Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: Colors.grey.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Center(
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Loading portal...',
+                  style: Theme.of(context).textTheme.displayLarge?.copyWith(fontSize: 22),
+                ),
+                const SizedBox(height: 4),
+                Text('Connecting to organization', style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (org != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              OrgLogo(name: org.name, logoUrl: org.logoUrl, size: 52),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      org.name,
+                      style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                          ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (org.orgType.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        org.orgType.replaceAll('_', ' ').toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.8,
+                          color: brandColor,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Text(
+            'Sign in to ${org.name} Election Portal',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+          ),
+        ],
+      );
+    }
+
+    // Default generic platform branding
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             Container(
-              width: 52, height: 52,
+              width: 52,
+              height: 52,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [AppColors.primary, AppColors.primaryLight],
@@ -141,9 +255,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  Widget _buildTabBar() {
+  Widget _buildTabBar({required Color brandColor}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Container(
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceVariant : Colors.black.withValues(alpha: 0.05),
@@ -152,13 +266,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       child: TabBar(
         controller: _tabController,
         indicator: BoxDecoration(
-          color: AppColors.primary,
+          color: brandColor,
           borderRadius: BorderRadius.circular(10),
         ),
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
         labelColor: Colors.white,
-        // Slate-300 on the slate-700 tab track; textMuted was too faint in dark mode.
         unselectedLabelColor: isDark ? const Color(0xFFCBD5E1) : AppColors.textSecondaryLightMode,
         labelPadding: const EdgeInsets.symmetric(horizontal: 6),
         tabs: const [
@@ -191,17 +304,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  // Sized to the active tab so the card has no dead space below the form.
-  Widget _buildTabContent() {
+  Widget _buildTabContent({required Color brandColor}) {
     return AnimatedSize(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
       alignment: Alignment.topCenter,
-      child: _tabController.index == 0 ? _buildPasswordTab() : _buildOtpTab(),
+      child: _tabController.index == 0
+          ? _buildPasswordTab(brandColor: brandColor)
+          : _buildOtpTab(brandColor: brandColor),
     );
   }
 
-  Widget _buildPasswordTab() {
+  Widget _buildPasswordTab({required Color brandColor}) {
     return Form(
       key: _emailPasswordKey,
       child: SingleChildScrollView(
@@ -232,7 +346,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               validator: (v) => v == null || v.isEmpty ? 'Required' : null,
               onFieldSubmitted: (_) => _loginWithPassword(),
             ),
-            // Forgot Password link
             Align(
               alignment: Alignment.centerRight,
               child: TextButton(
@@ -240,7 +353,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 style: TextButton.styleFrom(
                   foregroundColor: Theme.of(context).brightness == Brightness.dark
                       ? AppColors.primaryLight
-                      : AppColors.primary,
+                      : brandColor,
                   padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -254,6 +367,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               isLoading: _isLoading,
               label: 'Sign In',
               icon: Icons.login_rounded,
+              backgroundColor: brandColor,
             ),
           ],
         ),
@@ -261,7 +375,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 
-  Widget _buildOtpTab() {
+  Widget _buildOtpTab({required Color brandColor}) {
     return Form(
       key: _otpKey,
       child: SingleChildScrollView(
@@ -289,6 +403,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               isLoading: _isLoading,
               label: 'Send OTP',
               icon: Icons.send_rounded,
+              backgroundColor: brandColor,
             ),
           ],
         ),

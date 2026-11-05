@@ -63,13 +63,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<String?> login({required String emailOrPhone, required String password}) async {
+  Future<String?> login({
+    required String emailOrPhone,
+    required String password,
+    String? portalToken,
+  }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final resp = await _dio.post(ApiConstants.login, data: {
+      final payload = <String, dynamic>{
         'email_or_phone': emailOrPhone,
         'password': password,
-      });
+      };
+      if (portalToken != null && portalToken.isNotEmpty) {
+        payload['portal_token'] = portalToken;
+      }
+      final resp = await _dio.post(ApiConstants.login, data: payload);
       final data = resp.data as Map<String, dynamic>;
       await JwtInterceptor.saveTokens(
         access: data['access'] as String,

@@ -55,6 +55,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     final error = await ref.read(authProvider.notifier).login(
       emailOrPhone: _emailCtrl.text.trim(),
       password: _passwordCtrl.text,
+      portalToken: widget.portalToken,
     );
     if (mounted) setState(() { _isLoading = false; _errorMessage = error; });
   }
@@ -102,23 +103,103 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
               child: GlassCard(
                 padding: const EdgeInsets.all(32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(orgAsync: orgAsync, org: org, brandColor: brandColor),
-                    const SizedBox(height: 36),
-                    _buildTabBar(brandColor: brandColor),
-                    const SizedBox(height: 28),
-                    if (_errorMessage != null) _buildError(),
-                    _buildTabContent(brandColor: brandColor),
-
-                  ],
-                ),
+                child: (orgAsync != null &&
+                        orgAsync.hasError &&
+                        widget.portalToken != null &&
+                        widget.portalToken!.isNotEmpty)
+                    ? _buildTokenBlockedContent()
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildHeader(orgAsync: orgAsync, org: org, brandColor: brandColor),
+                          const SizedBox(height: 36),
+                          _buildTabBar(brandColor: brandColor),
+                          const SizedBox(height: 28),
+                          if (_errorMessage != null) _buildError(),
+                          _buildTabContent(brandColor: brandColor),
+                        ],
+                      ),
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTokenBlockedContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.red.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.gpp_bad_rounded, color: Colors.redAccent, size: 36),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Access Denied: Invalid Security Token',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.redAccent,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'The security token in this web address is incorrect or has been altered. Sign-in to this private organization portal is completely blocked.',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Theme.of(context).textTheme.bodySmall?.color,
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 26),
+        Text(
+          'Security Notice',
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '• Please make sure you did not remove or modify any letters in the URL.\n• Contact your organization administrator to obtain the official private portal link.\n• Unauthorized access attempts are monitored and recorded.',
+          style: TextStyle(
+            fontSize: 12.5,
+            color: Theme.of(context).textTheme.bodySmall?.color,
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 28),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () => context.go('/login'),
+            icon: const Icon(Icons.home_rounded, size: 18),
+            label: const Text('Go to Central Election Portal'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

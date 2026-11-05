@@ -105,21 +105,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     const SizedBox(height: 28),
                     if (_errorMessage != null) _buildError(),
                     _buildTabContent(brandColor: brandColor),
-                    if (hasOrg) ...[
-                      const SizedBox(height: 24),
-                      const Divider(height: 1),
-                      const SizedBox(height: 16),
-                      Center(
-                        child: TextButton.icon(
-                          onPressed: () => context.go('/login'),
-                          icon: const Icon(Icons.arrow_back_rounded, size: 15),
-                          label: const Text(
-                            'Sign in to central Election Nepal portal',
-                            style: TextStyle(fontSize: 12.5),
-                          ),
-                        ),
-                      ),
-                    ],
+
                   ],
                 ),
               ),

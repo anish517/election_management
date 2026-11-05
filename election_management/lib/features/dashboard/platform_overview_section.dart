@@ -389,7 +389,7 @@ class _OrgTile extends StatelessWidget {
     final muted = isDark ? Colors.white60 : Colors.grey.shade600;
     final address = org.prefix.isEmpty
         ? 'No prefix set'
-        : ApiConstants.orgPublicUrl(org.prefix).replaceFirst(RegExp(r'^https?://'), '');
+        : '#/o/$($org.prefix)';
     final status = org.status.replaceAll('_', ' ');
     return InkWell(
       onTap: () => context.pushNamed('platform-organization', pathParameters: {'id': org.id}),

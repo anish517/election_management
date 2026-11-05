@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/org_providers.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../shared/models/models.dart';
@@ -285,21 +286,25 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
         meta[entry.key] = entry.value.text.trim();
       }
     }
+    final isSuperAdmin = ref.read(currentUserProvider)?.isSuperAdmin ?? false;
+    final payload = <String, dynamic>{
+      'name': _nameCtrl.text.trim(),
+      'org_type': _selectedOrgType,
+      'council_number': _councilCtrl.text.trim(),
+      'email': _orgEmailCtrl.text.trim(),
+      'org_email': _orgEmailCtrl.text.trim(),
+      'phone': _orgPhoneCtrl.text.trim(),
+      'website': _websiteCtrl.text.trim(),
+      'address': _addressCtrl.text.trim(),
+      'logo_url': _logoUrl,
+      'cover_image_url': _coverUrl,
+      'type_metadata': meta,
+    };
+    if (isSuperAdmin) {
+      payload['prefix'] = _prefixCtrl.text.trim();
+    }
     try {
-      await ref.read(updateOrgSettingsProvider.notifier).updateSettings({
-        'name': _nameCtrl.text.trim(),
-        'prefix': _prefixCtrl.text.trim(),
-        'org_type': _selectedOrgType,
-        'council_number': _councilCtrl.text.trim(),
-        'email': _orgEmailCtrl.text.trim(),
-        'org_email': _orgEmailCtrl.text.trim(),
-        'phone': _orgPhoneCtrl.text.trim(),
-        'website': _websiteCtrl.text.trim(),
-        'address': _addressCtrl.text.trim(),
-        'logo_url': _logoUrl,
-        'cover_image_url': _coverUrl,
-        'type_metadata': meta,
-      });
+      await ref.read(updateOrgSettingsProvider.notifier).updateSettings(payload);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: const Row(children: [
@@ -390,6 +395,7 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
 
   Widget _buildProfileTab(EdgeInsets Function(EdgeInsets) pad) {
     final metaFields = _typeMetaFields[_selectedOrgType] ?? [];
+    final isSuperAdmin = ref.watch(currentUserProvider)?.isSuperAdmin ?? false;
 
     return ListView(
       padding: pad(const EdgeInsets.fromLTRB(20, 20, 20, 100)),
@@ -420,8 +426,10 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
+                  flex: 2,
                   child: OrgPrefixField(
                     controller: _prefixCtrl,
+                    readOnly: !isSuperAdmin,
                     decoration: _dec('Prefix (web address)', hint: 'e.g. SOC'),
                   ),
                 ),

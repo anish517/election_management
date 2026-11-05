@@ -185,18 +185,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           ),
         ),
         const SizedBox(height: 28),
-        SizedBox(
+        Container(
           width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () => context.go('/login'),
-            icon: const Icon(Icons.home_rounded, size: 18),
-            label: const Text('Go to Central Election Portal'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.grey.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+          ),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.lock_outline_rounded, size: 18, color: Colors.grey),
+              SizedBox(width: 8),
+              Text(
+                'Sign-in locked. Valid private portal link required.',
+                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.grey),
+              ),
+            ],
           ),
         ),
       ],

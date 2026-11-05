@@ -166,8 +166,16 @@ class LoginSerializer(serializers.Serializer):
         if not user.is_active:
             raise serializers.ValidationError({'non_field_errors': 'Account is disabled.'})
 
-        # If a portal_token was passed, verify user belongs to this portal
-        if portal_token and user.organization and user.organization.portal_token:
+        # Strict Private Mode:
+        # If user belongs to an organization that has a portal_token:
+        # They MUST sign in through their organization's secret portal link!
+        # Super Admins (no org or role == 'super_admin') can sign in anywhere.
+        if user.role != 'super_admin' and user.organization and user.organization.portal_token:
+            if not portal_token:
+                raise serializers.ValidationError(
+                    {'non_field_errors': 'Access restricted. Organization members must sign in using their private organization portal link.'},
+                    code='portal_token_required'
+                )
             if user.organization.portal_token != portal_token:
                 raise serializers.ValidationError(
                     {'non_field_errors': 'Invalid portal security token. Access denied.'},
@@ -259,6 +267,7 @@ class OTPVerifySerializer(serializers.Serializer):
     """
     phone_or_email = serializers.CharField()
     otp = serializers.CharField(max_length=6, min_length=6)
+    portal_token = serializers.CharField(required=False, allow_blank=True, default='')
 
     def validate(self, attrs):
         identifier = attrs['phone_or_email'].strip()
@@ -278,6 +287,7 @@ class OTPVerifySerializer(serializers.Serializer):
         record.is_used = True
         record.save(update_fields=['is_used'])
 
+        portal_token = attrs.get('portal_token', '').strip()
         # Find user — first in User table, then fall back to Member roster
         user = None
         if '@' in identifier:

@@ -166,9 +166,17 @@ class ApiConstants {
   // Platform (Super Admin, all tenants)
   static const String platformOverview = '/platform/overview/';
   static const String platformOrganizations = '/platform/organizations/';
-  /// An organization's public page, e.g. https://electionnepal.org/SOC.
-  static String orgPublicUrl(String prefix) =>
-      '${kIsWeb ? Uri.base.origin : baseUrl.replaceAll('/v1', '')}/$prefix';
+  /// An organization's public page, e.g. https://electionnepal.org/#/o/SOC.
+  static String orgPublicUrl(String prefix) {
+    final origin = kIsWeb ? Uri.base.origin : baseUrl.replaceAll('/v1', '');
+    return '$origin/#/o/$prefix';
+  }
+
+  /// An organization's dedicated login portal, e.g. https://electionnepal.org/#/login?org=SOC.
+  static String orgLoginUrl(String prefix) {
+    final origin = kIsWeb ? Uri.base.origin : baseUrl.replaceAll('/v1', '');
+    return '$origin/#/login?org=$prefix';
+  }
   static String publicOrganization(String prefix) =>
       '/public/organizations/${Uri.encodeComponent(prefix)}/';
   static String platformOrganizationDetail(String id) =>

@@ -58,6 +58,11 @@ class TestOrganizationPrefix(TestCase):
         self.assertNotIn('payment_settings', res.data)
         self.assertEqual(self.client.get('/v1/public/organizations/nope/').status_code, 404)
 
+    def test_public_page_by_slug(self):
+        res = self.client.get('/v1/public/organizations/org/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['name'], 'Org')
+
     def test_prefix_must_be_unique_and_url_safe(self):
         other = Organization.objects.create(name='Other', slug='other')
         self.client.force_authenticate(make_user('a@x.test', 'org_admin', other))

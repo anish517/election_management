@@ -1,3 +1,5 @@
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -36,6 +38,87 @@ Color _statusColor(String status) {
 }
 
 /// Super Admin console: every organization (tenant) on the platform.
+Widget _buildOrgLinks(BuildContext context, PlatformOrganizationModel org) {
+  if (org.prefix.isEmpty) return const SizedBox.shrink();
+  final loginUrl = ApiConstants.orgLoginUrl(org.prefix);
+  final publicUrl = ApiConstants.orgPublicUrl(org.prefix);
+
+  return Padding(
+    padding: const EdgeInsets.only(top: 8, bottom: 4),
+    child: Wrap(
+      spacing: 10,
+      runSpacing: 6,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () {
+            Clipboard.setData(ClipboardData(text: loginUrl));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Copied Login Link for ${org.name} to clipboard'),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.login_rounded, size: 14, color: AppColors.primary),
+                const SizedBox(width: 5),
+                Text(
+                  'Login: #/login?org=${org.prefix}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                const Icon(Icons.copy_rounded, size: 13, color: AppColors.primary),
+              ],
+            ),
+          ),
+        ),
+        InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () => launchUrl(Uri.parse(publicUrl), webOnlyWindowName: '_blank'),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.grey.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.public_rounded, size: 14, color: Colors.grey),
+                const SizedBox(width: 5),
+                Text(
+                  'Public: #/o/${org.prefix}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).textTheme.bodySmall?.color,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.open_in_new_rounded, size: 12, color: Colors.grey),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
 class PlatformOrganizationsScreen extends ConsumerStatefulWidget {
   const PlatformOrganizationsScreen({super.key});
 
@@ -224,11 +307,7 @@ class _OrgCard extends ConsumerWidget {
                     : 'Admin: ${org.adminEmails.join(', ')}',
                 style: theme.textTheme.bodySmall,
               ),
-              if (org.prefix.isNotEmpty)
-                Text(
-                  ApiConstants.orgPublicUrl(org.prefix).replaceFirst(RegExp(r'^https?://'), ''),
-                  style: theme.textTheme.bodySmall?.copyWith(color: AppColors.primaryLight),
-                ),
+              _buildOrgLinks(context, org),
               const SizedBox(height: 10),
               Wrap(
                 spacing: 16,
@@ -421,11 +500,7 @@ class _OrgSummaryCard extends StatelessWidget {
                   : 'Admin: ${org.adminEmails.join(', ')}',
               style: theme.textTheme.bodySmall,
             ),
-            if (org.prefix.isNotEmpty)
-              Text(
-                ApiConstants.orgPublicUrl(org.prefix).replaceFirst(RegExp(r'^https?://'), ''),
-                style: theme.textTheme.bodySmall?.copyWith(color: AppColors.primaryLight),
-              ),
+            _buildOrgLinks(context, org),
             const SizedBox(height: 12),
             Wrap(
               spacing: 16,

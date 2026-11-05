@@ -25,7 +25,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'election_officers_can_publish', 'data_retention_years',
             'legal_hold', 'created_at'
         ]
-        read_only_fields = ['id', 'slug', 'status', 'trial_ends_at', 'legal_hold', 'created_at']
+        read_only_fields = ['id', 'slug', 'prefix', 'status', 'trial_ends_at', 'legal_hold', 'created_at']
 
     def to_internal_value(self, data):
         # Support both 'email' and 'org_email'

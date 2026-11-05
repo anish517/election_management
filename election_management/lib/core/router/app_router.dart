@@ -48,13 +48,59 @@ final _routerNotifierProvider = ChangeNotifierProvider(
   (ref) => _RouterNotifier(ref),
 );
 
-/// `electionnepal.org/<prefix>` opens that organization's public page. The app
-/// routes by URL hash, so a bare first path segment is read here once.
+String? _detectSubdomain() {
+  if (!kIsWeb) return null;
+  final host = Uri.base.host.toLowerCase();
+  if (host == 'localhost' ||
+      host == '127.0.0.1' ||
+      RegExp(r'^\d+\.\d+\.\d+\.\d+$').hasMatch(host) ||
+      host == 'electionnepal.org' ||
+      host == 'www.electionnepal.org' ||
+      host == 'election.omwaytechnologies.com' ||
+      host == 'admin.electionnepal.org') {
+    return null;
+  }
+  final parts = host.split('.');
+  if (parts.length >= 3) {
+    final sub = parts.first;
+    if (sub != 'www' &&
+        sub != 'admin' &&
+        sub != 'api' &&
+        RegExp(r'^[a-z0-9-]+$').hasMatch(sub)) {
+      return sub;
+    }
+  }
+  return null;
+}
+
+/// Routes public URLs and branded portals on initial web load:
+/// - electionnepal.org/$prefix -> /o/$prefix (public page)
+/// - electionnepal.org/$prefix/login -> /login?org=$prefix (branded login)
+/// - $prefix.electionnepal.org -> /login?org=$prefix (subdomain branded login)
 String _initialLocation() {
-  if (!kIsWeb || Uri.base.fragment.isNotEmpty) return '/login';
+  if (!kIsWeb) return '/login';
+  final sub = _detectSubdomain();
+  if (Uri.base.fragment.isNotEmpty) {
+    if (Uri.base.fragment == '/login' && sub != null) {
+      return '/login?org=$sub';
+    }
+    return '/login';
+  }
   final segments = Uri.base.pathSegments.where((s) => s.isNotEmpty).toList();
   if (segments.length == 1 && RegExp(r'^[A-Za-z0-9][A-Za-z0-9-]*$').hasMatch(segments.first)) {
-    return '/o/${segments.first}';
+    final seg = segments.first;
+    if (seg.toLowerCase() == 'login') {
+      return sub != null ? '/login?org=$sub' : '/login';
+    }
+    return '/o/$seg';
+  }
+  if (segments.length == 2 &&
+      RegExp(r'^[A-Za-z0-9][A-Za-z0-9-]*$').hasMatch(segments.first) &&
+      segments[1].toLowerCase() == 'login') {
+    return '/login?org=${segments.first}';
+  }
+  if (sub != null) {
+    return '/login?org=$sub';
   }
   return '/login';
 }
@@ -128,7 +174,16 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         name: 'login',
-        builder: (context, state) => const LoginScreen(),
+        builder: (context, state) => LoginScreen(
+          orgPrefix: state.uri.queryParameters['org'] ?? _detectSubdomain(),
+        ),
+      ),
+      GoRoute(
+        path: '/o/:prefix/login',
+        name: 'public-org-login',
+        builder: (context, state) => LoginScreen(
+          orgPrefix: state.pathParameters['prefix'] ?? _detectSubdomain(),
+        ),
       ),
       GoRoute(
         path: '/o/:prefix',

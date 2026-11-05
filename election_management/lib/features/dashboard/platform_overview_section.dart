@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../core/network/api_constants.dart';
 import '../../core/providers/platform_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/models.dart';
@@ -389,7 +388,7 @@ class _OrgTile extends StatelessWidget {
     final muted = isDark ? Colors.white60 : Colors.grey.shade600;
     final address = org.prefix.isEmpty
         ? 'No prefix set'
-        : ApiConstants.orgPublicUrl(org.prefix).replaceFirst(RegExp(r'^https?://'), '');
+        : '#/o/${org.prefix}';
     final status = org.status.replaceAll('_', ' ');
     return InkWell(
       onTap: () => context.pushNamed('platform-organization', pathParameters: {'id': org.id}),

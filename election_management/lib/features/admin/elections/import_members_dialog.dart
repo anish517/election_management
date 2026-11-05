@@ -352,43 +352,42 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
               ),
             ),
             const Divider(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: RadioListTile<bool>(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    value: true,
-                    groupValue: _importAll,
-                    onChanged: (val) =>
-                        setState(() => _importAll = val ?? true),
-                    title: Text(
-                      'Import All Eligible Active Members (${eligibleMembers.length})',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
+            RadioGroup<bool>(
+              groupValue: _importAll,
+              onChanged: (val) =>
+                  setState(() => _importAll = val ?? true),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: RadioListTile<bool>(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      value: true,
+                      title: Text(
+                        'Import All Eligible Active Members (${eligibleMembers.length})',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                Expanded(
-                  child: RadioListTile<bool>(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    value: false,
-                    groupValue: _importAll,
-                    onChanged: (val) =>
-                        setState(() => _importAll = val ?? false),
-                    title: const Text(
-                      'Select Specific Members',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
+                  Expanded(
+                    child: RadioListTile<bool>(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      value: false,
+                      title: const Text(
+                        'Select Specific Members',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             if (!_importAll) ...[
               const SizedBox(height: 8),

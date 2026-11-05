@@ -77,70 +77,88 @@ class AdminDrawer extends ConsumerWidget {
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF4F46E5), Color(0xFF7C3AED)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        color: isDark ? const Color(0xFF2A2B32) : Colors.white,
                         borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDark ? Colors.white12 : Colors.grey.shade300,
+                          width: 1.2,
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF4F46E5).withValues(alpha: 0.3),
+                            color: const Color(0xFF4F46E5).withValues(alpha: 0.15),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
                         ],
                       ),
+                      padding: const EdgeInsets.all(3),
                       child: user.organizationLogoUrl.isNotEmpty
                           ? ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(9),
                               child: Image.network(
                                 ApiConstants.getFullImageUrl(user.organizationLogoUrl) ?? user.organizationLogoUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (ctx, err, stack) => const Icon(Icons.corporate_fare_rounded, color: Colors.white, size: 22),
+                                fit: BoxFit.contain,
+                                errorBuilder: (ctx, err, stack) => const Icon(Icons.corporate_fare_rounded, color: AppColors.primary, size: 22),
                               ),
                             )
-                          : const Icon(Icons.corporate_fare_rounded, color: Colors.white, size: 22),
+                          : const Icon(Icons.corporate_fare_rounded, color: AppColors.primary, size: 22),
                     ),
                     const SizedBox(width: 12),
 
                     // Admin Role & User Metadata
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              getRoleBadgeText(user.role),
-                              style: const TextStyle(
-                                color: AppColors.primaryLight,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10.5,
-                                letterSpacing: 0.2,
+                    Builder(
+                      builder: (context) {
+                        final email = user.email.trim();
+                        final fn = user.fullName.trim();
+                        final hasDistinctName = fn.isNotEmpty && fn.toLowerCase() != email.toLowerCase();
+                        final emailPrefix = email.contains('@') ? email.split('@').first : email;
+                        final capitalizedPrefix = emailPrefix.isNotEmpty
+                            ? (emailPrefix[0].toUpperCase() + emailPrefix.substring(1))
+                            : 'Administrator';
+                        final primaryDisplayName = hasDistinctName
+                            ? fn
+                            : (user.organizationName.isNotEmpty
+                                ? user.organizationName
+                                : capitalizedPrefix);
+
+                        return Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  getRoleBadgeText(user.role),
+                                  style: const TextStyle(
+                                    color: AppColors.primaryLight,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 10.5,
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
                               ),
-                            ),
+                              const SizedBox(height: 4),
+                              Text(
+                                primaryDisplayName,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                email,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark ? Colors.white54 : Colors.grey.shade600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            user.fullName.isNotEmpty ? user.fullName : user.email,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            user.email,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isDark ? Colors.white54 : Colors.grey.shade600,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
+                        );
+                      },
                     ),
                   ],
                 ),

@@ -413,12 +413,28 @@ class PlatformOrganizationDetailScreen extends ConsumerWidget {
                 data: (org) => _OrgSummaryCard(org: org),
               ),
               const SizedBox(height: 24),
-              Text(
-                'Elections',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.w800),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Elections',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                  FilledButton.icon(
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('Create Election for Org'),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      backgroundColor: AppColors.primary,
+                    ),
+                    onPressed: () {
+                      context.push('/elections/new?orgId=$orgId');
+                    },
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               electionsAsync.when(
@@ -613,6 +629,21 @@ class _ElectionRow extends StatelessWidget {
                     'Voting ${dateFmt.format(election.votingStartAt!.toLocal())}'
                     '${election.votingEndAt != null ? ' – ${dateFmt.format(election.votingEndAt!.toLocal())}' : ''}',
                   ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.tune_rounded, size: 14),
+                  label: const Text('Open Election Control Panel', style: TextStyle(fontSize: 12)),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  onPressed: () => context.push('/elections/${election.id}/overview'),
+                ),
               ],
             ),
           ],

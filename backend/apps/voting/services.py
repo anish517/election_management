@@ -1,11 +1,14 @@
 import hashlib
 import json
+import logging
 import secrets
 from django.db import transaction
 from django.utils import timezone
 from datetime import timedelta
 from apps.voting.models import VoterRoll, VotingSession, Vote
 from apps.voting.serializers import BallotPositionSerializer
+
+logger = logging.getLogger(__name__)
 
 class BallotService:
     @staticmethod
@@ -110,11 +113,67 @@ class BallotService:
         return session.token
 
     @staticmethod
-    def cast_vote(session_token, ballot_data, ip_address=None, mac_address=None):
+    def parse_device_type(user_agent: str = '', channel: str = '') -> str:
+        """Parses user agent into a clean human-readable device name."""
+        if channel == 'venue_kiosk':
+            return 'Venue Kiosk Booth'
+        if channel == 'mobile_app':
+            return 'EMS Mobile App'
+
+        ua = (user_agent or '').lower()
+        if not ua:
+            return 'Web Browser' if channel == 'web_email' else 'Secure Electronic Terminal'
+
+        # Form factor / OS
+        if 'ipad' in ua or 'tablet' in ua:
+            dev = 'Tablet'
+        elif 'iphone' in ua:
+            dev = 'iPhone'
+        elif 'android' in ua:
+            dev = 'Android Phone' if 'mobile' in ua else 'Android Tablet'
+        elif 'windows' in ua:
+            dev = 'Windows PC'
+        elif 'macintosh' in ua or 'mac os' in ua:
+            dev = 'Mac'
+        elif 'linux' in ua:
+            dev = 'Linux PC'
+        else:
+            dev = 'Device'
+
+        # Browser
+        if 'edg/' in ua or 'edge/' in ua:
+            browser = 'Edge'
+        elif 'chrome/' in ua or 'crios/' in ua:
+            browser = 'Chrome'
+        elif 'firefox/' in ua or 'fxios/' in ua:
+            browser = 'Firefox'
+        elif 'safari/' in ua and 'chrome' not in ua:
+            browser = 'Safari'
+        elif 'opera/' in ua or 'opr/' in ua:
+            browser = 'Opera'
+        else:
+            browser = 'Browser'
+
+        return f"{dev} ({browser})"
+
+    @staticmethod
+    def cast_vote(
+        session_token,
+        ballot_data,
+        ip_address=None,
+        mac_address=None,
+        user_agent='',
+        device_type='',
+        verification_channel='',
+        city='',
+        country='',
+    ):
         """
         ATOMIC OPERATION.
         Validates token, marks roll as voted, and strictly decouples identity
         from the saved Vote record (creating a cryptographic receipt).
+        Audit telemetry (device, time, location, channel) is securely anchored
+        to the vote for voter tracking without violating secret ballot anonymity.
         """
         with transaction.atomic():
             # Lock the session and the voter's roll row so two submissions at
@@ -128,11 +187,19 @@ class BallotService:
             if not session.is_valid():
                 raise ValueError("Session is expired or already used.")
 
-            voter_roll = VoterRoll.objects.select_for_update().select_related('election').get(pk=session.voter_roll_id)
+            voter_roll = VoterRoll.objects.select_for_update().select_related('election__organization').get(pk=session.voter_roll_id)
             election = voter_roll.election
 
             if voter_roll.has_voted:
                 raise ValueError("Voter has already cast a ballot.")
+
+            # Resolve audit telemetry
+            channel = verification_channel or voter_roll.verification_channel or 'web_email'
+            computed_device = device_type or BallotService.parse_device_type(user_agent, channel)
+            resolved_country = country or 'Nepal'
+            resolved_city = city or ''
+            if channel == 'venue_kiosk' and not resolved_city and election.venue_name:
+                resolved_city = election.venue_name
 
             # Cryptographic receipt generation
             # Adding a salt to prevent rainbow table attacks on the vote payload
@@ -145,7 +212,9 @@ class BallotService:
             voter_roll.voted_at = timezone.now()
             voter_roll.voted_ip_address = ip_address
             voter_roll.voted_mac_address = mac_address or ''
-            voter_roll.save(update_fields=['has_voted', 'voted_at', 'voted_ip_address', 'voted_mac_address'])
+            if channel and voter_roll.verification_channel == 'unverified':
+                voter_roll.verification_channel = channel
+            voter_roll.save(update_fields=['has_voted', 'voted_at', 'voted_ip_address', 'voted_mac_address', 'verification_channel'])
             
             # 2. Invalidate the session
             session.is_used = True
@@ -157,7 +226,37 @@ class BallotService:
                 election=election,
                 ballot_data=ballot_data,
                 receipt_hash=receipt_hash,
-                weight=1 # Default weight, as VoterRoll does not have member relation
+                weight=1, # Default weight, as VoterRoll does not have member relation
+                ip_address=ip_address,
+                device_type=computed_device,
+                user_agent=user_agent or '',
+                city=resolved_city,
+                country=resolved_country,
+                verification_channel=channel,
+                mac_or_device_id=mac_address or '',
             )
+
+            voter_email = voter_roll.email
+            voter_name = voter_roll.full_name
+            voted_at = voter_roll.voted_at
             
+        # Post-commit: automatically dispatch confirmation receipt email if voter has email
+        if voter_email:
+            try:
+                from apps.notifications.services import NotificationService
+                loc = f"{resolved_city}, {resolved_country}".strip(", ") or "Nepal"
+                NotificationService.send_vote_receipt_confirmation(
+                    to_email=voter_email,
+                    voter_name=voter_name,
+                    election=election,
+                    receipt_hash=receipt_hash,
+                    voted_at=voted_at,
+                    device_type=computed_device,
+                    verification_channel=channel,
+                    ip_address=ip_address,
+                    location_str=loc,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to dispatch post-vote confirmation email: {e}")
+
         return receipt_hash

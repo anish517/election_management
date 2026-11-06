@@ -187,6 +187,8 @@ class ElectionViewSet(viewsets.ModelViewSet):
     serializer_class = ElectionSerializer
     
     def get_permissions(self):
+        if self.request.user and (self.request.user.is_superuser or getattr(self.request.user, 'role', '') == 'super_admin'):
+            return [IsAuthenticated()]
         if self.action in [
             'create', 'update', 'partial_update', 'destroy',
             'assign_role',
@@ -203,7 +205,17 @@ class ElectionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if not user or not user.is_authenticated or not user.organization:
+        if not user or not user.is_authenticated:
+            return Election.objects.none()
+
+        # Platform Super Admin can view elections across any or all tenant organizations
+        if user.is_superuser or getattr(user, 'role', '') == 'super_admin':
+            org_id = self.request.query_params.get('organization') or self.request.query_params.get('organization_id')
+            if org_id:
+                return Election.objects.filter(organization_id=org_id)
+            return Election.objects.all()
+
+        if not user.organization:
             return Election.objects.none()
 
         # Auto advance any due election milestones for this organization
@@ -247,10 +259,17 @@ class ElectionViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def perform_create(self, serializer):
-        org = self.request.user.organization
+        user = self.request.user
+        target_org_id = self.request.data.get('organization_id') or self.request.data.get('organization')
+        if (user.is_superuser or getattr(user, 'role', '') == 'super_admin') and target_org_id:
+            from apps.organizations.models import Organization
+            org = Organization.objects.get(id=target_org_id)
+        else:
+            org = user.organization
+
         kwargs = {
             'organization': org,
-            'created_by': self.request.user,
+            'created_by': user,
         }
         if 'results_visibility' not in serializer.validated_data and org and getattr(org, 'default_result_visibility', None):
             kwargs['results_visibility'] = org.default_result_visibility
@@ -265,7 +284,7 @@ class ElectionViewSet(viewsets.ModelViewSet):
                 max_votes_per_voter=1,
                 result_order=999,
             )
-        log_action('election.created', self.request.user.organization, self.request.user, {
+        log_action('election.created', org, user, {
             'election_id': str(election.id),
             'title': election.title
         })

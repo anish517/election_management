@@ -161,6 +161,20 @@ class Organization(TimestampedModel):
         help_text='Blocks automated retention-purge jobs (doc: 19-Audit-Compliance.md §19.7)'
     )
 
+    # Voting Automation & Hands-off Mode
+    voting_time_only_mode = models.BooleanField(
+        default=False,
+        help_text='Voting-Time-Only Mode: Auto-dispatch direct ballot links when voting opens and auto-send receipt emails upon vote submission.'
+    )
+    auto_dispatch_ballot_links = models.BooleanField(
+        default=False,
+        help_text='Auto-dispatch direct ballot links to all eligible voters with email when election transitions to voting_open.'
+    )
+    auto_send_vote_receipts = models.BooleanField(
+        default=True,
+        help_text='Auto-send confirmation email with cryptographic receipt signature to voter upon successful vote submission.'
+    )
+
     class Meta:
         db_table = 'organizations'
         ordering = ['name']

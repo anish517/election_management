@@ -360,8 +360,14 @@ class NotificationService:
         from datetime import timedelta
         from django.utils import timezone
 
-        # If election allows Web-Based single-use voting, dispatch individual single-use ballot links
-        if getattr(election, 'election_method', 'online') == 'online' and getattr(election, 'online_type', 'hybrid') in ('web_based', 'hybrid'):
+        # If election allows Web-Based single-use voting OR organization has voting_time_only_mode / auto_dispatch_ballot_links:
+        org = getattr(election, 'organization', None)
+        auto_mode = (
+            getattr(org, 'voting_time_only_mode', False) or
+            getattr(org, 'auto_dispatch_ballot_links', False) or
+            (getattr(election, 'election_method', 'online') == 'online' and getattr(election, 'online_type', 'hybrid') in ('web_based', 'hybrid'))
+        )
+        if auto_mode:
             voter_rolls = VoterRoll.objects.filter(election=election, is_eligible=True, has_voted=False)
             frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000').rstrip('/')
             
@@ -967,4 +973,104 @@ class NotificationService:
         # SMS OTP (logs/dispatches SMS)
         if channel in ['sms', 'both'] and roll.phone:
             logger.info(f"[SMS Gateway] Dispatched Kiosk Unlock OTP {otp_code} to {roll.phone} for voter {roll.voter_id}")
+
+    @staticmethod
+    def send_vote_receipt_confirmation(
+        to_email: str,
+        voter_name: str,
+        election,
+        receipt_hash: str,
+        voted_at=None,
+        device_type: str = 'Web Browser',
+        verification_channel: str = 'web_email',
+        ip_address: str = None,
+        location_str: str = 'Nepal',
+    ):
+        """
+        Dispatches official cryptographic confirmation and receipt signature email
+        after a ballot has been cast. Allows the voter to audit and track their vote record.
+        """
+        from django.utils import timezone
+        voted_dt = voted_at or timezone.now()
+        tz_name = election.organization.timezone if election and getattr(election, 'organization', None) else 'Asia/Kathmandu'
+        time_formatted = _format_bs(voted_dt, tz_name)
+
+        frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000').rstrip('/')
+        verify_url = f"{frontend_url}/#/verify-vote?signature={receipt_hash}"
+
+        channel_labels = {
+            'mobile_app': '📱 Mobile App (Biometric / OTP Verified)',
+            'web_email': '🌐 Web Direct Ballot (Email Verified)',
+            'venue_kiosk': '🏢 Venue Kiosk Polling Station',
+        }
+        channel_label = channel_labels.get(verification_channel, '🗳️ Digital Ballot')
+
+        masked_ip = 'Confidential'
+        if ip_address:
+            parts = ip_address.split('.')
+            if len(parts) == 4:
+                masked_ip = f"{parts[0]}.***.***.{parts[3]}"
+            else:
+                masked_ip = ip_address[:4] + '****'
+
+        body = f'''
+        <p style="color:#94A3B8;font-size:15px;margin:0 0 14px;line-height:1.6;">
+          Dear <strong style="color:#E2E8F0;">{voter_name or 'Voter'}</strong>,
+        </p>
+        <p style="color:#94A3B8;font-size:14px;margin:0 0 18px;line-height:1.6;">
+          Your official secret ballot for <strong style="color:#E2E8F0;">{election.title}</strong> has been successfully cast and cryptographically recorded in the election ledger.
+        </p>
+
+        <!-- Cryptographic Signature Card -->
+        <div style="background:rgba(16, 185, 129, 0.08);border:1px solid rgba(16, 185, 129, 0.35);border-radius:12px;padding:20px;text-align:center;margin:20px 0;">
+          <div style="font-size:11px;font-weight:700;color:#10B981;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px;">
+            🔒 Cryptographic Ballot Signature (Receipt Hash)
+          </div>
+          <div style="font-size:13px;font-weight:700;letter-spacing:0.8px;color:#E2E8F0;font-family:'Courier New',monospace;word-break:break-all;background:#0F172A;padding:12px 14px;border-radius:8px;border:1px solid #334155;">
+            {receipt_hash}
+          </div>
+          <div style="font-size:12px;color:#94A3B8;margin-top:10px;line-height:1.5;">
+            Save this signature. You can use it at any time to verify that your ballot is counted in the audit ledger without disclosing your secret selections.
+          </div>
+        </div>
+
+        {_election_info_block(election)}
+
+        <!-- Audit Telemetry Details -->
+        <div style="background:#0F172A;border-radius:12px;padding:18px 20px;margin:0 0 20px;border:1px solid #1E293B;">
+          <div style="color:#38BDF8;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">
+            Audit & Telemetry Verification
+          </div>
+          {_info_row("🕒", f"<span style='color:#CBD5E1;'>Cast Time:</span> <strong style='color:#F8FAFC;'>{time_formatted}</strong>")}
+          {_info_row("💻", f"<span style='color:#CBD5E1;'>Device:</span> <strong style='color:#F8FAFC;'>{device_type}</strong>")}
+          {_info_row("📍", f"<span style='color:#CBD5E1;'>Location:</span> <strong style='color:#F8FAFC;'>{location_str}</strong> (IP: {masked_ip})")}
+          {_info_row("🛡️", f"<span style='color:#CBD5E1;'>Channel:</span> <strong style='color:#F8FAFC;'>{channel_label}</strong>")}
+          {_info_row("✅", f"<span style='color:#10B981;font-weight:600;'>Cryptographic Status: SEALED & TAMPER-EVIDENT</span>")}
+        </div>
+        '''
+
+        html = _base_email(
+            header_color='#10B981',
+            icon='✅',
+            title='Ballot Confirmed & Recorded',
+            subtitle=f'{election.title} — Official Receipt',
+            body_html=body,
+            cta_url=verify_url,
+            cta_label='🔍 Track & Verify Ballot in Ledger →',
+        )
+
+        NotificationService._send_bulk(
+            subject=f'✅ Vote Confirmed: Cryptographic Receipt — {election.title}',
+            plain_text=(
+                f"Your vote for '{election.title}' has been cast and cryptographically recorded.\n"
+                f"Signature: {receipt_hash}\n"
+                f"Time: {time_formatted}\n"
+                f"Device: {device_type}\n"
+                f"Verify your ballot: {verify_url}"
+            ),
+            html_body=html,
+            recipients=[to_email],
+            election=election,
+            async_mode=False,
+        )
 

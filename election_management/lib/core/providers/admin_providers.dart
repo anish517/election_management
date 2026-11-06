@@ -58,12 +58,14 @@ class CreateElectionNotifier extends AsyncNotifier<void> {
     int totalPrSeats = 10,
     double prThresholdPercent = 0.0,
     String prAllocationMethod = 'sainte_lague',
+    String? organizationId,
   }) async {
     if (state.isLoading) return;
     state = const AsyncValue.loading();
     try {
       final dio = ref.read(apiClientProvider);
       final data = {
+        if (organizationId != null && organizationId.isNotEmpty) 'organization_id': organizationId,
         'title': title,
         'description': description,
         'state': 'draft',

@@ -194,6 +194,21 @@ class _Header extends StatelessWidget {
               const SizedBox(height: 12),
               Text(e.description, style: theme.textTheme.bodyMedium),
             ],
+            const SizedBox(height: 14),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                FilledButton.icon(
+                  icon: const Icon(Icons.admin_panel_settings_rounded, size: 16),
+                  label: const Text('Open in Election Control Panel'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  ),
+                  onPressed: () => context.push('/elections/${e.id}/overview'),
+                ),
+              ],
+            ),
           ],
         ),
       ),

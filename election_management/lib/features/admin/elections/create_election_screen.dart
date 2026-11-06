@@ -6,6 +6,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:nepali_date_picker/nepali_date_picker.dart';
 import '../../../core/providers/admin_providers.dart';
+import '../../../core/providers/platform_providers.dart';
+import '../../../core/providers/auth_provider.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/theme/app_theme.dart';
@@ -365,7 +367,8 @@ Widget _deliveryTypeTile({
 // Create Election Screen Implementation
 // ---------------------------------------------------------------------------
 class CreateElectionScreen extends ConsumerStatefulWidget {
-  const CreateElectionScreen({super.key});
+  final String? initialOrgId;
+  const CreateElectionScreen({super.key, this.initialOrgId});
 
   @override
   ConsumerState<CreateElectionScreen> createState() =>
@@ -375,6 +378,9 @@ class CreateElectionScreen extends ConsumerStatefulWidget {
 class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
   final _formKey = GlobalKey<FormState>();
   final _scrollCtrl = ScrollController();
+
+  // --- Platform Super Admin Override ---
+  String? _selectedOrgId;
 
   // --- Election Info ---
   final _titleCtrl = TextEditingController();
@@ -427,6 +433,12 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
   // --- Ballot & Voting Rules ---
   bool _isSecretBallot = true;
   bool _allowBoycott = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedOrgId = widget.initialOrgId;
+  }
 
   @override
   void dispose() {
@@ -606,6 +618,7 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
             totalPrSeats: int.tryParse(_totalPrSeatsCtrl.text.trim()) ?? 10,
             prThresholdPercent: double.tryParse(_prThresholdCtrl.text.trim()) ?? 0.0,
             prAllocationMethod: _prAllocationMethod,
+            organizationId: _selectedOrgId,
           );
       if (mounted) {
         if (context.canPop()) {
@@ -648,6 +661,102 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
         );
       }
     }
+  }
+
+  Widget _buildSuperAdminOrgCard(BuildContext context) {
+    final orgsAsync = ref.watch(platformOrganizationsProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF3B82F6).withValues(alpha: 0.5),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF3B82F6).withValues(alpha: 0.08),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF3B82F6), size: 22),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Super Admin Mode: Tenant Organization Selector',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Select which organization this election is being created for.',
+                      style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          orgsAsync.when(
+            loading: () => const LinearProgressIndicator(),
+            error: (e, _) => Text('Failed to load organizations: $e', style: const TextStyle(color: Colors.red)),
+            data: (orgs) {
+              if (orgs.isEmpty) {
+                return const Text('No organizations registered on the platform.');
+              }
+              final validId = orgs.any((o) => o.id == _selectedOrgId)
+                  ? _selectedOrgId
+                  : orgs.first.id;
+              if (_selectedOrgId != validId) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) setState(() => _selectedOrgId = validId);
+                });
+              }
+
+              return DropdownButtonFormField<String>(
+                initialValue: validId,
+                decoration: _dec(
+                  'Target Organization *',
+                  prefix: const Icon(Icons.business_rounded),
+                ),
+                items: orgs.map((o) {
+                  return DropdownMenuItem<String>(
+                    value: o.id,
+                    child: Text('${o.name} (${o.prefix.isNotEmpty ? o.prefix : "Tenant"})'),
+                  );
+                }).toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() => _selectedOrgId = val);
+                  }
+                },
+                validator: (v) => (v == null || v.isEmpty) ? 'Please select an organization' : null,
+              );
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   InputDecoration _dec(String label, {String? hint, Widget? prefix}) {
@@ -777,6 +886,12 @@ class _CreateElectionScreenState extends ConsumerState<CreateElectionScreen> {
                   ],
                 ),
               ),
+
+              // Super Admin Organization Selection
+              if (ref.watch(currentUserProvider)?.isSuperAdmin ?? false) ...[
+                _buildSuperAdminOrgCard(context),
+                const SizedBox(height: 20),
+              ],
 
               // ══════════════════════════════════════════════════════════
               // 1. ELECTION INFORMATION

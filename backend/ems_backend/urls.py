@@ -24,6 +24,7 @@ from apps.voting.views import (
     ElectionVerificationStatsView,
     KioskUnlockView, KioskVerifyOTPView, KioskCastVoteView,
     PollingStationInitializeView, VoterPinSlipsPrintView,
+    VerifyBallotReceiptView,
 )
 from apps.results.views import ElectionResultsViewSet
 from apps.organizations.views import (
@@ -99,6 +100,7 @@ urlpatterns = [
     path('v1/upload/', FileUploadView.as_view(), name='file-upload'),
 
     # Method 1 (Online/Remote) Web Ballot Link & Verification (doc: Election-Methods.pdf)
+    path('v1/voting/receipts/verify/', VerifyBallotReceiptView.as_view(), name='voting-receipt-verify'),
     path('v1/voting/request-web-otp/', WebVotingOTPRequestView.as_view(), name='voting-request-web-otp'),
     path('v1/voting/verify-web-otp/', WebVotingOTPVerifyView.as_view(), name='voting-verify-web-otp'),
     path('v1/voting/direct-ballot/<str:token>/', DirectBallotView.as_view(), name='voting-direct-ballot'),

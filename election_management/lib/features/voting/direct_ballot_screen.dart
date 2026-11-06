@@ -596,6 +596,59 @@ class _DirectBallotScreenState extends ConsumerState<DirectBallotScreen> {
                           height: 1.5,
                         ),
                       ),
+                      if (isUsedOrExpired) ...[
+                        const SizedBox(height: 18),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(Icons.verified_rounded, size: 18, color: Color(0xFF10B981)),
+                                  SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Track & Verify Your Ballot Record',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF10B981),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'You can audit the exact timestamp, device, and sealed cryptographic receipt of your cast vote using the signature sent to your confirmation email.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569),
+                                  height: 1.4,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              OutlinedButton.icon(
+                                icon: const Icon(Icons.search_rounded, size: 16),
+                                label: const Text('Verify Vote with Email Signature'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF10B981),
+                                  side: const BorderSide(color: Color(0xFF10B981)),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                ),
+                                onPressed: () => context.push('/verify-vote'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
                         icon: const Icon(Icons.home_rounded, size: 18),

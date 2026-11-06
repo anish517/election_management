@@ -1,8 +1,13 @@
 import 'package:dio/dio.dart';
 
 /// Formats and extracts clean, human-readable error messages from any API error / DioException
-String extractApiErrorMessage(dynamic e, {String fallback = 'An unexpected error occurred. Please try again.'}) {
-  if (e == null) return fallback;
+String extractApiErrorMessage(
+  dynamic e, {
+  String fallback = 'An unexpected error occurred. Please try again.',
+  String? fallbackMessage,
+}) {
+  final resolvedFallback = fallbackMessage ?? fallback;
+  if (e == null) return resolvedFallback;
 
   if (e is DioException) {
     // 1. Intercept low-level browser network/CORS crashes before checking response
@@ -101,7 +106,7 @@ String extractApiErrorMessage(dynamic e, {String fallback = 'An unexpected error
 
   if (str.isNotEmpty && str != 'null') return str;
 
-  return fallback;
+  return resolvedFallback;
 }
 
 /// Helper to detect if an error is due to session or authentication expiration

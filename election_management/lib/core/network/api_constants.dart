@@ -101,6 +101,8 @@ class ApiConstants {
   static String castVote(String eid) => '/elections/$eid/voting/cast/';
 
   // Method 1 (Online/Remote) Web & Direct Token Voting (doc: Election-Methods.pdf)
+  static String verifyVoteReceipt(String signature) =>
+      '/voting/receipts/verify/?signature=${Uri.encodeComponent(signature)}';
   static const String requestWebOtp = '/voting/request-web-otp/';
   static const String verifyWebOtp = '/voting/verify-web-otp/';
   static String directBallot(String token) => '/voting/direct-ballot/$token/';

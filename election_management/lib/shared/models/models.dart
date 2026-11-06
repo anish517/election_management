@@ -887,6 +887,9 @@ class OrganizationModel {
   final bool electionOfficersCanPublish;
   final int dataRetentionYears;
   final bool legalHold;
+  final bool votingTimeOnlyMode;
+  final bool autoDispatchBallotLinks;
+  final bool autoSendVoteReceipts;
 
   const OrganizationModel({
     required this.id,
@@ -924,6 +927,9 @@ class OrganizationModel {
     required this.electionOfficersCanPublish,
     required this.dataRetentionYears,
     required this.legalHold,
+    this.votingTimeOnlyMode = false,
+    this.autoDispatchBallotLinks = false,
+    this.autoSendVoteReceipts = true,
   });
 
   factory OrganizationModel.fromJson(Map<String, dynamic> json) => OrganizationModel(
@@ -962,6 +968,9 @@ class OrganizationModel {
         electionOfficersCanPublish: json['election_officers_can_publish'] as bool? ?? false,
         dataRetentionYears: json['data_retention_years'] as int? ?? 7,
         legalHold: json['legal_hold'] as bool? ?? false,
+        votingTimeOnlyMode: json['voting_time_only_mode'] as bool? ?? false,
+        autoDispatchBallotLinks: json['auto_dispatch_ballot_links'] as bool? ?? false,
+        autoSendVoteReceipts: json['auto_send_vote_receipts'] as bool? ?? true,
       );
 
   // Static Payment Helpers

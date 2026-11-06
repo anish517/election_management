@@ -16,6 +16,7 @@ import '../../features/voting/ballot_screen.dart';
 import '../../features/voting/direct_ballot_screen.dart';
 import '../../features/voting/vote_confirmation_screen.dart';
 import '../../features/voting/receipt_screen.dart';
+import '../../features/voting/verify_vote_screen.dart';
 import '../../features/admin/elections/create_election_screen.dart';
 import '../../features/admin/elections/voter_turnout_screen.dart';
 import '../../features/voting/voting_history_screen.dart';
@@ -138,6 +139,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final isDirectVoteRoute = loc.startsWith('/vote/direct') ||
           loc.startsWith('/vote/receipt') ||
+          loc.startsWith('/verify-vote') ||
           loc.startsWith('/o/');
 
       // Unauthenticated users are allowed on auth pages and direct ballot link pages
@@ -327,7 +329,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'new',
             name: 'create-election',
-            builder: (context, state) => const CreateElectionScreen(),
+            builder: (context, state) => CreateElectionScreen(
+              initialOrgId: state.uri.queryParameters['orgId'] ?? state.uri.queryParameters['org_id'],
+            ),
           ),
           GoRoute(
             path: ':electionId',
@@ -432,6 +436,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             electionId: extra['election_id'] ?? '',
             receiptHash: extra['receipt_hash'] ?? state.uri.queryParameters['receipt'] ?? '',
           );
+        },
+      ),
+      GoRoute(
+        path: '/verify-vote',
+        name: 'verify-vote',
+        builder: (context, state) {
+          final sig = state.uri.queryParameters['signature'] ??
+              state.uri.queryParameters['receipt_hash'];
+          return VerifyVoteScreen(initialSignature: sig);
         },
       ),
     ],

@@ -23,7 +23,8 @@ class OrganizationSerializer(serializers.ModelSerializer):
             'default_nomination_window_days', 'default_voting_window_days',
             'default_silent_period_hours', 'default_result_visibility',
             'election_officers_can_publish', 'data_retention_years',
-            'legal_hold', 'created_at'
+            'legal_hold', 'voting_time_only_mode', 'auto_dispatch_ballot_links',
+            'auto_send_vote_receipts', 'created_at'
         ]
         read_only_fields = ['id', 'slug', 'prefix', 'portal_token', 'status', 'trial_ends_at', 'legal_hold', 'created_at']
 

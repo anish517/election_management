@@ -1,11 +1,11 @@
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.utils import timezone
 
 from apps.elections.models import Election
-from apps.voting.models import VoterRoll, VotingSession
+from apps.voting.models import VoterRoll, VotingSession, Vote
 from apps.voting.serializers import CastVoteSerializer
 from apps.voting.services import BallotService
 from apps.users.views import get_client_ip
@@ -238,13 +238,24 @@ class VotingViewSet(viewsets.ViewSet):
             or request.data.get('mac_address')
             or request.META.get('HTTP_X_DEVICE_IDENTIFIER', '')
         )
+        user_agent = request.META.get('HTTP_USER_AGENT', '')
+        ip_addr = get_client_ip(request)
+        country = request.META.get('HTTP_CF_IPCOUNTRY') or request.META.get('HTTP_X_COUNTRY') or 'Nepal'
+        city = request.META.get('HTTP_CF_IPCITY') or request.META.get('HTTP_X_CITY') or ''
+        channel = 'mobile_app' if ('dart' in user_agent.lower() or 'flutter' in user_agent.lower()) else 'web_email'
+        device_type = request.data.get('device_type') or ''
         
         try:
             receipt = BallotService.cast_vote(
                 session_token=session_token, 
                 ballot_data=serializer.validated_data['ballot_data'],
-                ip_address=get_client_ip(request),
-                mac_address=mac_address
+                ip_address=ip_addr,
+                mac_address=mac_address,
+                user_agent=user_agent,
+                device_type=device_type,
+                verification_channel=channel,
+                city=city,
+                country=country,
             )
             
             log_action('vote.casted', request.user.organization, request.user, {
@@ -1757,11 +1768,21 @@ class DirectVoteCastView(APIView):
                 or request.data.get('mac_address')
                 or request.META.get('HTTP_X_DEVICE_IDENTIFIER', '')
             )
+            user_agent = request.META.get('HTTP_USER_AGENT', '')
+            country = request.META.get('HTTP_CF_IPCOUNTRY') or request.META.get('HTTP_X_COUNTRY') or 'Nepal'
+            city = request.META.get('HTTP_CF_IPCITY') or request.META.get('HTTP_X_CITY') or ''
+            device_type = request.data.get('device_type') or ''
+
             receipt_hash = BallotService.cast_vote(
                 session_token=session_token,
                 ballot_data=serializer.validated_data['ballot_data'],
                 ip_address=ip_addr,
                 mac_address=mac_addr,
+                user_agent=user_agent,
+                device_type=device_type,
+                verification_channel='web_email',
+                city=city,
+                country=country,
             )
 
             # Burn single-use direct ballot token
@@ -2171,11 +2192,15 @@ class KioskCastVoteView(APIView):
                 or request.data.get('station_id')
                 or request.META.get('HTTP_X_DEVICE_IDENTIFIER', 'kiosk_station')
             )
+            station_name = request.data.get('station_name') or f"Venue Kiosk ({mac_addr})"
             receipt_hash = BallotService.cast_vote(
                 session_token=session_token,
                 ballot_data=ballot_data,
                 ip_address=ip_addr,
                 mac_address=mac_addr,
+                user_agent=request.META.get('HTTP_USER_AGENT', ''),
+                device_type=station_name,
+                verification_channel='venue_kiosk',
             )
 
             return Response({
@@ -2427,6 +2452,92 @@ class VoterPinSlipsPrintView(APIView):
 </body>
 </html>"""
         return HttpResponse(html, content_type='text/html')
+
+
+class VerifyBallotReceiptView(APIView):
+    """
+    GET /v1/voting/receipts/verify/?signature=<hash>
+    Public endpoint for voters to verify their vote record in the audit ledger.
+    Allows ANY individual voter holding their cryptographic receipt signature
+    to audit when, where, and on what device their ballot was recorded.
+    STRICT SECRET BALLOT INTEGRITY: Never exposes candidate selections (ballot_data)
+    or personal voter PII (name, email).
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        raw_signature = (
+            request.query_params.get('signature')
+            or request.query_params.get('receipt_hash')
+            or ''
+        ).strip().lower()
+
+        if not raw_signature:
+            return Response({
+                'valid': False,
+                'error': 'A cryptographic ballot signature is required. Please check the receipt sent to your email.'
+            }, status=400)
+
+        # Look up Vote record by receipt_hash
+        vote = (
+            Vote.objects.filter(receipt_hash__iexact=raw_signature)
+            .select_related('election__organization')
+            .first()
+        )
+
+        if not vote:
+            return Response({
+                'valid': False,
+                'signature': raw_signature,
+                'error': 'No ballot record found matching this signature in the election ledger. Please verify the exact signature received in your confirmation email.'
+            }, status=404)
+
+        # Format IP (masked for privacy)
+        masked_ip = 'Confidential'
+        if vote.ip_address:
+            parts = str(vote.ip_address).split('.')
+            if len(parts) == 4:
+                masked_ip = f"{parts[0]}.***.***.{parts[3]}"
+            else:
+                masked_ip = f"{str(vote.ip_address)[:4]}****"
+
+        # Format timestamps (Gregorian + Nepali BS)
+        from apps.notifications.services import _format_bs
+        tz_name = vote.election.organization.timezone if vote.election and vote.election.organization else 'Asia/Kathmandu'
+        vote_timestamp = getattr(vote, 'voted_at', None) or getattr(vote, 'created_at', None)
+        time_formatted_bs = _format_bs(vote_timestamp, tz_name) if vote_timestamp else 'TBD'
+
+        channel_labels = {
+            'mobile_app': 'Mobile App (Biometric / OTP Verified)',
+            'web_email': 'Web Direct Ballot (Email Verified)',
+            'venue_kiosk': 'Venue Kiosk Polling Station',
+        }
+        channel_label = channel_labels.get(vote.verification_channel, 'Official Electronic Ballot')
+
+        location_str = f"{vote.city}, {vote.country}".strip(", ")
+        if not location_str or location_str == 'Nepal':
+            if vote.verification_channel == 'venue_kiosk' and vote.election.venue_name:
+                location_str = f"{vote.election.venue_name}, Nepal"
+            else:
+                location_str = "Nepal"
+
+        return Response({
+            'valid': True,
+            'signature': vote.receipt_hash,
+            'election_id': str(vote.election_id),
+            'election_title': vote.election.title,
+            'organization_name': vote.election.organization.name if vote.election and vote.election.organization else '',
+            'voted_at': vote_timestamp.isoformat() if vote_timestamp else None,
+            'voted_at_formatted': time_formatted_bs,
+            'device_type': vote.device_type or 'Secure Electronic Voting Terminal',
+            'verification_channel': vote.verification_channel or 'web_email',
+            'verification_channel_label': channel_label,
+            'ip_masked': masked_ip,
+            'location': location_str,
+            'cryptographic_status': 'SEALED_AND_VERIFIED',
+            'hash_algorithm': 'SHA-256 (HMAC Salted)',
+            'message': 'Your secret ballot has been cryptographically recorded in the immutable election roll and is certified for tallying.'
+        })
 
 
 

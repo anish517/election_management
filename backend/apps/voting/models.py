@@ -187,9 +187,22 @@ class Vote(TimestampedModel):
     # We copy it here so we don't have to join back to the member (which would break anonymity)
     weight = models.DecimalField(max_digits=10, decimal_places=4, default=1.0)
     
+    # Audit telemetry (Anonymized: no voter PII)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    device_type = models.CharField(max_length=100, blank=True, default='Desktop Browser')
+    user_agent = models.TextField(blank=True, default='')
+    city = models.CharField(max_length=100, blank=True, default='')
+    country = models.CharField(max_length=100, blank=True, default='')
+    verification_channel = models.CharField(max_length=30, blank=True, default='web_email')
+    mac_or_device_id = models.CharField(max_length=255, blank=True, default='')
+    
     class Meta:
         db_table = 'votes'
         # No updates/deletes allowed at DB level in production
+
+    @property
+    def voted_at(self):
+        return self.created_at
 
     def __str__(self):
         return f"Vote {self.id} for {self.election.title}"

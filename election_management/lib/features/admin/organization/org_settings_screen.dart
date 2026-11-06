@@ -231,6 +231,11 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
   String _coverUrl = '';
   String _portalToken = '';
 
+  // --- Automation Settings ---
+  bool _votingTimeOnlyMode = false;
+  bool _autoDispatchBallotLinks = false;
+  bool _autoSendVoteReceipts = true;
+
   // --- Type metadata ---
   final Map<String, TextEditingController> _metaCtrls = {};
 
@@ -279,6 +284,9 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
     _logoUrl = org.logoUrl;
     _coverUrl = org.coverImageUrl;
     _portalToken = org.portalToken;
+    _votingTimeOnlyMode = org.votingTimeOnlyMode;
+    _autoDispatchBallotLinks = org.autoDispatchBallotLinks;
+    _autoSendVoteReceipts = org.autoSendVoteReceipts;
     _selectedOrgType = org.orgType.isNotEmpty ? org.orgType : 'other';
 
     // Populate meta fields for this org type
@@ -345,6 +353,9 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
       'logo_url': _logoUrl,
       'cover_image_url': _coverUrl,
       'type_metadata': meta,
+      'voting_time_only_mode': _votingTimeOnlyMode,
+      'auto_dispatch_ballot_links': _autoDispatchBallotLinks,
+      'auto_send_vote_receipts': _autoSendVoteReceipts,
     };
     if (isSuperAdmin) {
       payload['prefix'] = _prefixCtrl.text.trim();
@@ -597,6 +608,58 @@ class _OrgSettingsScreenState extends ConsumerState<OrgSettingsScreen> {
                     ))
                 .toList(),
           ),
+
+        // Election Day Automation & Hands-off Mode
+        _section(
+          title: 'Election Day Automation Mode (मतदान समय मात्र स्वचालित मोड)',
+          subtitle: 'Automate voter ballot links and post-submission thank you emails during active polling',
+          icon: Icons.auto_mode_rounded,
+          children: [
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Voting-Time-Only Mode (स्वचालित मतदान मोड)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              subtitle: const Text(
+                'Pre-configure election settings in advance. Once voting opens, direct ballot links are auto-dispatched, and thank-you confirmation receipts are automatically sent upon submission without manual action.',
+                style: TextStyle(fontSize: 12.5, color: AppColors.textMuted),
+              ),
+              value: _votingTimeOnlyMode,
+              activeTrackColor: AppColors.primary,
+              onChanged: (val) {
+                setState(() {
+                  _votingTimeOnlyMode = val;
+                  if (val) {
+                    _autoDispatchBallotLinks = true;
+                    _autoSendVoteReceipts = true;
+                  }
+                });
+              },
+            ),
+            const Divider(height: 24),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Auto-Dispatch Direct Ballot Links', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+              subtitle: const Text(
+                'Automatically generate single-use ballot tokens and email direct voting links to all eligible voters when election state changes to Voting Open.',
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
+              value: _autoDispatchBallotLinks,
+              activeTrackColor: AppColors.primary,
+              onChanged: (val) => setState(() => _autoDispatchBallotLinks = val),
+            ),
+            const Divider(height: 24),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Auto-Send Vote Confirmation & Receipt Emails', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+              subtitle: const Text(
+                'Automatically deliver official thank-you email containing the cryptographic receipt signature and audit verification link to voter immediately after ballot cast.',
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
+              value: _autoSendVoteReceipts,
+              activeTrackColor: const Color(0xFF10B981),
+              onChanged: (val) => setState(() => _autoSendVoteReceipts = val),
+            ),
+          ],
+        ),
 
         // Election Rules Shortcut Card
         Container(

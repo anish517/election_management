@@ -1,5 +1,6 @@
 from django.db.models import Q
 from rest_framework import viewsets, status, permissions
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -300,7 +301,8 @@ class ElectionViewSet(viewsets.ModelViewSet):
                 max_votes_per_voter=1,
                 result_order=999,
             )
-        log_action('election.updated', self.request.user.organization, self.request.user, {
+        org = election.organization or getattr(self.request.user, 'organization', None)
+        log_action('election.updated', org, self.request.user, {
             'election_id': str(election.id),
             'title': election.title
         })
@@ -322,16 +324,17 @@ class ElectionViewSet(viewsets.ModelViewSet):
                 logging.getLogger(__name__).warning(f"[Notify] Schedule update email broadcast failed: {e}")
 
         # Check and advance if any new dates are already due
-        _advance_due_elections(self.request.user.organization)
+        _advance_due_elections(org)
 
     @action(detail=True, methods=['post'])
     def publish(self, request, pk=None):
         """Transition election from DRAFT to PUBLISHED."""
         election = self.get_object()
+        org = election.organization or getattr(request.user, 'organization', None)
         
         try:
             election.transition_to(ElectionState.PUBLISHED, triggered_by=request.user)
-            log_action('election.published', request.user.organization, request.user, {
+            log_action('election.published', org, request.user, {
                 'election_id': str(election.id)
             })
 
@@ -344,7 +347,7 @@ class ElectionViewSet(viewsets.ModelViewSet):
                 logging.getLogger(__name__).warning(f"[Notify] Publish email broadcast failed: {e}")
 
             # Check if any milestones are already due immediately upon publish
-            _advance_due_elections(request.user.organization)
+            _advance_due_elections(org)
 
             return Response(self.get_serializer(election).data)
         except ValueError as e:
@@ -354,6 +357,7 @@ class ElectionViewSet(viewsets.ModelViewSet):
     def advance_state(self, request, pk=None):
         """Transition election to a specific state."""
         election = self.get_object()
+        org = election.organization or getattr(request.user, 'organization', None)
         target_state = request.data.get('state')
         
         if not target_state:
@@ -361,15 +365,15 @@ class ElectionViewSet(viewsets.ModelViewSet):
             
         # Enforce Organization Governance Policy: Check if Election Officers can publish results
         if target_state in ['results_provisional', 'results_final']:
-            if not getattr(request.user, 'is_org_admin', False) and getattr(request.user, 'role', '') != 'org_admin':
-                if not getattr(request.user.organization, 'election_officers_can_publish', False):
+            if not getattr(request.user, 'is_org_admin', False) and getattr(request.user, 'role', '') != 'org_admin' and getattr(request.user, 'role', '') != 'super_admin' and not request.user.is_superuser:
+                if not getattr(org, 'election_officers_can_publish', False):
                     return Response({
                         'error': 'Organization policy requires Organization Admin approval to publish election results.'
                     }, status=status.HTTP_403_FORBIDDEN)
 
         try:
             election.transition_to(target_state, triggered_by=request.user)
-            log_action(f'election.state_changed', request.user.organization, request.user, {
+            log_action(f'election.state_changed', org, request.user, {
                 'election_id': str(election.id),
                 'new_state': target_state
             })
@@ -933,6 +937,8 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
     serializer_class = ElectionNoticeSerializer
     
     def get_permissions(self):
+        if self.request.user and (self.request.user.is_superuser or getattr(self.request.user, 'role', '') == 'super_admin'):
+            return [IsAuthenticated()]
         if self.action == 'print_letterhead':
             return [permissions.AllowAny()]
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -940,14 +946,18 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
         return [IsObserver()]
 
     def get_queryset(self):
+        user = self.request.user
+        if user.is_superuser or getattr(user, 'role', '') == 'super_admin':
+            return ElectionNotice.objects.filter(election_id=self.kwargs['election_pk']).order_by('-created_at')
+
         qs = ElectionNotice.objects.filter(
-            election__organization=self.request.user.organization,
+            election__organization=user.organization,
             election_id=self.kwargs['election_pk']
         )
-        if not (self.request.user.is_org_admin or self.request.user.is_superuser):
+        if not (user.is_org_admin or user.is_superuser):
             from apps.elections.models import ElectionRoleAssignment
             is_officer = ElectionRoleAssignment.objects.filter(
-                user=self.request.user,
+                user=user,
                 election_id=self.kwargs['election_pk'],
                 role='election_officer'
             ).exists()
@@ -956,10 +966,14 @@ class ElectionNoticeViewSet(viewsets.ModelViewSet):
         return qs.order_by('-created_at')
 
     def perform_create(self, serializer):
-        election = Election.objects.get(
-            id=self.kwargs['election_pk'],
-            organization=self.request.user.organization
-        )
+        user = self.request.user
+        if user.is_superuser or getattr(user, 'role', '') == 'super_admin':
+            election = Election.objects.get(id=self.kwargs['election_pk'])
+        else:
+            election = Election.objects.get(
+                id=self.kwargs['election_pk'],
+                organization=user.organization
+            )
         serializer.save(election=election)
 
     @action(detail=True, methods=['get'], permission_classes=[permissions.AllowAny])
@@ -1521,22 +1535,30 @@ class PositionViewSet(viewsets.ModelViewSet):
     serializer_class = PositionSerializer
     
     def get_permissions(self):
+        if self.request.user and (self.request.user.is_superuser or getattr(self.request.user, 'role', '') == 'super_admin'):
+            return [IsAuthenticated()]
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsElectionOfficer()]
         return [IsObserver()]
 
     def get_queryset(self):
+        user = self.request.user
+        if user.is_superuser or getattr(user, 'role', '') == 'super_admin':
+            return Position.objects.filter(election_id=self.kwargs['election_pk'])
         return Position.objects.filter(
-            election__organization=self.request.user.organization,
+            election__organization=user.organization,
             election_id=self.kwargs['election_pk']
         )
 
     def perform_create(self, serializer):
-        # We need to get the election
-        election = Election.objects.get(
-            id=self.kwargs['election_pk'],
-            organization=self.request.user.organization
-        )
+        user = self.request.user
+        if user.is_superuser or getattr(user, 'role', '') == 'super_admin':
+            election = Election.objects.get(id=self.kwargs['election_pk'])
+        else:
+            election = Election.objects.get(
+                id=self.kwargs['election_pk'],
+                organization=user.organization
+            )
         self.check_object_permissions(self.request, election)
         serializer.save(election=election)
 
@@ -1560,15 +1582,23 @@ class PositionQuotaViewSet(viewsets.ModelViewSet):
     serializer_class = PositionQuotaSerializer
 
     def get_permissions(self):
+        if self.request.user and (self.request.user.is_superuser or getattr(self.request.user, 'role', '') == 'super_admin'):
+            return [IsAuthenticated()]
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsElectionOfficer()]
         return [IsObserver()]
 
     def get_queryset(self):
-        qs = PositionQuota.objects.filter(
-            position__election__organization=self.request.user.organization,
-            position__election_id=self.kwargs['election_pk']
-        ).select_related('position')
+        user = self.request.user
+        if user.is_superuser or getattr(user, 'role', '') == 'super_admin':
+            qs = PositionQuota.objects.filter(
+                position__election_id=self.kwargs['election_pk']
+            ).select_related('position')
+        else:
+            qs = PositionQuota.objects.filter(
+                position__election__organization=user.organization,
+                position__election_id=self.kwargs['election_pk']
+            ).select_related('position')
         
         position_id = self.request.query_params.get('position')
         if position_id:
@@ -1576,12 +1606,19 @@ class PositionQuotaViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
+        user = self.request.user
         position_id = self.request.data.get('position')
-        position = Position.objects.get(
-            id=position_id,
-            election_id=self.kwargs['election_pk'],
-            election__organization=self.request.user.organization
-        )
+        if user.is_superuser or getattr(user, 'role', '') == 'super_admin':
+            position = Position.objects.get(
+                id=position_id,
+                election_id=self.kwargs['election_pk']
+            )
+        else:
+            position = Position.objects.get(
+                id=position_id,
+                election_id=self.kwargs['election_pk'],
+                election__organization=user.organization
+            )
         self.check_object_permissions(self.request, position.election)
         serializer.save(position=position)
 

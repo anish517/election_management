@@ -14,8 +14,12 @@ class ElectionResultsViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'])
     def results(self, request, election_pk=None):
+        user = request.user
         try:
-            election = Election.objects.get(id=election_pk, organization=request.user.organization)
+            if user.is_superuser or user.role == 'super_admin':
+                election = Election.objects.get(id=election_pk)
+            else:
+                election = Election.objects.get(id=election_pk, organization=user.organization)
         except Election.DoesNotExist:
             return Response({'error': 'Election not found'}, status=404)
             

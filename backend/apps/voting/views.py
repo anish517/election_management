@@ -295,8 +295,11 @@ class VoterRollViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
+        user = self.request.user
+        if user.is_superuser or getattr(user, 'role', '') == 'super_admin':
+            return VoterRoll.objects.filter(election_id=self.kwargs.get('election_pk'))
         return VoterRoll.objects.filter(
-            election__organization=self.request.user.organization,
+            election__organization=user.organization,
             election_id=self.kwargs.get('election_pk')
         )
 
@@ -315,11 +318,14 @@ class VoterRollViewSet(viewsets.ModelViewSet):
         if self.action not in self.WRITE_ACTIONS:
             return
         from rest_framework.exceptions import PermissionDenied
-        if request.user.role not in ('org_admin', 'election_officer'):
+        if request.user.role not in ('org_admin', 'election_officer', 'super_admin') and not request.user.is_superuser:
             raise PermissionDenied('Only organization admins and election officers can change the voter list.')
-        election = Election.objects.filter(
-            id=self.kwargs.get('election_pk'), organization=request.user.organization
-        ).first()
+        if request.user.is_superuser or request.user.role == 'super_admin':
+            election = Election.objects.filter(id=self.kwargs.get('election_pk')).first()
+        else:
+            election = Election.objects.filter(
+                id=self.kwargs.get('election_pk'), organization=request.user.organization
+            ).first()
         if election and election.voter_list_final and self.action in self.ROSTER_ACTIONS:
             raise PermissionDenied(
                 'The final voter list is published, so voters can no longer be added or removed.'
@@ -329,7 +335,7 @@ class VoterRollViewSet(viewsets.ModelViewSet):
         from rest_framework.exceptions import PermissionDenied
         roll = serializer.instance
         if roll.election.voter_list_final:
-            if self.request.user.role != 'org_admin':
+            if self.request.user.role not in ('org_admin', 'super_admin') and not self.request.user.is_superuser:
                 raise PermissionDenied(
                     "The final voter list is published. Only an organization admin can update a voter's email or phone."
                 )

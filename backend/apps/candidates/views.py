@@ -23,18 +23,22 @@ class CandidateViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
-        qs = Candidate.objects.filter(
-            election__organization=self.request.user.organization,
-            election_id=self.kwargs['election_pk']
-        )
-        if self.request.user.role == 'candidate':
-            qs = qs.filter(email__iexact=self.request.user.email)
+        user = self.request.user
+        if user.is_superuser or user.role == 'super_admin':
+            qs = Candidate.objects.filter(election_id=self.kwargs['election_pk'])
+        else:
+            qs = Candidate.objects.filter(
+                election__organization=user.organization,
+                election_id=self.kwargs['election_pk']
+            )
+        if user.role == 'candidate':
+            qs = qs.filter(email__iexact=user.email)
         else:
             from apps.elections.models import Election
             from apps.candidates.models import limit_to_own_nomination
             election = Election.objects.filter(id=self.kwargs['election_pk']).first()
-            if election and limit_to_own_nomination(self.request.user, election):
-                qs = qs.filter(email__iexact=self.request.user.email)
+            if election and limit_to_own_nomination(user, election):
+                qs = qs.filter(email__iexact=user.email)
         return qs
 
     def _require_reviewer(self, message):
@@ -60,11 +64,15 @@ class CandidateViewSet(viewsets.ModelViewSet):
         context = super().get_serializer_context()
         if 'election_pk' in self.kwargs:
             from apps.elections.models import Election
+            user = self.request.user
             try:
-                context['election'] = Election.objects.get(
-                    id=self.kwargs['election_pk'],
-                    organization=self.request.user.organization
-                )
+                if user.is_superuser or user.role == 'super_admin':
+                    context['election'] = Election.objects.get(id=self.kwargs['election_pk'])
+                else:
+                    context['election'] = Election.objects.get(
+                        id=self.kwargs['election_pk'],
+                        organization=user.organization
+                    )
             except (Election.DoesNotExist, ValueError):
                 pass
         return context
@@ -76,10 +84,14 @@ class CandidateViewSet(viewsets.ModelViewSet):
         from apps.voting.models import VoterRoll
         from apps.members.models import Member
 
-        election = Election.objects.get(
-            id=self.kwargs['election_pk'],
-            organization=self.request.user.organization
-        )
+        user = self.request.user
+        if user.is_superuser or user.role == 'super_admin':
+            election = Election.objects.get(id=self.kwargs['election_pk'])
+        else:
+            election = Election.objects.get(
+                id=self.kwargs['election_pk'],
+                organization=user.organization
+            )
 
         user_email = self.request.user.email.strip().lower()
         payload_email = (self.request.data.get('email') or '').strip().lower()

@@ -205,7 +205,7 @@ class _Header extends StatelessWidget {
                     backgroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   ),
-                  onPressed: () => context.push('/elections/${e.id}/overview'),
+                  onPressed: () => context.push('/elections/${e.id}'),
                 ),
               ],
             ),

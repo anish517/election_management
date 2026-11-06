@@ -496,6 +496,9 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                 final totalVoters = voters.length;
                 final eligibleCount = voters.where((v) => v['is_eligible'] == true).length;
                 final ineligibleCount = totalVoters - eligibleCount;
+                final appCount = voters.where((v) => v['verification_channel'] == 'mobile_app').length;
+                final webCount = voters.where((v) => v['verification_channel'] == 'web_email').length;
+                final venueCount = voters.where((v) => v['verification_channel'] == 'venue_kiosk').length;
 
                 return Material(
                   color: isDark ? AppColors.surfaceVariant.withValues(alpha: 0.3) : Colors.white,
@@ -507,11 +510,11 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        final isMobile = constraints.maxWidth < 650;
+                        final isNarrow = constraints.maxWidth < 980;
                         final searchField = TextField(
                           decoration: InputDecoration(
                             hintText: 'Search by voter name, email, Voter ID, council...',
-                            hintStyle: const TextStyle(fontSize: 13),
+                            hintStyle: TextStyle(fontSize: 13, color: isDark ? Colors.white54 : const Color(0xFF64748B)),
                             prefixIcon: const Icon(Icons.search_rounded, size: 20),
                             isDense: true,
                             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -531,58 +534,65 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                           physics: const BouncingScrollPhysics(),
                           child: Row(
                             children: [
-                              ChoiceChip(
-                                label: Text('All ($totalVoters)', style: const TextStyle(fontSize: 12)),
-                                selected: _eligibilityFilter == 'all',
-                                onSelected: (val) => setState(() => _eligibilityFilter = 'all'),
+                              _buildChannelFilterPill(
+                                label: 'All',
+                                filterKey: 'all',
+                                count: totalVoters,
+                                color: const Color(0xFFD97706),
+                                isDark: isDark,
+                                icon: Icons.people_alt_outlined,
                               ),
-                              const SizedBox(width: 8),
-                              ChoiceChip(
-                                label: Text('Eligible ($eligibleCount)', style: const TextStyle(fontSize: 12)),
-                                selected: _eligibilityFilter == 'eligible',
-                                selectedColor: Colors.green.withValues(alpha: 0.2),
-                                onSelected: (val) => setState(() => _eligibilityFilter = 'eligible'),
+                              _buildChannelFilterPill(
+                                label: 'Eligible',
+                                filterKey: 'eligible',
+                                count: eligibleCount,
+                                color: const Color(0xFF059669),
+                                isDark: isDark,
+                                icon: Icons.check_circle_outline_rounded,
                               ),
-                              const SizedBox(width: 8),
-                              ChoiceChip(
-                                label: const Text('📱 App', style: TextStyle(fontSize: 12)),
-                                selected: _eligibilityFilter == 'mobile_app',
-                                selectedColor: Colors.indigo.withValues(alpha: 0.2),
-                                onSelected: (val) => setState(() => _eligibilityFilter = 'mobile_app'),
+                              _buildChannelFilterPill(
+                                label: 'App',
+                                filterKey: 'mobile_app',
+                                count: appCount,
+                                color: const Color(0xFF4F46E5),
+                                isDark: isDark,
+                                icon: Icons.phone_android_rounded,
                               ),
-                              const SizedBox(width: 8),
-                              ChoiceChip(
-                                label: const Text('🌐 Web', style: TextStyle(fontSize: 12)),
-                                selected: _eligibilityFilter == 'web_email',
-                                selectedColor: Colors.blue.withValues(alpha: 0.2),
-                                onSelected: (val) => setState(() => _eligibilityFilter = 'web_email'),
+                              _buildChannelFilterPill(
+                                label: 'Web',
+                                filterKey: 'web_email',
+                                count: webCount,
+                                color: const Color(0xFF0284C7),
+                                isDark: isDark,
+                                icon: Icons.language_rounded,
                               ),
-                              const SizedBox(width: 8),
-                              ChoiceChip(
-                                label: const Text('🏛️ Venue', style: TextStyle(fontSize: 12)),
-                                selected: _eligibilityFilter == 'venue_kiosk',
-                                selectedColor: Colors.purple.withValues(alpha: 0.2),
-                                onSelected: (val) => setState(() => _eligibilityFilter = 'venue_kiosk'),
+                              _buildChannelFilterPill(
+                                label: 'Venue',
+                                filterKey: 'venue_kiosk',
+                                count: venueCount,
+                                color: const Color(0xFF7C3AED),
+                                isDark: isDark,
+                                icon: Icons.storefront_rounded,
                               ),
-                              if (ineligibleCount > 0) ...[
-                                const SizedBox(width: 8),
-                                ChoiceChip(
-                                  label: Text('Ineligible ($ineligibleCount)', style: const TextStyle(fontSize: 12)),
-                                  selected: _eligibilityFilter == 'ineligible',
-                                  selectedColor: Colors.red.withValues(alpha: 0.2),
-                                  onSelected: (val) => setState(() => _eligibilityFilter = 'ineligible'),
+                              if (ineligibleCount > 0)
+                                _buildChannelFilterPill(
+                                  label: 'Ineligible',
+                                  filterKey: 'ineligible',
+                                  count: ineligibleCount,
+                                  color: const Color(0xFFDC2626),
+                                  isDark: isDark,
+                                  icon: Icons.cancel_outlined,
                                 ),
-                              ],
                             ],
                           ),
                         );
 
-                        if (isMobile) {
+                        if (isNarrow) {
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               searchField,
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 12),
                               filterChips,
                             ],
                           );
@@ -1358,6 +1368,101 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
       voter['has_voted'] != true &&
       voter['is_eligible'] == true &&
       (voter['phone']?.toString().trim().isNotEmpty ?? false);
+
+  Widget _buildChannelFilterPill({
+    required String label,
+    required String filterKey,
+    required int count,
+    required Color color,
+    required bool isDark,
+    IconData? icon,
+    String? emoji,
+  }) {
+    final isSelected = _eligibilityFilter == filterKey;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => setState(() => _eligibilityFilter = filterKey),
+          borderRadius: BorderRadius.circular(20),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? color.withValues(alpha: isDark ? 0.28 : 0.14)
+                  : (isDark ? const Color(0xFF1E293B) : Colors.white),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isSelected
+                    ? color
+                    : (isDark ? Colors.white24 : const Color(0xFFCBD5E1)),
+                width: isSelected ? 1.6 : 1.1,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.18),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                        blurRadius: 2,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (emoji != null) ...[
+                  Text(emoji, style: const TextStyle(fontSize: 13)),
+                  const SizedBox(width: 5),
+                ] else if (icon != null) ...[
+                  Icon(icon, size: 15, color: isSelected ? color : (isDark ? Colors.white70 : const Color(0xFF64748B))),
+                  const SizedBox(width: 5),
+                ],
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                    color: isSelected
+                        ? (isDark ? color.withValues(alpha: 0.95) : color)
+                        : (isDark ? Colors.white : const Color(0xFF334155)),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? color.withValues(alpha: isDark ? 0.35 : 0.2)
+                        : (isDark ? Colors.white12 : const Color(0xFFF1F5F9)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: isSelected
+                          ? (isDark ? Colors.white : color)
+                          : (isDark ? Colors.white70 : const Color(0xFF64748B)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildVerificationChannelBadge(String? channel) {
     switch (channel) {

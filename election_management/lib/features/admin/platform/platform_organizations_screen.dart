@@ -642,7 +642,7 @@ class _ElectionRow extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     visualDensity: VisualDensity.compact,
                   ),
-                  onPressed: () => context.push('/elections/${election.id}/overview'),
+                  onPressed: () => context.push('/elections/${election.id}'),
                 ),
               ],
             ),

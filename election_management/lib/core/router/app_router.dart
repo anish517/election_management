@@ -353,6 +353,21 @@ final routerProvider = Provider<GoRouter>((ref) {
             },
           ),
           GoRoute(
+            path: ':electionId/overview',
+            builder: (context, state) {
+              final electionId = state.pathParameters['electionId']!;
+              return Consumer(
+                builder: (ctx, ref, _) {
+                  final user = ref.watch(currentUserProvider);
+                  if (user != null && user.canManageElections) {
+                    return ElectionDashboardScreen(electionId: electionId);
+                  }
+                  return ElectionDetailScreen(electionId: electionId);
+                },
+              );
+            },
+          ),
+          GoRoute(
             path: ':electionId/turnout',
             name: 'election-turnout',
             builder: (context, state) => VoterTurnoutScreen(

@@ -384,17 +384,62 @@ class ElectionViewSet(viewsets.ModelViewSet):
                     from apps.notifications.tasks import send_results_published_notification
                     send_results_published_notification.delay(str(election.id))
                 except Exception:
-                    pass
+                    try:
+                        from apps.notifications.services import NotificationService
+                        NotificationService.notify_results_published(election)
+                    except Exception as e:
+                        logger.warning(f"[advance_state] notify_results_published fallback failed: {e}")
             elif target_state == 'voting_closed':
                 try:
                     from apps.notifications.tasks import send_voting_closed_notification
                     send_voting_closed_notification.delay(str(election.id))
                 except Exception:
-                    pass
+                    try:
+                        from apps.notifications.services import NotificationService
+                        NotificationService.notify_voting_closed(election)
+                    except Exception as e:
+                        logger.warning(f"[advance_state] notify_voting_closed fallback failed: {e}")
+            elif target_state == 'voting_open':
+                def _dispatch_voting_open(election_id):
+                    from django.db import connection
+                    try:
+                        from apps.elections.models import Election
+                        from apps.notifications.services import NotificationService
+                        el = Election.objects.select_related('organization').get(id=election_id)
+                        NotificationService.notify_voting_open(el)
+                    except Exception as e:
+                        logger.warning(f"[advance_state] notify_voting_open thread failed: {e}")
+                    finally:
+                        connection.close()
+
+                import threading
+                threading.Thread(target=_dispatch_voting_open, args=(str(election.id),), daemon=True).start()
 
             return Response(self.get_serializer(election).data)
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'], url_path='dispatch-ballot-links')
+    def dispatch_ballot_links(self, request, pk=None):
+        """
+        Manually trigger dispatch of direct single-use ballot links to eligible voters.
+        """
+        election = self.get_object()
+        def _dispatch_task(election_id):
+            from django.db import connection
+            try:
+                from apps.elections.models import Election
+                from apps.notifications.services import NotificationService
+                el = Election.objects.select_related('organization').get(id=election_id)
+                NotificationService.notify_voting_open(el)
+            except Exception as e:
+                logger.warning(f"[dispatch_ballot_links] thread failed: {e}")
+            finally:
+                connection.close()
+
+        import threading
+        threading.Thread(target=_dispatch_task, args=(str(election.id),), daemon=True).start()
+        return Response({'message': 'Direct ballot link dispatch initiated for all eligible voters.'}, status=status.HTTP_200_OK)
             
     @action(detail=True, methods=['get'])
     def history(self, request, pk=None):

@@ -6,6 +6,7 @@ import '../../../core/network/api_constants.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/widgets/loading_button.dart';
+import '../../../core/utils/error_helper.dart';
 import '../../../core/theme/app_theme.dart';
 
 class EditPositionDialog extends ConsumerStatefulWidget {
@@ -96,7 +97,7 @@ class _EditPositionDialogState extends ConsumerState<EditPositionDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update designation: $e'),
+            content: Text(extractApiErrorMessage(e, fallback: 'Failed to update designation.')),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
           ),

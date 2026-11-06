@@ -6,6 +6,7 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/providers/admin_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/models.dart';
+import '../../../core/utils/error_helper.dart';
 import 'create_designation_screen.dart';
 import 'quota_settings_screen.dart';
 
@@ -47,7 +48,7 @@ class _DesignationsScreenState extends ConsumerState<DesignationsScreen> {
         if (data['message'] != null) return data['message'].toString();
       }
     }
-    return 'Failed to delete designation: $e';
+    return extractApiErrorMessage(e, fallback: 'Failed to delete designation.');
   }
 
   @override

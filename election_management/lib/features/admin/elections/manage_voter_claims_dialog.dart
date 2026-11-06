@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/error_helper.dart';
 import '../../../core/providers/admin_providers.dart';
 import '../../../shared/models/claim_models.dart';
 
@@ -112,7 +113,7 @@ class _ManageVoterClaimsDialogState extends ConsumerState<ManageVoterClaimsDialo
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text(extractApiErrorMessage(e, fallback: 'Action failed.')), backgroundColor: Colors.red),
         );
       }
     }

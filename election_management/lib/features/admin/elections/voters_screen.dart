@@ -14,6 +14,7 @@ import '../../../core/utils/download_helper.dart';
 import '../../voters/dialogs/file_voter_claim_dialog.dart';
 import '../../shared/digital_id_card_dialog.dart';
 import '../../../shared/widgets/app_error_view.dart';
+import '../../../core/utils/error_helper.dart';
 import 'add_voter_dialog.dart';
 import 'edit_voter_dialog.dart';
 import 'import_members_dialog.dart';
@@ -68,12 +69,12 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not download file: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not download file: ${extractApiErrorMessage(e)}')));
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Export failed: ${extractApiErrorMessage(e)}')));
       }
     }
   }
@@ -83,6 +84,8 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
     final codeCtrl = TextEditingController(text: 'BOOTH-01');
     bool regenAll = false;
     bool isSubmitting = false;
+    final votersAsync = ref.read(votersProvider(widget.electionId));
+    final totalVoters = votersAsync.asData?.value.length ?? 0;
 
     showDialog(
       context: context,
@@ -134,6 +137,29 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                     contentPadding: EdgeInsets.zero,
                     controlAffinity: ListTileControlAffinity.leading,
                   ),
+                  if (totalVoters == 0) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.4)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning_amber_rounded, color: Colors.amber.shade700, size: 20),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              'No voters found in this election roll. Please import or add voters first before generating PINs.',
+                              style: TextStyle(fontSize: 12, color: Color(0xFFD97706), height: 1.35),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -144,8 +170,18 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
               ),
               ElevatedButton.icon(
                 onPressed: isSubmitting ? null : () async {
-                  setModalState(() => isSubmitting = true);
                   final messenger = ScaffoldMessenger.of(context);
+                  if (totalVoters == 0) {
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('No voters found in this election roll. Please import or register voters first.'),
+                        backgroundColor: Colors.orange,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return;
+                  }
+                  setModalState(() => isSubmitting = true);
                   try {
                     final dio = ref.read(apiClientProvider);
                     final res = await dio.post(
@@ -178,8 +214,9 @@ class _VotersScreenState extends ConsumerState<VotersScreen> {
                     if (mounted) {
                       messenger.showSnackBar(
                         SnackBar(
-                          content: Text('Failed to initialize: $e'),
-                          backgroundColor: Colors.red,
+                          content: Text(extractApiErrorMessage(e, fallback: 'Failed to initialize polling station.')),
+                          backgroundColor: Colors.red.shade700,
+                          behavior: SnackBarBehavior.floating,
                         ),
                       );
                     }

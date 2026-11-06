@@ -88,9 +88,21 @@ class IsOrgAdminOrReadOnly(BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
+        if request.user.role == UserRole.SUPER_ADMIN or request.user.is_superuser:
+            return True
         if request.method in SAFE_METHODS:
             return request.user.organization_id is not None
         return request.user.role in [UserRole.SUPER_ADMIN, UserRole.ORG_ADMIN]
+
+    def has_object_permission(self, request, view, obj):
+        if request.user.role == UserRole.SUPER_ADMIN or request.user.is_superuser:
+            return True
+        if request.method in SAFE_METHODS:
+            return True
+        if request.user.role != UserRole.ORG_ADMIN:
+            return False
+        obj_org_id = getattr(obj, 'organization_id', None)
+        return str(obj_org_id) == str(request.user.organization_id)
 
 
 class IsElectionOfficerForElection(BasePermission):

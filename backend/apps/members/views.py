@@ -13,9 +13,34 @@ class MemberViewSet(viewsets.ModelViewSet):
     permission_classes = [IsOrgAdminOrReadOnly] # Org Admins manage, others can read
     
     def get_queryset(self):
-        return Member.objects.filter(organization=self.request.user.organization)
+        user = self.request.user
+        if user.is_superuser or getattr(user, 'role', '') == 'super_admin':
+            org_id = self.request.query_params.get('organization') or self.request.query_params.get('organization_id')
+            election_id = self.request.query_params.get('election') or self.request.query_params.get('election_id')
+            if org_id:
+                return Member.objects.filter(organization_id=org_id)
+            if election_id:
+                from apps.elections.models import Election
+                el = Election.objects.filter(id=election_id).first()
+                if el and el.organization_id:
+                    return Member.objects.filter(organization_id=el.organization_id)
+            return Member.objects.all()
+        return Member.objects.filter(organization=user.organization)
 
     def perform_create(self, serializer):
+        user = self.request.user
+        if user.is_superuser or getattr(user, 'role', '') == 'super_admin':
+            org_id = self.request.data.get('organization') or self.request.query_params.get('organization')
+            if org_id:
+                from apps.organizations.models import Organization
+                org = Organization.objects.filter(id=org_id).first()
+                if org:
+                    serializer.save(organization=org)
+                    return
+            from apps.organizations.models import Organization
+            first_org = Organization.objects.first()
+            serializer.save(organization=first_org)
+            return
         serializer.save(organization=self.request.user.organization)
 
     @action(detail=False, methods=['post'])
@@ -51,12 +76,23 @@ class MemberViewSet(viewsets.ModelViewSet):
             valid_rows = []
             error_rows = []
 
+            target_org = request.user.organization
+            if not target_org and (request.user.is_superuser or getattr(request.user, 'role', '') == 'super_admin'):
+                org_id = request.data.get('organization')
+                if org_id:
+                    from apps.organizations.models import Organization
+                    target_org = Organization.objects.filter(id=org_id).first()
+                if not target_org:
+                    from apps.organizations.models import Organization
+                    target_org = Organization.objects.first()
+
+            org_filter = {'organization': target_org} if target_org else {}
             existing_emails = set(
-                Member.objects.filter(organization=request.user.organization)
+                Member.objects.filter(**org_filter)
                 .values_list('email', flat=True)
             )
             existing_codes = set(
-                Member.objects.filter(organization=request.user.organization)
+                Member.objects.filter(**org_filter)
                 .exclude(member_code='')
                 .values_list('member_code', flat=True)
             )
@@ -152,12 +188,23 @@ class MemberViewSet(viewsets.ModelViewSet):
             from django.contrib.auth import get_user_model
             User = get_user_model()
 
+            target_org = request.user.organization
+            if not target_org and (request.user.is_superuser or getattr(request.user, 'role', '') == 'super_admin'):
+                org_id = request.data.get('organization')
+                if org_id:
+                    from apps.organizations.models import Organization
+                    target_org = Organization.objects.filter(id=org_id).first()
+                if not target_org:
+                    from apps.organizations.models import Organization
+                    target_org = Organization.objects.first()
+
+            org_filter = {'organization': target_org} if target_org else {}
             existing_emails = set(
-                Member.objects.filter(organization=request.user.organization)
+                Member.objects.filter(**org_filter)
                 .values_list('email', flat=True)
             )
             existing_codes = set(
-                Member.objects.filter(organization=request.user.organization)
+                Member.objects.filter(**org_filter)
                 .exclude(member_code='')
                 .values_list('member_code', flat=True)
             )
@@ -189,7 +236,7 @@ class MemberViewSet(viewsets.ModelViewSet):
                     voting_weight = 1.0
 
                 member, created = Member.objects.get_or_create(
-                    organization=request.user.organization,
+                    organization=target_org or request.user.organization,
                     email=email,
                     defaults={
                         'full_name': mapped.get('full_name', ''),

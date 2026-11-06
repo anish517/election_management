@@ -944,7 +944,9 @@ class NominationSummaryView(APIView):
         from apps.elections.models import Election
 
         user = request.user
-        if user.role == 'org_admin' or getattr(user, 'is_org_admin', False):
+        if user.is_superuser or user.role == 'super_admin':
+            elections = Election.objects.all()
+        elif user.role == 'org_admin' or getattr(user, 'is_org_admin', False):
             elections = Election.objects.filter(organization=user.organization)
         elif user.role == 'election_officer':
             elections = Election.objects.filter(

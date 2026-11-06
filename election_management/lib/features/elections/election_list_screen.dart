@@ -10,6 +10,7 @@ import '../../shared/models/models.dart';
 import '../../shared/widgets/admin_drawer.dart';
 import '../../shared/widgets/shimmer_loaders.dart';
 import '../../shared/widgets/empty_state.dart';
+import '../../shared/widgets/app_error_view.dart';
 import '../../shared/widgets/responsive_layout.dart';
 import '../../shared/widgets/theme_mode_button.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -78,20 +79,10 @@ class _ElectionListScreenState extends ConsumerState<ElectionListScreen> {
       body: ResponsivePageWrapper(
         child: electionsAsync.when(
           loading: () => const CardListSkeleton(count: 5),
-          error: (e, _) => Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 40),
-                const SizedBox(height: 12),
-                Text('Failed to load elections', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                ElevatedButton(
-                  onPressed: () => ref.invalidate(electionsProvider),
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
+          error: (e, _) => AppErrorView(
+            error: e,
+            title: 'Failed to load elections',
+            onRetry: () => ref.invalidate(electionsProvider),
           ),
           data: (elections) {
             if (elections.isEmpty) {

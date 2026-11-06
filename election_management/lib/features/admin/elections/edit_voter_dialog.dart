@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/providers/admin_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_button.dart';
+import '../../../core/utils/error_helper.dart';
 
 class EditVoterDialog extends ConsumerStatefulWidget {
   final String electionId;
@@ -105,7 +106,7 @@ class _EditVoterDialogState extends ConsumerState<EditVoterDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update voter: ${e.toString()}'),
+            content: Text(extractApiErrorMessage(e, fallback: 'Failed to update voter.')),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
           ),

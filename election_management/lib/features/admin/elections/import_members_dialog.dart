@@ -7,6 +7,7 @@ import '../../../core/providers/admin_providers.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/network/api_client.dart';
 import '../../../shared/models/models.dart';
+import '../../../core/utils/error_helper.dart';
 
 class ImportMembersDialog extends ConsumerStatefulWidget {
   final String electionId;
@@ -95,7 +96,7 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
             : e.message;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Import failed: $err'),
+            content: Text(extractApiErrorMessage(err, fallback: 'Import failed.')),
             backgroundColor: Colors.red,
           ),
         );
@@ -180,7 +181,7 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
             err?.toString() ?? 'Failed to connect to external API.',
       );
     } catch (e) {
-      setState(() => _apiErrorMessage = e.toString());
+      setState(() => _apiErrorMessage = extractApiErrorMessage(e));
     } finally {
       if (mounted) setState(() => _isFetchingApi = false);
     }
@@ -222,7 +223,7 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Import failed: $err'),
+            content: Text(extractApiErrorMessage(err, fallback: 'Import failed.')),
             backgroundColor: Colors.red,
           ),
         );
@@ -231,7 +232,7 @@ class _ImportMembersDialogState extends ConsumerState<ImportMembersDialog>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Import error: $e'),
+            content: Text(extractApiErrorMessage(e, fallback: 'Import error.')),
             backgroundColor: Colors.red,
           ),
         );

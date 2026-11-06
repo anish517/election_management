@@ -6,6 +6,7 @@ import '../../../core/providers/app_providers.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/models/models.dart';
 import '../../../shared/widgets/loading_button.dart';
+import '../../../core/utils/error_helper.dart';
 
 class AddVoterDialog extends ConsumerStatefulWidget {
   final String electionId;
@@ -96,7 +97,7 @@ class _AddVoterDialogState extends ConsumerState<AddVoterDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to add voter: ${e.toString()}'),
+            content: Text(extractApiErrorMessage(e, fallback: 'Failed to add voter.')),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
           ),
@@ -238,7 +239,7 @@ class _AddVoterDialogState extends ConsumerState<AddVoterDialog> {
                         children: [
                           membersAsync.when(
                             loading: () => const LinearProgressIndicator(),
-                            error: (e, _) => Text('Could not load members: $e', style: const TextStyle(color: Colors.red, fontSize: 12)),
+                            error: (e, _) => Text(extractApiErrorMessage(e, fallback: 'Could not load members.'), style: const TextStyle(color: Colors.red, fontSize: 12)),
                             data: (members) {
                               if (members.isEmpty) {
                                 return Container(

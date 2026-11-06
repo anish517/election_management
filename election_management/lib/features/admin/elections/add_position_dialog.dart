@@ -5,6 +5,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/providers/app_providers.dart';
 import '../../../shared/widgets/loading_button.dart';
+import '../../../core/utils/error_helper.dart';
 import '../../../core/theme/app_theme.dart';
 
 class AddPositionDialog extends ConsumerStatefulWidget {
@@ -84,7 +85,7 @@ class _AddPositionDialogState extends ConsumerState<AddPositionDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to add designation: $e'),
+            content: Text(extractApiErrorMessage(e, fallback: 'Failed to add designation.')),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
           ),

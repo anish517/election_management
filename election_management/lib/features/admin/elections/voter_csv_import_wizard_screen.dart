@@ -9,6 +9,7 @@ import '../../../core/providers/admin_providers.dart';
 import '../../../core/utils/download_helper.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/loading_button.dart';
+import '../../../core/utils/error_helper.dart';
 
 class _PreviewResult {
   final List<String> columns;
@@ -118,7 +119,7 @@ class _VoterCsvImportWizardScreenState extends ConsumerState<VoterCsvImportWizar
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Preview validation failed: $e'),
+            content: Text(extractApiErrorMessage(e, fallback: 'Preview validation failed.')),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
           ),
@@ -163,7 +164,7 @@ class _VoterCsvImportWizardScreenState extends ConsumerState<VoterCsvImportWizar
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Import failed: $e'),
+            content: Text(extractApiErrorMessage(e, fallback: 'Import failed.')),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
           ),
@@ -274,7 +275,7 @@ class _VoterCsvImportWizardScreenState extends ConsumerState<VoterCsvImportWizar
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Could not download template: $e'),
+            content: Text(extractApiErrorMessage(e, fallback: 'Could not download template.')),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
           ),

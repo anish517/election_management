@@ -46,6 +46,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final Dio _dio;
 
   AuthNotifier(this._dio) : super(const AuthState()) {
+    JwtInterceptor.onSessionExpired = () {
+      final prefix = state.user?.organizationPrefix ?? state.lastOrgPrefix;
+      final token = state.user?.portalToken ?? state.lastPortalToken;
+      state = AuthState(lastOrgPrefix: prefix, lastPortalToken: token);
+    };
     _checkStoredAuth();
   }
 

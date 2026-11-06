@@ -81,6 +81,10 @@ class JwtInterceptor extends Interceptor {
   final Dio _dio;
   JwtInterceptor(this._dio);
 
+  /// Callback registered by AuthNotifier to reset client-side auth state
+  /// when token refresh fails completely (session expired).
+  static void Function()? onSessionExpired;
+
   // Mutex lock to synchronize concurrent refresh requests
   static Future<String?>? _refreshFuture;
 
@@ -120,10 +124,12 @@ class JwtInterceptor extends Interceptor {
           handler.resolve(cloned);
           return;
         } else {
+          onSessionExpired?.call();
           handler.next(err);
           return;
         }
       } catch (_) {
+        onSessionExpired?.call();
         handler.next(err);
         return;
       } finally {
@@ -166,6 +172,7 @@ class JwtInterceptor extends Interceptor {
     } catch (_) {
       // Clear stored tokens only when refresh token itself fails validation
       await TokenStorage.deleteAll();
+      onSessionExpired?.call();
       return null;
     }
   }

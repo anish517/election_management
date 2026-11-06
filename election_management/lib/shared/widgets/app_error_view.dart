@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/error_helper.dart';
 
@@ -32,14 +33,13 @@ class AppErrorView extends StatelessWidget {
     final isSession = isSessionExpiredError(error) || cleanMsg.toLowerCase().contains('session expired');
 
     final displayIcon = icon ??
-        (isNetwork
-            ? Icons.wifi_off_rounded
-            : (isSession ? Icons.lock_clock_outlined : Icons.error_outline_rounded));
+        (isSession
+            ? Icons.lock_clock_outlined
+            : (isNetwork ? Icons.wifi_off_rounded : Icons.error_outline_rounded));
 
-    final displayTitle = title ??
-        (isNetwork
-            ? 'Connection Interrupted'
-            : (isSession ? 'Session Expired' : 'Unable to Load Data'));
+    final displayTitle = isSession
+        ? 'Session Expired'
+        : (title ?? (isNetwork ? 'Connection Interrupted' : 'Unable to Load Data'));
 
     if (isCompact) {
       return Container(
@@ -117,7 +117,20 @@ class AppErrorView extends StatelessWidget {
                   height: 1.45,
                 ),
               ),
-              if (onRetry != null) ...[
+              if (isSession) ...[
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () => context.go('/login'),
+                  icon: const Icon(Icons.login_rounded, size: 16),
+                  label: const Text('Sign In Again', style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ] else if (onRetry != null) ...[
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
                   onPressed: onRetry,

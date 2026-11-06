@@ -28,7 +28,17 @@ String extractApiErrorMessage(
         // 1. DRF standard 'detail' field (e.g. ValidationError, PermissionDenied, NotFound)
         if (data.containsKey('detail') && data['detail'] != null) {
           final detail = data['detail'];
-          if (detail is String && detail.isNotEmpty) return detail;
+          if (detail is String && detail.isNotEmpty) {
+            final lower = detail.toLowerCase();
+            if (lower.contains('token not valid') ||
+                lower.contains('token_not_valid') ||
+                lower.contains('token is invalid') ||
+                lower.contains('token expired') ||
+                lower.contains('not valid for any token type')) {
+              return 'Your session has expired. Please sign in again to continue.';
+            }
+            return detail;
+          }
           if (detail is List && detail.isNotEmpty) return detail.first.toString();
         }
 
@@ -119,7 +129,7 @@ bool isSessionExpiredError(dynamic e) {
       if (msg.contains('session') && (msg.contains('expired') || msg.contains('invalid') || msg.contains('used'))) {
         return true;
       }
-      if (msg.contains('token is invalid') || msg.contains('token expired') || msg.contains('unauthorized')) {
+      if (msg.contains('token') && (msg.contains('invalid') || msg.contains('not valid') || msg.contains('expired') || msg.contains('unauthorized'))) {
         return true;
       }
     }
@@ -129,6 +139,8 @@ bool isSessionExpiredError(dynamic e) {
       s.contains('session is expired') ||
       s.contains('unauthorized') ||
       s.contains('token is invalid') ||
+      s.contains('token not valid') ||
+      s.contains('not valid for any token type') ||
       s.contains('token expired') ||
       (s.contains('session') && s.contains('expired'));
 }
